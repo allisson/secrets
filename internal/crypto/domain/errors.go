@@ -80,4 +80,12 @@ var (
 	//
 	// HTTP Status: 422 Unprocessable Entity
 	ErrActiveMasterKeyNotFound = errors.Wrap(errors.ErrInvalidInput, "active master key not found")
+
+	// ErrMasterKeyNotFound indicates a master key with the specified ID was not found.
+	//
+	// This error is returned when attempting to retrieve a master key by ID
+	// but the key doesn't exist in the master key chain.
+	//
+	// HTTP Status: 404 Not Found
+	ErrMasterKeyNotFound = errors.Wrap(errors.ErrNotFound, "master key not found")
 )
