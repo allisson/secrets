@@ -1,4 +1,54 @@
 // Package domain defines the core cryptographic domain models and types.
+//
+// This package implements the domain layer for envelope encryption, a multi-tier
+// key management scheme that provides efficient key rotation and enhanced security.
+//
+// # Envelope Encryption Architecture
+//
+// The package implements a three-tier key hierarchy:
+//
+//	Master Key (KMS/Environment)
+//	    ↓ encrypts
+//	Key Encryption Key (KEK - stored in database)
+//	    ↓ encrypts
+//	Data Encryption Key (DEK - stored with data)
+//	    ↓ encrypts
+//	Application Data
+//
+// # Key Components
+//
+// MasterKey: Root keys stored securely in KMS or environment variables.
+// Used to encrypt and decrypt KEKs. Supports key rotation through MasterKeyChain.
+//
+// Kek (Key Encryption Key): Intermediate keys stored in the database.
+// Used to encrypt and decrypt DEKs. Supports versioning and rotation.
+//
+// Dek (Data Encryption Key): Per-record encryption keys stored alongside data.
+// Used to encrypt actual application data. One DEK per encrypted item.
+//
+// # Supported Algorithms
+//
+// The package supports two AEAD (Authenticated Encryption with Associated Data) algorithms:
+//
+//   - AESGCM: AES-256-GCM, optimal on systems with AES-NI hardware acceleration
+//   - ChaCha20: ChaCha20-Poly1305, optimal on mobile devices and systems without AES-NI
+//
+// Both algorithms provide 256-bit security and authenticated encryption.
+//
+// # Error Handling
+//
+// All domain errors wrap standard errors from internal/errors for consistent
+// error handling and HTTP status code mapping. Errors follow the pattern:
+//
+//	ErrSpecificError = errors.Wrap(errors.ErrInvalidInput, "specific context")
+//
+// # Security Features
+//
+//   - 256-bit keys for maximum security
+//   - AEAD encryption for confidentiality and authenticity
+//   - Key rotation support without re-encrypting all data
+//   - Secure memory zeroing for sensitive key material
+//   - Per-record encryption with unique DEKs
 package domain
 
 import (
