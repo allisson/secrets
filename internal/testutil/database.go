@@ -67,7 +67,9 @@ func CleanupPostgresDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 
 	// Truncate tables in reverse order to respect foreign key constraints
-	_, err := db.Exec("TRUNCATE TABLE outbox_events, users RESTART IDENTITY CASCADE")
+	_, err := db.Exec(
+		"TRUNCATE TABLE audit_logs, transit_key_versions, transit_keys, secret_versions, secrets, deks, keks, client_policies, policies, tokens, clients RESTART IDENTITY CASCADE",
+	)
 	require.NoError(t, err, "failed to truncate postgres tables")
 }
 
@@ -80,11 +82,38 @@ func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 	require.NoError(t, err, "failed to disable foreign key checks")
 
 	// Truncate tables
-	_, err = db.Exec("TRUNCATE TABLE outbox_events")
-	require.NoError(t, err, "failed to truncate outbox_events table")
+	_, err = db.Exec("TRUNCATE TABLE audit_logs")
+	require.NoError(t, err, "failed to truncate audit_logs table")
 
-	_, err = db.Exec("TRUNCATE TABLE users")
-	require.NoError(t, err, "failed to truncate users table")
+	_, err = db.Exec("TRUNCATE TABLE transit_key_versions")
+	require.NoError(t, err, "failed to truncate transit_key_versions table")
+
+	_, err = db.Exec("TRUNCATE TABLE transit_keys")
+	require.NoError(t, err, "failed to truncate transit_keys table")
+
+	_, err = db.Exec("TRUNCATE TABLE secret_versions")
+	require.NoError(t, err, "failed to truncate secret_versions table")
+
+	_, err = db.Exec("TRUNCATE TABLE secrets")
+	require.NoError(t, err, "failed to truncate secrets table")
+
+	_, err = db.Exec("TRUNCATE TABLE deks")
+	require.NoError(t, err, "failed to truncate deks table")
+
+	_, err = db.Exec("TRUNCATE TABLE keks")
+	require.NoError(t, err, "failed to truncate keks table")
+
+	_, err = db.Exec("TRUNCATE TABLE client_policies")
+	require.NoError(t, err, "failed to truncate client_policies table")
+
+	_, err = db.Exec("TRUNCATE TABLE policies")
+	require.NoError(t, err, "failed to truncate policies table")
+
+	_, err = db.Exec("TRUNCATE TABLE tokens")
+	require.NoError(t, err, "failed to truncate tokens table")
+
+	_, err = db.Exec("TRUNCATE TABLE clients")
+	require.NoError(t, err, "failed to truncate clients table")
 
 	// Re-enable foreign key checks
 	_, err = db.Exec("SET FOREIGN_KEY_CHECKS = 1")

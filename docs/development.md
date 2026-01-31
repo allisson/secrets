@@ -48,9 +48,9 @@ import (
     "github.com/google/uuid"
     validation "github.com/jellydator/validation"
 
-    "github.com/allisson/go-project-template/internal/database"
-    "github.com/allisson/go-project-template/internal/errors"
-    "github.com/allisson/go-project-template/internal/user/domain"
+    "github.com/allisson/secrets/internal/database"
+    "github.com/allisson/secrets/internal/errors"
+    "github.com/allisson/secrets/internal/user/domain"
 )
 ```
 
@@ -226,7 +226,7 @@ func isMySQLUniqueViolation(err error) bool {
 ```go
 import (
     validation "github.com/jellydator/validation"
-    appValidation "github.com/allisson/go-project-template/internal/validation"
+    appValidation "github.com/allisson/secrets/internal/validation"
 )
 
 func (r *RegisterUserRequest) Validate() error {

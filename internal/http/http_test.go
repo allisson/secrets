@@ -1,59 +1,19 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/allisson/go-project-template/internal/httputil"
-	userDomain "github.com/allisson/go-project-template/internal/user/domain"
-	userHttp "github.com/allisson/go-project-template/internal/user/http"
-	"github.com/allisson/go-project-template/internal/user/http/dto"
-	userUsecase "github.com/allisson/go-project-template/internal/user/usecase"
+	"github.com/allisson/secrets/internal/httputil"
 )
-
-// MockUserUseCase is a mock implementation of usecase.UserUseCase
-type MockUserUseCase struct {
-	mock.Mock
-}
-
-func (m *MockUserUseCase) RegisterUser(
-	ctx context.Context,
-	input userUsecase.RegisterUserInput,
-) (*userDomain.User, error) {
-	args := m.Called(ctx, input)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*userDomain.User), args.Error(1)
-}
-
-func (m *MockUserUseCase) GetUserByEmail(ctx context.Context, email string) (*userDomain.User, error) {
-	args := m.Called(ctx, email)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*userDomain.User), args.Error(1)
-}
-
-func (m *MockUserUseCase) GetUserByID(ctx context.Context, id uuid.UUID) (*userDomain.User, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*userDomain.User), args.Error(1)
-}
 
 func TestMakeJSONResponse(t *testing.T) {
 	tests := []struct {
@@ -233,168 +193,4 @@ func TestChainMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "value1", w.Header().Get("X-Test-1"))
 	assert.Equal(t, "value2", w.Header().Get("X-Test-2"))
-}
-
-func TestUserHandler_Register_Success(t *testing.T) {
-	mockUseCase := &MockUserUseCase{}
-	handler := userHttp.NewUserHandler(mockUseCase, nil)
-
-	req := dto.RegisterUserRequest{
-		Name:     "John Doe",
-		Email:    "john@example.com",
-		Password: "SecurePass123!",
-	}
-
-	input := userUsecase.RegisterUserInput{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	uuid1 := uuid.Must(uuid.NewV7())
-	expectedUser := &userDomain.User{
-		ID:    uuid1,
-		Name:  input.Name,
-		Email: input.Email,
-	}
-
-	mockUseCase.On("RegisterUser", mock.Anything, input).Return(expectedUser, nil)
-
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	handler.RegisterUser(w, httpReq)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
-
-	var response map[string]interface{}
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.Equal(t, uuid1.String(), response["id"])
-	assert.Equal(t, input.Name, response["name"])
-	assert.Equal(t, input.Email, response["email"])
-
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestUserHandler_Register_InvalidJSON(t *testing.T) {
-	mockUseCase := &MockUserUseCase{}
-	handler := userHttp.NewUserHandler(mockUseCase, nil)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader([]byte("invalid json")))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	handler.RegisterUser(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.Equal(t, "validation_error", response["error"])
-}
-
-func TestUserHandler_Register_ValidationError(t *testing.T) {
-	mockUseCase := &MockUserUseCase{}
-	handler := userHttp.NewUserHandler(mockUseCase, nil)
-
-	tests := []struct {
-		name  string
-		input dto.RegisterUserRequest
-	}{
-		{
-			name: "empty name",
-			input: dto.RegisterUserRequest{
-				Name:     "",
-				Email:    "john@example.com",
-				Password: "SecurePass123!",
-			},
-		},
-		{
-			name: "empty email",
-			input: dto.RegisterUserRequest{
-				Name:     "John Doe",
-				Email:    "",
-				Password: "SecurePass123!",
-			},
-		},
-		{
-			name: "empty password",
-			input: dto.RegisterUserRequest{
-				Name:     "John Doe",
-				Email:    "john@example.com",
-				Password: "",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.input)
-			req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader(body))
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			handler.RegisterUser(w, req)
-
-			assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
-
-			var response map[string]string
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-			assert.Equal(t, "invalid_input", response["error"])
-			assert.Contains(t, response["message"], "required")
-		})
-	}
-}
-
-func TestUserHandler_Register_UseCaseError(t *testing.T) {
-	mockUseCase := &MockUserUseCase{}
-	handler := userHttp.NewUserHandler(mockUseCase, nil)
-
-	req := dto.RegisterUserRequest{
-		Name:     "John Doe",
-		Email:    "john@example.com",
-		Password: "SecurePass123!",
-	}
-
-	input := userUsecase.RegisterUserInput{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-	}
-
-	useCaseError := errors.New("database error")
-	mockUseCase.On("RegisterUser", mock.Anything, input).Return(nil, useCaseError)
-
-	body, _ := json.Marshal(req)
-	httpReq := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader(body))
-	httpReq.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	handler.RegisterUser(w, httpReq)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.Equal(t, "internal_error", response["error"])
-
-	mockUseCase.AssertExpectations(t)
-}
-
-func TestUserHandler_Register_MethodNotAllowed(t *testing.T) {
-	mockUseCase := &MockUserUseCase{}
-	handler := userHttp.NewUserHandler(mockUseCase, nil)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
-	w := httptest.NewRecorder()
-
-	handler.RegisterUser(w, req)
-
-	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }

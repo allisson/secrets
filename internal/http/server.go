@@ -7,16 +7,12 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
-
-	userHttp "github.com/allisson/go-project-template/internal/user/http"
-	userUsecase "github.com/allisson/go-project-template/internal/user/usecase"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	server      *http.Server
-	logger      *slog.Logger
-	userHandler *userHttp.UserHandler
+	server *http.Server
+	logger *slog.Logger
 }
 
 // NewServer creates a new HTTP server
@@ -24,13 +20,9 @@ func NewServer(
 	host string,
 	port int,
 	logger *slog.Logger,
-	userUseCaseInstance userUsecase.UseCase,
 ) *Server {
-	userHandler := userHttp.NewUserHandler(userUseCaseInstance, logger)
-
 	return &Server{
-		logger:      logger,
-		userHandler: userHandler,
+		logger: logger,
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", host, port),
 			ReadTimeout:  15 * time.Second,
@@ -48,9 +40,6 @@ func (s *Server) Start(ctx context.Context) error {
 	// Health and readiness endpoints
 	mux.Handle("/health", HealthHandler())
 	mux.Handle("/ready", ReadinessHandler(ctx))
-
-	// API endpoints
-	mux.HandleFunc("/api/users", s.userHandler.RegisterUser)
 
 	// Apply middleware
 	handler := ChainMiddleware(

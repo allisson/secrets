@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/allisson/go-project-template/internal/httputil"
+	"github.com/allisson/secrets/internal/httputil"
 )
 
 // Middleware defines a function to wrap http.Handler

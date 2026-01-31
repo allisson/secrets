@@ -1,0 +1,283 @@
+package service
+
+import (
+	"crypto/rand"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+)
+
+func TestNewKeyManager(t *testing.T) {
+	aeadManager := NewAEADManager()
+	km := NewKeyManager(aeadManager)
+	assert.NotNil(t, km)
+	assert.NotNil(t, km.aeadManager)
+}
+
+func TestKeyManagerService_CreateKek(t *testing.T) {
+	aeadManager := NewAEADManager()
+	km := NewKeyManager(aeadManager)
+	masterKey := make([]byte, 32)
+	_, err := rand.Read(masterKey)
+	require.NoError(t, err)
+
+	t.Run("create KEK with AES-GCM", func(t *testing.T) {
+		kek, err := km.CreateKek(masterKey, "test-kek-aes", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, "", kek.ID.String())
+		assert.Equal(t, "test-kek-aes", kek.Name)
+		assert.Equal(t, cryptoDomain.AESGCM, kek.Algorithm)
+		assert.NotNil(t, kek.EncryptedKey)
+		assert.NotNil(t, kek.Key)
+		assert.Equal(t, 32, len(kek.Key))
+		assert.NotNil(t, kek.Nonce)
+		assert.Equal(t, uint(1), kek.Version)
+		assert.True(t, kek.IsActive)
+		assert.False(t, kek.CreatedAt.IsZero())
+	})
+
+	t.Run("create KEK with ChaCha20-Poly1305", func(t *testing.T) {
+		kek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, "", kek.ID.String())
+		assert.Equal(t, "test-kek-chacha", kek.Name)
+		assert.Equal(t, cryptoDomain.ChaCha20, kek.Algorithm)
+		assert.NotNil(t, kek.EncryptedKey)
+		assert.NotNil(t, kek.Key)
+		assert.Equal(t, 32, len(kek.Key))
+		assert.NotNil(t, kek.Nonce)
+		assert.Equal(t, uint(1), kek.Version)
+		assert.True(t, kek.IsActive)
+		assert.False(t, kek.CreatedAt.IsZero())
+	})
+
+	t.Run("create KEK with unsupported algorithm", func(t *testing.T) {
+		_, err := km.CreateKek(masterKey, "test-kek-invalid", cryptoDomain.Algorithm("invalid"))
+		assert.ErrorIs(t, err, cryptoDomain.ErrUnsupportedAlgorithm)
+	})
+
+	t.Run("create KEK with invalid master key size", func(t *testing.T) {
+		invalidKey := make([]byte, 16)
+		_, err := km.CreateKek(invalidKey, "test-kek-invalid-key", cryptoDomain.AESGCM)
+		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
+	})
+
+	t.Run("verify KEK can be decrypted with master key", func(t *testing.T) {
+		kek, err := km.CreateKek(masterKey, "test-kek-decrypt", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// Decrypt the KEK to verify it was encrypted correctly
+		aead, err := NewAESGCM(masterKey)
+		require.NoError(t, err)
+
+		decryptedKey, err := aead.Decrypt(kek.EncryptedKey, kek.Nonce, nil)
+		require.NoError(t, err)
+		assert.Equal(t, kek.Key, decryptedKey)
+	})
+}
+
+func TestKeyManagerService_CreateDek(t *testing.T) {
+	aeadManager := NewAEADManager()
+	km := NewKeyManager(aeadManager)
+	masterKey := make([]byte, 32)
+	_, err := rand.Read(masterKey)
+	require.NoError(t, err)
+
+	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
+	require.NoError(t, err)
+
+	t.Run("create DEK with AES-GCM", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, "", dek.ID.String())
+		assert.Equal(t, kek.ID, dek.KekID)
+		assert.Equal(t, cryptoDomain.AESGCM, dek.Algorithm)
+		assert.NotNil(t, dek.EncryptedKey)
+		assert.NotNil(t, dek.Nonce)
+		assert.False(t, dek.CreatedAt.IsZero())
+	})
+
+	t.Run("create DEK with ChaCha20-Poly1305", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, "", dek.ID.String())
+		assert.Equal(t, kek.ID, dek.KekID)
+		assert.Equal(t, cryptoDomain.ChaCha20, dek.Algorithm)
+		assert.NotNil(t, dek.EncryptedKey)
+		assert.NotNil(t, dek.Nonce)
+		assert.False(t, dek.CreatedAt.IsZero())
+	})
+
+	t.Run("create DEK with ChaCha20-Poly1305 KEK", func(t *testing.T) {
+		chachaKek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		dek, err := km.CreateDek(chachaKek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, "", dek.ID.String())
+		assert.Equal(t, chachaKek.ID, dek.KekID)
+		assert.Equal(t, cryptoDomain.AESGCM, dek.Algorithm)
+	})
+
+	t.Run("create DEK with unsupported algorithm", func(t *testing.T) {
+		_, err := km.CreateDek(kek, cryptoDomain.Algorithm("invalid"))
+		assert.NoError(t, err) // DEK creation doesn't validate the DEK algorithm
+	})
+
+	t.Run("create DEK with invalid KEK key size", func(t *testing.T) {
+		invalidKek := kek
+		invalidKek.Key = make([]byte, 16)
+
+		_, err := km.CreateDek(invalidKek, cryptoDomain.AESGCM)
+		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
+	})
+}
+
+func TestKeyManagerService_DecryptDek(t *testing.T) {
+	aeadManager := NewAEADManager()
+	km := NewKeyManager(aeadManager)
+	masterKey := make([]byte, 32)
+	_, err := rand.Read(masterKey)
+	require.NoError(t, err)
+
+	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
+	require.NoError(t, err)
+
+	t.Run("decrypt DEK successfully", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		decryptedKey, err := km.DecryptDek(dek, kek)
+		require.NoError(t, err)
+		assert.NotNil(t, decryptedKey)
+		assert.Equal(t, 32, len(decryptedKey))
+	})
+
+	t.Run("decrypt DEK with ChaCha20-Poly1305", func(t *testing.T) {
+		chachaKek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		dek, err := km.CreateDek(chachaKek, cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		decryptedKey, err := km.DecryptDek(dek, chachaKek)
+		require.NoError(t, err)
+		assert.NotNil(t, decryptedKey)
+		assert.Equal(t, 32, len(decryptedKey))
+	})
+
+	t.Run("decrypt DEK with wrong KEK fails", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		wrongKek, err := km.CreateKek(masterKey, "wrong-kek", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		_, err = km.DecryptDek(dek, wrongKek)
+		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+	})
+
+	t.Run("decrypt DEK with tampered ciphertext fails", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// Tamper with the encrypted key
+		tamperedDek := dek
+		tamperedDek.EncryptedKey[0] ^= 0xFF
+
+		_, err = km.DecryptDek(tamperedDek, kek)
+		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+	})
+
+	t.Run("decrypt DEK with invalid KEK key size", func(t *testing.T) {
+		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		invalidKek := kek
+		invalidKek.Key = make([]byte, 16)
+
+		_, err = km.DecryptDek(dek, invalidKek)
+		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
+	})
+}
+
+func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
+	t.Run("full envelope encryption flow", func(t *testing.T) {
+		aeadManager := NewAEADManager()
+		km := NewKeyManager(aeadManager)
+
+		// 1. Generate master key (normally stored securely, e.g., in a KMS)
+		masterKey := make([]byte, 32)
+		_, err := rand.Read(masterKey)
+		require.NoError(t, err)
+
+		// 2. Create KEK encrypted with master key
+		kek, err := km.CreateKek(masterKey, "production-kek", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// 3. Create DEK encrypted with KEK
+		dek, err := km.CreateDek(kek, cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		// 4. Decrypt DEK when needed for data encryption/decryption
+		decryptedDekKey, err := km.DecryptDek(dek, kek)
+		require.NoError(t, err)
+
+		// 5. Use decrypted DEK to encrypt/decrypt actual data
+		cipher, err := NewChaCha20Poly1305(decryptedDekKey)
+		require.NoError(t, err)
+
+		plaintext := []byte("sensitive data to encrypt")
+		ciphertext, nonce, err := cipher.Encrypt(plaintext, nil)
+		require.NoError(t, err)
+
+		decrypted, err := cipher.Decrypt(ciphertext, nonce, nil)
+		require.NoError(t, err)
+
+		assert.Equal(t, plaintext, decrypted)
+	})
+
+	t.Run("key rotation scenario", func(t *testing.T) {
+		aeadManager := NewAEADManager()
+		km := NewKeyManager(aeadManager)
+
+		masterKey := make([]byte, 32)
+		_, err := rand.Read(masterKey)
+		require.NoError(t, err)
+
+		// Old KEK
+		oldKek, err := km.CreateKek(masterKey, "kek-v1", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// Create DEK with old KEK
+		dek, err := km.CreateDek(oldKek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// New KEK for rotation
+		newKek, err := km.CreateKek(masterKey, "kek-v2", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+		newKek.Version = 2
+
+		// Old DEKs should still be decryptable with old KEK
+		decryptedKey, err := km.DecryptDek(dek, oldKek)
+		require.NoError(t, err)
+		assert.NotNil(t, decryptedKey)
+
+		// New DEKs should be created with new KEK
+		newDek, err := km.CreateDek(newKek, cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		newDecryptedKey, err := km.DecryptDek(newDek, newKek)
+		require.NoError(t, err)
+		assert.NotNil(t, newDecryptedKey)
+		assert.NotEqual(t, decryptedKey, newDecryptedKey)
+	})
+}

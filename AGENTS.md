@@ -101,7 +101,7 @@ This is a **Clean Architecture** project following **Domain-Driven Design** prin
 Follow this import grouping order (enforced by `goimports`):
 1. Standard library packages
 2. External packages (third-party)
-3. Local project packages (prefixed with `github.com/allisson/go-project-template`)
+3. Local project packages (prefixed with `github.com/allisson/secrets`)
 
 Example:
 ```go
@@ -113,9 +113,9 @@ import (
     "github.com/google/uuid"
     validation "github.com/jellydator/validation"
 
-    "github.com/allisson/go-project-template/internal/database"
-    "github.com/allisson/go-project-template/internal/errors"
-    "github.com/allisson/go-project-template/internal/user/domain"
+    "github.com/allisson/secrets/internal/database"
+    "github.com/allisson/secrets/internal/errors"
+    "github.com/allisson/secrets/internal/user/domain"
 )
 ```
 
@@ -244,7 +244,7 @@ Use `github.com/jellydator/validation` for input validation:
 ```go
 import (
     validation "github.com/jellydator/validation"
-    appValidation "github.com/allisson/go-project-template/internal/validation"
+    appValidation "github.com/allisson/secrets/internal/validation"
 )
 
 func (r *RegisterUserRequest) Validate() error {

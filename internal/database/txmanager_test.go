@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/allisson/go-project-template/internal/testutil"
+	"github.com/allisson/secrets/internal/testutil"
 )
 
 func TestNewTxManager(t *testing.T) {

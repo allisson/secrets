@@ -8,7 +8,7 @@ import (
 
 	validation "github.com/jellydator/validation"
 
-	apperrors "github.com/allisson/go-project-template/internal/errors"
+	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
 var (

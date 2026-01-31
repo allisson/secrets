@@ -11,7 +11,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/allisson/go-project-template
+        - github.com/allisson/secrets
     golines:
       max-len: 110
       tab-len: 4

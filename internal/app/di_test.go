@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/allisson/go-project-template/internal/config"
+	"github.com/allisson/secrets/internal/config"
 )
 
 // TestNewContainer verifies that a new container can be created with a valid configuration.

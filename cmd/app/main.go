@@ -16,8 +16,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/urfave/cli/v3"
 
-	"github.com/allisson/go-project-template/internal/app"
-	"github.com/allisson/go-project-template/internal/config"
+	"github.com/allisson/secrets/internal/app"
+	"github.com/allisson/secrets/internal/config"
 )
 
 // closeContainer closes all resources in the container and logs any errors.
@@ -57,13 +57,6 @@ func main() {
 				Usage: "Run database migrations",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return runMigrations()
-				},
-			},
-			{
-				Name:  "worker",
-				Usage: "Run the event worker",
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return runWorker(ctx)
 				},
 			},
 		},
@@ -154,33 +147,4 @@ func runMigrations() error {
 
 	logger.Info("migrations completed successfully")
 	return nil
-}
-
-// runWorker starts the outbox event processor with graceful shutdown support.
-func runWorker(ctx context.Context) error {
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
-	logger.Info("starting outbox event processor", slog.String("version", "1.0.0"))
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
-
-	// Get outbox use case from container (this initializes all dependencies)
-	outboxUseCase, err := container.OutboxUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize outbox use case: %w", err)
-	}
-
-	// Setup graceful shutdown
-	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-
-	// Start outbox event processor
-	return outboxUseCase.Start(ctx)
 }
