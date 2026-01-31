@@ -33,7 +33,7 @@
 //	activeMasterKey, _ := masterKeyChain.Get(masterKeyChain.ActiveMasterKeyID())
 //
 //	// Create KEK
-//	kek, err := keyManager.CreateKek(activeMasterKey.Key, "prod-kek", domain.AESGCM)
+//	kek, err := keyManager.CreateKek(activeMasterKey, "prod-kek", domain.AESGCM)
 //	if err != nil {
 //	    return err
 //	}
@@ -205,15 +205,23 @@ type KeyManager interface {
 	// the master key with the specified algorithm. The encrypted KEK should be
 	// stored in a database for later use in encrypting/decrypting DEKs.
 	//
+	// The MasterKey pointer allows the service to track which master key was used
+	// to encrypt each KEK, enabling proper key rotation and decryption when multiple
+	// master keys are in use.
+	//
 	// Parameters:
-	//   - masterKey: The master key used to encrypt the KEK (must be 32 bytes)
+	//   - masterKey: The MasterKey used to encrypt the KEK (contains both ID and 32-byte key)
 	//   - name: A human-readable name for identifying this KEK
 	//   - alg: The encryption algorithm (AESGCM or ChaCha20)
 	//
 	// Returns:
-	//   - A Kek struct with the encrypted key, nonce, and metadata
+	//   - A Kek struct with the encrypted key, nonce, master key ID, and metadata
 	//   - An error if the algorithm is unsupported or encryption fails
-	CreateKek(masterKey []byte, name string, alg cryptoDomain.Algorithm) (cryptoDomain.Kek, error)
+	CreateKek(
+		masterKey *cryptoDomain.MasterKey,
+		name string,
+		alg cryptoDomain.Algorithm,
+	) (cryptoDomain.Kek, error)
 
 	// CreateDek creates a new Data Encryption Key encrypted with the KEK.
 	//

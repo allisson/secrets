@@ -20,15 +20,21 @@ func TestNewKeyManager(t *testing.T) {
 func TestKeyManagerService_CreateKek(t *testing.T) {
 	aeadManager := NewAEADManager()
 	km := NewKeyManager(aeadManager)
-	masterKey := make([]byte, 32)
-	_, err := rand.Read(masterKey)
+	masterKeyBytes := make([]byte, 32)
+	_, err := rand.Read(masterKeyBytes)
 	require.NoError(t, err)
+
+	masterKey := &cryptoDomain.MasterKey{
+		ID:  "test-master-key",
+		Key: masterKeyBytes,
+	}
 
 	t.Run("create KEK with AES-GCM", func(t *testing.T) {
 		kek, err := km.CreateKek(masterKey, "test-kek-aes", cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		assert.NotEqual(t, "", kek.ID.String())
+		assert.Equal(t, "test-master-key", kek.MasterKeyID)
 		assert.Equal(t, "test-kek-aes", kek.Name)
 		assert.Equal(t, cryptoDomain.AESGCM, kek.Algorithm)
 		assert.NotNil(t, kek.EncryptedKey)
@@ -45,6 +51,7 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotEqual(t, "", kek.ID.String())
+		assert.Equal(t, "test-master-key", kek.MasterKeyID)
 		assert.Equal(t, "test-kek-chacha", kek.Name)
 		assert.Equal(t, cryptoDomain.ChaCha20, kek.Algorithm)
 		assert.NotNil(t, kek.EncryptedKey)
@@ -62,8 +69,11 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 	})
 
 	t.Run("create KEK with invalid master key size", func(t *testing.T) {
-		invalidKey := make([]byte, 16)
-		_, err := km.CreateKek(invalidKey, "test-kek-invalid-key", cryptoDomain.AESGCM)
+		invalidMasterKey := &cryptoDomain.MasterKey{
+			ID:  "invalid-key",
+			Key: make([]byte, 16),
+		}
+		_, err := km.CreateKek(invalidMasterKey, "test-kek-invalid-key", cryptoDomain.AESGCM)
 		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
 	})
 
@@ -71,8 +81,11 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 		kek, err := km.CreateKek(masterKey, "test-kek-decrypt", cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
+		// Verify master key ID is stored
+		assert.Equal(t, "test-master-key", kek.MasterKeyID)
+
 		// Decrypt the KEK to verify it was encrypted correctly
-		aead, err := NewAESGCM(masterKey)
+		aead, err := NewAESGCM(masterKey.Key)
 		require.NoError(t, err)
 
 		decryptedKey, err := aead.Decrypt(kek.EncryptedKey, kek.Nonce, nil)
@@ -84,9 +97,14 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 func TestKeyManagerService_CreateDek(t *testing.T) {
 	aeadManager := NewAEADManager()
 	km := NewKeyManager(aeadManager)
-	masterKey := make([]byte, 32)
-	_, err := rand.Read(masterKey)
+	masterKeyBytes := make([]byte, 32)
+	_, err := rand.Read(masterKeyBytes)
 	require.NoError(t, err)
+
+	masterKey := &cryptoDomain.MasterKey{
+		ID:  "test-master-key",
+		Key: masterKeyBytes,
+	}
 
 	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
 	require.NoError(t, err)
@@ -144,9 +162,14 @@ func TestKeyManagerService_CreateDek(t *testing.T) {
 func TestKeyManagerService_DecryptDek(t *testing.T) {
 	aeadManager := NewAEADManager()
 	km := NewKeyManager(aeadManager)
-	masterKey := make([]byte, 32)
-	_, err := rand.Read(masterKey)
+	masterKeyBytes := make([]byte, 32)
+	_, err := rand.Read(masterKeyBytes)
 	require.NoError(t, err)
+
+	masterKey := &cryptoDomain.MasterKey{
+		ID:  "test-master-key",
+		Key: masterKeyBytes,
+	}
 
 	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
 	require.NoError(t, err)
@@ -215,12 +238,21 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		km := NewKeyManager(aeadManager)
 
 		// 1. Generate master key (normally stored securely, e.g., in a KMS)
-		masterKey := make([]byte, 32)
-		_, err := rand.Read(masterKey)
+		masterKeyBytes := make([]byte, 32)
+		_, err := rand.Read(masterKeyBytes)
 		require.NoError(t, err)
+
+		masterKey := &cryptoDomain.MasterKey{
+			ID:  "test-master-key",
+			Key: masterKeyBytes,
+		}
 
 		// 2. Create KEK encrypted with master key
 		kek, err := km.CreateKek(masterKey, "production-kek", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+
+		// Verify master key ID is tracked
+		assert.Equal(t, "test-master-key", kek.MasterKeyID)
 		require.NoError(t, err)
 
 		// 3. Create DEK encrypted with KEK
@@ -249,13 +281,21 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		aeadManager := NewAEADManager()
 		km := NewKeyManager(aeadManager)
 
-		masterKey := make([]byte, 32)
-		_, err := rand.Read(masterKey)
+		masterKeyBytes := make([]byte, 32)
+		_, err := rand.Read(masterKeyBytes)
 		require.NoError(t, err)
+
+		masterKey := &cryptoDomain.MasterKey{
+			ID:  "test-master-key",
+			Key: masterKeyBytes,
+		}
 
 		// Old KEK
 		oldKek, err := km.CreateKek(masterKey, "kek-v1", cryptoDomain.AESGCM)
 		require.NoError(t, err)
+
+		// Verify master key ID is tracked
+		assert.Equal(t, "test-master-key", oldKek.MasterKeyID)
 
 		// Create DEK with old KEK
 		dek, err := km.CreateDek(oldKek, cryptoDomain.AESGCM)
@@ -265,6 +305,9 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		newKek, err := km.CreateKek(masterKey, "kek-v2", cryptoDomain.AESGCM)
 		require.NoError(t, err)
 		newKek.Version = 2
+
+		// Verify new KEK also tracks master key ID
+		assert.Equal(t, "test-master-key", newKek.MasterKeyID)
 
 		// Old DEKs should still be decryptable with old KEK
 		decryptedKey, err := km.DecryptDek(dek, oldKek)

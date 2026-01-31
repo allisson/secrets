@@ -237,9 +237,14 @@ func TestAEADManagerService_Integration(t *testing.T) {
 		keyManager := NewKeyManager(aeadManager)
 
 		// Generate master key
-		masterKey := make([]byte, 32)
-		_, err := rand.Read(masterKey)
+		masterKeyBytes := make([]byte, 32)
+		_, err := rand.Read(masterKeyBytes)
 		require.NoError(t, err)
+
+		masterKey := &cryptoDomain.MasterKey{
+			ID:  "test-master-key",
+			Key: masterKeyBytes,
+		}
 
 		// Create KEK
 		kek, err := keyManager.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
