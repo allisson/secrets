@@ -54,7 +54,6 @@ func NewKeyManager(aeadManager AEADManager) *KeyManagerService {
 //
 // Parameters:
 //   - masterKey: The MasterKey used to encrypt the KEK (contains ID and 32-byte key material)
-//   - name: A human-readable name for identifying this KEK (e.g., "prod-kek-2025")
 //   - alg: The encryption algorithm to use (AESGCM or ChaCha20)
 //
 // Returns:
@@ -62,7 +61,6 @@ func NewKeyManager(aeadManager AEADManager) *KeyManagerService {
 //   - An error if the algorithm is unsupported or encryption fails
 func (km *KeyManagerService) CreateKek(
 	masterKey *cryptoDomain.MasterKey,
-	name string,
 	alg cryptoDomain.Algorithm,
 ) (cryptoDomain.Kek, error) {
 	// Generate a random 32-byte KEK
@@ -86,7 +84,6 @@ func (km *KeyManagerService) CreateKek(
 	kek := cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
 		MasterKeyID:  masterKey.ID,
-		Name:         name,
 		Algorithm:    alg,
 		EncryptedKey: encryptedKey,
 		Key:          kekKey,

@@ -33,7 +33,7 @@
 //	activeMasterKey, _ := masterKeyChain.Get(masterKeyChain.ActiveMasterKeyID())
 //
 //	// Create KEK
-//	kek, err := keyManager.CreateKek(activeMasterKey, "prod-kek", domain.AESGCM)
+//	kek, err := keyManager.CreateKek(activeMasterKey, domain.AESGCM)
 //	if err != nil {
 //	    return err
 //	}
@@ -211,7 +211,6 @@ type KeyManager interface {
 	//
 	// Parameters:
 	//   - masterKey: The MasterKey used to encrypt the KEK (contains both ID and 32-byte key)
-	//   - name: A human-readable name for identifying this KEK
 	//   - alg: The encryption algorithm (AESGCM or ChaCha20)
 	//
 	// Returns:
@@ -219,7 +218,6 @@ type KeyManager interface {
 	//   - An error if the algorithm is unsupported or encryption fails
 	CreateKek(
 		masterKey *cryptoDomain.MasterKey,
-		name string,
 		alg cryptoDomain.Algorithm,
 	) (cryptoDomain.Kek, error)
 

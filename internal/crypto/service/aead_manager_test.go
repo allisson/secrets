@@ -247,7 +247,7 @@ func TestAEADManagerService_Integration(t *testing.T) {
 		}
 
 		// Create KEK
-		kek, err := keyManager.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
+		kek, err := keyManager.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		// Create DEK

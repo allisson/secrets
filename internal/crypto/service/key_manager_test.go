@@ -30,12 +30,11 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 	}
 
 	t.Run("create KEK with AES-GCM", func(t *testing.T) {
-		kek, err := km.CreateKek(masterKey, "test-kek-aes", cryptoDomain.AESGCM)
+		kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		assert.NotEqual(t, "", kek.ID.String())
 		assert.Equal(t, "test-master-key", kek.MasterKeyID)
-		assert.Equal(t, "test-kek-aes", kek.Name)
 		assert.Equal(t, cryptoDomain.AESGCM, kek.Algorithm)
 		assert.NotNil(t, kek.EncryptedKey)
 		assert.NotNil(t, kek.Key)
@@ -47,12 +46,11 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 	})
 
 	t.Run("create KEK with ChaCha20-Poly1305", func(t *testing.T) {
-		kek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		kek, err := km.CreateKek(masterKey, cryptoDomain.ChaCha20)
 		require.NoError(t, err)
 
 		assert.NotEqual(t, "", kek.ID.String())
 		assert.Equal(t, "test-master-key", kek.MasterKeyID)
-		assert.Equal(t, "test-kek-chacha", kek.Name)
 		assert.Equal(t, cryptoDomain.ChaCha20, kek.Algorithm)
 		assert.NotNil(t, kek.EncryptedKey)
 		assert.NotNil(t, kek.Key)
@@ -64,7 +62,7 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 	})
 
 	t.Run("create KEK with unsupported algorithm", func(t *testing.T) {
-		_, err := km.CreateKek(masterKey, "test-kek-invalid", cryptoDomain.Algorithm("invalid"))
+		_, err := km.CreateKek(masterKey, cryptoDomain.Algorithm("invalid"))
 		assert.ErrorIs(t, err, cryptoDomain.ErrUnsupportedAlgorithm)
 	})
 
@@ -73,12 +71,12 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 			ID:  "invalid-key",
 			Key: make([]byte, 16),
 		}
-		_, err := km.CreateKek(invalidMasterKey, "test-kek-invalid-key", cryptoDomain.AESGCM)
+		_, err := km.CreateKek(invalidMasterKey, cryptoDomain.AESGCM)
 		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
 	})
 
 	t.Run("verify KEK can be decrypted with master key", func(t *testing.T) {
-		kek, err := km.CreateKek(masterKey, "test-kek-decrypt", cryptoDomain.AESGCM)
+		kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		// Verify master key ID is stored
@@ -106,7 +104,7 @@ func TestKeyManagerService_CreateDek(t *testing.T) {
 		Key: masterKeyBytes,
 	}
 
-	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
+	kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 	require.NoError(t, err)
 
 	t.Run("create DEK with AES-GCM", func(t *testing.T) {
@@ -134,7 +132,7 @@ func TestKeyManagerService_CreateDek(t *testing.T) {
 	})
 
 	t.Run("create DEK with ChaCha20-Poly1305 KEK", func(t *testing.T) {
-		chachaKek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		chachaKek, err := km.CreateKek(masterKey, cryptoDomain.ChaCha20)
 		require.NoError(t, err)
 
 		dek, err := km.CreateDek(chachaKek, cryptoDomain.AESGCM)
@@ -171,7 +169,7 @@ func TestKeyManagerService_DecryptDek(t *testing.T) {
 		Key: masterKeyBytes,
 	}
 
-	kek, err := km.CreateKek(masterKey, "test-kek", cryptoDomain.AESGCM)
+	kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 	require.NoError(t, err)
 
 	t.Run("decrypt DEK successfully", func(t *testing.T) {
@@ -185,7 +183,7 @@ func TestKeyManagerService_DecryptDek(t *testing.T) {
 	})
 
 	t.Run("decrypt DEK with ChaCha20-Poly1305", func(t *testing.T) {
-		chachaKek, err := km.CreateKek(masterKey, "test-kek-chacha", cryptoDomain.ChaCha20)
+		chachaKek, err := km.CreateKek(masterKey, cryptoDomain.ChaCha20)
 		require.NoError(t, err)
 
 		dek, err := km.CreateDek(chachaKek, cryptoDomain.ChaCha20)
@@ -201,7 +199,7 @@ func TestKeyManagerService_DecryptDek(t *testing.T) {
 		dek, err := km.CreateDek(kek, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
-		wrongKek, err := km.CreateKek(masterKey, "wrong-kek", cryptoDomain.AESGCM)
+		wrongKek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		_, err = km.DecryptDek(dek, wrongKek)
@@ -248,7 +246,7 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		}
 
 		// 2. Create KEK encrypted with master key
-		kek, err := km.CreateKek(masterKey, "production-kek", cryptoDomain.AESGCM)
+		kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		// Verify master key ID is tracked
@@ -291,7 +289,7 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		}
 
 		// Old KEK
-		oldKek, err := km.CreateKek(masterKey, "kek-v1", cryptoDomain.AESGCM)
+		oldKek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 
 		// Verify master key ID is tracked
@@ -302,7 +300,7 @@ func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 		require.NoError(t, err)
 
 		// New KEK for rotation
-		newKek, err := km.CreateKek(masterKey, "kek-v2", cryptoDomain.AESGCM)
+		newKek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
 		require.NoError(t, err)
 		newKek.Version = 2
 
