@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS client_policies (
 -- Create keks table
 CREATE TABLE IF NOT EXISTS keks (
     id BINARY(16) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    master_key_id VARCHAR(255) NOT NULL,
     algorithm VARCHAR(255) NOT NULL,
     encrypted_key BLOB NOT NULL,
     nonce BLOB NOT NULL,

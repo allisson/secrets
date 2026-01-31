@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS client_policies (
 -- Create keks table
 CREATE TABLE IF NOT EXISTS keks (
     id UUID PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    master_key_id TEXT NOT NULL,
     algorithm TEXT NOT NULL,
     encrypted_key BYTEA NOT NULL,
     nonce BYTEA NOT NULL,
