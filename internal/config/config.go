@@ -26,9 +26,6 @@ type Config struct {
 	// Logging
 	LogLevel string
 
-	// Master key
-	MasterKey []byte
-
 	// Worker configuration
 	WorkerInterval      time.Duration
 	WorkerBatchSize     int
@@ -60,9 +57,6 @@ func Load() *Config {
 
 		// Logging
 		LogLevel: env.GetString("LOG_LEVEL", "info"),
-
-		// Master key
-		MasterKey: env.GetBase64ToBytes("MASTER_KEY", []byte("")),
 
 		// Worker configuration
 		WorkerInterval:      env.GetDuration("WORKER_INTERVAL", 5, time.Second),

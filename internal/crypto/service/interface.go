@@ -1,4 +1,72 @@
 // Package service provides cryptographic service interfaces and implementations.
+//
+// This package implements the service layer for envelope encryption, providing
+// concrete implementations of authenticated encryption algorithms and key management.
+//
+// # Services Overview
+//
+// AEADManagerService: Factory for creating AEAD cipher instances.
+// Supports AES-256-GCM and ChaCha20-Poly1305 algorithms.
+//
+// KeyManagerService: Manages the lifecycle of KEKs and DEKs in envelope encryption.
+// Handles key generation, encryption, and decryption operations.
+//
+// AESGCMCipher: Implements AEAD using AES-256-GCM with hardware acceleration support.
+//
+// ChaCha20Poly1305Cipher: Implements AEAD using ChaCha20-Poly1305 for platforms
+// without AES hardware acceleration.
+//
+// # Usage Example
+//
+//	// Create services
+//	aeadManager := NewAEADManager()
+//	keyManager := NewKeyManager(aeadManager)
+//
+//	// Load master keys
+//	masterKeyChain, err := domain.LoadMasterKeyChainFromEnv()
+//	if err != nil {
+//	    return err
+//	}
+//	defer masterKeyChain.Close()
+//
+//	// Get active master key
+//	activeMasterKey, _ := masterKeyChain.Get(masterKeyChain.ActiveMasterKeyID())
+//
+//	// Create KEK
+//	kek, err := keyManager.CreateKek(activeMasterKey.Key, "prod-kek", domain.AESGCM)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Create DEK for encrypting data
+//	dek, err := keyManager.CreateDek(kek, domain.AESGCM)
+//	if err != nil {
+//	    return err
+//	}
+//
+//	// Create cipher and encrypt data
+//	cipher, err := aeadManager.CreateCipher(kek.Key, domain.AESGCM)
+//	if err != nil {
+//	    return err
+//	}
+//	ciphertext, nonce, err := cipher.Encrypt(plaintext, nil)
+//
+// # Thread Safety
+//
+// All service implementations are stateless and thread-safe. Multiple goroutines
+// can safely use the same service instances for concurrent operations.
+//
+// # Algorithm Selection
+//
+//   - Use AESGCM on servers and modern CPUs with AES-NI hardware acceleration
+//   - Use ChaCha20 on mobile devices, embedded systems, or platforms without AES-NI
+//   - Both provide equivalent 256-bit security when properly implemented
+//
+// # Dependencies
+//
+// The service layer depends on the crypto/domain package for models and errors,
+// following Clean Architecture principles. Services should be injected as
+// dependencies rather than instantiated directly in business logic.
 package service
 
 import (

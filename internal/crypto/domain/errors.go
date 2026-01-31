@@ -41,4 +41,43 @@ var (
 	//
 	// HTTP Status: 422 Unprocessable Entity
 	ErrDecryptionFailed = errors.Wrap(errors.ErrInvalidInput, "decryption failed")
+
+	// ErrMasterKeysNotSet indicates the MASTER_KEYS environment variable is not configured.
+	//
+	// This error is returned when attempting to load master keys from environment
+	// but the MASTER_KEYS variable is empty or not set.
+	//
+	// HTTP Status: 422 Unprocessable Entity
+	ErrMasterKeysNotSet = errors.Wrap(errors.ErrInvalidInput, "MASTER_KEYS not set")
+
+	// ErrActiveMasterKeyIDNotSet indicates the ACTIVE_MASTER_KEY_ID environment variable is not configured.
+	//
+	// This error is returned when attempting to load master keys from environment
+	// but the ACTIVE_MASTER_KEY_ID variable is empty or not set.
+	//
+	// HTTP Status: 422 Unprocessable Entity
+	ErrActiveMasterKeyIDNotSet = errors.Wrap(errors.ErrInvalidInput, "ACTIVE_MASTER_KEY_ID not set")
+
+	// ErrInvalidMasterKeysFormat indicates the MASTER_KEYS format is invalid.
+	//
+	// The expected format is: "id1:base64key1,id2:base64key2"
+	// Each entry must have an ID and base64-encoded key separated by a colon.
+	//
+	// HTTP Status: 422 Unprocessable Entity
+	ErrInvalidMasterKeysFormat = errors.Wrap(errors.ErrInvalidInput, "invalid MASTER_KEYS format")
+
+	// ErrInvalidMasterKeyBase64 indicates a master key is not valid base64.
+	//
+	// All master keys must be base64-encoded strings that decode to exactly 32 bytes.
+	//
+	// HTTP Status: 422 Unprocessable Entity
+	ErrInvalidMasterKeyBase64 = errors.Wrap(errors.ErrInvalidInput, "invalid master key base64")
+
+	// ErrActiveMasterKeyNotFound indicates the active master key ID was not found in the keychain.
+	//
+	// This error is returned when ACTIVE_MASTER_KEY_ID references a key ID
+	// that doesn't exist in the MASTER_KEYS configuration.
+	//
+	// HTTP Status: 422 Unprocessable Entity
+	ErrActiveMasterKeyNotFound = errors.Wrap(errors.ErrInvalidInput, "active master key not found")
 )
