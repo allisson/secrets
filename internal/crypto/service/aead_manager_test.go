@@ -251,11 +251,11 @@ func TestAEADManagerService_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create DEK
-		dek, err := keyManager.CreateDek(kek, cryptoDomain.ChaCha20)
+		dek, err := keyManager.CreateDek(&kek, cryptoDomain.ChaCha20)
 		require.NoError(t, err)
 
 		// Decrypt DEK
-		dekKey, err := keyManager.DecryptDek(dek, kek)
+		dekKey, err := keyManager.DecryptDek(&dek, &kek)
 		require.NoError(t, err)
 
 		// Create cipher with decrypted DEK

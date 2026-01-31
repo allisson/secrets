@@ -221,6 +221,25 @@ type KeyManager interface {
 		alg cryptoDomain.Algorithm,
 	) (cryptoDomain.Kek, error)
 
+	// DecryptKek decrypts a Key Encryption Key using the master key.
+	//
+	// This method recovers the plaintext KEK from its encrypted form stored
+	// in the database. The decrypted KEK is needed to encrypt and decrypt DEKs.
+	// The decrypted KEK should be kept in memory only and never persisted.
+	//
+	// This is typically used when loading KEKs from the database at application
+	// startup or when accessing a KEK that hasn't been cached yet. For performance,
+	// decrypted KEKs can be cached in memory using a KekChain.
+	//
+	// Parameters:
+	//   - kek: The encrypted Key Encryption Key to decrypt
+	//   - masterKey: The MasterKey used to decrypt the KEK (must match kek.MasterKeyID)
+	//
+	// Returns:
+	//   - The decrypted KEK as a 32-byte slice
+	//   - ErrDecryptionFailed if decryption fails or ciphertext is tampered
+	DecryptKek(kek *cryptoDomain.Kek, masterKey *cryptoDomain.MasterKey) ([]byte, error)
+
 	// CreateDek creates a new Data Encryption Key encrypted with the KEK.
 	//
 	// The DEK is generated as a random 32-byte (256-bit) key and encrypted using
@@ -237,7 +256,7 @@ type KeyManager interface {
 	// Returns:
 	//   - A Dek struct with the encrypted key, nonce, and KEK reference
 	//   - An error if the algorithm is unsupported or encryption fails
-	CreateDek(kek cryptoDomain.Kek, alg cryptoDomain.Algorithm) (cryptoDomain.Dek, error)
+	CreateDek(kek *cryptoDomain.Kek, alg cryptoDomain.Algorithm) (cryptoDomain.Dek, error)
 
 	// DecryptDek decrypts a Data Encryption Key using the KEK.
 	//
@@ -255,5 +274,5 @@ type KeyManager interface {
 	// Returns:
 	//   - The decrypted DEK as a 32-byte slice
 	//   - ErrDecryptionFailed if decryption fails or ciphertext is tampered
-	DecryptDek(dek cryptoDomain.Dek, kek cryptoDomain.Kek) ([]byte, error)
+	DecryptDek(dek *cryptoDomain.Dek, kek *cryptoDomain.Kek) ([]byte, error)
 }

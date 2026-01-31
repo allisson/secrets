@@ -1,0 +1,18 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: "mocks"
+filename: "{{.InterfaceName | snakecase}}.go"
+packages:
+  github.com/allisson/secrets/internal/crypto/usecase:
+    interfaces:
+      KekRepository:
+      KekUseCase:
+  github.com/allisson/secrets/internal/crypto/service:
+    interfaces:
+      KeyManager:
+      AEADManager:
+      AEAD:
+  github.com/allisson/secrets/internal/database:
+    interfaces:
+      TxManager:

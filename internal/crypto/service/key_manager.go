@@ -96,6 +96,42 @@ func (km *KeyManagerService) CreateKek(
 	return kek, nil
 }
 
+// DecryptKek decrypts a Key Encryption Key using the provided master key.
+//
+// This method is used to recover the plaintext KEK from its encrypted form stored
+// in the database. The decrypted KEK is needed to encrypt and decrypt DEKs. The
+// decrypted KEK should be kept in memory only and never persisted in plaintext form.
+//
+// This is typically used when loading KEKs from the database at application startup
+// or when accessing a KEK that hasn't been cached yet. For performance, decrypted
+// KEKs can be cached in memory using a KekChain with appropriate expiration policies.
+//
+// Parameters:
+//   - kek: The encrypted Key Encryption Key to decrypt (must have EncryptedKey and Nonce)
+//   - masterKey: The MasterKey used to decrypt the KEK (must match the MasterKeyID in the KEK)
+//
+// Returns:
+//   - The decrypted KEK as a byte slice (32 bytes)
+//   - An error if decryption fails or authentication check fails
+func (km *KeyManagerService) DecryptKek(
+	kek *cryptoDomain.Kek,
+	masterKey *cryptoDomain.MasterKey,
+) ([]byte, error) {
+	// Create cipher using AEADManager with KEK's algorithm
+	aead, err := km.aeadManager.CreateCipher(masterKey.Key, kek.Algorithm)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt the KEK with the master key
+	kekKey, err := aead.Decrypt(kek.EncryptedKey, kek.Nonce, nil)
+	if err != nil {
+		return nil, cryptoDomain.ErrDecryptionFailed
+	}
+
+	return kekKey, nil
+}
+
 // CreateDek creates a new Data Encryption Key encrypted with the provided KEK.
 //
 // The DEK is generated as a random 32-byte (256-bit) key and then encrypted using
@@ -110,7 +146,7 @@ func (km *KeyManagerService) CreateKek(
 //   - A Dek struct containing the encrypted key, nonce, and metadata
 //   - An error if the algorithm is unsupported or encryption fails
 func (km *KeyManagerService) CreateDek(
-	kek cryptoDomain.Kek,
+	kek *cryptoDomain.Kek,
 	alg cryptoDomain.Algorithm,
 ) (cryptoDomain.Dek, error) {
 	// Generate a random 32-byte DEK
@@ -157,8 +193,8 @@ func (km *KeyManagerService) CreateDek(
 //   - The decrypted DEK as a byte slice (32 bytes)
 //   - An error if decryption fails or authentication check fails
 func (km *KeyManagerService) DecryptDek(
-	dek cryptoDomain.Dek,
-	kek cryptoDomain.Kek,
+	dek *cryptoDomain.Dek,
+	kek *cryptoDomain.Kek,
 ) ([]byte, error) {
 	// Create cipher using AEADManager with KEK's algorithm
 	aead, err := km.aeadManager.CreateCipher(kek.Key, kek.Algorithm)

@@ -33,3 +33,4 @@ go.work.sum
 
 # binary file
 bin/app
+bin/mockery
