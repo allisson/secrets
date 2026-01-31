@@ -24,7 +24,7 @@ package domain
 import (
     "time"
     "github.com/google/uuid"
-    "github.com/allisson/go-project-template/internal/errors"
+    "github.com/allisson/secrets/internal/errors"
 )
 
 type User struct {

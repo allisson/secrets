@@ -115,8 +115,8 @@ import (
     "github.com/google/uuid"
     "github.com/stretchr/testify/assert"
 
-    "github.com/allisson/go-project-template/internal/testutil"
-    "github.com/allisson/go-project-template/internal/user/domain"
+    "github.com/allisson/secrets/internal/testutil"
+    "github.com/allisson/secrets/internal/user/domain"
 )
 
 func TestPostgreSQLUserRepository_Create(t *testing.T) {

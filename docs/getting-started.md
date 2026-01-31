@@ -16,7 +16,7 @@ Before you begin, ensure you have the following installed:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/allisson/go-project-template.git
+git clone https://github.com/allisson/secrets.git
 cd go-project-template
 ```
 
@@ -31,10 +31,10 @@ After cloning, update the import paths to match your project.
 NEW_MODULE="github.com/yourname/yourproject"
 
 # Update go.mod
-sed -i "s|github.com/allisson/go-project-template|$NEW_MODULE|g" go.mod
+sed -i "s|github.com/allisson/secrets|$NEW_MODULE|g" go.mod
 
 # Update all Go files
-find . -type f -name "*.go" -exec sed -i "s|github.com/allisson/go-project-template|$NEW_MODULE|g" {} +
+find . -type f -name "*.go" -exec sed -i "s|github.com/allisson/secrets|$NEW_MODULE|g" {} +
 ```
 
 #### Option 2: Using PowerShell (Windows)
@@ -44,18 +44,18 @@ find . -type f -name "*.go" -exec sed -i "s|github.com/allisson/go-project-templ
 $NEW_MODULE = "github.com/yourname/yourproject"
 
 # Update go.mod
-(Get-Content go.mod) -replace 'github.com/allisson/go-project-template', $NEW_MODULE | Set-Content go.mod
+(Get-Content go.mod) -replace 'github.com/allisson/secrets', $NEW_MODULE | Set-Content go.mod
 
 # Update all Go files
 Get-ChildItem -Recurse -Filter *.go | ForEach-Object {
-    (Get-Content $_.FullName) -replace 'github.com/allisson/go-project-template', $NEW_MODULE | Set-Content $_.FullName
+    (Get-Content $_.FullName) -replace 'github.com/allisson/secrets', $NEW_MODULE | Set-Content $_.FullName
 }
 ```
 
 #### Option 3: Manually
 
 1. Update the module name in `go.mod`
-2. Search and replace `github.com/allisson/go-project-template` with your module path in all `.go` files
+2. Search and replace `github.com/allisson/secrets` with your module path in all `.go` files
 
 After updating, verify the changes and tidy dependencies:
 

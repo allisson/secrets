@@ -2,8 +2,8 @@
 
 > A production-ready Go project template following Clean Architecture and Domain-Driven Design principles, optimized for building scalable applications with PostgreSQL or MySQL.
 
-[![CI](https://github.com/allisson/go-project-template/workflows/CI/badge.svg)](https://github.com/allisson/go-project-template/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/allisson/go-project-template)](https://goreportcard.com/report/github.com/allisson/go-project-template)
+[![CI](https://github.com/allisson/secrets/workflows/CI/badge.svg)](https://github.com/allisson/secrets/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/allisson/secrets)](https://goreportcard.com/report/github.com/allisson/secrets)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## ✨ Features
@@ -46,7 +46,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/allisson/go-project-template.git
+git clone https://github.com/allisson/secrets.git
 cd go-project-template
 
 # Install dependencies

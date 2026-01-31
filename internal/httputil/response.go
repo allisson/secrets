@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	apperrors "github.com/allisson/go-project-template/internal/errors"
+	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
 // MakeJSONResponse writes a JSON response with the given status code and data

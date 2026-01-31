@@ -44,7 +44,7 @@ Each domain defines its own specific errors by **wrapping** the standard errors:
 package domain
 
 import (
-    apperrors "github.com/allisson/go-project-template/internal/errors"
+    apperrors "github.com/allisson/secrets/internal/errors"
 )
 
 var (
@@ -420,7 +420,7 @@ When creating a new domain (e.g., `product`), define domain-specific errors:
 package domain
 
 import (
-    apperrors "github.com/allisson/go-project-template/internal/errors"
+    apperrors "github.com/allisson/secrets/internal/errors"
 )
 
 var (
