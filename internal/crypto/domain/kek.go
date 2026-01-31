@@ -75,7 +75,7 @@ import (
 //
 // Fields:
 //   - ID: Unique identifier for the KEK (UUIDv7 for time-based ordering)
-//   - Name: Human-readable name for identifying the KEK (e.g., "production-kek-2025")
+//   - MasterKeyID: ID of the master key used to encrypt this KEK (for key rotation tracking)
 //   - Algorithm: Encryption algorithm used (AES-GCM or ChaCha20-Poly1305)
 //   - EncryptedKey: The KEK encrypted with the master key (safe to store in DB)
 //   - Key: The plaintext KEK (populated after decryption, should never be persisted)
@@ -85,7 +85,7 @@ import (
 //   - CreatedAt: Timestamp when the KEK was created
 type Kek struct {
 	ID           uuid.UUID
-	Name         string
+	MasterKeyID  string
 	Algorithm    Algorithm
 	EncryptedKey []byte
 	Key          []byte

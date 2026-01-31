@@ -48,17 +48,19 @@ func NewKeyManager(aeadManager AEADManager) *KeyManagerService {
 // the master key with the specified algorithm. The encrypted KEK can be safely stored
 // in a database or other persistent storage.
 //
+// The master key's ID is stored in the KEK for tracking which master key was used during
+// encryption. This enables proper key rotation workflows where multiple master keys are
+// maintained simultaneously.
+//
 // Parameters:
-//   - masterKey: The master key used to encrypt the KEK (must be 32 bytes)
-//   - name: A human-readable name for identifying this KEK
+//   - masterKey: The MasterKey used to encrypt the KEK (contains ID and 32-byte key material)
 //   - alg: The encryption algorithm to use (AESGCM or ChaCha20)
 //
 // Returns:
-//   - A Kek struct containing the encrypted key, nonce, and metadata
+//   - A Kek struct containing the encrypted key, nonce, master key ID reference, and metadata
 //   - An error if the algorithm is unsupported or encryption fails
 func (km *KeyManagerService) CreateKek(
-	masterKey []byte,
-	name string,
+	masterKey *cryptoDomain.MasterKey,
 	alg cryptoDomain.Algorithm,
 ) (cryptoDomain.Kek, error) {
 	// Generate a random 32-byte KEK
@@ -68,7 +70,7 @@ func (km *KeyManagerService) CreateKek(
 	}
 
 	// Create cipher using AEADManager
-	aead, err := km.aeadManager.CreateCipher(masterKey, alg)
+	aead, err := km.aeadManager.CreateCipher(masterKey.Key, alg)
 	if err != nil {
 		return cryptoDomain.Kek{}, err
 	}
@@ -81,7 +83,7 @@ func (km *KeyManagerService) CreateKek(
 
 	kek := cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
-		Name:         name,
+		MasterKeyID:  masterKey.ID,
 		Algorithm:    alg,
 		EncryptedKey: encryptedKey,
 		Key:          kekKey,
