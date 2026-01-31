@@ -52,6 +52,7 @@
 package domain
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,4 +94,26 @@ type Kek struct {
 	Version      uint
 	IsActive     bool
 	CreatedAt    time.Time
+}
+
+type KekChain struct {
+	activeID uuid.UUID
+	keys     sync.Map
+}
+
+func (k *KekChain) ActiveKekID() uuid.UUID {
+	return k.activeID
+}
+
+func (k *KekChain) Get(id uuid.UUID) (*Kek, bool) {
+	if kek, ok := k.keys.Load(id); ok {
+		return kek.(*Kek), ok
+	}
+
+	return nil, false
+}
+
+func (k *KekChain) Close() {
+	k.activeID = uuid.Nil
+	k.keys.Clear()
 }
