@@ -1,426 +1,311 @@
-# Agent Guidelines for Go Project Template
+# Agent Guidelines for Secrets Project
 
-This document provides guidelines for AI coding agents working in this Go project. Follow these conventions to maintain consistency with the existing codebase.
+This document provides essential guidelines for AI coding agents working on the Secrets project, a Go-based cryptographic key management system implementing envelope encryption with Clean Architecture principles.
+
+## Project Overview
+
+- **Language**: Go 1.25+
+- **Architecture**: Clean Architecture with Domain-Driven Design
+- **Databases**: PostgreSQL 12+ and MySQL 8.0+ (dual support)
+- **Pattern**: Envelope encryption (Master Key → KEK → DEK → Data)
 
 ## Build, Lint, and Test Commands
 
-### Building
+### Build Commands
 ```bash
-make build                    # Build the application binary
-make run-server              # Build and run HTTP server
-make run-worker              # Build and run background worker
-make run-migrate             # Build and run database migrations
+make build              # Build the application binary to bin/app
+make run-server         # Build and run HTTP server (port 8080)
+make run-worker         # Build and run outbox event processor
+make run-migrate        # Build and run database migrations
 ```
 
-### Testing
+### Lint Commands
 ```bash
-make test                     # Run all tests with coverage
-make test-with-db            # Start databases, run tests, stop databases (full cycle)
-make test-db-up              # Start PostgreSQL (5433) and MySQL (3307) test databases
-make test-db-down            # Stop test databases
-
-# Run a single test or test file
-go test -v ./internal/user/repository -run TestPostgreSQLUserRepository_Create
-go test -v ./internal/user/usecase -run TestUserUseCase
-
-# Run tests for a specific package
-go test -v ./internal/user/repository
-go test -v ./internal/user/usecase
-
-# Run tests with race detection
-go test -v -race ./...
-
-# View coverage in browser
-make test-coverage
+make lint               # Run golangci-lint with auto-fix enabled
 ```
 
-### Linting
+The project uses golangci-lint with the following configuration (.golangci.yml):
+- Default linters: standard
+- Additional linters: gosec, gocritic
+- Formatters: goimports, golines
+- Line length: 110 characters max
+- Tab width: 4 spaces
+- Local import prefix: github.com/allisson/secrets
+
+### Test Commands
 ```bash
-make lint                     # Run golangci-lint with auto-fix
-golangci-lint run -v --fix   # Direct linter command
+# Run all tests with coverage
+make test               # Runs: go test -v -race -coverprofile=coverage.out ./...
+
+# Run tests with real databases
+make test-with-db       # Starts test DBs, runs tests, stops DBs
+
+# Individual database management
+make test-db-up         # Start PostgreSQL and MySQL test containers
+make test-db-down       # Stop and remove test containers
+
+# View coverage report
+make test-coverage      # Opens HTML coverage report in browser
 ```
 
-### Other Commands
+### Running a Single Test
 ```bash
-make clean                   # Remove build artifacts and coverage files
-make deps                    # Download and tidy dependencies
-make help                    # Show all available make targets
+# Run a specific test function
+go test -v -race -run TestFunctionName ./path/to/package
+
+# Run a specific test with pattern matching
+go test -v -race -run "TestKekUseCase_Create/Success" ./internal/crypto/usecase
+
+# Run tests in a specific package
+go test -v -race ./internal/crypto/usecase
+
+# Run tests with coverage for a single package
+go test -v -race -coverprofile=coverage.out ./internal/crypto/usecase
+go tool cover -func=coverage.out
 ```
-
-## Project Architecture
-
-This is a **Clean Architecture** project following **Domain-Driven Design** principles with a modular domain structure.
-
-### Directory Structure
-- `cmd/app/` - Application entry point (CLI with server/worker/migrate commands)
-- `internal/`
-  - `{domain}/` - Domain modules (e.g., `user/`, `outbox/`)
-    - `domain/` - Entities, value objects, domain errors
-    - `usecase/` - UseCase interfaces and business logic
-    - `repository/` - Data persistence (MySQL and PostgreSQL implementations)
-    - `http/` - HTTP handlers and DTOs
-      - `dto/` - Request/response DTOs, mappers
-  - `app/` - Dependency injection container
-  - `errors/` - Standardized domain errors
-  - `httputil/` - HTTP utilities (JSON responses, error handling)
-  - `database/` - Database connection and transaction management
-  - `config/` - Configuration management
-  - `validation/` - Custom validation rules
-  - `testutil/` - Test helper utilities
-
-### Layer Responsibilities
-
-**Domain Layer** (`domain/`)
-- Define entities with pure business logic (no JSON tags)
-- Define domain-specific errors by wrapping standard errors from `internal/errors`
-- Example: `ErrUserNotFound = errors.Wrap(errors.ErrNotFound, "user not found")`
-
-**Use Case Layer** (`usecase/`)
-- Define UseCase interfaces for dependency inversion
-- Implement business logic and orchestration
-- Validate input using `github.com/jellydator/validation`
-- Return domain errors directly without additional wrapping
-- Manage transactions using `TxManager.WithTx()`
-
-**Repository Layer** (`repository/`)
-- Implement separate repositories for MySQL and PostgreSQL
-- Transform infrastructure errors to domain errors (e.g., `sql.ErrNoRows` → `domain.ErrUserNotFound`)
-- Use `database.GetTx(ctx, r.db)` to support transactions
-- Check for unique constraint violations and return appropriate domain errors
-
-**HTTP Layer** (`http/`)
-- Define request/response DTOs with JSON tags (keep domain models pure)
-- Validate DTOs using `jellydator/validation`
-- Use `httputil.HandleError()` for automatic error-to-HTTP status mapping
-- Use `httputil.MakeJSONResponse()` for consistent JSON responses
-- Depend on UseCase interfaces, not concrete implementations
 
 ## Code Style Guidelines
 
-### Imports
-Follow this import grouping order (enforced by `goimports`):
-1. Standard library packages
-2. External packages (third-party)
-3. Local project packages (prefixed with `github.com/allisson/secrets`)
+### Package Structure and Imports
+
+**Import Order** (enforced by goimports):
+1. Standard library imports
+2. External dependencies
+3. Internal packages (prefixed with github.com/allisson/secrets/internal/)
+
+**Import Aliases**:
+- Use descriptive aliases for domain packages: `cryptoDomain`, `cryptoService`, `cryptoRepository`
+- Use `apperrors` for `github.com/allisson/secrets/internal/errors`
 
 Example:
 ```go
 import (
     "context"
     "database/sql"
-    "strings"
-
+    
     "github.com/google/uuid"
-    validation "github.com/jellydator/validation"
-
-    "github.com/allisson/secrets/internal/database"
-    "github.com/allisson/secrets/internal/errors"
-    "github.com/allisson/secrets/internal/user/domain"
+    
+    cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+    cryptoService "github.com/allisson/secrets/internal/crypto/service"
+    apperrors "github.com/allisson/secrets/internal/errors"
 )
 ```
 
-**Important:** When renaming imports, use descriptive aliases:
-- `apperrors` for `internal/errors`
-- `appValidation` for `internal/validation`
-- `outboxDomain` for `internal/outbox/domain`
+### Architecture Layers
 
-### Formatting
-- **Line length**: Max 110 characters (enforced by `golines`)
-- **Indentation**: Use tabs (tab-len: 4)
-- **Comments**: Not shortened by golines
-- Use `goimports` and `golines` for consistent formatting
-- Run `make lint` before committing
+Follow Clean Architecture strictly:
+
+1. **Domain Layer** (`domain/`)
+   - Pure business entities and domain logic
+   - No external dependencies (except UUIDs)
+   - Domain-specific errors wrapping standard errors
+   - Example: `Kek`, `Dek`, `MasterKey` structs
+
+2. **Repository Layer** (`repository/`)
+   - Data persistence implementations (PostgreSQL and MySQL)
+   - Use `database.GetTx(ctx, db)` for transaction support
+   - Wrap errors with context: `apperrors.Wrap(err, "failed to create kek")`
+   - Always defer `rows.Close()` and check `rows.Err()`
+
+3. **Use Case Layer** (`usecase/`)
+   - Business logic orchestration
+   - Coordinates between repositories and services
+   - Defines interfaces for dependencies
+   - Transaction management via `TxManager.WithTx()`
+
+4. **Presentation Layer** (`http/`)
+   - HTTP handlers and request/response DTOs
+   - Maps domain errors to HTTP status codes
+   - Input validation using jellydator/validation
+
+5. **Service Layer** (`service/`)
+   - Reusable technical services (encryption, key management)
+   - No business logic
 
 ### Naming Conventions
 
-**Packages**
-- Use lowercase, single-word names when possible
-- Avoid underscores or mixed caps
-- Examples: `domain`, `usecase`, `repository`, `http`
+**Interfaces**: Named after behavior (e.g., `KekRepository`, `KeyManager`, `TxManager`)
 
-**Types**
-- Use PascalCase for exported types
-- Use camelCase for unexported types
-- Suffix interfaces with meaningful names, not just "Interface"
-  - Good: `UserRepository`, `TxManager`, `UseCase`
-  - Bad: `UserRepositoryInterface`, `IUserRepository`
+**Structs**: 
+- Domain entities: PascalCase (e.g., `Kek`, `MasterKey`)
+- Internal implementations: lowercase with package name (e.g., `kekUseCase`, `postgresqlKekRepository`)
 
-**Functions/Methods**
-- Use PascalCase for exported functions
-- Use camelCase for unexported functions
-- Prefix boolean functions with `is`, `has`, `can`, or `should`
-  - Examples: `isPostgreSQLUniqueViolation`, `hasUpperCase`
+**Methods**: Use descriptive verbs:
+- `Create`, `Update`, `List` (repositories)
+- `CreateKek`, `DecryptKek`, `EncryptDek` (services)
+- `Wrap`, `Unwrap`, `Rotate` (use cases)
 
-**Variables**
-- Use camelCase for short-lived variables
-- Use descriptive names for longer-lived variables
-- Avoid single-letter names except for: `i`, `j`, `k` (loops), `r` (receiver), `w` (http.ResponseWriter), `ctx` (context)
-
-**Constants**
-- Use PascalCase for exported constants
-- Use camelCase for unexported constants
+**Variables**:
+- Use full words, not abbreviations (except common ones: `ctx`, `db`, `id`, `tx`)
+- Example: `masterKey` not `mk`, `kekChain` not `kc`
 
 ### Types and Interfaces
 
-**UUIDs**
-- Use `uuid.UUID` type from `github.com/google/uuid`
-- Generate IDs with `uuid.Must(uuid.NewV7())` (time-ordered UUIDs)
-- PostgreSQL: Store as native `UUID` type
-- MySQL: Store as `BINARY(16)` with marshal/unmarshal
+**UUIDs**: Use `google/uuid` package, prefer UUIDv7 for database IDs:
+```go
+id := uuid.Must(uuid.NewV7())
+```
 
-**Domain Models**
-- Keep domain models pure (no JSON tags)
-- Use DTOs for API serialization
-- Example:
-  ```go
-  // Domain model (no JSON tags)
-  type User struct {
-      ID        uuid.UUID
-      Name      string
-      Email     string
-      Password  string
-      CreatedAt time.Time
-      UpdatedAt time.Time
-  }
-  ```
+**Context**: Always pass `context.Context` as the first parameter:
+```go
+func Create(ctx context.Context, kek *Kek) error
+```
 
-**DTOs**
-- Add JSON tags for API contracts
-- Implement `Validate()` method using `jellydator/validation`
-- Create mapper functions to convert between DTOs and domain models
+**Error Returns**: Return errors as the last return value:
+```go
+func Get(id uuid.UUID) (*Kek, error)
+```
 
 ### Error Handling
 
-**Standard Domain Errors** (from `internal/errors`)
-- `ErrNotFound` - Resource doesn't exist (404)
-- `ErrConflict` - Duplicate or conflicting data (409)
-- `ErrInvalidInput` - Validation failures (422)
-- `ErrUnauthorized` - Authentication required (401)
-- `ErrForbidden` - Permission denied (403)
+**Standard Errors** (internal/errors/errors.go):
+- `ErrNotFound` → 404 Not Found
+- `ErrConflict` → 409 Conflict
+- `ErrInvalidInput` → 422 Unprocessable Entity
+- `ErrUnauthorized` → 401 Unauthorized
+- `ErrForbidden` → 403 Forbidden
 
-**Domain-Specific Errors**
-Always wrap standard errors with domain context:
+**Domain Errors**: Wrap standard errors with context:
 ```go
-var (
-    ErrUserNotFound      = errors.Wrap(errors.ErrNotFound, "user not found")
-    ErrUserAlreadyExists = errors.Wrap(errors.ErrConflict, "user already exists")
-    ErrInvalidEmail      = errors.Wrap(errors.ErrInvalidInput, "invalid email format")
-)
+var ErrKekNotFound = errors.Wrap(errors.ErrNotFound, "kek not found")
 ```
 
-**Error Flow**
-1. **Repository Layer**: Transform infrastructure errors to domain errors
-   ```go
-   if errors.Is(err, sql.ErrNoRows) {
-       return nil, domain.ErrUserNotFound
-   }
-   ```
+**Error Checking**:
+```go
+if err != nil {
+    return apperrors.Wrap(err, "failed to perform operation")
+}
+```
 
-2. **Use Case Layer**: Return domain errors directly (don't wrap again)
-   ```go
-   user, err := uc.userRepo.GetByID(ctx, id)
-   if err != nil {
-       return nil, err  // Pass through domain error
-   }
-   ```
-
-3. **HTTP Handler Layer**: Use `httputil.HandleError()` for automatic mapping
-   ```go
-   if err != nil {
-       httputil.HandleError(w, err, h.logger)
-       return
-   }
-   ```
-
-**Error Checking**
-- Use `errors.Is()` to check for specific errors
-- Use `errors.As()` to extract error types
-- Never compare errors with `==` (except for `sql.ErrNoRows` from stdlib)
+**Error Comparison**: Use `errors.Is()` and `errors.As()`:
+```go
+if errors.Is(err, sql.ErrNoRows) {
+    return domain.ErrKekNotFound
+}
+```
 
 ### Validation
 
 Use `github.com/jellydator/validation` for input validation:
-
 ```go
-import (
-    validation "github.com/jellydator/validation"
-    appValidation "github.com/allisson/secrets/internal/validation"
-)
-
-func (r *RegisterUserRequest) Validate() error {
-    err := validation.ValidateStruct(r,
-        validation.Field(&r.Name,
-            validation.Required.Error("name is required"),
-            appValidation.NotBlank,
-            validation.Length(1, 255),
-        ),
-        validation.Field(&r.Email,
-            validation.Required.Error("email is required"),
-            appValidation.Email,
-        ),
-        validation.Field(&r.Password,
-            validation.Required.Error("password is required"),
-            appValidation.PasswordStrength{
-                MinLength:      8,
-                RequireUpper:   true,
-                RequireLower:   true,
-                RequireNumber:  true,
-                RequireSpecial: true,
-            },
-        ),
+func (d *CreateDTO) Validate() error {
+    return validation.ValidateStruct(d,
+        validation.Field(&d.Name, validation.Required, validation.Length(1, 255)),
+        validation.Field(&d.Email, validation.Required, customValidation.Email),
     )
-    return appValidation.WrapValidationError(err)
 }
 ```
 
-**Custom Validation Rules** (in `internal/validation`):
-- `Email` - Email format validation
-- `NotBlank` - Not empty after trimming
-- `NoWhitespace` - No leading/trailing whitespace
-- `PasswordStrength` - Configurable password requirements
+Wrap validation errors: `validation.WrapValidationError(err)`
 
-### Database Patterns
+### Documentation
 
-**Repository Pattern**
-- Implement separate repositories for MySQL and PostgreSQL
-- Use `database.GetTx(ctx, r.db)` to get querier (works with and without transactions)
-- Use numbered placeholders for PostgreSQL (`$1, $2`) and `?` for MySQL
-
-**Transaction Management**
+**Package Documentation**: Start with package comment:
 ```go
-err := uc.txManager.WithTx(ctx, func(ctx context.Context) error {
-    if err := uc.userRepo.Create(ctx, user); err != nil {
-        return err
-    }
-    if err := uc.outboxRepo.Create(ctx, event); err != nil {
-        return err
-    }
-    return nil
-})
+// Package domain defines the core cryptographic domain models and types.
+package domain
 ```
 
-**Unique Constraint Violations**
-Check for database-specific error patterns:
-- PostgreSQL: `strings.Contains(err.Error(), "duplicate key")`
-- MySQL: `strings.Contains(err.Error(), "duplicate entry")`
+**Function Comments**: 
+- Start with function name
+- Explain purpose, not implementation
+- Document parameters and return values
+- Include usage examples for public APIs
+
+Example:
+```go
+// Create generates and persists a new Key Encryption Key.
+//
+// This method creates the initial KEK for the system using the active master key
+// from the provided keychain.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - masterKeyChain: The keychain containing the active master key
+//   - alg: The encryption algorithm to use for the KEK
+//
+// Returns:
+//   - An error if the master key is not found or KEK generation fails
+func (k *kekUseCase) Create(ctx context.Context, ...) error
+```
 
 ### Testing
 
-**Integration Testing Philosophy**
-- Use real databases (PostgreSQL port 5433, MySQL port 3307) instead of mocks
-- Tests verify actual SQL queries and database behavior
-- Start test databases with `make test-db-up` before running tests
+**Test Framework**: Use `testify` for assertions and mocks
 
-**Test Structure**
+**Test Naming**: `Test<Struct>_<Method>` or `Test<Function>`
 ```go
-func TestPostgreSQLUserRepository_Create(t *testing.T) {
-    db := testutil.SetupPostgresDB(t)           // Connect and run migrations
-    defer testutil.TeardownDB(t, db)            // Clean up connection
-    defer testutil.CleanupPostgresDB(t, db)     // Clean up test data
+func TestKekUseCase_Create(t *testing.T)
+```
+
+**Subtests**: Use descriptive names with underscores:
+```go
+t.Run("Success_CreateKekWithAESGCM", func(t *testing.T) { ... })
+t.Run("Error_MasterKeyNotFound", func(t *testing.T) { ... })
+```
+
+**Mocks**: Generate using mockery (.mockery.yaml configuration):
+```bash
+go generate ./...
+```
+
+**Test Structure**:
+```go
+t.Run("TestName", func(t *testing.T) {
+    // Setup mocks
+    mockRepo := mocks.NewMockRepository(t)
     
-    repo := NewPostgreSQLUserRepository(db)
-    ctx := context.Background()
+    // Create test data
+    testData := createTestData()
     
-    user := &domain.User{
-        ID:       uuid.Must(uuid.NewV7()),
-        Name:     "John Doe",
-        Email:    "john@example.com",
-        Password: "hashed_password",
-    }
+    // Setup expectations
+    mockRepo.EXPECT().Method(...).Return(...).Once()
     
-    err := repo.Create(ctx, user)
+    // Execute
+    result, err := useCase.Method(ctx, ...)
+    
+    // Assert
     assert.NoError(t, err)
+    assert.Equal(t, expected, result)
+})
+```
+
+**Integration Tests**: Use real databases (PostgreSQL and MySQL) via testutil helpers
+
+## Additional Guidelines
+
+- **Line Length**: Maximum 110 characters (enforced by golines)
+- **Defer Usage**: Always defer cleanup operations (`Close()`, `rows.Close()`)
+- **Security**: Use `Zero()` functions to clear sensitive data from memory
+- **Transactions**: Use `TxManager.WithTx()` for atomic multi-step operations
+- **Thread Safety**: Use `sync.Map` for concurrent access to shared data
+- **Binary Data**: Store as `[]byte`, use BYTEA (PostgreSQL) or BLOB (MySQL)
+- **Timestamps**: Use `time.Time` with UTC, store with timezone in PostgreSQL
+
+## Common Patterns
+
+### Repository Pattern with Transactions
+```go
+func (r *Repository) Create(ctx context.Context, entity *Entity) error {
+    querier := database.GetTx(ctx, r.db)
+    _, err := querier.ExecContext(ctx, query, args...)
+    return err
 }
 ```
 
-**Test Naming**
-- Format: `Test{Type}_{Method}` or `Test{Type}_{Method}_{Scenario}`
-- Examples: `TestPostgreSQLUserRepository_Create`, `TestUserUseCase_RegisterUser_DuplicateEmail`
-
-### Comments and Documentation
-
-**Package Comments**
-Every package should have a doc comment:
+### Use Case with Transaction
 ```go
-// Package usecase implements the user business logic and orchestrates user domain operations.
-package usecase
+return k.txManager.WithTx(ctx, func(ctx context.Context) error {
+    if err := k.repo.Update(ctx, old); err != nil {
+        return err
+    }
+    return k.repo.Create(ctx, new)
+})
 ```
 
-**Exported Types**
-Document all exported types, functions, and constants:
+### Dependency Injection
 ```go
-// User represents a user in the system
-type User struct { ... }
-
-// RegisterUser registers a new user and creates a user.created event
-func (uc *UserUseCase) RegisterUser(ctx context.Context, input RegisterUserInput) (*domain.User, error) {
+func NewUseCase(txManager TxManager, repo Repository) UseCase {
+    return &useCase{txManager: txManager, repo: repo}
+}
 ```
-
-**Implementation Comments**
-Add comments for complex logic:
-```go
-// Hash the password using Argon2id
-hashedPassword, err := uc.passwordHasher.Hash([]byte(input.Password))
-```
-
-## Adding New Domains
-
-When adding a new domain (e.g., `product`):
-
-1. **Create the domain structure**:
-   ```
-   internal/product/
-   ├── domain/
-   │   └── product.go              # Entity + domain errors
-   ├── usecase/
-   │   └── product_usecase.go      # UseCase interface + implementation
-   ├── repository/
-   │   ├── mysql_product_repository.go
-   │   └── postgresql_product_repository.go
-   └── http/
-       ├── dto/
-       │   ├── request.go           # With Validate() method
-       │   ├── response.go          # With JSON tags
-       │   └── mapper.go            # DTO ↔ domain conversions
-       └── product_handler.go       # Uses httputil functions
-   ```
-
-2. **Define domain errors** in `domain/product.go`:
-   ```go
-   var (
-       ErrProductNotFound = errors.Wrap(errors.ErrNotFound, "product not found")
-       ErrInvalidPrice    = errors.Wrap(errors.ErrInvalidInput, "invalid price")
-   )
-   ```
-
-3. **Register in DI container** (`internal/app/di.go`):
-   - Add repository and use case fields
-   - Add getter methods with `sync.Once` initialization
-   - Select repository based on `c.config.DBDriver`
-
-4. **Wire HTTP handlers** in `internal/http/server.go`
-
-5. **Write migrations** for both PostgreSQL and MySQL
-
-## Common Pitfalls to Avoid
-
-❌ **Don't** add JSON tags to domain models  
-✅ **Do** use DTOs for API serialization
-
-❌ **Don't** wrap domain errors multiple times  
-✅ **Do** return domain errors directly from use cases
-
-❌ **Don't** use `sql.ErrNoRows` in use cases  
-✅ **Do** transform to domain errors in repositories
-
-❌ **Don't** use single repository for both databases  
-✅ **Do** implement separate MySQL and PostgreSQL repositories
-
-❌ **Don't** use auto-incrementing integer IDs  
-✅ **Do** use UUIDv7 with `uuid.Must(uuid.NewV7())`
-
-❌ **Don't** create mocks for repositories  
-✅ **Do** use real test databases (ports 5433 and 3307)
-
-❌ **Don't** depend on concrete use case implementations  
-✅ **Do** depend on UseCase interfaces in handlers and DI container
