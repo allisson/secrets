@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS keks (
     encrypted_key BYTEA NOT NULL,
     nonce BYTEA NOT NULL,
     version INTEGER NOT NULL,
-    is_active BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL
 );
 

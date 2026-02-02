@@ -37,7 +37,6 @@ func TestMySQLKekRepository_Create(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-data"),
 		Nonce:        []byte("unique-nonce-12345"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -55,7 +54,6 @@ func TestMySQLKekRepository_Create(t *testing.T) {
 	assert.Equal(t, kek.EncryptedKey, keks[0].EncryptedKey)
 	assert.Equal(t, kek.Nonce, keks[0].Nonce)
 	assert.Equal(t, kek.Version, keks[0].Version)
-	assert.Equal(t, kek.IsActive, keks[0].IsActive)
 	assert.WithinDuration(t, kek.CreatedAt, keks[0].CreatedAt, time.Second)
 }
 
@@ -74,7 +72,6 @@ func TestMySQLKekRepository_Create_WithChaCha20Algorithm(t *testing.T) {
 		EncryptedKey: []byte("chacha20-encrypted-key"),
 		Nonce:        []byte("chacha20-nonce-123"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -104,7 +101,6 @@ func TestMySQLKekRepository_Create_MultipleVersions(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-v1"),
 		Nonce:        []byte("nonce-v1"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -120,7 +116,6 @@ func TestMySQLKekRepository_Create_MultipleVersions(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-v2"),
 		Nonce:        []byte("nonce-v2"),
 		Version:      2,
-		IsActive:     false,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -153,7 +148,6 @@ func TestMySQLKekRepository_Update(t *testing.T) {
 		EncryptedKey: []byte("original-encrypted-key"),
 		Nonce:        []byte("original-nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -161,7 +155,6 @@ func TestMySQLKekRepository_Update(t *testing.T) {
 	require.NoError(t, err)
 
 	// Update the KEK (e.g., deactivate after rotation)
-	kek.IsActive = false
 	kek.MasterKeyID = "master-key-2"
 	kek.EncryptedKey = []byte("updated-encrypted-key")
 
@@ -176,7 +169,6 @@ func TestMySQLKekRepository_Update(t *testing.T) {
 	assert.Equal(t, kek.ID, keks[0].ID)
 	assert.Equal(t, "master-key-2", keks[0].MasterKeyID)
 	assert.Equal(t, []byte("updated-encrypted-key"), keks[0].EncryptedKey)
-	assert.False(t, keks[0].IsActive)
 }
 
 func TestMySQLKekRepository_Update_NonExistent(t *testing.T) {
@@ -195,7 +187,6 @@ func TestMySQLKekRepository_Update_NonExistent(t *testing.T) {
 		EncryptedKey: []byte("encrypted-key"),
 		Nonce:        []byte("nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -236,7 +227,6 @@ func TestMySQLKekRepository_List_OrderedByVersionDesc(t *testing.T) {
 			EncryptedKey: []byte("encrypted-key"),
 			Nonce:        []byte("nonce"),
 			Version:      version,
-			IsActive:     version == 5, // Only latest is active
 			CreatedAt:    time.Now().UTC(),
 		}
 		err := repo.Create(ctx, kek)
@@ -271,7 +261,6 @@ func TestMySQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
 		EncryptedKey: []byte("active-key"),
 		Nonce:        []byte("active-nonce"),
 		Version:      2,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -288,7 +277,6 @@ func TestMySQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
 		EncryptedKey: []byte("inactive-key"),
 		Nonce:        []byte("inactive-nonce"),
 		Version:      1,
-		IsActive:     false,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -302,11 +290,9 @@ func TestMySQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
 
 	// First should be version 2 (active)
 	assert.Equal(t, uint(2), keks[0].Version)
-	assert.True(t, keks[0].IsActive)
 
 	// Second should be version 1 (inactive)
 	assert.Equal(t, uint(1), keks[1].Version)
-	assert.False(t, keks[1].IsActive)
 }
 
 func TestMySQLKekRepository_Create_WithTransaction(t *testing.T) {
@@ -324,7 +310,6 @@ func TestMySQLKekRepository_Create_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("encrypted-key"),
 		Nonce:        []byte("nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -338,15 +323,14 @@ func TestMySQLKekRepository_Create_WithTransaction(t *testing.T) {
 	// Create KEK within transaction
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		id,
 		kek.MasterKeyID,
 		kek.Algorithm,
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 	)
 	require.NoError(t, err)
@@ -377,7 +361,6 @@ func TestMySQLKekRepository_Update_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("original-key"),
 		Nonce:        []byte("original-nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -400,15 +383,13 @@ func TestMySQLKekRepository_Update_WithTransaction(t *testing.T) {
 				  encrypted_key = ?,
 				  nonce = ?,
 				  version = ?, 
-			      is_active = ?,
 				  created_at = ?
 			  WHERE id = ?`,
-		kek.MasterKeyID,
+		"master-key-2",
 		kek.Algorithm,
-		kek.EncryptedKey,
+		[]byte("updated-key"),
 		kek.Nonce,
 		kek.Version,
-		false, // Change IsActive to false
 		kek.CreatedAt,
 		id,
 	)
@@ -422,7 +403,7 @@ func TestMySQLKekRepository_Update_WithTransaction(t *testing.T) {
 	keks, err := repo.List(ctx)
 	require.NoError(t, err)
 	require.Len(t, keks, 1)
-	assert.True(t, keks[0].IsActive, "KEK should still be active after rollback")
+	assert.Equal(t, "master-key-1", keks[0].MasterKeyID, "KEK should have original master key after rollback")
 }
 
 func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
@@ -441,7 +422,6 @@ func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("key-1"),
 		Nonce:        []byte("nonce-1"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -461,7 +441,6 @@ func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("key-2"),
 		Nonce:        []byte("nonce-2"),
 		Version:      2,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -470,15 +449,14 @@ func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
 
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		id,
 		kek2.MasterKeyID,
 		kek2.Algorithm,
 		kek2.EncryptedKey,
 		kek2.Nonce,
 		kek2.Version,
-		kek2.IsActive,
 		kek2.CreatedAt,
 	)
 	require.NoError(t, err)
@@ -486,7 +464,7 @@ func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
 	// List within transaction should see both KEKs
 	rows, err := tx.QueryContext(
 		ctx,
-		`SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at 
+		`SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, created_at 
 		 FROM keks ORDER BY version DESC`,
 	)
 	require.NoError(t, err)
@@ -506,7 +484,6 @@ func TestMySQLKekRepository_List_WithTransaction(t *testing.T) {
 			&kek.EncryptedKey,
 			&kek.Nonce,
 			&kek.Version,
-			&kek.IsActive,
 			&kek.CreatedAt,
 		)
 		require.NoError(t, err)

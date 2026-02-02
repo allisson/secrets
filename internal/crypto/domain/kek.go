@@ -69,10 +69,8 @@ import (
 //
 // Key rotation workflow:
 //  1. Create a new KEK with an incremented version number
-//  2. Mark the new KEK as active (IsActive = true)
-//  3. Mark the old KEK as inactive (IsActive = false)
-//  4. New DEKs will be encrypted with the new KEK
-//  5. Old DEKs can still be decrypted with the old KEK until they are re-encrypted
+//  2. New DEKs will be encrypted with the new KEK (highest version)
+//  3. Old DEKs can still be decrypted with the old KEK until they are re-encrypted
 //
 // Fields:
 //   - ID: Unique identifier for the KEK (UUIDv7 for time-based ordering)
@@ -82,7 +80,6 @@ import (
 //   - Key: The plaintext KEK (populated after decryption, should never be persisted)
 //   - Nonce: Unique nonce used for encrypting the KEK with the master key
 //   - Version: Version number for tracking KEK rotations (increments with each rotation)
-//   - IsActive: Whether this KEK is currently active for encrypting new DEKs
 //   - CreatedAt: Timestamp when the KEK was created
 type Kek struct {
 	ID           uuid.UUID
@@ -92,21 +89,20 @@ type Kek struct {
 	Key          []byte
 	Nonce        []byte
 	Version      uint
-	IsActive     bool
 	CreatedAt    time.Time
 }
 
 // KekChain manages a collection of Key Encryption Keys with thread-safe access.
 //
 // The KekChain provides a concurrent-safe way to store and access multiple KEK versions,
-// with one designated as the active KEK for encrypting new Data Encryption Keys (DEKs).
-// This supports key rotation workflows where old KEKs remain available for decrypting
-// existing DEKs while new DEKs are encrypted with the latest active KEK.
+// with one designated as the active KEK (highest version) for encrypting new Data Encryption
+// Keys (DEKs). This supports key rotation workflows where old KEKs remain available for
+// decrypting existing DEKs while new DEKs are encrypted with the latest active KEK.
 //
 // Key rotation workflow:
-//  1. New KEK is created and marked as active
+//  1. New KEK is created with an incremented version number
 //  2. Old KEK remains in the chain for decrypting existing DEKs
-//  3. New DEKs are encrypted with the active KEK
+//  3. New DEKs are encrypted with the active KEK (highest version)
 //  4. Over time, old DEKs can be re-encrypted with the new KEK
 //  5. Once all DEKs use the new KEK, old KEKs can be removed
 //
@@ -117,7 +113,7 @@ type Kek struct {
 // sensitive key material from memory.
 //
 // Fields:
-//   - activeID: UUID of the currently active KEK (used for encrypting new DEKs)
+//   - activeID: UUID of the currently active KEK (highest version, used for encrypting new DEKs)
 //   - keys: Thread-safe map of KEK ID to KEK instances
 type KekChain struct {
 	activeID uuid.UUID
@@ -126,9 +122,10 @@ type KekChain struct {
 
 // ActiveKekID returns the UUID of the currently active Key Encryption Key.
 //
-// The active KEK is used to encrypt new Data Encryption Keys (DEKs). During
-// key rotation, this ID changes to point to the newest KEK version while old
-// KEKs remain accessible in the chain for decrypting existing DEKs.
+// The active KEK is the one with the highest version number and is used to encrypt
+// new Data Encryption Keys (DEKs). During key rotation, this ID changes to point to
+// the newest KEK version while old KEKs remain accessible in the chain for decrypting
+// existing DEKs.
 //
 // Returns:
 //   - The UUID of the active KEK
@@ -205,12 +202,12 @@ func (k *KekChain) Close() {
 // NewKekChain creates a new KekChain from a slice of KEKs.
 //
 // This constructor initializes a thread-safe KEK chain with the provided KEKs.
-// The first KEK in the slice (index 0) is designated as the active KEK, which
-// will be used for encrypting new Data Encryption Keys (DEKs).
+// The first KEK in the slice (index 0) is designated as the active KEK (highest
+// version), which will be used for encrypting new Data Encryption Keys (DEKs).
 //
-// The KEKs slice should be ordered by version in descending order (newest first)
-// to ensure the most recent KEK becomes the active one. This is typically the
-// order returned by the KEK repository's List() method.
+// The KEKs slice must be ordered by version in descending order (newest first)
+// to ensure the KEK with the highest version becomes the active one. This is
+// typically the order returned by the KEK repository's List() method.
 //
 // Parameters:
 //   - keks: Slice of KEK pointers to store in the chain (must not be empty)

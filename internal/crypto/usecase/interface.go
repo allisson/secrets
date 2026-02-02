@@ -45,7 +45,7 @@ type KekRepository interface {
 	//
 	// This method inserts a new Key Encryption Key into persistent storage.
 	// The KEK should have all required fields populated: ID, MasterKeyID,
-	// Algorithm, EncryptedKey, Nonce, Version, IsActive, and CreatedAt.
+	// Algorithm, EncryptedKey, Nonce, Version, and CreatedAt.
 	//
 	// The method supports transaction context. If the context contains a
 	// transaction (via database.GetTx), the operation will participate in
@@ -61,9 +61,8 @@ type KekRepository interface {
 
 	// Update modifies an existing KEK in the repository.
 	//
-	// This method updates all mutable fields of an existing KEK. It's typically
-	// used to deactivate old KEKs during key rotation by setting IsActive to false.
-	// The KEK is identified by its ID field, which must match an existing record.
+	// This method updates all mutable fields of an existing KEK. The KEK is
+	// identified by its ID field, which must match an existing record.
 	//
 	// The method supports transaction context. If the context contains a
 	// transaction, the operation will participate in that transaction, enabling
@@ -151,8 +150,8 @@ type KekUseCase interface {
 	// from the provided keychain. The generated KEK is encrypted with the master key
 	// using the specified algorithm and stored in the database.
 	//
-	// The newly created KEK will have Version=1, IsActive=true, and will reference
-	// the active master key ID from the chain.
+	// The newly created KEK will have Version=1 and will reference the active
+	// master key ID from the chain.
 	//
 	// This method should be called once during system initialization. For subsequent
 	// KEK updates, use Rotate() instead.
@@ -175,10 +174,8 @@ type KekUseCase interface {
 	//
 	// The rotation process:
 	//  1. Retrieves the current active KEK (highest version)
-	//  2. Marks the current KEK as inactive (IsActive = false)
-	//  3. Generates a new KEK with version = current + 1
-	//  4. Marks the new KEK as active (IsActive = true)
-	//  5. Persists both changes atomically
+	//  2. Generates a new KEK with version = current + 1
+	//  3. Persists the new KEK atomically
 	//
 	// After rotation, new DEKs will be encrypted with the new KEK, while old DEKs
 	// can still be decrypted using the old KEK until they are re-encrypted.

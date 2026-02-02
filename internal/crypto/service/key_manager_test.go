@@ -41,7 +41,6 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 		assert.Equal(t, 32, len(kek.Key))
 		assert.NotNil(t, kek.Nonce)
 		assert.Equal(t, uint(1), kek.Version)
-		assert.True(t, kek.IsActive)
 		assert.False(t, kek.CreatedAt.IsZero())
 	})
 
@@ -57,7 +56,6 @@ func TestKeyManagerService_CreateKek(t *testing.T) {
 		assert.Equal(t, 32, len(kek.Key))
 		assert.NotNil(t, kek.Nonce)
 		assert.Equal(t, uint(1), kek.Version)
-		assert.True(t, kek.IsActive)
 		assert.False(t, kek.CreatedAt.IsZero())
 	})
 
