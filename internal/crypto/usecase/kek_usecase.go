@@ -54,7 +54,6 @@ func (k *kekUseCase) getMasterKey(
 //
 // The newly created KEK will have:
 //   - Version: 1
-//   - IsActive: true
 //   - Algorithm: The specified algorithm (AESGCM or ChaCha20)
 //   - MasterKeyID: The active master key's ID
 //
@@ -97,18 +96,20 @@ func (k *kekUseCase) Create(
 	return k.kekRepo.Create(ctx, &kek)
 }
 
-// Rotate performs a KEK rotation by creating a new KEK and deactivating the current one.
+// Rotate performs a KEK rotation by creating a new KEK with an incremented version.
 //
 // Key rotation is a critical security operation that limits the exposure window if
 // a KEK is compromised. This method performs the rotation atomically within a
-// database transaction, ensuring that either both operations succeed or both fail.
+// database transaction, ensuring that either all operations succeed or all fail.
 //
 // The rotation process:
-//  1. Retrieves the current active KEK (highest version)
-//  2. Marks the current KEK as inactive (IsActive = false)
-//  3. Generates a new KEK with version = current + 1
-//  4. Marks the new KEK as active (IsActive = true)
-//  5. Persists both changes atomically
+//  1. Retrieves all KEKs ordered by version (descending)
+//  2. If no KEKs exist, creates the first KEK with version 1 (delegates to Create)
+//  3. If KEKs exist, generates a new KEK with version = current + 1
+//  4. Persists the new KEK to the database
+//
+// This dual behavior makes Rotate a safe operation that can be called whether or not
+// KEKs have been initialized, simplifying application startup and key management workflows.
 //
 // After rotation, new Data Encryption Keys (DEKs) will be encrypted with the new
 // KEK, while old DEKs can still be decrypted using the old KEK until they are
@@ -120,12 +121,12 @@ func (k *kekUseCase) Create(
 //   - alg: The encryption algorithm for the new KEK (can differ from old KEK)
 //
 // Returns:
-//   - An error if the master key is not found, no current KEK exists,
-//     KEK generation fails, or the transaction fails
+//   - An error if the master key is not found, KEK generation fails,
+//     or the transaction fails
 //
 // Example:
 //
-//	// Rotate to a new KEK with the same algorithm
+//	// Rotate to a new KEK (creates first KEK if none exist)
 //	err := kekUseCase.Rotate(ctx, masterKeyChain, cryptoDomain.AESGCM)
 //	if err != nil {
 //	    log.Fatalf("KEK rotation failed: %v", err)
@@ -149,12 +150,12 @@ func (k *kekUseCase) Rotate(
 			return err
 		}
 
-		currentKek := keks[0]
-		currentKek.IsActive = false
-
-		if err := k.kekRepo.Update(ctx, currentKek); err != nil {
-			return err
+		// We don't have any registered keks, we created a new one.
+		if len(keks) == 0 {
+			return k.Create(ctx, masterKeyChain, alg)
 		}
+
+		currentKek := keks[0]
 
 		kek, err := k.keyManager.CreateKek(masterKey, alg)
 		if err != nil {

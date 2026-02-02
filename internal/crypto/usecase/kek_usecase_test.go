@@ -43,7 +43,6 @@ func TestKekUseCase_Create(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		// Setup expectations
@@ -91,7 +90,6 @@ func TestKekUseCase_Create(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		// Setup expectations
@@ -191,7 +189,6 @@ func TestKekUseCase_Create(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		expectedErr := errors.New("database error")
@@ -243,7 +240,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			EncryptedKey: []byte("old-encrypted-kek"),
 			Nonce:        []byte("old-nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		newKek := cryptoDomain.Kek{
@@ -253,7 +249,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			EncryptedKey: []byte("new-encrypted-kek"),
 			Nonce:        []byte("new-nonce"),
 			Version:      2,
-			IsActive:     true,
 		}
 
 		// Setup expectations for transaction
@@ -271,13 +266,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			Return([]*cryptoDomain.Kek{currentKek}, nil).
 			Once()
 
-		mockKekRepo.EXPECT().
-			Update(mock.Anything, mock.MatchedBy(func(kek *cryptoDomain.Kek) bool {
-				return kek.ID == currentKek.ID && !kek.IsActive
-			})).
-			Return(nil).
-			Once()
-
 		mockKeyManager.EXPECT().
 			CreateKek(masterKey, cryptoDomain.ChaCha20).
 			Return(newKek, nil).
@@ -285,7 +273,7 @@ func TestKekUseCase_Rotate(t *testing.T) {
 
 		mockKekRepo.EXPECT().
 			Create(mock.Anything, mock.MatchedBy(func(kek *cryptoDomain.Kek) bool {
-				return kek.Version == 2 && kek.IsActive
+				return kek.Version == 2
 			})).
 			Return(nil).
 			Once()
@@ -293,6 +281,70 @@ func TestKekUseCase_Rotate(t *testing.T) {
 		// Execute
 		uc := NewKekUseCase(mockTxManager, mockKekRepo, mockKeyManager)
 		err := uc.Rotate(ctx, masterKeyChain, cryptoDomain.ChaCha20)
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("Success_CreateFirstKekWhenNoneExist", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockKekRepo := usecaseMocks.NewMockKekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKeyID := "test-master-key"
+		masterKey := &cryptoDomain.MasterKey{
+			ID:  masterKeyID,
+			Key: make([]byte, 32),
+		}
+		masterKeyChain := createMasterKeyChain(masterKeyID, masterKey)
+		defer masterKeyChain.Close()
+
+		expectedKek := cryptoDomain.Kek{
+			ID:           uuid.Must(uuid.NewV7()),
+			MasterKeyID:  masterKeyID,
+			Algorithm:    cryptoDomain.AESGCM,
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("nonce"),
+			Version:      1,
+		}
+
+		// Setup expectations for transaction
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(nil).
+			Once()
+
+		// List returns empty slice (no KEKs exist)
+		mockKekRepo.EXPECT().
+			List(mock.Anything).
+			Return([]*cryptoDomain.Kek{}, nil).
+			Once()
+
+		// Should create first KEK with version 1
+		mockKeyManager.EXPECT().
+			CreateKek(masterKey, cryptoDomain.AESGCM).
+			Return(expectedKek, nil).
+			Once()
+
+		mockKekRepo.EXPECT().
+			Create(mock.Anything, mock.MatchedBy(func(kek *cryptoDomain.Kek) bool {
+				return kek.ID == expectedKek.ID &&
+					kek.MasterKeyID == expectedKek.MasterKeyID &&
+					kek.Algorithm == expectedKek.Algorithm &&
+					kek.Version == 1
+			})).
+			Return(nil).
+			Once()
+
+		// Execute
+		uc := NewKekUseCase(mockTxManager, mockKekRepo, mockKeyManager)
+		err := uc.Rotate(ctx, masterKeyChain, cryptoDomain.AESGCM)
 
 		// Assert
 		assert.NoError(t, err)
@@ -363,62 +415,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 		assert.ErrorIs(t, err, expectedErr)
 	})
 
-	t.Run("Error_UpdateCurrentKekFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockKekRepo := usecaseMocks.NewMockKekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-
-		// Create test data
-		masterKeyID := "test-master-key"
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  masterKeyID,
-			Key: make([]byte, 32),
-		}
-		masterKeyChain := createMasterKeyChain(masterKeyID, masterKey)
-		defer masterKeyChain.Close()
-
-		currentKek := &cryptoDomain.Kek{
-			ID:           uuid.Must(uuid.NewV7()),
-			MasterKeyID:  masterKeyID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("old-encrypted-kek"),
-			Nonce:        []byte("old-nonce"),
-			Version:      1,
-			IsActive:     true,
-		}
-
-		expectedErr := errors.New("update error")
-
-		// Setup expectations for transaction
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				// Execute the transaction function
-				_ = fn(ctx)
-			}).
-			Return(expectedErr).
-			Once()
-
-		mockKekRepo.EXPECT().
-			List(mock.Anything).
-			Return([]*cryptoDomain.Kek{currentKek}, nil).
-			Once()
-
-		mockKekRepo.EXPECT().
-			Update(mock.Anything, mock.Anything).
-			Return(expectedErr).
-			Once()
-
-		// Execute
-		uc := NewKekUseCase(mockTxManager, mockKekRepo, mockKeyManager)
-		err := uc.Rotate(ctx, masterKeyChain, cryptoDomain.ChaCha20)
-
-		// Assert
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, expectedErr)
-	})
-
 	t.Run("Error_CreateNewKekFails", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
@@ -441,7 +437,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			EncryptedKey: []byte("old-encrypted-kek"),
 			Nonce:        []byte("old-nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		expectedErr := cryptoDomain.ErrUnsupportedAlgorithm
@@ -459,11 +454,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 		mockKekRepo.EXPECT().
 			List(mock.Anything).
 			Return([]*cryptoDomain.Kek{currentKek}, nil).
-			Once()
-
-		mockKekRepo.EXPECT().
-			Update(mock.Anything, mock.Anything).
-			Return(nil).
 			Once()
 
 		mockKeyManager.EXPECT().
@@ -502,7 +492,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			EncryptedKey: []byte("old-encrypted-kek"),
 			Nonce:        []byte("old-nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		newKek := cryptoDomain.Kek{
@@ -512,7 +501,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 			EncryptedKey: []byte("new-encrypted-kek"),
 			Nonce:        []byte("new-nonce"),
 			Version:      2,
-			IsActive:     true,
 		}
 
 		expectedErr := errors.New("database error")
@@ -530,11 +518,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 		mockKekRepo.EXPECT().
 			List(mock.Anything).
 			Return([]*cryptoDomain.Kek{currentKek}, nil).
-			Once()
-
-		mockKekRepo.EXPECT().
-			Update(mock.Anything, mock.Anything).
-			Return(nil).
 			Once()
 
 		mockKeyManager.EXPECT().
@@ -583,7 +566,6 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		decryptedKey := make([]byte, 32)
@@ -636,7 +618,6 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek-1"),
 			Nonce:        []byte("nonce-1"),
 			Version:      2,
-			IsActive:     true,
 		}
 
 		kek2 := &cryptoDomain.Kek{
@@ -646,7 +627,6 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek-2"),
 			Nonce:        []byte("nonce-2"),
 			Version:      1,
-			IsActive:     false,
 		}
 
 		decryptedKey1 := make([]byte, 32)
@@ -743,7 +723,6 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		// Setup expectations
@@ -784,7 +763,6 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 			EncryptedKey: []byte("encrypted-kek"),
 			Nonce:        []byte("nonce"),
 			Version:      1,
-			IsActive:     true,
 		}
 
 		expectedErr := cryptoDomain.ErrDecryptionFailed

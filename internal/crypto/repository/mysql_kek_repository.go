@@ -24,7 +24,6 @@ import (
 //   - encrypted_key: BLOB (encrypted KEK bytes)
 //   - nonce: BLOB (encryption nonce)
 //   - version: INT UNSIGNED (for tracking KEK versions during rotation)
-//   - is_active: BOOLEAN/TINYINT(1) (indicates the active KEK)
 //   - created_at: DATETIME/TIMESTAMP
 //
 // UUID handling:
@@ -80,15 +79,14 @@ type MySQLKekRepository struct {
 //	    EncryptedKey: encryptedBytes,
 //	    Nonce:        nonceBytes,
 //	    Version:      1,
-//	    IsActive:     true,
 //	    CreatedAt:    time.Now().UTC(),
 //	}
 //	err := repo.Create(ctx, kek)
 func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES (?, ?, ?, ?, ?, ?, ?)`
 
 	id, err := kek.ID.MarshalBinary()
 	if err != nil {
@@ -104,7 +102,6 @@ func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) 
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 	)
 	if err != nil {
@@ -116,10 +113,9 @@ func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) 
 // Update modifies an existing KEK in the MySQL database.
 //
 // This method updates all mutable fields of the KEK. The KEK ID is marshaled
-// to BINARY(16) format for the WHERE clause using uuid.MarshalBinary(). It's
-// typically used to deactivate old KEKs during key rotation by setting IsActive
-// to false. The method supports transaction context via database.GetTx(),
-// enabling atomic rotation operations.
+// to BINARY(16) format for the WHERE clause using uuid.MarshalBinary(). The
+// method supports transaction context via database.GetTx(), enabling atomic
+// rotation operations.
 //
 // Parameters:
 //   - ctx: Context for cancellation, timeouts, and transaction propagation
@@ -130,9 +126,8 @@ func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) 
 //
 // Example:
 //
-//	// Deactivate old KEK during rotation
-//	oldKek.IsActive = false
-//	err := repo.Update(ctx, oldKek)
+//	// Update KEK during rotation
+//	err := repo.Update(ctx, kek)
 func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -142,7 +137,6 @@ func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) 
 				  encrypted_key = ?,
 				  nonce = ?,
 				  version = ?, 
-			      is_active = ?,
 				  created_at = ?
 			  WHERE id = ?`
 
@@ -159,7 +153,6 @@ func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) 
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 		id,
 	)
@@ -204,7 +197,7 @@ func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) 
 func (m *MySQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at 
+	query := `SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, created_at 
 			  FROM keks ORDER BY version DESC`
 
 	rows, err := querier.QueryContext(ctx, query)
@@ -227,7 +220,6 @@ func (m *MySQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, err
 			&kek.EncryptedKey,
 			&kek.Nonce,
 			&kek.Version,
-			&kek.IsActive,
 			&kek.CreatedAt,
 		)
 		if err != nil {

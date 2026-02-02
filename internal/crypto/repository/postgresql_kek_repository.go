@@ -29,7 +29,6 @@ import (
 //   - encrypted_key: BYTEA (encrypted KEK bytes)
 //   - nonce: BYTEA (encryption nonce)
 //   - version: INTEGER (for tracking KEK versions during rotation)
-//   - is_active: BOOLEAN (indicates the active KEK)
 //   - created_at: TIMESTAMP WITH TIME ZONE
 //
 // Transaction support:
@@ -78,15 +77,14 @@ type PostgreSQLKekRepository struct {
 //	    EncryptedKey: encryptedBytes,
 //	    Nonce:        nonceBytes,
 //	    Version:      1,
-//	    IsActive:     true,
 //	    CreatedAt:    time.Now().UTC(),
 //	}
 //	err := repo.Create(ctx, kek)
 func (p *PostgreSQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	query := `INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := querier.ExecContext(
 		ctx,
@@ -97,7 +95,6 @@ func (p *PostgreSQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 	)
 	if err != nil {
@@ -108,10 +105,8 @@ func (p *PostgreSQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.
 
 // Update modifies an existing KEK in the PostgreSQL database.
 //
-// This method updates all mutable fields of the KEK. It's typically used
-// to deactivate old KEKs during key rotation by setting IsActive to false.
-// The method supports transaction context via database.GetTx(), enabling
-// atomic rotation operations.
+// This method updates all mutable fields of the KEK. It supports transaction
+// context via database.GetTx(), enabling atomic rotation operations.
 //
 // Parameters:
 //   - ctx: Context for cancellation, timeouts, and transaction propagation
@@ -122,9 +117,8 @@ func (p *PostgreSQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.
 //
 // Example:
 //
-//	// Deactivate old KEK during rotation
-//	oldKek.IsActive = false
-//	err := repo.Update(ctx, oldKek)
+//	// Update KEK during rotation
+//	err := repo.Update(ctx, kek)
 func (p *PostgreSQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -134,9 +128,8 @@ func (p *PostgreSQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.
 				  encrypted_key = $3,
 				  nonce = $4,
 				  version = $5, 
-			      is_active = $6,
-				  created_at = $7
-			  WHERE id = $8`
+				  created_at = $6
+			  WHERE id = $7`
 
 	_, err := querier.ExecContext(
 		ctx,
@@ -146,7 +139,6 @@ func (p *PostgreSQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 		kek.ID,
 	)
@@ -211,7 +203,6 @@ func (p *PostgreSQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek
 			&kek.EncryptedKey,
 			&kek.Nonce,
 			&kek.Version,
-			&kek.IsActive,
 			&kek.CreatedAt,
 		)
 		if err != nil {

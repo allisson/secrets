@@ -89,7 +89,6 @@ func (km *KeyManagerService) CreateKek(
 		Key:          kekKey,
 		Nonce:        nonce,
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 

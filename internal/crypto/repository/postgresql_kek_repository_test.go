@@ -37,7 +37,6 @@ func TestPostgreSQLKekRepository_Create(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-data"),
 		Nonce:        []byte("unique-nonce-12345"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -55,7 +54,6 @@ func TestPostgreSQLKekRepository_Create(t *testing.T) {
 	assert.Equal(t, kek.EncryptedKey, keks[0].EncryptedKey)
 	assert.Equal(t, kek.Nonce, keks[0].Nonce)
 	assert.Equal(t, kek.Version, keks[0].Version)
-	assert.Equal(t, kek.IsActive, keks[0].IsActive)
 	assert.WithinDuration(t, kek.CreatedAt, keks[0].CreatedAt, time.Second)
 }
 
@@ -74,7 +72,6 @@ func TestPostgreSQLKekRepository_Create_WithChaCha20Algorithm(t *testing.T) {
 		EncryptedKey: []byte("chacha20-encrypted-key"),
 		Nonce:        []byte("chacha20-nonce-123"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -96,7 +93,7 @@ func TestPostgreSQLKekRepository_Create_MultipleVersions(t *testing.T) {
 	repo := NewPostgreSQLKekRepository(db)
 	ctx := context.Background()
 
-	// Create first version (active)
+	// Create first version
 	kek1 := &cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
 		MasterKeyID:  "master-key-1",
@@ -104,14 +101,13 @@ func TestPostgreSQLKekRepository_Create_MultipleVersions(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-v1"),
 		Nonce:        []byte("nonce-v1"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
 	err := repo.Create(ctx, kek1)
 	require.NoError(t, err)
 
-	// Create second version (inactive - rotated)
+	// Create second version (newer)
 	time.Sleep(time.Millisecond) // Ensure different timestamp for UUIDv7 ordering
 	kek2 := &cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
@@ -120,7 +116,6 @@ func TestPostgreSQLKekRepository_Create_MultipleVersions(t *testing.T) {
 		EncryptedKey: []byte("encrypted-kek-v2"),
 		Nonce:        []byte("nonce-v2"),
 		Version:      2,
-		IsActive:     false,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -153,15 +148,13 @@ func TestPostgreSQLKekRepository_Update(t *testing.T) {
 		EncryptedKey: []byte("original-encrypted-key"),
 		Nonce:        []byte("original-nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
 	err := repo.Create(ctx, kek)
 	require.NoError(t, err)
 
-	// Update the KEK (e.g., deactivate after rotation)
-	kek.IsActive = false
+	// Update the KEK (e.g., change master key)
 	kek.MasterKeyID = "master-key-2"
 	kek.EncryptedKey = []byte("updated-encrypted-key")
 
@@ -176,7 +169,6 @@ func TestPostgreSQLKekRepository_Update(t *testing.T) {
 	assert.Equal(t, kek.ID, keks[0].ID)
 	assert.Equal(t, "master-key-2", keks[0].MasterKeyID)
 	assert.Equal(t, []byte("updated-encrypted-key"), keks[0].EncryptedKey)
-	assert.False(t, keks[0].IsActive)
 }
 
 func TestPostgreSQLKekRepository_Update_NonExistent(t *testing.T) {
@@ -195,7 +187,6 @@ func TestPostgreSQLKekRepository_Update_NonExistent(t *testing.T) {
 		EncryptedKey: []byte("encrypted-key"),
 		Nonce:        []byte("nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -236,7 +227,6 @@ func TestPostgreSQLKekRepository_List_OrderedByVersionDesc(t *testing.T) {
 			EncryptedKey: []byte("encrypted-key"),
 			Nonce:        []byte("nonce"),
 			Version:      version,
-			IsActive:     version == 5, // Only latest is active
 			CreatedAt:    time.Now().UTC(),
 		}
 		err := repo.Create(ctx, kek)
@@ -255,7 +245,7 @@ func TestPostgreSQLKekRepository_List_OrderedByVersionDesc(t *testing.T) {
 	assert.Equal(t, uint(1), keks[4].Version)
 }
 
-func TestPostgreSQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
+func TestPostgreSQLKekRepository_List_MultipleKeks(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -263,36 +253,34 @@ func TestPostgreSQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
 	repo := NewPostgreSQLKekRepository(db)
 	ctx := context.Background()
 
-	// Create active KEK
-	activeKek := &cryptoDomain.Kek{
+	// Create first KEK
+	kek1 := &cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
 		MasterKeyID:  "master-key-1",
 		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("active-key"),
-		Nonce:        []byte("active-nonce"),
+		EncryptedKey: []byte("kek-v1"),
+		Nonce:        []byte("nonce-v1"),
 		Version:      2,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	err := repo.Create(ctx, activeKek)
+	err := repo.Create(ctx, kek1)
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond)
 
-	// Create inactive KEK (rotated out)
-	inactiveKek := &cryptoDomain.Kek{
+	// Create second KEK
+	kek2 := &cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
 		MasterKeyID:  "master-key-1",
 		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("inactive-key"),
-		Nonce:        []byte("inactive-nonce"),
+		EncryptedKey: []byte("kek-v2"),
+		Nonce:        []byte("nonce-v2"),
 		Version:      1,
-		IsActive:     false,
 		CreatedAt:    time.Now().UTC(),
 	}
 
-	err = repo.Create(ctx, inactiveKek)
+	err = repo.Create(ctx, kek2)
 	require.NoError(t, err)
 
 	// List should return both
@@ -300,13 +288,11 @@ func TestPostgreSQLKekRepository_List_WithActiveAndInactive(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, keks, 2)
 
-	// First should be version 2 (active)
+	// First should be version 2 (highest)
 	assert.Equal(t, uint(2), keks[0].Version)
-	assert.True(t, keks[0].IsActive)
 
-	// Second should be version 1 (inactive)
+	// Second should be version 1
 	assert.Equal(t, uint(1), keks[1].Version)
-	assert.False(t, keks[1].IsActive)
 }
 
 func TestPostgreSQLKekRepository_Create_WithTransaction(t *testing.T) {
@@ -324,7 +310,6 @@ func TestPostgreSQLKekRepository_Create_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("encrypted-key"),
 		Nonce:        []byte("nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -335,15 +320,14 @@ func TestPostgreSQLKekRepository_Create_WithTransaction(t *testing.T) {
 	// Create KEK within transaction
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		kek.ID,
 		kek.MasterKeyID,
 		kek.Algorithm,
 		kek.EncryptedKey,
 		kek.Nonce,
 		kek.Version,
-		kek.IsActive,
 		kek.CreatedAt,
 	)
 	require.NoError(t, err)
@@ -374,7 +358,6 @@ func TestPostgreSQLKekRepository_Update_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("original-key"),
 		Nonce:        []byte("original-nonce"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -394,15 +377,13 @@ func TestPostgreSQLKekRepository_Update_WithTransaction(t *testing.T) {
 				  encrypted_key = $3,
 				  nonce = $4,
 				  version = $5, 
-			      is_active = $6,
-				  created_at = $7
-			  WHERE id = $8`,
-		kek.MasterKeyID,
+				  created_at = $6
+			  WHERE id = $7`,
+		"master-key-2",
 		kek.Algorithm,
-		kek.EncryptedKey,
+		[]byte("updated-key"),
 		kek.Nonce,
 		kek.Version,
-		false, // Change IsActive to false
 		kek.CreatedAt,
 		kek.ID,
 	)
@@ -416,7 +397,7 @@ func TestPostgreSQLKekRepository_Update_WithTransaction(t *testing.T) {
 	keks, err := repo.List(ctx)
 	require.NoError(t, err)
 	require.Len(t, keks, 1)
-	assert.True(t, keks[0].IsActive, "KEK should still be active after rollback")
+	assert.Equal(t, "master-key-1", keks[0].MasterKeyID, "KEK should have original master key after rollback")
 }
 
 func TestPostgreSQLKekRepository_List_WithTransaction(t *testing.T) {
@@ -435,7 +416,6 @@ func TestPostgreSQLKekRepository_List_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("key-1"),
 		Nonce:        []byte("nonce-1"),
 		Version:      1,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
@@ -455,21 +435,19 @@ func TestPostgreSQLKekRepository_List_WithTransaction(t *testing.T) {
 		EncryptedKey: []byte("key-2"),
 		Nonce:        []byte("nonce-2"),
 		Version:      2,
-		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),
 	}
 
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, is_active, created_at) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		kek2.ID,
 		kek2.MasterKeyID,
 		kek2.Algorithm,
 		kek2.EncryptedKey,
 		kek2.Nonce,
 		kek2.Version,
-		kek2.IsActive,
 		kek2.CreatedAt,
 	)
 	require.NoError(t, err)
@@ -491,7 +469,6 @@ func TestPostgreSQLKekRepository_List_WithTransaction(t *testing.T) {
 			&kek.EncryptedKey,
 			&kek.Nonce,
 			&kek.Version,
-			&kek.IsActive,
 			&kek.CreatedAt,
 		)
 		require.NoError(t, err)
