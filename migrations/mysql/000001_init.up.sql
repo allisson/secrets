@@ -62,49 +62,28 @@ CREATE TABLE IF NOT EXISTS deks (
 -- Create secrets table
 CREATE TABLE IF NOT EXISTS secrets (
     id BINARY(16) PRIMARY KEY,
-    path VARCHAR(255) NOT NULL UNIQUE,
-    created_at DATETIME(6) NOT NULL,
-    deleted_at DATETIME(6)
-);
-
--- Create secret_versions table
-CREATE TABLE IF NOT EXISTS secret_versions (
-    id BINARY(16) PRIMARY KEY,
-    secret_id BINARY(16) NOT NULL,
+    path VARCHAR(255) NOT NULL,
     version INTEGER NOT NULL,
     dek_id BINARY(16) NOT NULL,
     ciphertext BLOB NOT NULL,
     nonce BLOB NOT NULL,
     created_at DATETIME(6) NOT NULL,
-    UNIQUE KEY uk_secret_versions (secret_id, version),
-    CONSTRAINT fk_secret_versions_secret_id FOREIGN KEY (secret_id) REFERENCES secrets(id),
+    deleted_at DATETIME(6),
+    UNIQUE KEY uk_secret_versions (path, version),
     CONSTRAINT fk_secret_versions_dek_id FOREIGN KEY (dek_id) REFERENCES deks(id)
 );
-
-CREATE INDEX idx_secret_versions_secret_id ON secret_versions(secret_id);
 
 -- Create transit_keys table
 CREATE TABLE IF NOT EXISTS transit_keys (
     id BINARY(16) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    created_at DATETIME(6) NOT NULL,
-    deleted_at DATETIME(6)
-);
-
--- Create transit_key_versions table
-CREATE TABLE IF NOT EXISTS transit_key_versions (
-    id BINARY(16) PRIMARY KEY,
-    transit_key_id BINARY(16) NOT NULL,
+    name VARCHAR(255) NOT NULL,
     version INTEGER NOT NULL,
     dek_id BINARY(16) NOT NULL,
-    is_primary BOOLEAN NOT NULL,
     created_at DATETIME(6) NOT NULL,
-    UNIQUE KEY uk_transit_key_versions (transit_key_id, version),
-    CONSTRAINT fk_transit_key_versions_key_id FOREIGN KEY (transit_key_id) REFERENCES transit_keys(id),
+    deleted_at DATETIME(6),
+    UNIQUE KEY uk_transit_key_versions (name, version),
     CONSTRAINT fk_transit_key_versions_dek_id FOREIGN KEY (dek_id) REFERENCES deks(id)
 );
-
-CREATE INDEX idx_transit_key_versions_key_id ON transit_key_versions(transit_key_id);
 
 -- Create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs (

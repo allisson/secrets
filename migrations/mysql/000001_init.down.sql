@@ -1,14 +1,8 @@
 -- Drop audit_logs table
 DROP TABLE IF EXISTS audit_logs;
 
--- Drop transit_key_versions table
-DROP TABLE IF EXISTS transit_key_versions;
-
 -- Drop transit_keys table
 DROP TABLE IF EXISTS transit_keys;
-
--- Drop secret_versions table
-DROP TABLE IF EXISTS secret_versions;
 
 -- Drop secrets table
 DROP TABLE IF EXISTS secrets;

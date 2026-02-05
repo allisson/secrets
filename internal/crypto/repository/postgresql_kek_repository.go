@@ -1,9 +1,16 @@
 // Package repository implements data persistence for cryptographic key management.
 //
 // This package provides repository implementations for storing and retrieving
-// Key Encryption Keys (KEKs) in PostgreSQL and MySQL databases. Repositories
-// follow the Repository pattern and support both direct database operations
-// and transactional operations.
+// Key Encryption Keys (KEKs) and Data Encryption Keys (DEKs) in PostgreSQL and
+// MySQL databases. Repositories follow the Repository pattern and support both
+// direct database operations and transactional operations.
+//
+// The package includes repositories for:
+//   - KEK (Key Encryption Keys): Intermediate keys encrypted by master keys
+//   - DEK (Data Encryption Keys): Keys used to encrypt application data
+//
+// All repositories support transaction-aware operations via database.GetTx(),
+// enabling atomic multi-step operations such as key rotation.
 package repository
 
 import (
