@@ -18,6 +18,7 @@ import (
 
 	"github.com/allisson/secrets/internal/app"
 	"github.com/allisson/secrets/internal/config"
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
 
 // closeContainer closes all resources in the container and logs any errors.
@@ -57,6 +58,36 @@ func main() {
 				Usage: "Run database migrations",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return runMigrations()
+				},
+			},
+			{
+				Name:  "create-kek",
+				Usage: "Create a new Key Encryption Key (KEK)",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "algorithm",
+						Aliases: []string{"alg"},
+						Value:   "aes-gcm",
+						Usage:   "Encryption algorithm to use (aes-gcm or chacha20-poly1305)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return runCreateKek(ctx, cmd.String("algorithm"))
+				},
+			},
+			{
+				Name:  "rotate-kek",
+				Usage: "Rotate the Key Encryption Key (KEK)",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "algorithm",
+						Aliases: []string{"alg"},
+						Value:   "aes-gcm",
+						Usage:   "Encryption algorithm to use (aes-gcm or chacha20-poly1305)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return runRotateKek(ctx, cmd.String("algorithm"))
 				},
 			},
 		},
@@ -146,5 +177,153 @@ func runMigrations() error {
 	}
 
 	logger.Info("migrations completed successfully")
+	return nil
+}
+
+// runCreateKek creates a new Key Encryption Key using the specified algorithm.
+//
+// This command should only be run once during initial system setup to create the
+// first KEK in the database. The KEK is encrypted using the active master key
+// from the MASTER_KEYS environment variable.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - algorithmStr: The encryption algorithm ("aes-gcm" or "chacha20-poly1305")
+//
+// Requirements:
+//   - Database must be migrated (run 'migrate' command first)
+//   - MASTER_KEYS environment variable must be set
+//   - ACTIVE_MASTER_KEY_ID environment variable must be set
+//
+// Returns:
+//   - An error if the KEK already exists or creation fails
+func runCreateKek(ctx context.Context, algorithmStr string) error {
+	// Load configuration
+	cfg := config.Load()
+
+	// Create DI container
+	container := app.NewContainer(cfg)
+
+	// Get logger from container
+	logger := container.Logger()
+	logger.Info("creating new KEK", slog.String("algorithm", algorithmStr))
+
+	// Ensure cleanup on exit
+	defer closeContainer(container, logger)
+
+	// Parse algorithm
+	var algorithm cryptoDomain.Algorithm
+	switch algorithmStr {
+	case "aes-gcm":
+		algorithm = cryptoDomain.AESGCM
+	case "chacha20-poly1305":
+		algorithm = cryptoDomain.ChaCha20
+	default:
+		return fmt.Errorf("invalid algorithm: %s (valid options: aes-gcm, chacha20-poly1305)", algorithmStr)
+	}
+
+	// Get master key chain from container
+	masterKeyChain, err := container.MasterKeyChain()
+	if err != nil {
+		return fmt.Errorf("failed to load master key chain: %w", err)
+	}
+
+	logger.Info("master key chain loaded",
+		slog.String("active_master_key_id", masterKeyChain.ActiveMasterKeyID()),
+	)
+
+	// Get KEK use case from container
+	kekUseCase, err := container.KekUseCase()
+	if err != nil {
+		return fmt.Errorf("failed to initialize KEK use case: %w", err)
+	}
+
+	// Create the KEK
+	if err := kekUseCase.Create(ctx, masterKeyChain, algorithm); err != nil {
+		return fmt.Errorf("failed to create KEK: %w", err)
+	}
+
+	logger.Info("KEK created successfully",
+		slog.String("algorithm", string(algorithm)),
+		slog.String("master_key_id", masterKeyChain.ActiveMasterKeyID()),
+	)
+
+	return nil
+}
+
+// runRotateKek rotates the existing Key Encryption Key using the specified algorithm.
+//
+// This command creates a new KEK version and marks the previous active KEK as inactive.
+// The new KEK is encrypted using the active master key from the MASTER_KEYS environment
+// variable. This operation is atomic and maintains backward compatibility - existing
+// DEKs encrypted with the old KEK remain readable.
+//
+// Key rotation is recommended every 90 days or when:
+//   - Suspecting KEK compromise
+//   - Changing encryption algorithms
+//   - Rotating master keys
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - algorithmStr: The encryption algorithm for the new KEK ("aes-gcm" or "chacha20-poly1305")
+//
+// Requirements:
+//   - An active KEK must already exist (run 'create-kek' first)
+//   - MASTER_KEYS environment variable must be set
+//   - ACTIVE_MASTER_KEY_ID environment variable must be set
+//
+// Returns:
+//   - An error if no active KEK exists or rotation fails
+func runRotateKek(ctx context.Context, algorithmStr string) error {
+	// Load configuration
+	cfg := config.Load()
+
+	// Create DI container
+	container := app.NewContainer(cfg)
+
+	// Get logger from container
+	logger := container.Logger()
+	logger.Info("rotating KEK", slog.String("algorithm", algorithmStr))
+
+	// Ensure cleanup on exit
+	defer closeContainer(container, logger)
+
+	// Parse algorithm
+	var algorithm cryptoDomain.Algorithm
+	switch algorithmStr {
+	case "aes-gcm":
+		algorithm = cryptoDomain.AESGCM
+	case "chacha20-poly1305":
+		algorithm = cryptoDomain.ChaCha20
+	default:
+		return fmt.Errorf("invalid algorithm: %s (valid options: aes-gcm, chacha20-poly1305)", algorithmStr)
+	}
+
+	// Get master key chain from container
+	masterKeyChain, err := container.MasterKeyChain()
+	if err != nil {
+		return fmt.Errorf("failed to load master key chain: %w", err)
+	}
+
+	logger.Info("master key chain loaded",
+		slog.String("active_master_key_id", masterKeyChain.ActiveMasterKeyID()),
+	)
+
+	// Get KEK use case from container
+	kekUseCase, err := container.KekUseCase()
+	if err != nil {
+		return fmt.Errorf("failed to initialize KEK use case: %w", err)
+	}
+
+	// Rotate the KEK
+	if err := kekUseCase.Rotate(ctx, masterKeyChain, algorithm); err != nil {
+		return fmt.Errorf("failed to rotate KEK: %w", err)
+	}
+
+	logger.Info("KEK rotated successfully",
+		slog.String("algorithm", string(algorithm)),
+		slog.String("master_key_id", masterKeyChain.ActiveMasterKeyID()),
+	)
+
 	return nil
 }

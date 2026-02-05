@@ -240,6 +240,98 @@ make run-migrate
 make docker-run-migrate
 ```
 
+### 🔑 Key Encryption Key (KEK) Management
+
+#### Create Initial KEK
+
+Before starting the server, you need to create the initial Key Encryption Key (KEK):
+
+```bash
+# Build the application
+make build
+
+# Create KEK with default algorithm (AES-GCM)
+./bin/app create-kek
+
+# Or specify ChaCha20-Poly1305 algorithm
+./bin/app create-kek --algorithm chacha20-poly1305
+
+# Or using short flag
+./bin/app create-kek --alg chacha20-poly1305
+```
+
+**Requirements:**
+- Database must be migrated (run `make run-migrate` first)
+- Environment variables must be set: `MASTER_KEYS` and `ACTIVE_MASTER_KEY_ID`
+- Should only be run once during initial setup
+
+**Example:**
+```bash
+# Set up environment variables
+export MASTER_KEYS="default:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y="
+export ACTIVE_MASTER_KEY_ID="default"
+export DB_DRIVER="postgres"
+export DB_CONNECTION_STRING="postgres://user:password@localhost:5432/secrets?sslmode=disable"
+
+# Run migrations
+make run-migrate
+
+# Create initial KEK
+./bin/app create-kek --algorithm aes-gcm
+```
+
+**Output:**
+```json
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"creating new KEK","algorithm":"aes-gcm"}
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"master key chain loaded","active_master_key_id":"default"}
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"KEK created successfully","algorithm":"aes-gcm","master_key_id":"default"}
+```
+
+#### Rotate KEK
+
+Rotate the Key Encryption Key to create a new version and mark the previous one as inactive. This is recommended every 90 days or when suspecting key compromise.
+
+```bash
+# Rotate KEK with default algorithm (AES-GCM)
+./bin/app rotate-kek
+
+# Or specify ChaCha20-Poly1305 algorithm
+./bin/app rotate-kek --algorithm chacha20-poly1305
+
+# Or using short flag
+./bin/app rotate-kek --alg chacha20-poly1305
+```
+
+**Requirements:**
+- An active KEK must already exist (run `create-kek` first)
+- Database must be accessible
+- Environment variables must be set: `MASTER_KEYS` and `ACTIVE_MASTER_KEY_ID`
+
+**When to Rotate:**
+- ⏰ **Regularly**: Every 90 days as a security best practice
+- 🚨 **Security Incident**: When suspecting KEK compromise
+- 🔄 **Algorithm Change**: When upgrading to a different encryption algorithm
+- 🔑 **Master Key Rotation**: After rotating master keys
+
+**Example:**
+```bash
+# Rotate to a new KEK version
+./bin/app rotate-kek --algorithm aes-gcm
+```
+
+**Output:**
+```json
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"rotating KEK","algorithm":"aes-gcm"}
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"master key chain loaded","active_master_key_id":"default"}
+{"time":"2026-02-05T00:14:23Z","level":"INFO","msg":"KEK rotated successfully","algorithm":"aes-gcm","master_key_id":"default"}
+```
+
+**Important Notes:**
+- ✅ Rotation is atomic - either fully succeeds or fully fails
+- ✅ Old KEK remains in the database for decrypting existing DEKs
+- ✅ New secrets will use the new KEK version
+- ✅ Backward compatibility is maintained - existing secrets remain readable
+
 ### 🚀 Starting the Server
 
 ```bash
