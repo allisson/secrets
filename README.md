@@ -131,6 +131,47 @@ secrets/
 - PostgreSQL 12+ or MySQL 8.0+
 - Docker (optional, for containerized databases)
 
+### 🔧 Initial Setup Workflow
+
+Follow these steps to get the system up and running:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/allisson/secrets.git
+cd secrets
+
+# 2. Install dependencies
+go mod download
+
+# 3. Build the application
+make build
+
+# 4. Generate a master key
+./bin/app create-master-key --id default
+
+# 5. Copy the output and create .env file
+cp .env.example .env
+# Edit .env and paste the MASTER_KEYS and ACTIVE_MASTER_KEY_ID values
+
+# 6. Start the database (using Docker)
+make dev-postgres
+
+# 7. Run database migrations
+./bin/app migrate
+
+# 8. Create the initial Key Encryption Key (KEK)
+./bin/app create-kek
+
+# 9. Start the server
+./bin/app server
+```
+
+The server will be available at `http://localhost:8080`. Test with:
+
+```bash
+curl http://localhost:8080/health
+```
+
 ### 📦 Installation
 
 ```bash
@@ -141,14 +182,16 @@ cd secrets
 # Install dependencies
 go mod download
 
-# Generate a master key (base64-encoded 32-byte key)
-openssl rand -base64 32
+# Build the application
+make build
 
-# Create .env file from example
+# Generate a master key using the built-in command
+./bin/app create-master-key
+
+# Copy the output environment variables to your .env file
 cp .env.example .env
 
-# Edit .env and set your MASTER_KEYS and database connection
-# MASTER_KEYS=default:<your-base64-key>
+# Edit .env and paste the MASTER_KEYS and ACTIVE_MASTER_KEY_ID values
 ```
 
 ### 🐳 Running with Docker
@@ -157,8 +200,20 @@ cp .env.example .env
 # Start PostgreSQL database
 make dev-postgres
 
+# Build the application
+make build
+
+# Generate master key and copy to .env
+./bin/app create-master-key --id default
+
+# Edit .env file and paste the generated MASTER_KEYS and ACTIVE_MASTER_KEY_ID
+nano .env
+
 # Run database migrations
 make run-migrate
+
+# Create initial KEK
+./bin/app create-kek
 
 # Start the server
 make run-server
@@ -218,7 +273,35 @@ Master keys are the root of trust in the envelope encryption hierarchy. They are
 - ⭐ **Active Key**: `ACTIVE_MASTER_KEY_ID` specifies which key encrypts new KEKs
 - 🔄 **Rotation**: Add a new key to `MASTER_KEYS`, update `ACTIVE_MASTER_KEY_ID`, and rotate KEKs
 
-Example:
+#### Generate Master Key
+
+The recommended way to generate a master key is using the built-in command:
+
+```bash
+# Generate with default ID (master-key-YYYY-MM-DD)
+./bin/app create-master-key
+
+# Generate with custom ID
+./bin/app create-master-key --id prod-master-key-2025
+```
+
+**Output:**
+```bash
+# Master Key Configuration
+# Copy these environment variables to your .env file or secrets manager
+
+MASTER_KEYS="prod-master-key-2025:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y="
+ACTIVE_MASTER_KEY_ID="prod-master-key-2025"
+
+# For multiple master keys (key rotation), use comma-separated format:
+# MASTER_KEYS="prod-master-key-2025:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y=,new-key:base64-encoded-new-key"
+# ACTIVE_MASTER_KEY_ID="new-key"
+```
+
+**Alternative Method:**
+
+You can also generate a master key using OpenSSL:
+
 ```bash
 # Generate a new 256-bit key
 openssl rand -base64 32
@@ -229,6 +312,42 @@ ACTIVE_MASTER_KEY_ID=default
 ```
 
 ## 💻 Usage
+
+### 🔑 Generate Master Key
+
+Before setting up the system, generate a cryptographically secure master key:
+
+```bash
+# Build the application
+make build
+
+# Generate master key with default ID
+./bin/app create-master-key
+
+# Or generate with custom ID
+./bin/app create-master-key --id prod-master-key-2025
+./bin/app create-master-key -i prod-master-key-2025  # Short flag
+```
+
+**Output:**
+```
+# Master Key Configuration
+# Copy these environment variables to your .env file or secrets manager
+
+MASTER_KEYS="prod-master-key-2025:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y="
+ACTIVE_MASTER_KEY_ID="prod-master-key-2025"
+
+# For multiple master keys (key rotation), use comma-separated format:
+# MASTER_KEYS="prod-master-key-2025:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y=,new-key:base64-encoded-new-key"
+# ACTIVE_MASTER_KEY_ID="new-key"
+```
+
+**Security Notes:**
+- 🔐 The command generates a cryptographically secure 32-byte (256-bit) key using `crypto/rand`
+- 🧹 The key is automatically zeroed from memory after encoding
+- 💾 Store the output securely in a secrets manager or encrypted vault
+- ⚠️ Never commit master keys to version control
+- 🏢 For production, consider using a proper KMS (AWS KMS, HashiCorp Vault, etc.)
 
 ### 🗄️ Database Migrations
 
@@ -617,6 +736,90 @@ GET /api/audit-logs?limit=100&offset=0
 ```
 
 ## 🛠️ Development
+
+### 🎯 CLI Commands
+
+The application provides several CLI commands for managing the system:
+
+```bash
+# View all available commands
+./bin/app --help
+
+# View help for a specific command
+./bin/app create-master-key --help
+```
+
+**Available Commands:**
+
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `server` | Start the HTTP server | `./bin/app server` |
+| `migrate` | Run database migrations | `./bin/app migrate` |
+| `create-master-key` | Generate a new Master Key | `./bin/app create-master-key [--id <key-id>]` |
+| `create-kek` | Create initial Key Encryption Key | `./bin/app create-kek [--algorithm <alg>]` |
+| `rotate-kek` | Rotate the Key Encryption Key | `./bin/app rotate-kek [--algorithm <alg>]` |
+
+**Command Details:**
+
+#### `create-master-key` - Generate Master Key
+```bash
+# Generate with auto-generated ID (master-key-YYYY-MM-DD)
+./bin/app create-master-key
+
+# Generate with custom ID
+./bin/app create-master-key --id prod-master-key-2025
+./bin/app create-master-key -i prod-master-key-2025  # Short flag
+```
+- **Purpose**: Generate cryptographically secure 32-byte master key
+- **Output**: Environment variables ready to copy to `.env` file
+- **Security**: Key is zeroed from memory after generation
+- **When to run**: Before initial setup or during master key rotation
+
+#### `migrate` - Database Migrations
+```bash
+./bin/app migrate
+```
+- **Purpose**: Run database schema migrations
+- **Requirements**: Database connection configured in environment
+- **When to run**: After database creation, before first use
+- **Supported databases**: PostgreSQL, MySQL
+
+#### `create-kek` - Create Initial KEK
+```bash
+# Default algorithm (AES-GCM)
+./bin/app create-kek
+
+# Specify algorithm
+./bin/app create-kek --algorithm chacha20-poly1305
+./bin/app create-kek --alg aes-gcm  # Short flag
+```
+- **Purpose**: Create the first Key Encryption Key
+- **Requirements**: Database migrated, master keys configured
+- **When to run**: Once during initial setup
+- **Algorithms**: `aes-gcm`, `chacha20-poly1305`
+
+#### `rotate-kek` - Rotate KEK
+```bash
+# Default algorithm (AES-GCM)
+./bin/app rotate-kek
+
+# Specify algorithm
+./bin/app rotate-kek --algorithm chacha20-poly1305
+./bin/app rotate-kek --alg aes-gcm  # Short flag
+```
+- **Purpose**: Create new KEK version and mark old as inactive
+- **Requirements**: Active KEK already exists
+- **When to run**: Every 90 days or after security incident
+- **Effect**: New secrets use new KEK, old secrets remain readable
+
+#### `server` - Start HTTP Server
+```bash
+./bin/app server
+```
+- **Purpose**: Start the HTTP API server
+- **Requirements**: Database migrated, KEK created
+- **Port**: Configured via `SERVER_PORT` environment variable (default: 8080)
+- **Endpoints**: Health check, secrets, transit, clients, policies, audit logs
 
 ### 🔨 Build Commands
 
