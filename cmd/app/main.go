@@ -3,12 +3,15 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
@@ -58,6 +61,21 @@ func main() {
 				Usage: "Run database migrations",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return runMigrations()
+				},
+			},
+			{
+				Name:  "create-master-key",
+				Usage: "Generate a new Master Key for envelope encryption",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "id",
+						Aliases: []string{"i"},
+						Value:   "",
+						Usage:   "Master key ID (e.g., prod-master-key-2025)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return runCreateMasterKey(cmd.String("id"))
 				},
 			},
 			{
@@ -144,6 +162,89 @@ func runServer(ctx context.Context) error {
 	case err := <-serverErr:
 		return err
 	}
+
+	return nil
+}
+
+// runCreateMasterKey generates a new master key and displays the environment variable configuration.
+//
+// This command is a helper for generating cryptographically secure master keys for use in
+// envelope encryption. The generated key is 32 bytes (256 bits) suitable for AES-256 encryption.
+// This is the recommended way to generate master keys for the Secrets system.
+//
+// The key is generated using crypto/rand.Read which provides cryptographically secure random bytes.
+// After encoding, the key material is immediately zeroed from memory for security. The output
+// format matches the MASTER_KEYS and ACTIVE_MASTER_KEY_ID environment variables expected by
+// LoadMasterKeyChainFromEnv.
+//
+// Parameters:
+//   - keyID: Optional key ID for the master key (e.g., "prod-master-key-2025")
+//     If empty, a default ID in the format "master-key-YYYY-MM-DD" is generated
+//
+// Output format:
+//
+//	MASTER_KEYS="<keyID>:<base64-encoded-key>"
+//	ACTIVE_MASTER_KEY_ID="<keyID>"
+//
+// The command also displays helpful comments about key rotation with multiple keys.
+//
+// Workflow example:
+//
+//	# Step 1: Generate master key
+//	./bin/app create-master-key --id prod-master-key-2025
+//
+//	# Step 2: Copy output to .env file
+//	# MASTER_KEYS="prod-master-key-2025:..."
+//	# ACTIVE_MASTER_KEY_ID="prod-master-key-2025"
+//
+//	# Step 3: Run migrations
+//	./bin/app migrate
+//
+//	# Step 4: Create initial KEK
+//	./bin/app create-kek
+//
+//	# Step 5: Start server
+//	./bin/app server
+//
+// Security notes:
+//   - Store the output securely (e.g., in a secrets manager or encrypted vault)
+//   - Never commit master keys to version control
+//   - For production, consider using a proper KMS instead of environment variables
+//   - Rotate master keys periodically according to your security policy (e.g., every 90 days)
+//   - When rotating, generate a new key, add it to MASTER_KEYS, update ACTIVE_MASTER_KEY_ID, and rotate KEKs
+//
+// Returns:
+//   - An error if key generation fails
+func runCreateMasterKey(keyID string) error {
+	// Generate default key ID if not provided
+	if keyID == "" {
+		keyID = fmt.Sprintf("master-key-%s", time.Now().Format("2006-01-02"))
+	}
+
+	// Generate a cryptographically secure 32-byte master key
+	masterKey := make([]byte, 32)
+	if _, err := rand.Read(masterKey); err != nil {
+		return fmt.Errorf("failed to generate master key: %w", err)
+	}
+
+	// Encode the master key to base64
+	encodedKey := base64.StdEncoding.EncodeToString(masterKey)
+
+	// Zero out the master key from memory for security
+	for i := range masterKey {
+		masterKey[i] = 0
+	}
+
+	// Print the environment variable configuration
+	fmt.Println("# Master Key Configuration")
+	fmt.Println("# Copy these environment variables to your .env file or secrets manager")
+	fmt.Println()
+	fmt.Printf("MASTER_KEYS=\"%s:%s\"\n", keyID, encodedKey)
+	fmt.Printf("ACTIVE_MASTER_KEY_ID=\"%s\"\n", keyID)
+	fmt.Println()
+	fmt.Println("# For multiple master keys (key rotation), use comma-separated format:")
+	fmt.Printf("# MASTER_KEYS=\"%s:%s,new-key:base64-encoded-new-key\"\n", keyID, encodedKey)
+	fmt.Println("# ACTIVE_MASTER_KEY_ID=\"new-key\"")
 
 	return nil
 }
