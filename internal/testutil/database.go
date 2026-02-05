@@ -68,7 +68,7 @@ func CleanupPostgresDB(t *testing.T, db *sql.DB) {
 
 	// Truncate tables in reverse order to respect foreign key constraints
 	_, err := db.Exec(
-		"TRUNCATE TABLE audit_logs, transit_key_versions, transit_keys, secret_versions, secrets, deks, keks, client_policies, policies, tokens, clients RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE audit_logs, transit_keys, secrets, deks, keks, client_policies, policies, tokens, clients RESTART IDENTITY CASCADE",
 	)
 	require.NoError(t, err, "failed to truncate postgres tables")
 }
@@ -85,14 +85,8 @@ func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 	_, err = db.Exec("TRUNCATE TABLE audit_logs")
 	require.NoError(t, err, "failed to truncate audit_logs table")
 
-	_, err = db.Exec("TRUNCATE TABLE transit_key_versions")
-	require.NoError(t, err, "failed to truncate transit_key_versions table")
-
 	_, err = db.Exec("TRUNCATE TABLE transit_keys")
 	require.NoError(t, err, "failed to truncate transit_keys table")
-
-	_, err = db.Exec("TRUNCATE TABLE secret_versions")
-	require.NoError(t, err, "failed to truncate secret_versions table")
 
 	_, err = db.Exec("TRUNCATE TABLE secrets")
 	require.NoError(t, err, "failed to truncate secrets table")

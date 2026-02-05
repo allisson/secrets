@@ -58,45 +58,26 @@ CREATE TABLE IF NOT EXISTS deks (
 -- Create secrets table
 CREATE TABLE IF NOT EXISTS secrets (
     id UUID PRIMARY KEY,
-    path TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL,
-    deleted_at TIMESTAMPTZ
-);
-
--- Create secret_versions table
-CREATE TABLE IF NOT EXISTS secret_versions (
-    id UUID PRIMARY KEY,
-    secret_id UUID NOT NULL REFERENCES secrets(id),
+    path TEXT NOT NULL,
     version INTEGER NOT NULL,
     dek_id UUID NOT NULL REFERENCES deks(id),
     ciphertext BYTEA NOT NULL,
     nonce BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
-    UNIQUE (secret_id, version)
+    deleted_at TIMESTAMPTZ,
+    UNIQUE (path, version)
 );
-
-CREATE INDEX idx_secret_versions_secret_id ON secret_versions(secret_id);
 
 -- Create transit_keys table
 CREATE TABLE IF NOT EXISTS transit_keys (
     id UUID PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL,
-    deleted_at TIMESTAMPTZ
-);
-
--- Create transit_keys table
-CREATE TABLE IF NOT EXISTS transit_key_versions (
-    id UUID PRIMARY KEY,
-    transit_key_id UUID NOT NULL REFERENCES transit_keys(id),
+    name TEXT NOT NULL,
     version INTEGER NOT NULL,
     dek_id UUID NOT NULL REFERENCES deks(id),
-    is_primary BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
-    UNIQUE (transit_key_id, version)
+    deleted_at TIMESTAMPTZ,
+    UNIQUE (name, version)
 );
-
-CREATE INDEX idx_transit_key_versions_key_id ON transit_key_versions(transit_key_id);
 
 -- Create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs (
