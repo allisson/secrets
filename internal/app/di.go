@@ -10,6 +10,10 @@ import (
 	"sync"
 
 	"github.com/allisson/secrets/internal/config"
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
+	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
 )
@@ -21,22 +25,38 @@ type Container struct {
 	config *config.Config
 
 	// Infrastructure
-	logger *slog.Logger
-	db     *sql.DB
+	logger         *slog.Logger
+	db             *sql.DB
+	masterKeyChain *cryptoDomain.MasterKeyChain
 
 	// Managers
 	txManager database.TxManager
+
+	// Services
+	aeadManager cryptoService.AEADManager
+	keyManager  cryptoService.KeyManager
+
+	// Repositories
+	kekRepository cryptoUseCase.KekRepository
+
+	// Use Cases
+	kekUseCase cryptoUseCase.KekUseCase
 
 	// Servers and Workers
 	httpServer *http.Server
 
 	// Initialization flags and mutex for thread-safety
-	mu             sync.Mutex
-	loggerInit     sync.Once
-	dbInit         sync.Once
-	txManagerInit  sync.Once
-	httpServerInit sync.Once
-	initErrors     map[string]error
+	mu                 sync.Mutex
+	loggerInit         sync.Once
+	dbInit             sync.Once
+	masterKeyChainInit sync.Once
+	txManagerInit      sync.Once
+	aeadManagerInit    sync.Once
+	keyManagerInit     sync.Once
+	kekRepositoryInit  sync.Once
+	kekUseCaseInit     sync.Once
+	httpServerInit     sync.Once
+	initErrors         map[string]error
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -80,6 +100,25 @@ func (c *Container) DB() (*sql.DB, error) {
 	return c.db, nil
 }
 
+// MasterKeyChain returns the master key chain loaded from environment variables.
+// It creates and loads the master key chain on first access.
+func (c *Container) MasterKeyChain() (*cryptoDomain.MasterKeyChain, error) {
+	var err error
+	c.masterKeyChainInit.Do(func() {
+		c.masterKeyChain, err = c.initMasterKeyChain()
+		if err != nil {
+			c.initErrors["masterKeyChain"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["masterKeyChain"]; exists {
+		return nil, storedErr
+	}
+	return c.masterKeyChain, nil
+}
+
 // TxManager returns the transaction manager.
 // It requires a database connection to be initialized first.
 func (c *Container) TxManager() (database.TxManager, error) {
@@ -97,6 +136,61 @@ func (c *Container) TxManager() (database.TxManager, error) {
 		return nil, storedErr
 	}
 	return c.txManager, nil
+}
+
+// AEADManager returns the AEAD manager service.
+func (c *Container) AEADManager() cryptoService.AEADManager {
+	c.aeadManagerInit.Do(func() {
+		c.aeadManager = c.initAEADManager()
+	})
+	return c.aeadManager
+}
+
+// KeyManager returns the key manager service.
+// It requires the AEAD manager to be initialized first.
+func (c *Container) KeyManager() cryptoService.KeyManager {
+	c.keyManagerInit.Do(func() {
+		c.keyManager = c.initKeyManager()
+	})
+	return c.keyManager
+}
+
+// KekRepository returns the KEK repository.
+// It requires a database connection to be initialized first.
+func (c *Container) KekRepository() (cryptoUseCase.KekRepository, error) {
+	var err error
+	c.kekRepositoryInit.Do(func() {
+		c.kekRepository, err = c.initKekRepository()
+		if err != nil {
+			c.initErrors["kekRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["kekRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.kekRepository, nil
+}
+
+// KekUseCase returns the KEK use case.
+// It requires the transaction manager, KEK repository, and key manager to be initialized first.
+func (c *Container) KekUseCase() (cryptoUseCase.KekUseCase, error) {
+	var err error
+	c.kekUseCaseInit.Do(func() {
+		c.kekUseCase, err = c.initKekUseCase()
+		if err != nil {
+			c.initErrors["kekUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["kekUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.kekUseCase, nil
 }
 
 // HTTPServer returns the HTTP server instance.
@@ -130,6 +224,11 @@ func (c *Container) Shutdown(ctx context.Context) error {
 		if err := c.httpServer.Shutdown(ctx); err != nil {
 			shutdownErrors = append(shutdownErrors, fmt.Errorf("http server shutdown: %w", err))
 		}
+	}
+
+	// Close master key chain if initialized
+	if c.masterKeyChain != nil {
+		c.masterKeyChain.Close()
 	}
 
 	// Close database connection if initialized
@@ -185,6 +284,15 @@ func (c *Container) initDB() (*sql.DB, error) {
 	return db, nil
 }
 
+// initMasterKeyChain loads the master key chain from environment variables.
+func (c *Container) initMasterKeyChain() (*cryptoDomain.MasterKeyChain, error) {
+	masterKeyChain, err := cryptoDomain.LoadMasterKeyChainFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load master key chain: %w", err)
+	}
+	return masterKeyChain, nil
+}
+
 // initTxManager creates the transaction manager using the database connection.
 func (c *Container) initTxManager() (database.TxManager, error) {
 	db, err := c.DB()
@@ -205,4 +313,49 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 	)
 
 	return server, nil
+}
+
+// initAEADManager creates the AEAD manager service.
+func (c *Container) initAEADManager() cryptoService.AEADManager {
+	return cryptoService.NewAEADManager()
+}
+
+// initKeyManager creates the key manager service using the AEAD manager.
+func (c *Container) initKeyManager() cryptoService.KeyManager {
+	aeadManager := c.AEADManager()
+	return cryptoService.NewKeyManager(aeadManager)
+}
+
+// initKekRepository creates the KEK repository based on the database driver.
+func (c *Container) initKekRepository() (cryptoUseCase.KekRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for kek repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return cryptoRepository.NewPostgreSQLKekRepository(db), nil
+	case "mysql":
+		return cryptoRepository.NewMySQLKekRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initKekUseCase creates the KEK use case with all its dependencies.
+func (c *Container) initKekUseCase() (cryptoUseCase.KekUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for kek use case: %w", err)
+	}
+
+	kekRepository, err := c.KekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kek repository for kek use case: %w", err)
+	}
+
+	keyManager := c.KeyManager()
+
+	return cryptoUseCase.NewKekUseCase(txManager, kekRepository, keyManager), nil
 }
