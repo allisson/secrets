@@ -1,3 +1,43 @@
+// Package service provides cryptographic services for key management and encryption.
+//
+// This package implements the service layer for envelope encryption, providing
+// concrete implementations of cryptographic operations using industry-standard
+// algorithms. Services encapsulate complex cryptographic logic and provide
+// clean interfaces for higher-level use cases.
+//
+// # Key Components
+//
+// The package includes:
+//   - KeyManager: Manages KEK and DEK lifecycle (generation, encryption, decryption)
+//   - AeadManager: Factory for creating algorithm-specific AEAD implementations
+//   - AEAD implementations: AES-GCM (hardware-accelerated) and ChaCha20-Poly1305 (software-based)
+//
+// # Supported Algorithms
+//
+// All algorithms provide Authenticated Encryption with Associated Data (AEAD):
+//   - AES-256-GCM: Hardware-accelerated on modern CPUs, excellent performance
+//   - ChaCha20-Poly1305: Pure software implementation, constant-time execution
+//
+// # Key Management
+//
+// The KeyManager service handles:
+//   - KEK generation and encryption with master keys
+//   - DEK generation and encryption with KEKs
+//   - Key unwrapping (decryption) for data access
+//   - Secure key material handling with memory zeroing
+//
+// # Usage Example
+//
+//	// Create key manager
+//	aeadManager := service.NewAeadManager()
+//	keyManager := service.NewKeyManagerService(aeadManager)
+//
+//	// Generate and encrypt a new KEK
+//	masterKey := cryptoDomain.NewMasterKey("master-1", []byte("..."))
+//	kek, err := keyManager.CreateKek(masterKey, cryptoDomain.AESGCM)
+//
+//	// Generate and encrypt a new DEK
+//	dek, err := keyManager.CreateDek(kek, cryptoDomain.AESGCM)
 package service
 
 import (

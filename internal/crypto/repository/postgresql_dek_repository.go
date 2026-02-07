@@ -17,6 +17,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
+
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -105,6 +107,61 @@ func (p *PostgreSQLDekRepository) Create(ctx context.Context, dek *cryptoDomain.
 		return apperrors.Wrap(err, "failed to create dek")
 	}
 	return nil
+}
+
+// Get retrieves a DEK by its ID from the PostgreSQL database.
+//
+// This method fetches a Data Encryption Key by its unique identifier. The DEK
+// is returned with all fields populated except the plaintext key (which requires
+// decryption with the KEK). This method supports transaction context via
+// database.GetTx(), enabling consistent reads within a transaction.
+//
+// Parameters:
+//   - ctx: Context for cancellation, timeouts, and transaction propagation
+//   - dekID: The UUID of the DEK to retrieve
+//
+// Returns:
+//   - The DEK if found with all encrypted fields populated
+//   - ErrNotFound if the DEK doesn't exist
+//   - An error if the database query fails
+//
+// Example:
+//
+//	dek, err := repo.Get(ctx, dekID)
+//	if err != nil {
+//	    if errors.Is(err, errors.ErrNotFound) {
+//	        return nil, fmt.Errorf("DEK not found")
+//	    }
+//	    return nil, err
+//	}
+//	// Use dek.KekID to get the appropriate KEK for decryption
+func (p *PostgreSQLDekRepository) Get(
+	ctx context.Context,
+	dekID uuid.UUID,
+) (*cryptoDomain.Dek, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, kek_id, algorithm, encrypted_key, nonce, created_at 
+			  FROM deks 
+			  WHERE id = $1`
+
+	var dek cryptoDomain.Dek
+	err := querier.QueryRowContext(ctx, query, dekID).Scan(
+		&dek.ID,
+		&dek.KekID,
+		&dek.Algorithm,
+		&dek.EncryptedKey,
+		&dek.Nonce,
+		&dek.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, cryptoDomain.ErrDekNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get dek")
+	}
+
+	return &dek, nil
 }
 
 // Update modifies an existing DEK in the PostgreSQL database.

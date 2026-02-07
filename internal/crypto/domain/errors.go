@@ -88,4 +88,20 @@ var (
 	//
 	// HTTP Status: 404 Not Found
 	ErrMasterKeyNotFound = errors.Wrap(errors.ErrNotFound, "master key not found")
+
+	// ErrDekNotFound indicates a DEK with the specified ID was not found.
+	//
+	// This error is returned when attempting to retrieve a Data Encryption Key by ID
+	// but the key doesn't exist in the database.
+	//
+	// HTTP Status: 404 Not Found
+	ErrDekNotFound = errors.Wrap(errors.ErrNotFound, "dek not found")
+
+	// ErrKekNotFound indicates a KEK with the specified ID was not found.
+	//
+	// This error is returned when attempting to retrieve a Key Encryption Key by ID
+	// but the key doesn't exist in the KEK chain.
+	//
+	// HTTP Status: 404 Not Found
+	ErrKekNotFound = errors.Wrap(errors.ErrNotFound, "kek not found")
 )

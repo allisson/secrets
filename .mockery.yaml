@@ -16,3 +16,8 @@ packages:
   github.com/allisson/secrets/internal/database:
     interfaces:
       TxManager:
+  github.com/allisson/secrets/internal/secrets/usecase:
+    interfaces:
+      DekRepository:
+      SecretRepository:
+      SecretUseCase:

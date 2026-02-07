@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
+
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -110,6 +112,73 @@ func (m *MySQLDekRepository) Create(ctx context.Context, dek *cryptoDomain.Dek) 
 		return apperrors.Wrap(err, "failed to create dek")
 	}
 	return nil
+}
+
+// Get retrieves a DEK by its ID from the MySQL database.
+//
+// This method fetches a Data Encryption Key by its unique identifier. The DEK ID
+// is marshaled to BINARY(16) format for the query, and the returned binary UUIDs
+// are unmarshaled back to uuid.UUID types. This method supports transaction context
+// via database.GetTx(), enabling consistent reads within a transaction.
+//
+// Parameters:
+//   - ctx: Context for cancellation, timeouts, and transaction propagation
+//   - dekID: The UUID of the DEK to retrieve
+//
+// Returns:
+//   - The DEK if found with all encrypted fields populated
+//   - ErrNotFound if the DEK doesn't exist
+//   - An error if UUID marshaling/unmarshaling fails or the database query fails
+//
+// Example:
+//
+//	dek, err := repo.Get(ctx, dekID)
+//	if err != nil {
+//	    if errors.Is(err, errors.ErrNotFound) {
+//	        return nil, fmt.Errorf("DEK not found")
+//	    }
+//	    return nil, err
+//	}
+//	// Use dek.KekID to get the appropriate KEK for decryption
+func (m *MySQLDekRepository) Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, kek_id, algorithm, encrypted_key, nonce, created_at 
+			  FROM deks 
+			  WHERE id = ?`
+
+	id, err := dekID.MarshalBinary()
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to marshal dek id")
+	}
+
+	var dek cryptoDomain.Dek
+	var idBytes, kekIDBytes []byte
+
+	err = querier.QueryRowContext(ctx, query, id).Scan(
+		&idBytes,
+		&kekIDBytes,
+		&dek.Algorithm,
+		&dek.EncryptedKey,
+		&dek.Nonce,
+		&dek.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, cryptoDomain.ErrDekNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get dek")
+	}
+
+	if err := dek.ID.UnmarshalBinary(idBytes); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+	}
+
+	if err := dek.KekID.UnmarshalBinary(kekIDBytes); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal kek id")
+	}
+
+	return &dek, nil
 }
 
 // Update modifies an existing DEK in the MySQL database.

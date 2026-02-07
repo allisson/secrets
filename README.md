@@ -33,9 +33,11 @@ Secrets is a secure key management and secrets storage system built with Go, des
 
 ### 📦 Secrets Management
 
-- 📚 **Versioned Secrets** - Store secrets with full version history and rollback capability
+- 📚 **Automatic Versioning** - Every secret update creates a new version, preserving complete history
 - 🗂️ **Path-based Organization** - Hierarchical secret organization (e.g., `/app/prod/db-password`)
 - 🗑️ **Soft Deletion** - Mark secrets as deleted without losing historical data
+- 🔄 **Immutable History** - Each version is a separate database record with its own DEK
+- 📝 **Version Tracking** - Retrieve current or specific historical versions of secrets
 
 ### 🛡️ Access Control & Authentication
 
@@ -56,13 +58,16 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🎯 **Clean Architecture** - Clear separation of domain, use case, repository, and presentation layers
 - 🧩 **Domain-Driven Design** - Business logic encapsulated in domain models
 - 🗄️ **Multi-Database Support** - PostgreSQL and MySQL with dedicated repository implementations
-- ⚡ **Transaction Management** - ACID guarantees for atomic operations
+- 🔑 **Complete Repository Layer** - KEK and DEK repositories with transaction support and database-specific optimizations
+- ⚡ **Transaction Management** - ACID guarantees for atomic operations (key rotation, secret updates)
 - 💉 **Dependency Injection** - Centralized wiring with lazy initialization
 - 🌐 **RESTful API** - JSON-based HTTP API with standard status codes
 
 ## 🏗️ Architecture
 
 ### 🔐 Envelope Encryption Model
+
+The system implements a complete three-tier envelope encryption architecture with full repository layer support for both PostgreSQL and MySQL:
 
 ```
 ┌─────────────────┐
@@ -88,12 +93,85 @@ Secrets is a secure key management and secrets storage system built with Go, des
 └─────────────────┘
 ```
 
+### 🗄️ Database Schema
+
+The system uses the following core tables for key management and secret storage:
+
+**Key Encryption Keys (KEKs) Table:**
+- Stores encrypted KEKs that are encrypted with the master key
+- Fields: `id` (UUID), `master_key_id` (TEXT), `algorithm` (TEXT), `encrypted_key` (BYTEA/BLOB), `nonce` (BYTEA/BLOB), `version` (INTEGER), `created_at` (TIMESTAMPTZ/DATETIME)
+- Each KEK version enables key rotation without re-encrypting all DEKs
+
+**Data Encryption Keys (DEKs) Table:**
+- Stores encrypted DEKs that are encrypted with KEKs
+- Fields: `id` (UUID), `kek_id` (UUID FK → keks.id), `algorithm` (TEXT), `encrypted_key` (BYTEA/BLOB), `nonce` (BYTEA/BLOB), `created_at` (TIMESTAMPTZ/DATETIME)
+- One DEK per secret version for cryptographic isolation
+- Foreign key relationship ensures DEKs are always associated with valid KEKs
+
+**Secrets Table:**
+- Stores encrypted secret data with automatic versioning
+- Fields: `id` (UUID), `path` (TEXT), `version` (INTEGER), `dek_id` (UUID FK → deks.id), `ciphertext` (BYTEA/BLOB), `nonce` (BYTEA/BLOB), `created_at` (TIMESTAMPTZ/DATETIME), `deleted_at` (TIMESTAMPTZ/DATETIME)
+- Each version is a separate record with its own DEK
+- Unique constraint on (path, version) ensures version consistency
+
+**Database-Specific Handling:**
+- **PostgreSQL**: Native UUID type, BYTEA for binary data, TIMESTAMPTZ for timestamps
+- **MySQL**: BINARY(16) for UUIDs (with marshal/unmarshal), BLOB for binary data, DATETIME for timestamps
+
+### 📚 Secret Versioning Model
+
+Every time a secret is created or updated, a new version is created as a separate database record:
+
+```
+Path: /app/prod/api-key
+
+┌─────────────────────────────────────────────────────────┐
+│ Version 1 (Initial Creation)                            │
+│ ID: 018d7e95-1a23...  Path: /app/prod/api-key          │
+│ Version: 1            DEK ID: 018d7e95-2b34...          │
+│ Created: 2026-02-01   Deleted: null                     │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼ UPDATE (creates new version)
+┌─────────────────────────────────────────────────────────┐
+│ Version 2 (First Update)                                │
+│ ID: 018d7e96-3c45...  Path: /app/prod/api-key          │
+│ Version: 2            DEK ID: 018d7e96-4d56...          │
+│ Created: 2026-02-02   Deleted: null                     │
+└─────────────────────────────────────────────────────────┘
+         │
+         ▼ UPDATE (creates new version)
+┌─────────────────────────────────────────────────────────┐
+│ Version 3 (Second Update)                               │
+│ ID: 018d7e97-5e67...  Path: /app/prod/api-key          │
+│ Version: 3            DEK ID: 018d7e97-6f78...          │
+│ Created: 2026-02-03   Deleted: null    ← CURRENT       │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Versioning Behavior:**
+- 📝 **New Secret**: First creation sets version to 1
+- 🔄 **Update Secret**: Creates a new record with version incremented (2, 3, 4...)
+- 📖 **Get Secret**: Returns the highest version number (current)
+- 🗑️ **Delete Secret**: Marks only the current version as deleted
+- 🔒 **Independent Encryption**: Each version has its own DEK for security isolation
+- 📜 **Immutable History**: Previous versions remain unchanged for audit trail
+
+**Key Advantages:**
+- ✅ Complete audit trail of all secret changes
+- ✅ Ability to investigate security incidents using historical data
+- ✅ Compliance with data retention policies
+- ✅ Each version cryptographically isolated with its own DEK
+- ✅ Safe rollback capability (future feature)
+
 ### ✅ Key Benefits
 
 - ⚡ **Fast Key Rotation**: Rotate master keys or KEKs without re-encrypting all secrets
-- 🔒 **Per-Secret Security**: Each secret version has its own DEK
+- 🔒 **Per-Secret Security**: Each secret version has its own DEK for maximum isolation
 - 🎨 **Algorithm Flexibility**: Different encryption algorithms per key tier
 - 📈 **Scalability**: Minimal performance impact from key rotation
+- 📚 **Version Control**: Automatic versioning preserves complete secret history
+- 🔄 **Backward Compatibility**: Old secret versions remain readable after KEK rotation
 
 ### 📁 Project Structure
 
@@ -110,11 +188,15 @@ secrets/
 │   ├── httputil/               # HTTP utilities (JSON responses)
 │   ├── validation/             # Custom validation rules
 │   ├── testutil/               # Test utilities
-│   └── crypto/                 # Cryptographic domain module
-│       ├── domain/             # Entities: Kek, Dek, MasterKey
-│       ├── service/            # Encryption services
-│       ├── usecase/            # Business logic orchestration
-│       └── repository/         # Data access (PostgreSQL & MySQL)
+│   ├── crypto/                 # Cryptographic domain module
+│   │   ├── domain/             # Entities: Kek, Dek, MasterKey
+│   │   ├── service/            # Encryption services
+│   │   ├── usecase/            # Business logic orchestration
+│   │   └── repository/         # Data access: Kek and Dek repositories (PostgreSQL & MySQL)
+│   └── secrets/                # Secrets management module
+│       ├── domain/             # Entities: Secret (with versioning)
+│       ├── usecase/            # Secret operations (create/update/get/delete)
+│       └── repository/         # Secret persistence (PostgreSQL & MySQL)
 ├── migrations/
 │   ├── postgresql/             # PostgreSQL migrations
 │   └── mysql/                  # MySQL migrations
@@ -520,7 +602,11 @@ Creates a new KEK version and marks the previous one as inactive.
 
 ### 📦 Secrets Operations
 
+Secrets are managed with automatic versioning - every update creates a new version while preserving the complete history.
+
 #### Create/Update Secret
+
+Creates a new secret or a new version of an existing secret. Each version is stored as a separate database record with its own Data Encryption Key (DEK).
 
 ```bash
 POST /api/secrets
@@ -534,7 +620,7 @@ POST /api/secrets
 }
 ```
 
-**Response:**
+**Response (New Secret - Version 1):**
 ```json
 {
   "id": "018d7e95-1a23-7890-bcde-f1234567890a",
@@ -544,7 +630,36 @@ POST /api/secrets
 }
 ```
 
+**Example: Updating a Secret**
+
+When you update an existing secret, a new version is automatically created:
+
+```bash
+# First creation (version 1)
+curl -X POST http://localhost:8080/api/secrets \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/app/prod/api-key", "value": "secret-v1"}'
+
+# Update creates version 2
+curl -X POST http://localhost:8080/api/secrets \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/app/prod/api-key", "value": "secret-v2"}'
+
+# Another update creates version 3
+curl -X POST http://localhost:8080/api/secrets \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/app/prod/api-key", "value": "secret-v3"}'
+```
+
+**Version Management:**
+- ✅ **Automatic Versioning**: Version number auto-increments on each update
+- ✅ **Immutable History**: Previous versions remain unchanged in the database
+- ✅ **Independent Encryption**: Each version has its own DEK for maximum security
+- ✅ **Audit Trail**: Complete history of all secret changes preserved
+
 #### Get Secret
+
+Retrieves and decrypts the **latest version** of a secret at the specified path.
 
 ```bash
 GET /api/secrets?path=/app/production/database-password
@@ -556,27 +671,34 @@ GET /api/secrets?path=/app/production/database-password
   "id": "018d7e95-1a23-7890-bcde-f1234567890a",
   "path": "/app/production/database-password",
   "value": "super-secret-password",
-  "version": 2,
-  "created_at": "2026-02-02T20:13:45Z"
+  "version": 3,
+  "created_at": "2026-02-02T20:15:30Z"
 }
 ```
 
-#### Get Secret Version
-
-```bash
-GET /api/secrets/versions/{version_id}
-```
-
-#### List Secret Versions
-
-```bash
-GET /api/secrets/{secret_id}/versions
-```
+**Notes:**
+- 🔍 Returns the most recent (highest version number) secret
+- 🔓 Automatically decrypts the secret value using the envelope encryption chain
+- 📊 Includes version number to track which version is current
 
 #### Delete Secret (Soft Delete)
 
+Performs a soft delete on the **current version** of a secret. The secret is marked as deleted but preserved in the database for audit purposes.
+
 ```bash
-DELETE /api/secrets/{secret_id}
+DELETE /api/secrets?path=/app/production/database-password
+```
+
+**Behavior:**
+- 🗑️ Sets the `deleted_at` timestamp on the current version
+- 📜 Preserves the secret data for audit trail and compliance
+- 🔒 Previous versions remain unaffected
+- ⚠️ Deleted secrets cannot be retrieved via the API
+
+**Example:**
+```bash
+# Delete the current version of a secret
+curl -X DELETE "http://localhost:8080/api/secrets?path=/app/prod/api-key"
 ```
 
 ### 🚄 Transit Encryption (Encryption-as-a-Service)
@@ -869,7 +991,7 @@ go test -v -race ./internal/crypto/usecase
 
 ## 🧪 Testing
 
-The project uses real databases (PostgreSQL and MySQL) for integration testing instead of mocks, ensuring tests accurately reflect production behavior.
+The project uses real databases (PostgreSQL and MySQL) for integration testing instead of mocks, ensuring tests accurately reflect production behavior. All repository implementations (KEK and DEK) include comprehensive test coverage for both databases, including transaction handling, foreign key constraints, and database-specific binary data storage.
 
 ### 📝 Test Structure
 

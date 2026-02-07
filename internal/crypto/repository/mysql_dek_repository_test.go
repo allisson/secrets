@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/testutil"
 )
 
@@ -1117,4 +1118,161 @@ func TestMySQLDekRepository_Update_WithTransactionCommit(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("updated-in-tx"), readDek.EncryptedKey, "DEK should have updated key after commit")
+}
+
+func TestMySQLDekRepository_Get(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLDekRepository(db)
+	ctx := context.Background()
+
+	// Create a KEK
+	kekID := uuid.Must(uuid.NewV7())
+	kekRepo := NewMySQLKekRepository(db)
+	kek := &cryptoDomain.Kek{
+		ID:           kekID,
+		MasterKeyID:  "master-key-1",
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-kek-data"),
+		Nonce:        []byte("kek-nonce"),
+		Version:      1,
+		CreatedAt:    time.Now().UTC(),
+	}
+	err := kekRepo.Create(ctx, kek)
+	require.NoError(t, err)
+
+	// Create a DEK
+	dek := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kekID,
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-dek-data"),
+		Nonce:        []byte("unique-nonce"),
+		CreatedAt:    time.Now().UTC(),
+	}
+	err = repo.Create(ctx, dek)
+	require.NoError(t, err)
+
+	// Get the DEK
+	retrievedDek, err := repo.Get(ctx, dek.ID)
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedDek)
+
+	// Verify all fields
+	assert.Equal(t, dek.ID, retrievedDek.ID)
+	assert.Equal(t, dek.KekID, retrievedDek.KekID)
+	assert.Equal(t, dek.Algorithm, retrievedDek.Algorithm)
+	assert.Equal(t, dek.EncryptedKey, retrievedDek.EncryptedKey)
+	assert.Equal(t, dek.Nonce, retrievedDek.Nonce)
+	assert.WithinDuration(t, dek.CreatedAt, retrievedDek.CreatedAt, time.Second)
+}
+
+func TestMySQLDekRepository_Get_NotFound(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLDekRepository(db)
+	ctx := context.Background()
+
+	// Try to get a non-existent DEK
+	nonExistentID := uuid.Must(uuid.NewV7())
+	dek, err := repo.Get(ctx, nonExistentID)
+
+	assert.Error(t, err)
+	assert.Nil(t, dek)
+	assert.ErrorIs(t, err, cryptoDomain.ErrDekNotFound)
+}
+
+func TestMySQLDekRepository_Get_WithDifferentAlgorithm(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLDekRepository(db)
+	ctx := context.Background()
+
+	// Create a KEK with ChaCha20
+	kekID := uuid.Must(uuid.NewV7())
+	kekRepo := NewMySQLKekRepository(db)
+	kek := &cryptoDomain.Kek{
+		ID:           kekID,
+		MasterKeyID:  "master-key-1",
+		Algorithm:    cryptoDomain.ChaCha20,
+		EncryptedKey: []byte("encrypted-kek-data"),
+		Nonce:        []byte("kek-nonce"),
+		Version:      1,
+		CreatedAt:    time.Now().UTC(),
+	}
+	err := kekRepo.Create(ctx, kek)
+	require.NoError(t, err)
+
+	// Create a DEK with ChaCha20
+	dek := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kekID,
+		Algorithm:    cryptoDomain.ChaCha20,
+		EncryptedKey: []byte("encrypted-dek-data"),
+		Nonce:        []byte("unique-nonce"),
+		CreatedAt:    time.Now().UTC(),
+	}
+	err = repo.Create(ctx, dek)
+	require.NoError(t, err)
+
+	// Get the DEK
+	retrievedDek, err := repo.Get(ctx, dek.ID)
+	require.NoError(t, err)
+	assert.Equal(t, cryptoDomain.ChaCha20, retrievedDek.Algorithm)
+}
+
+func TestMySQLDekRepository_Get_WithTransaction(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLDekRepository(db)
+	ctx := context.Background()
+
+	// Create a KEK
+	kekID := uuid.Must(uuid.NewV7())
+	kekRepo := NewMySQLKekRepository(db)
+	kek := &cryptoDomain.Kek{
+		ID:           kekID,
+		MasterKeyID:  "master-key-1",
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-kek-data"),
+		Nonce:        []byte("kek-nonce"),
+		Version:      1,
+		CreatedAt:    time.Now().UTC(),
+	}
+	err := kekRepo.Create(ctx, kek)
+	require.NoError(t, err)
+
+	// Create a DEK
+	dek := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kekID,
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-dek-data"),
+		Nonce:        []byte("unique-nonce"),
+		CreatedAt:    time.Now().UTC(),
+	}
+	err = repo.Create(ctx, dek)
+	require.NoError(t, err)
+
+	// Use TxManager to get the DEK within a transaction
+	txManager := database.NewTxManager(db)
+	var retrievedDek *cryptoDomain.Dek
+
+	err = txManager.WithTx(ctx, func(txCtx context.Context) error {
+		var txErr error
+		retrievedDek, txErr = repo.Get(txCtx, dek.ID)
+		return txErr
+	})
+
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedDek)
+	assert.Equal(t, dek.ID, retrievedDek.ID)
 }
