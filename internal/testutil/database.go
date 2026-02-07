@@ -34,6 +34,9 @@ func SetupPostgresDB(t *testing.T) *sql.DB {
 	// Run migrations
 	runPostgresMigrations(t, db)
 
+	// Clean up any existing data before the test runs
+	CleanupPostgresDB(t, db)
+
 	return db
 }
 
@@ -49,6 +52,9 @@ func SetupMySQLDB(t *testing.T) *sql.DB {
 
 	// Run migrations
 	runMySQLMigrations(t, db)
+
+	// Clean up any existing data before the test runs
+	CleanupMySQLDB(t, db)
 
 	return db
 }

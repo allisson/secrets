@@ -5,12 +5,34 @@
 // MySQL databases. Repositories follow the Repository pattern and support both
 // direct database operations and transactional operations.
 //
+// # Key Components
+//
 // The package includes repositories for:
 //   - KEK (Key Encryption Keys): Intermediate keys encrypted by master keys
 //   - DEK (Data Encryption Keys): Keys used to encrypt application data
 //
+// # Database Support
+//
+// Each repository type has two implementations:
+//   - PostgreSQL: Uses native UUID type and BYTEA for binary data
+//   - MySQL: Uses BINARY(16) for UUIDs and BLOB for binary data
+//
+// # Transaction Support
+//
 // All repositories support transaction-aware operations via database.GetTx(),
-// enabling atomic multi-step operations such as key rotation.
+// enabling atomic multi-step operations such as key rotation. When called within
+// a transaction context, repositories automatically use the transaction connection.
+//
+// # Usage Example
+//
+//	// Create KEK repository
+//	kekRepo := repository.NewPostgreSQLKekRepository(db)
+//
+//	// Use within a transaction
+//	txManager := database.NewTxManager(db)
+//	err := txManager.WithTx(ctx, func(txCtx context.Context) error {
+//	    return kekRepo.Create(txCtx, kek)
+//	})
 package repository
 
 import (

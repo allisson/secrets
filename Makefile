@@ -32,7 +32,7 @@ run-migrate: build ## Build and run database migrations
 
 test: ## Run tests
 	@echo "Running tests..."
-	@go test -v -race -coverprofile=coverage.out ./...
+	@go test -v -race -p 1 -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out
 
 test-with-db: test-db-up test test-db-down ## Run tests with test databases

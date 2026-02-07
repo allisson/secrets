@@ -2,6 +2,8 @@
 //
 // This package implements the domain layer for envelope encryption, a multi-tier
 // key management scheme that provides efficient key rotation and enhanced security.
+// It provides the fundamental data structures and business rules for managing
+// encryption keys in a hierarchical key management system.
 //
 // # Envelope Encryption Architecture
 //

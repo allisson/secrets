@@ -1,3 +1,41 @@
+// Package usecase implements business logic orchestration for cryptographic operations.
+//
+// This package provides the use case layer (application layer) for managing
+// cryptographic keys following Clean Architecture principles. Use cases coordinate
+// between services (cryptographic operations) and repositories (data persistence),
+// implementing business rules and transaction management.
+//
+// # Key Components
+//
+// The package includes:
+//   - KekUseCase: Manages KEK lifecycle including creation, rotation, and unwrapping
+//   - Interfaces: Defines contracts for repositories and dependencies
+//
+// # Business Rules
+//
+// The use cases enforce business logic such as:
+//   - Active master key selection from keychains
+//   - Transactional consistency for multi-step operations
+//   - Key version management and rotation workflows
+//   - Error handling and propagation
+//
+// # Transaction Management
+//
+// All use cases use TxManager to ensure atomic operations:
+//   - KEK rotation updates old and new KEKs atomically
+//   - Failed operations roll back automatically
+//   - Consistent state guaranteed across operations
+//
+// # Usage Example
+//
+//	// Create use case
+//	kekUseCase := usecase.NewKekUseCase(txManager, kekRepo, keyManager)
+//
+//	// Create initial KEK
+//	err := kekUseCase.Create(ctx, masterKeyChain, cryptoDomain.AESGCM)
+//
+//	// Rotate KEK to new master key
+//	err = kekUseCase.Rotate(ctx, oldKekID, newMasterKeyChain, cryptoDomain.AESGCM)
 package usecase
 
 import (
