@@ -352,7 +352,7 @@ func TestMySQLDekRepository_Create_WithTransaction(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create a KEK
+	// Create a KEK outside the transaction
 	kekID := uuid.Must(uuid.NewV7())
 	kekRepo := NewMySQLKekRepository(db)
 	kek := &cryptoDomain.Kek{
@@ -367,6 +367,14 @@ func TestMySQLDekRepository_Create_WithTransaction(t *testing.T) {
 	err := kekRepo.Create(ctx, kek)
 	require.NoError(t, err)
 
+	// Verify KEK exists before starting transaction
+	kekIDBytes, err := kekID.MarshalBinary()
+	require.NoError(t, err)
+	var kekExists int
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM keks WHERE id = ?`, kekIDBytes).Scan(&kekExists)
+	require.NoError(t, err)
+	require.Equal(t, 1, kekExists, "KEK must exist before creating DEK")
+
 	dek := &cryptoDomain.Dek{
 		ID:           uuid.Must(uuid.NewV7()),
 		KekID:        kekID,
@@ -380,10 +388,8 @@ func TestMySQLDekRepository_Create_WithTransaction(t *testing.T) {
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
 
-	// Marshal IDs
+	// Marshal DEK ID
 	dekID, err := dek.ID.MarshalBinary()
-	require.NoError(t, err)
-	kekIDBytes, err := dek.KekID.MarshalBinary()
 	require.NoError(t, err)
 
 	// Create DEK within transaction (directly using tx.ExecContext)
