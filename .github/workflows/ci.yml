@@ -69,4 +69,4 @@ jobs:
           version: latest
 
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: make test
