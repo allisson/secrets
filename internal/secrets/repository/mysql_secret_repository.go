@@ -117,15 +117,18 @@ func (m *MySQLSecretRepository) Create(ctx context.Context, secret *secretsDomai
 	return nil
 }
 
-// GetByPath retrieves a secret by its path from the MySQL database.
+// GetByPath retrieves the latest non-deleted version of a secret by its path from the MySQL database.
 //
-// This method fetches a secret using its path identifier. The secret is returned with
-// all fields populated, including encrypted data. UUIDs are unmarshaled from BINARY(16)
+// This method fetches a secret using its path identifier, returning only non-deleted versions.
+// The secret is returned with all fields populated, including encrypted data. UUIDs are unmarshaled from BINARY(16)
 // format. This method supports transaction context via database.GetTx(), enabling
 // consistent reads within a transaction.
 //
-// Note: This method returns the most recent version of the secret at the given path.
-// If multiple versions exist, it returns the one with the highest version number.
+// Soft-deleted secrets (with deleted_at set) are excluded from results. If all versions of a secret
+// at the given path are deleted, this method returns ErrNotFound.
+//
+// Note: This method returns the most recent non-deleted version of the secret at the given path.
+// If multiple versions exist, it returns the one with the highest version number that has not been deleted.
 //
 // Parameters:
 //   - ctx: Context for cancellation, timeouts, and transaction propagation
@@ -133,7 +136,7 @@ func (m *MySQLSecretRepository) Create(ctx context.Context, secret *secretsDomai
 //
 // Returns:
 //   - The Secret if found with all encrypted fields populated
-//   - ErrNotFound if the secret doesn't exist at the specified path
+//   - ErrNotFound if the secret doesn't exist at the specified path or all versions are deleted
 //   - An error if the database query or UUID unmarshaling fails
 //
 // Example:
@@ -154,7 +157,7 @@ func (m *MySQLSecretRepository) GetByPath(
 
 	query := `SELECT id, path, version, dek_id, ciphertext, nonce, created_at, deleted_at 
 			  FROM secrets 
-			  WHERE path = ? 
+			  WHERE path = ? AND deleted_at IS NULL
 			  ORDER BY version DESC 
 			  LIMIT 1`
 
