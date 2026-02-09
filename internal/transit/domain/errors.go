@@ -12,19 +12,12 @@ import (
 var (
 	// ErrInvalidBlobFormat indicates the encrypted blob format is invalid.
 	//
-	// The expected format is: "name:version:ciphertext-base64"
-	// This error is returned when the input string doesn't have exactly 3 parts
+	// The expected format is: "version:ciphertext-base64"
+	// This error is returned when the input string doesn't have exactly 2 parts
 	// separated by colons.
 	//
 	// HTTP Status: 422 Unprocessable Entity
 	ErrInvalidBlobFormat = errors.Wrap(errors.ErrInvalidInput, "invalid encrypted blob format")
-
-	// ErrEmptyBlobName indicates the encrypted blob name is empty.
-	//
-	// The name field must be a non-empty string to identify the transit key.
-	//
-	// HTTP Status: 422 Unprocessable Entity
-	ErrEmptyBlobName = errors.Wrap(errors.ErrInvalidInput, "encrypted blob name cannot be empty")
 
 	// ErrInvalidBlobVersion indicates the version string cannot be parsed.
 	//
