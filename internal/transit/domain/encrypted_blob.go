@@ -9,74 +9,67 @@ import (
 
 // EncryptedBlob represents an encrypted data blob in the transit encryption system.
 //
-// The blob contains the transit key name, version, and encrypted ciphertext.
-// It can be serialized to and deserialized from the format: "name:version:ciphertext-base64"
+// The blob contains the version and encrypted ciphertext.
+// It can be serialized to and deserialized from the format: "version:ciphertext-base64"
+//
+// The transit key name is not included in the blob as it is passed separately
+// in API calls (e.g., /transit/decrypt/{key_name}).
 //
 // Fields:
-//   - Name: The transit key name (e.g., "payment-encryption")
 //   - Version: The transit key version used for encryption
 //   - Ciphertext: The encrypted data as raw bytes
 type EncryptedBlob struct {
-	Name       string
 	Version    uint
 	Ciphertext []byte
 }
 
 // NewEncryptedBlob creates an EncryptedBlob from its string representation.
 //
-// The input string must be in the format: "name:version:ciphertext-base64"
+// The input string must be in the format: "version:ciphertext-base64"
 // where:
-//   - name: non-empty string identifying the transit key
 //   - version: non-negative integer (uint)
 //   - ciphertext-base64: base64-encoded encrypted data (can be empty)
 //
 // Parameters:
-//   - content: String in format "name:version:ciphertext-base64"
+//   - content: String in format "version:ciphertext-base64"
 //
 // Returns:
 //   - EncryptedBlob instance if parsing succeeds
-//   - ErrInvalidBlobFormat if the format is incorrect (not 3 colon-separated parts)
-//   - ErrEmptyBlobName if the name field is empty
+//   - ErrInvalidBlobFormat if the format is incorrect (not 2 colon-separated parts)
 //   - ErrInvalidBlobVersion if the version cannot be parsed as uint
 //   - ErrInvalidBlobBase64 if the ciphertext is not valid base64
 //
 // Example:
 //
-//	blob, err := NewEncryptedBlob("payment-key:1:SGVsbG8gV29ybGQ=")
+//	blob, err := NewEncryptedBlob("1:SGVsbG8gV29ybGQ=")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	fmt.Printf("Name: %s, Version: %d\n", blob.Name, blob.Version)
+//	fmt.Printf("Version: %d\n", blob.Version)
 func NewEncryptedBlob(content string) (EncryptedBlob, error) {
-	// Split by ":" - expect exactly 3 parts: name:version:ciphertext
+	// Split by ":" - expect exactly 2 parts: version:ciphertext
 	parts := strings.Split(content, ":")
-	if len(parts) != 3 {
+	if len(parts) != 2 {
 		return EncryptedBlob{}, fmt.Errorf(
-			"%w: expected format 'name:version:ciphertext', got %d parts",
+			"%w: expected format 'version:ciphertext', got %d parts",
 			ErrInvalidBlobFormat,
 			len(parts),
 		)
 	}
 
-	name := parts[0]
-	if name == "" {
-		return EncryptedBlob{}, ErrEmptyBlobName
-	}
-
 	// Parse version as uint
-	version, err := strconv.ParseUint(parts[1], 10, 0)
+	version, err := strconv.ParseUint(parts[0], 10, 0)
 	if err != nil {
 		return EncryptedBlob{}, fmt.Errorf("%w: %v", ErrInvalidBlobVersion, err)
 	}
 
 	// Decode base64 ciphertext
-	ciphertext, err := base64.StdEncoding.DecodeString(parts[2])
+	ciphertext, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
 		return EncryptedBlob{}, fmt.Errorf("%w: %v", ErrInvalidBlobBase64, err)
 	}
 
 	return EncryptedBlob{
-		Name:       name,
 		Version:    uint(version),
 		Ciphertext: ciphertext,
 	}, nil
@@ -84,18 +77,18 @@ func NewEncryptedBlob(content string) (EncryptedBlob, error) {
 
 // String serializes the EncryptedBlob to its string representation.
 //
-// The output format is: "name:version:ciphertext-base64"
+// The output format is: "version:ciphertext-base64"
 //
 // This method provides round-trip serialization with NewEncryptedBlob:
 //
-//	original := EncryptedBlob{Name: "key", Version: 1, Ciphertext: []byte("data")}
+//	original := EncryptedBlob{Version: 1, Ciphertext: []byte("data")}
 //	serialized := original.String()
 //	parsed, _ := NewEncryptedBlob(serialized)
 //	// parsed equals original
 //
 // Returns:
-//   - String representation in format "name:version:ciphertext-base64"
+//   - String representation in format "version:ciphertext-base64"
 func (eb EncryptedBlob) String() string {
 	encodedCiphertext := base64.StdEncoding.EncodeToString(eb.Ciphertext)
-	return fmt.Sprintf("%s:%d:%s", eb.Name, eb.Version, encodedCiphertext)
+	return fmt.Sprintf("%d:%s", eb.Version, encodedCiphertext)
 }
