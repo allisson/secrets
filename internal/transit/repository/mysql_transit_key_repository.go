@@ -225,6 +225,73 @@ func (m *MySQLTransitKeyRepository) GetByName(
 	return &transitKey, nil
 }
 
+// GetByNameAndVersion retrieves a specific version of a transit key by name and version.
+//
+// This method returns the transit key with the exact name and version number,
+// excluding any soft-deleted keys (where deleted_at IS NOT NULL). Transit key IDs
+// are automatically unmarshaled from BINARY(16) to uuid.UUID using uuid.UnmarshalBinary().
+//
+// The method supports transaction context via database.GetTx(), allowing
+// consistent reads within a transaction.
+//
+// Parameters:
+//   - ctx: Context for cancellation, timeouts, and transaction propagation
+//   - name: The name of the transit key to retrieve
+//   - version: The specific version number to retrieve
+//
+// Returns:
+//   - A pointer to the transit key matching the name and version
+//   - transitDomain.ErrTransitKeyNotFound if no matching key exists or it is deleted
+//   - An error if the query fails or UUID unmarshaling fails
+//
+// Example:
+//
+//	// Get version 2 of a transit key
+//	transitKey, err := repo.GetByNameAndVersion(ctx, "payment-encryption", 2)
+//	if errors.Is(err, transitDomain.ErrTransitKeyNotFound) {
+//	    // Handle key not found
+//	}
+func (m *MySQLTransitKeyRepository) GetByNameAndVersion(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, name, version, dek_id, created_at, deleted_at 
+			  FROM transit_keys 
+			  WHERE name = ? AND version = ? AND deleted_at IS NULL`
+
+	var transitKey transitDomain.TransitKey
+	var id []byte
+	var dekID []byte
+
+	err := querier.QueryRowContext(ctx, query, name, version).Scan(
+		&id,
+		&transitKey.Name,
+		&transitKey.Version,
+		&dekID,
+		&transitKey.CreatedAt,
+		&transitKey.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, transitDomain.ErrTransitKeyNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get transit key by name and version")
+	}
+
+	if err := transitKey.ID.UnmarshalBinary(id); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal transit key id")
+	}
+
+	if err := transitKey.DekID.UnmarshalBinary(dekID); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+	}
+
+	return &transitKey, nil
+}
+
 // NewMySQLTransitKeyRepository creates a new MySQL transit key repository instance.
 //
 // Parameters:
