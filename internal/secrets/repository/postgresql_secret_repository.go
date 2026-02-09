@@ -162,15 +162,17 @@ func (p *PostgreSQLSecretRepository) Create(ctx context.Context, secret *secrets
 	return nil
 }
 
-// GetByPath retrieves a secret by its path from the PostgreSQL database.
+// GetByPath retrieves the latest non-deleted version of a secret by its path from the PostgreSQL database.
 //
-// This method fetches a secret using its path identifier. The secret is returned
-// with all fields populated, including encrypted data. This method supports
-// transaction context via database.GetTx(), enabling consistent reads within
-// a transaction.
+// This method fetches a secret using its path identifier, returning only non-deleted versions.
+// The secret is returned with all fields populated, including encrypted data. This method supports
+// transaction context via database.GetTx(), enabling consistent reads within a transaction.
 //
-// Note: This method returns the most recent version of the secret at the given path.
-// If multiple versions exist, it returns the one with the highest version number.
+// Soft-deleted secrets (with deleted_at set) are excluded from results. If all versions of a secret
+// at the given path are deleted, this method returns ErrNotFound.
+//
+// Note: This method returns the most recent non-deleted version of the secret at the given path.
+// If multiple versions exist, it returns the one with the highest version number that has not been deleted.
 //
 // Parameters:
 //   - ctx: Context for cancellation, timeouts, and transaction propagation
@@ -178,7 +180,7 @@ func (p *PostgreSQLSecretRepository) Create(ctx context.Context, secret *secrets
 //
 // Returns:
 //   - The Secret if found with all encrypted fields populated
-//   - ErrNotFound if the secret doesn't exist at the specified path
+//   - ErrNotFound if the secret doesn't exist at the specified path or all versions are deleted
 //   - An error if the database query fails
 //
 // Example:
@@ -199,7 +201,7 @@ func (p *PostgreSQLSecretRepository) GetByPath(
 
 	query := `SELECT id, path, version, dek_id, ciphertext, nonce, created_at, deleted_at 
 			  FROM secrets 
-			  WHERE path = $1 
+			  WHERE path = $1 AND deleted_at IS NULL
 			  ORDER BY version DESC 
 			  LIMIT 1`
 
