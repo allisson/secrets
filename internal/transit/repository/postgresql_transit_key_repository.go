@@ -239,6 +239,61 @@ func (p *PostgreSQLTransitKeyRepository) GetByName(
 	return &transitKey, nil
 }
 
+// GetByNameAndVersion retrieves a specific version of a transit key by name and version.
+//
+// This method returns the transit key with the exact name and version number,
+// excluding any soft-deleted keys (where deleted_at IS NOT NULL).
+//
+// The method supports transaction context via database.GetTx(), allowing
+// consistent reads within a transaction.
+//
+// Parameters:
+//   - ctx: Context for cancellation, timeouts, and transaction propagation
+//   - name: The name of the transit key to retrieve
+//   - version: The specific version number to retrieve
+//
+// Returns:
+//   - A pointer to the transit key matching the name and version
+//   - transitDomain.ErrTransitKeyNotFound if no matching key exists or it is deleted
+//   - An error if the query fails
+//
+// Example:
+//
+//	// Get version 2 of a transit key
+//	transitKey, err := repo.GetByNameAndVersion(ctx, "payment-encryption", 2)
+//	if errors.Is(err, transitDomain.ErrTransitKeyNotFound) {
+//	    // Handle key not found
+//	}
+func (p *PostgreSQLTransitKeyRepository) GetByNameAndVersion(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, name, version, dek_id, created_at, deleted_at 
+			  FROM transit_keys 
+			  WHERE name = $1 AND version = $2 AND deleted_at IS NULL`
+
+	var transitKey transitDomain.TransitKey
+	err := querier.QueryRowContext(ctx, query, name, version).Scan(
+		&transitKey.ID,
+		&transitKey.Name,
+		&transitKey.Version,
+		&transitKey.DekID,
+		&transitKey.CreatedAt,
+		&transitKey.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, transitDomain.ErrTransitKeyNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get transit key by name and version")
+	}
+
+	return &transitKey, nil
+}
+
 // NewPostgreSQLTransitKeyRepository creates a new PostgreSQL transit key repository instance.
 //
 // Parameters:
