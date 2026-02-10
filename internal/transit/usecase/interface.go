@@ -29,5 +29,9 @@ type TransitKeyUseCase interface {
 	Rotate(ctx context.Context, name string, alg cryptoDomain.Algorithm) (*transitDomain.TransitKey, error)
 	Delete(ctx context.Context, transitKeyID uuid.UUID) error
 	Encrypt(ctx context.Context, name string, plaintext []byte) (*transitDomain.EncryptedBlob, error)
+	// Decrypt decrypts ciphertext using the version specified in the encrypted blob.
+	//
+	// Security Note: The returned EncryptedBlob contains plaintext data in the Plaintext field.
+	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
 	Decrypt(ctx context.Context, name string, ciphertext []byte) (*transitDomain.EncryptedBlob, error)
 }

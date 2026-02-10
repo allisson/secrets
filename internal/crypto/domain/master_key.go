@@ -71,7 +71,7 @@ func LoadMasterKeyChainFromEnv() (*MasterKeyChain, error) {
 			return nil, fmt.Errorf("%w for %s: %v", ErrInvalidMasterKeyBase64, id, err)
 		}
 		if len(key) != 32 {
-			zero(key)
+			Zero(key)
 			mkc.Close()
 			return nil, fmt.Errorf(
 				"%w: master key %s must be 32 bytes, got %d",
@@ -81,7 +81,7 @@ func LoadMasterKeyChainFromEnv() (*MasterKeyChain, error) {
 			)
 		}
 		mkc.keys.Store(id, &MasterKey{ID: id, Key: key})
-		zero(key)
+		Zero(key)
 	}
 
 	if _, ok := mkc.Get(active); !ok {

@@ -167,6 +167,7 @@ func (t *transitKeyUseCase) Encrypt(
 	if err != nil {
 		return nil, err
 	}
+	defer cryptoDomain.Zero(dekKey)
 
 	// Create AEAD cipher with decrypted DEK
 	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
@@ -227,6 +228,7 @@ func (t *transitKeyUseCase) Decrypt(
 	if err != nil {
 		return nil, err
 	}
+	defer cryptoDomain.Zero(dekKey)
 
 	// Create AEAD cipher with decrypted DEK
 	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
