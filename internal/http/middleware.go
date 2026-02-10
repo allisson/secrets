@@ -10,10 +10,10 @@ import (
 	"github.com/allisson/secrets/internal/httputil"
 )
 
-// Middleware defines a function to wrap http.Handler
+// Middleware defines a function to wrap http.Handler.
 type Middleware func(http.Handler) http.Handler
 
-// LoggingMiddleware logs HTTP requests
+// LoggingMiddleware logs HTTP requests.
 func LoggingMiddleware(logger *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +35,7 @@ func LoggingMiddleware(logger *slog.Logger) Middleware {
 	}
 }
 
-// RecoveryMiddleware recovers from panics
+// RecoveryMiddleware recovers from panics.
 func RecoveryMiddleware(logger *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// ChainMiddleware chains multiple middlewares
+// ChainMiddleware chains multiple middlewares.
 func ChainMiddleware(middlewares ...Middleware) Middleware {
 	return func(final http.Handler) http.Handler {
 		for i := len(middlewares) - 1; i >= 0; i-- {
@@ -82,14 +82,14 @@ func ChainMiddleware(middlewares ...Middleware) Middleware {
 	}
 }
 
-// HealthHandler returns a simple health check handler
+// HealthHandler returns a simple health check handler.
 func HealthHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		httputil.MakeJSONResponse(w, http.StatusOK, map[string]string{"status": "healthy"})
 	})
 }
 
-// ReadinessHandler returns a readiness check handler
+// ReadinessHandler returns a readiness check handler.
 func ReadinessHandler(ctx context.Context) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if context is cancelled (application is shutting down)

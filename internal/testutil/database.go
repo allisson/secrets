@@ -21,7 +21,7 @@ const (
 	MySQLTestDSN    = "testuser:testpassword@tcp(localhost:3307)/testdb?parseTime=true&multiStatements=true"
 )
 
-// SetupPostgresDB creates a new PostgreSQL database connection and runs migrations
+// SetupPostgresDB creates a new PostgreSQL database connection and runs migrations.
 func SetupPostgresDB(t *testing.T) *sql.DB {
 	t.Helper()
 
@@ -40,7 +40,7 @@ func SetupPostgresDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// SetupMySQLDB creates a new MySQL database connection and runs migrations
+// SetupMySQLDB creates a new MySQL database connection and runs migrations.
 func SetupMySQLDB(t *testing.T) *sql.DB {
 	t.Helper()
 
@@ -59,7 +59,7 @@ func SetupMySQLDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// TeardownDB closes the database connection and cleans up
+// TeardownDB closes the database connection and cleans up.
 func TeardownDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 	if db != nil {
@@ -68,7 +68,7 @@ func TeardownDB(t *testing.T, db *sql.DB) {
 	}
 }
 
-// CleanupPostgresDB truncates all tables in the PostgreSQL database
+// CleanupPostgresDB truncates all tables in the PostgreSQL database.
 func CleanupPostgresDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 
@@ -79,7 +79,7 @@ func CleanupPostgresDB(t *testing.T, db *sql.DB) {
 	require.NoError(t, err, "failed to truncate postgres tables")
 }
 
-// CleanupMySQLDB truncates all tables in the MySQL database
+// CleanupMySQLDB truncates all tables in the MySQL database.
 func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 

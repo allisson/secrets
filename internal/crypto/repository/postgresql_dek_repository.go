@@ -1,16 +1,7 @@
-// Package repository implements data persistence for cryptographic key management.
+// Package repository implements data persistence for KEKs and DEKs.
 //
-// This package provides repository implementations for storing and retrieving
-// Key Encryption Keys (KEKs) and Data Encryption Keys (DEKs) in PostgreSQL and
-// MySQL databases. Repositories follow the Repository pattern and support both
-// direct database operations and transactional operations.
-//
-// The package includes repositories for:
-//   - KEK (Key Encryption Keys): Intermediate keys encrypted by master keys
-//   - DEK (Data Encryption Keys): Keys used to encrypt application data
-//
-// All repositories support transaction-aware operations via database.GetTx(),
-// enabling atomic multi-step operations such as key rotation.
+// Provides PostgreSQL and MySQL implementations with transaction support via database.GetTx().
+// PostgreSQL uses native UUID and BYTEA types, MySQL uses BINARY(16) and BLOB types.
 package repository
 
 import (
@@ -24,69 +15,13 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// PostgreSQLDekRepository implements DEK persistence for PostgreSQL databases.
-//
-// This repository handles storing and retrieving Data Encryption Keys using
-// PostgreSQL's native UUID type and BYTEA for binary data. It supports
-// transaction-aware operations via database.GetTx(), enabling atomic operations
-// such as DEK creation and updates during key rotation.
-//
-// Database schema requirements:
-//   - id: UUID PRIMARY KEY
-//   - kek_id: UUID FOREIGN KEY (reference to KEK)
-//   - algorithm: TEXT/VARCHAR (e.g., "aes-gcm", "chacha20-poly1305")
-//   - encrypted_key: BYTEA (encrypted DEK bytes)
-//   - nonce: BYTEA (encryption nonce)
-//   - created_at: TIMESTAMP WITH TIME ZONE
-//
-// Transaction support:
-//
-//	The repository automatically detects transaction context using database.GetTx().
-//	All methods work both within and outside of transactions seamlessly.
-//
-// Example usage:
-//
-//	repo := NewPostgreSQLDekRepository(db)
-//
-//	// Create a DEK outside transaction
-//	err := repo.Create(ctx, dek)
-//
-//	// Or within a transaction
-//	err = txManager.WithTx(ctx, func(txCtx context.Context) error {
-//	    // Both operations use the same transaction
-//	    if err := repo.Update(txCtx, oldDek); err != nil {
-//	        return err
-//	    }
-//	    return repo.Create(txCtx, newDek)
-//	})
+// PostgreSQLDekRepository implements DEK persistence for PostgreSQL.
+// Uses native UUID and BYTEA types with transaction support via database.GetTx().
 type PostgreSQLDekRepository struct {
 	db *sql.DB
 }
 
 // Create inserts a new DEK into the PostgreSQL database.
-//
-// The DEK's ID is stored as a native UUID, and binary fields (EncryptedKey, Nonce)
-// are stored as BYTEA. This method supports transaction context via database.GetTx(),
-// enabling atomic multi-step operations.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//   - dek: The Data Encryption Key to insert (must have all required fields populated)
-//
-// Returns:
-//   - An error if the insert fails (e.g., duplicate key, constraint violation)
-//
-// Example:
-//
-//	dek := &cryptoDomain.Dek{
-//	    ID:           uuid.Must(uuid.NewV7()),
-//	    KekID:        kekID,
-//	    Algorithm:    cryptoDomain.AESGCM,
-//	    EncryptedKey: encryptedBytes,
-//	    Nonce:        nonceBytes,
-//	    CreatedAt:    time.Now().UTC(),
-//	}
-//	err := repo.Create(ctx, dek)
 func (p *PostgreSQLDekRepository) Create(ctx context.Context, dek *cryptoDomain.Dek) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -110,31 +45,6 @@ func (p *PostgreSQLDekRepository) Create(ctx context.Context, dek *cryptoDomain.
 }
 
 // Get retrieves a DEK by its ID from the PostgreSQL database.
-//
-// This method fetches a Data Encryption Key by its unique identifier. The DEK
-// is returned with all fields populated except the plaintext key (which requires
-// decryption with the KEK). This method supports transaction context via
-// database.GetTx(), enabling consistent reads within a transaction.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//   - dekID: The UUID of the DEK to retrieve
-//
-// Returns:
-//   - The DEK if found with all encrypted fields populated
-//   - ErrNotFound if the DEK doesn't exist
-//   - An error if the database query fails
-//
-// Example:
-//
-//	dek, err := repo.Get(ctx, dekID)
-//	if err != nil {
-//	    if errors.Is(err, errors.ErrNotFound) {
-//	        return nil, fmt.Errorf("DEK not found")
-//	    }
-//	    return nil, err
-//	}
-//	// Use dek.KekID to get the appropriate KEK for decryption
 func (p *PostgreSQLDekRepository) Get(
 	ctx context.Context,
 	dekID uuid.UUID,
@@ -165,25 +75,6 @@ func (p *PostgreSQLDekRepository) Get(
 }
 
 // Update modifies an existing DEK in the PostgreSQL database.
-//
-// This method updates all mutable fields of the DEK. It supports transaction
-// context via database.GetTx(), enabling atomic operations such as re-encrypting
-// a DEK with a new KEK during key rotation.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//   - dek: The DEK with updated field values (ID must match existing record)
-//
-// Returns:
-//   - An error if the update fails (e.g., DEK not found, constraint violation)
-//
-// Example:
-//
-//	// Re-encrypt DEK with a new KEK
-//	dek.KekID = newKekID
-//	dek.EncryptedKey = newEncryptedBytes
-//	dek.Nonce = newNonce
-//	err := repo.Update(ctx, dek)
 func (p *PostgreSQLDekRepository) Update(ctx context.Context, dek *cryptoDomain.Dek) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -212,21 +103,7 @@ func (p *PostgreSQLDekRepository) Update(ctx context.Context, dek *cryptoDomain.
 	return nil
 }
 
-// NewPostgreSQLDekRepository creates a new PostgreSQL DEK repository instance.
-//
-// Parameters:
-//   - db: A PostgreSQL database connection
-//
-// Returns:
-//   - A new PostgreSQLDekRepository ready for use
-//
-// Example:
-//
-//	db, err := sql.Open("postgres", dsn)
-//	if err != nil {
-//	    return nil, err
-//	}
-//	repo := NewPostgreSQLDekRepository(db)
+// NewPostgreSQLDekRepository creates a new PostgreSQL DEK repository.
 func NewPostgreSQLDekRepository(db *sql.DB) *PostgreSQLDekRepository {
 	return &PostgreSQLDekRepository{db: db}
 }

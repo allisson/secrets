@@ -9,79 +9,13 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// MySQLKekRepository implements KEK persistence for MySQL databases.
-//
-// This repository handles storing and retrieving Key Encryption Keys using
-// MySQL's BINARY(16) for UUID storage and BLOB for binary data. UUIDs are
-// marshaled/unmarshaled to/from binary format using uuid.MarshalBinary() and
-// uuid.UnmarshalBinary(). It supports transaction-aware operations via
-// database.GetTx(), enabling atomic key rotation operations.
-//
-// Database schema requirements:
-//   - id: BINARY(16) PRIMARY KEY (UUID in binary format)
-//   - master_key_id: VARCHAR(255) (reference to master key)
-//   - algorithm: VARCHAR(50) (e.g., "aes-gcm", "chacha20-poly1305")
-//   - encrypted_key: BLOB (encrypted KEK bytes)
-//   - nonce: BLOB (encryption nonce)
-//   - version: INT UNSIGNED (for tracking KEK versions during rotation)
-//   - created_at: DATETIME/TIMESTAMP
-//
-// UUID handling:
-//
-//	MySQL doesn't have a native UUID type, so UUIDs are stored as BINARY(16).
-//	The repository handles marshaling/unmarshaling automatically using
-//	uuid.MarshalBinary() and uuid.UnmarshalBinary() methods.
-//
-// Transaction support:
-//
-//	The repository automatically detects transaction context using database.GetTx().
-//	All methods work both within and outside of transactions seamlessly.
-//
-// Example usage:
-//
-//	repo := NewMySQLKekRepository(db)
-//
-//	// Create a KEK outside transaction
-//	err := repo.Create(ctx, kek)
-//
-//	// Or within a transaction
-//	err = txManager.WithTx(ctx, func(txCtx context.Context) error {
-//	    // Both operations use the same transaction
-//	    if err := repo.Update(txCtx, oldKek); err != nil {
-//	        return err
-//	    }
-//	    return repo.Create(txCtx, newKek)
-//	})
+// MySQLKekRepository implements KEK persistence for MySQL.
+// Uses BINARY(16) for UUIDs and BLOB for binary data with transaction support.
 type MySQLKekRepository struct {
 	db *sql.DB
 }
 
 // Create inserts a new KEK into the MySQL database.
-//
-// The KEK's ID is marshaled to BINARY(16) format using uuid.MarshalBinary(),
-// and binary fields (EncryptedKey, Nonce) are stored as BLOBs. This method
-// supports transaction context via database.GetTx(), enabling atomic multi-step
-// operations.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//   - kek: The Key Encryption Key to insert (must have all required fields populated)
-//
-// Returns:
-//   - An error if marshaling the UUID fails or the insert fails
-//
-// Example:
-//
-//	kek := &cryptoDomain.Kek{
-//	    ID:           uuid.Must(uuid.NewV7()),
-//	    MasterKeyID:  "master-key-1",
-//	    Algorithm:    cryptoDomain.AESGCM,
-//	    EncryptedKey: encryptedBytes,
-//	    Nonce:        nonceBytes,
-//	    Version:      1,
-//	    CreatedAt:    time.Now().UTC(),
-//	}
-//	err := repo.Create(ctx, kek)
 func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -111,23 +45,6 @@ func (m *MySQLKekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) 
 }
 
 // Update modifies an existing KEK in the MySQL database.
-//
-// This method updates all mutable fields of the KEK. The KEK ID is marshaled
-// to BINARY(16) format for the WHERE clause using uuid.MarshalBinary(). The
-// method supports transaction context via database.GetTx(), enabling atomic
-// rotation operations.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//   - kek: The KEK with updated field values (ID must match existing record)
-//
-// Returns:
-//   - An error if marshaling the UUID fails or the update fails
-//
-// Example:
-//
-//	// Update KEK during rotation
-//	err := repo.Update(ctx, kek)
 func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -163,37 +80,7 @@ func (m *MySQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) 
 	return nil
 }
 
-// List retrieves all KEKs from the MySQL database ordered by version descending.
-//
-// This method returns all KEKs (both active and inactive) sorted by version
-// in descending order. KEK IDs are automatically unmarshaled from BINARY(16)
-// to uuid.UUID using uuid.UnmarshalBinary(). This ordering is critical for
-// key rotation scenarios where you need to identify the latest KEK version
-// to set as active in the KekChain.
-//
-// The method supports transaction context via database.GetTx(), allowing
-// consistent reads within a transaction.
-//
-// Parameters:
-//   - ctx: Context for cancellation, timeouts, and transaction propagation
-//
-// Returns:
-//   - A slice of KEK pointers ordered by version descending (newest first)
-//   - An error if the query fails or UUID unmarshaling fails
-//
-// Example:
-//
-//	// Load all KEKs for creating a KekChain
-//	keks, err := repo.List(ctx)
-//	if err != nil {
-//	    return nil, err
-//	}
-//	if len(keks) == 0 {
-//	    return nil, errors.New("no KEKs found")
-//	}
-//
-//	// First KEK is the newest (highest version)
-//	kekChain := cryptoDomain.NewKekChain(keks)
+// List retrieves all KEKs ordered by version descending (newest first).
 func (m *MySQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, error) {
 	querier := database.GetTx(ctx, m.db)
 
@@ -240,21 +127,7 @@ func (m *MySQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, err
 	return keks, nil
 }
 
-// NewMySQLKekRepository creates a new MySQL KEK repository instance.
-//
-// Parameters:
-//   - db: A MySQL database connection
-//
-// Returns:
-//   - A new MySQLKekRepository ready for use
-//
-// Example:
-//
-//	db, err := sql.Open("mysql", dsn)
-//	if err != nil {
-//	    return nil, err
-//	}
-//	repo := NewMySQLKekRepository(db)
+// NewMySQLKekRepository creates a new MySQL KEK repository.
 func NewMySQLKekRepository(db *sql.DB) *MySQLKekRepository {
 	return &MySQLKekRepository{db: db}
 }

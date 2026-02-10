@@ -1,4 +1,4 @@
-// Package config provides application configuration management through environment variables.
+// Package config provides application configuration through environment variables.
 package config
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all application configuration
+// Config holds all application configuration.
 type Config struct {
 	// Server configuration
 	ServerHost string
@@ -33,9 +33,7 @@ type Config struct {
 	WorkerRetryInterval time.Duration
 }
 
-// Load loads configuration from environment variables.
-// It first attempts to load a .env file by searching recursively from the current directory
-// up to the root directory. If no .env file is found, it continues with existing environment variables.
+// Load loads configuration from environment variables and .env file.
 func Load() *Config {
 	// Try to load .env file recursively
 	loadDotEnv()

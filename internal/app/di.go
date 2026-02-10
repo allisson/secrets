@@ -18,8 +18,7 @@ import (
 	"github.com/allisson/secrets/internal/http"
 )
 
-// Container holds all application dependencies and provides methods to access them.
-// It follows the lazy initialization pattern - components are created on first access.
+// Container holds all application dependencies with lazy initialization.
 type Container struct {
 	// Configuration
 	config *config.Config
@@ -73,7 +72,6 @@ func (c *Container) Config() *config.Config {
 }
 
 // Logger returns the configured logger instance.
-// It creates a new logger on first access based on the log level in configuration.
 func (c *Container) Logger() *slog.Logger {
 	c.loggerInit.Do(func() {
 		c.logger = c.initLogger()
@@ -82,7 +80,6 @@ func (c *Container) Logger() *slog.Logger {
 }
 
 // DB returns the database connection.
-// It creates and configures the database connection on first access.
 func (c *Container) DB() (*sql.DB, error) {
 	var err error
 	c.dbInit.Do(func() {
@@ -101,7 +98,6 @@ func (c *Container) DB() (*sql.DB, error) {
 }
 
 // MasterKeyChain returns the master key chain loaded from environment variables.
-// It creates and loads the master key chain on first access.
 func (c *Container) MasterKeyChain() (*cryptoDomain.MasterKeyChain, error) {
 	var err error
 	c.masterKeyChainInit.Do(func() {
@@ -120,7 +116,6 @@ func (c *Container) MasterKeyChain() (*cryptoDomain.MasterKeyChain, error) {
 }
 
 // TxManager returns the transaction manager.
-// It requires a database connection to be initialized first.
 func (c *Container) TxManager() (database.TxManager, error) {
 	var err error
 	c.txManagerInit.Do(func() {
@@ -147,7 +142,6 @@ func (c *Container) AEADManager() cryptoService.AEADManager {
 }
 
 // KeyManager returns the key manager service.
-// It requires the AEAD manager to be initialized first.
 func (c *Container) KeyManager() cryptoService.KeyManager {
 	c.keyManagerInit.Do(func() {
 		c.keyManager = c.initKeyManager()
@@ -156,7 +150,6 @@ func (c *Container) KeyManager() cryptoService.KeyManager {
 }
 
 // KekRepository returns the KEK repository.
-// It requires a database connection to be initialized first.
 func (c *Container) KekRepository() (cryptoUseCase.KekRepository, error) {
 	var err error
 	c.kekRepositoryInit.Do(func() {
@@ -175,7 +168,6 @@ func (c *Container) KekRepository() (cryptoUseCase.KekRepository, error) {
 }
 
 // KekUseCase returns the KEK use case.
-// It requires the transaction manager, KEK repository, and key manager to be initialized first.
 func (c *Container) KekUseCase() (cryptoUseCase.KekUseCase, error) {
 	var err error
 	c.kekUseCaseInit.Do(func() {
@@ -212,7 +204,6 @@ func (c *Container) HTTPServer() (*http.Server, error) {
 }
 
 // Shutdown performs cleanup of all initialized resources.
-// It should be called when the application is shutting down.
 func (c *Container) Shutdown(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
