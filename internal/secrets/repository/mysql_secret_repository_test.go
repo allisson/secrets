@@ -1066,6 +1066,290 @@ func TestMySQLSecretRepository_GetByPath_WithTransaction(t *testing.T) {
 	assert.Equal(t, secret.Path, retrievedSecret.Path)
 }
 
+func TestMySQLSecretRepository_GetByPathAndVersion(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	// Create multiple versions
+	path := "/app/versioned-secret"
+	secrets := make([]*secretsDomain.Secret, 3)
+
+	for i := uint(0); i < 3; i++ {
+		time.Sleep(time.Millisecond)
+		secrets[i] = &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    i + 1,
+			DekID:      dekID,
+			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", i+1)),
+			Nonce:      []byte(fmt.Sprintf("nonce-v%d", i+1)),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secrets[i])
+		require.NoError(t, err)
+	}
+
+	// Get version 2 specifically
+	retrievedSecret, err := repo.GetByPathAndVersion(ctx, path, 2)
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedSecret)
+
+	// Verify it's version 2
+	assert.Equal(t, secrets[1].ID, retrievedSecret.ID)
+	assert.Equal(t, secrets[1].Path, retrievedSecret.Path)
+	assert.Equal(t, uint(2), retrievedSecret.Version)
+	assert.Equal(t, secrets[1].DekID, retrievedSecret.DekID)
+	assert.Equal(t, []byte("encrypted-v2"), retrievedSecret.Ciphertext)
+	assert.Equal(t, []byte("nonce-v2"), retrievedSecret.Nonce)
+	assert.WithinDuration(t, secrets[1].CreatedAt, retrievedSecret.CreatedAt, time.Second)
+	assert.Nil(t, retrievedSecret.DeletedAt)
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_NotFound_InvalidPath(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	// Try to get a non-existent secret
+	secret, err := repo.GetByPathAndVersion(ctx, "/non/existent/path", 1)
+
+	assert.Error(t, err)
+	assert.Nil(t, secret)
+	assert.ErrorIs(t, err, apperrors.ErrNotFound)
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_NotFound_InvalidVersion(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	// Create version 1 and 2
+	path := "/app/secret"
+	for i := uint(1); i <= 2; i++ {
+		time.Sleep(time.Millisecond)
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    i,
+			DekID:      dekID,
+			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", i)),
+			Nonce:      []byte(fmt.Sprintf("nonce-v%d", i)),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secret)
+		require.NoError(t, err)
+	}
+
+	// Try to get version 3 which doesn't exist
+	secret, err := repo.GetByPathAndVersion(ctx, path, 3)
+
+	assert.Error(t, err)
+	assert.Nil(t, secret)
+	assert.ErrorIs(t, err, apperrors.ErrNotFound)
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_MultipleVersions(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	path := "/app/multi-version-secret"
+	versions := []uint{1, 2, 3, 4, 5}
+
+	// Create multiple versions
+	for _, version := range versions {
+		time.Sleep(time.Millisecond)
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    version,
+			DekID:      dekID,
+			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", version)),
+			Nonce:      []byte(fmt.Sprintf("nonce-v%d", version)),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secret)
+		require.NoError(t, err)
+	}
+
+	// Retrieve each version and verify correctness
+	for _, version := range versions {
+		retrievedSecret, err := repo.GetByPathAndVersion(ctx, path, version)
+		require.NoError(t, err, "failed to get version %d", version)
+		assert.NotNil(t, retrievedSecret)
+		assert.Equal(t, path, retrievedSecret.Path)
+		assert.Equal(t, version, retrievedSecret.Version)
+		assert.Equal(
+			t,
+			[]byte(fmt.Sprintf("encrypted-v%d", version)),
+			retrievedSecret.Ciphertext,
+			"ciphertext mismatch for version %d",
+			version,
+		)
+		assert.Equal(
+			t,
+			[]byte(fmt.Sprintf("nonce-v%d", version)),
+			retrievedSecret.Nonce,
+			"nonce mismatch for version %d",
+			version,
+		)
+	}
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_DeletedSecret(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	// Create version 1
+	secret := &secretsDomain.Secret{
+		ID:         uuid.Must(uuid.NewV7()),
+		Path:       "/app/deleted-secret",
+		Version:    1,
+		DekID:      dekID,
+		Ciphertext: []byte("encrypted-data"),
+		Nonce:      []byte("nonce"),
+		CreatedAt:  time.Now().UTC(),
+	}
+	err := repo.Create(ctx, secret)
+	require.NoError(t, err)
+
+	// Verify we can get it before deletion
+	retrievedSecret, err := repo.GetByPathAndVersion(ctx, "/app/deleted-secret", 1)
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedSecret)
+
+	// Delete the secret
+	err = repo.Delete(ctx, secret.ID)
+	require.NoError(t, err)
+
+	// GetByPathAndVersion should return ErrNotFound for deleted secrets
+	retrievedSecret, err = repo.GetByPathAndVersion(ctx, "/app/deleted-secret", 1)
+	assert.Error(t, err)
+	assert.Nil(t, retrievedSecret)
+	assert.ErrorIs(t, err, apperrors.ErrNotFound)
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_MultipleVersions_OneDeleted(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	path := "/app/mixed-versions"
+
+	// Create versions 1, 2, and 3
+	secrets := make([]*secretsDomain.Secret, 3)
+	for i := uint(0); i < 3; i++ {
+		time.Sleep(time.Millisecond)
+		secrets[i] = &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    i + 1,
+			DekID:      dekID,
+			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", i+1)),
+			Nonce:      []byte(fmt.Sprintf("nonce-v%d", i+1)),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secrets[i])
+		require.NoError(t, err)
+	}
+
+	// Delete version 2
+	err := repo.Delete(ctx, secrets[1].ID)
+	require.NoError(t, err)
+
+	// Version 1 should still be accessible
+	v1, err := repo.GetByPathAndVersion(ctx, path, 1)
+	require.NoError(t, err)
+	assert.NotNil(t, v1)
+	assert.Equal(t, uint(1), v1.Version)
+
+	// Version 2 should not be accessible (deleted)
+	v2, err := repo.GetByPathAndVersion(ctx, path, 2)
+	assert.Error(t, err)
+	assert.Nil(t, v2)
+	assert.ErrorIs(t, err, apperrors.ErrNotFound)
+
+	// Version 3 should still be accessible
+	v3, err := repo.GetByPathAndVersion(ctx, path, 3)
+	require.NoError(t, err)
+	assert.NotNil(t, v3)
+	assert.Equal(t, uint(3), v3.Version)
+}
+
+func TestMySQLSecretRepository_GetByPathAndVersion_WithTransaction(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	// Create secrets with multiple versions
+	path := "/app/transaction-secret"
+	for i := uint(1); i <= 2; i++ {
+		time.Sleep(time.Millisecond)
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    i,
+			DekID:      dekID,
+			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", i)),
+			Nonce:      []byte(fmt.Sprintf("nonce-v%d", i)),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secret)
+		require.NoError(t, err)
+	}
+
+	// Use TxManager to get the secret within a transaction
+	txManager := database.NewTxManager(db)
+	var retrievedSecret *secretsDomain.Secret
+
+	err := txManager.WithTx(ctx, func(txCtx context.Context) error {
+		var txErr error
+		retrievedSecret, txErr = repo.GetByPathAndVersion(txCtx, path, 1)
+		return txErr
+	})
+
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedSecret)
+	assert.Equal(t, path, retrievedSecret.Path)
+	assert.Equal(t, uint(1), retrievedSecret.Version)
+	assert.Equal(t, []byte("encrypted-v1"), retrievedSecret.Ciphertext)
+}
+
 // Helper functions
 
 // createMySQLKekAndDek creates a KEK and DEK for testing and returns their IDs

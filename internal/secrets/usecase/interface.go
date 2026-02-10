@@ -91,6 +91,7 @@ type SecretRepository interface {
 	Create(ctx context.Context, secret *secretsDomain.Secret) error
 	Delete(ctx context.Context, secretID uuid.UUID) error
 	GetByPath(ctx context.Context, path string) (*secretsDomain.Secret, error)
+	GetByPathAndVersion(ctx context.Context, path string, version uint) (*secretsDomain.Secret, error)
 }
 
 // SecretUseCase defines the interface for secret management business logic.
