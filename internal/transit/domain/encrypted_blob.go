@@ -21,6 +21,7 @@ import (
 type EncryptedBlob struct {
 	Version    uint
 	Ciphertext []byte
+	Plaintext  []byte // In memory only
 }
 
 // NewEncryptedBlob creates an EncryptedBlob from its string representation.
