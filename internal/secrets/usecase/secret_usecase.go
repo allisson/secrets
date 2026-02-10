@@ -79,6 +79,7 @@ func (s *secretUseCase) createOrUpdateSecret(
 		if err != nil {
 			return err
 		}
+		defer cryptoDomain.Zero(dekKey)
 
 		// Create cipher with the decrypted DEK key
 		cipher, err := s.aeadManager.CreateCipher(dekKey, s.dekAlgorithm)
@@ -143,6 +144,7 @@ func (s *secretUseCase) Get(ctx context.Context, path string) (*secretsDomain.Se
 	if err != nil {
 		return nil, err
 	}
+	defer cryptoDomain.Zero(dekKey)
 
 	// Create cipher with the decrypted DEK key
 	cipher, err := s.aeadManager.CreateCipher(dekKey, dek.Algorithm)

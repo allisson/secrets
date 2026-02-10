@@ -48,6 +48,13 @@ func (k *KekChain) Get(id uuid.UUID) (*Kek, bool) {
 
 // Close securely clears all KEKs from the chain and resets the active ID.
 func (k *KekChain) Close() {
+	// Zero all KEK keys before clearing
+	k.keys.Range(func(key, value interface{}) bool {
+		if kek, ok := value.(*Kek); ok {
+			Zero(kek.Key)
+		}
+		return true
+	})
 	k.activeID = uuid.Nil
 	k.keys.Clear()
 }
