@@ -9,7 +9,7 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// MakeJSONResponse writes a JSON response with the given status code and data
+// MakeJSONResponse writes a JSON response with the given status code and data.
 func MakeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -18,15 +18,14 @@ func MakeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	}
 }
 
-// ErrorResponse represents a structured error response
+// ErrorResponse represents a structured error response.
 type ErrorResponse struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
 	Code    string `json:"code,omitempty"`
 }
 
-// HandleError maps domain errors to HTTP status codes and writes an appropriate response.
-// It logs the error with structured logging and returns a user-friendly error message.
+// HandleError maps domain errors to HTTP status codes and returns a JSON response.
 func HandleError(w http.ResponseWriter, err error, logger *slog.Logger) {
 	if err == nil {
 		return
@@ -93,7 +92,7 @@ func HandleError(w http.ResponseWriter, err error, logger *slog.Logger) {
 	MakeJSONResponse(w, statusCode, errorResponse)
 }
 
-// HandleValidationError writes a 400 Bad Request response for validation errors
+// HandleValidationError writes a 400 Bad Request response for validation errors.
 func HandleValidationError(w http.ResponseWriter, err error, logger *slog.Logger) {
 	if logger != nil {
 		logger.Warn("validation failed", slog.Any("error", err))

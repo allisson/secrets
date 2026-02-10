@@ -11,54 +11,18 @@ import (
 )
 
 // KeyManagerService implements the KeyManager interface for envelope encryption.
-//
-// This service manages the lifecycle of Key Encryption Keys (KEKs) and Data Encryption Keys (DEKs)
-// in a two-tier envelope encryption scheme:
-//   - KEKs are encrypted with a master key
-//   - DEKs are encrypted with KEKs
-//   - Actual data is encrypted with DEKs
-//
-// This approach provides efficient key rotation and separation of concerns.
-// The service uses AEADManager to create cipher instances, following dependency
-// injection principles and separating concerns.
 type KeyManagerService struct {
 	aeadManager AEADManager
 }
 
-// NewKeyManager creates a new KeyManagerService instance with the provided AEADManager.
-//
-// The AEADManager is used to create cipher instances for encrypting and decrypting
-// KEKs and DEKs. This dependency injection approach allows for better testability
-// and separation of concerns.
-//
-// Parameters:
-//   - aeadManager: The AEADManager used to create cipher instances
-//
-// Returns:
-//   - A new KeyManagerService instance
+// NewKeyManager creates a new KeyManagerService with the provided AEADManager.
 func NewKeyManager(aeadManager AEADManager) *KeyManagerService {
 	return &KeyManagerService{
 		aeadManager: aeadManager,
 	}
 }
 
-// CreateKek creates a new Key Encryption Key encrypted with the provided master key.
-//
-// The KEK is generated as a random 32-byte (256-bit) key and then encrypted using
-// the master key with the specified algorithm. The encrypted KEK can be safely stored
-// in a database or other persistent storage.
-//
-// The master key's ID is stored in the KEK for tracking which master key was used during
-// encryption. This enables proper key rotation workflows where multiple master keys are
-// maintained simultaneously.
-//
-// Parameters:
-//   - masterKey: The MasterKey used to encrypt the KEK (contains ID and 32-byte key material)
-//   - alg: The encryption algorithm to use (AESGCM or ChaCha20)
-//
-// Returns:
-//   - A Kek struct containing the encrypted key, nonce, master key ID reference, and metadata
-//   - An error if the algorithm is unsupported or encryption fails
+// CreateKek creates a new KEK encrypted with the master key.
 func (km *KeyManagerService) CreateKek(
 	masterKey *cryptoDomain.MasterKey,
 	alg cryptoDomain.Algorithm,
@@ -95,23 +59,7 @@ func (km *KeyManagerService) CreateKek(
 	return kek, nil
 }
 
-// DecryptKek decrypts a Key Encryption Key using the provided master key.
-//
-// This method is used to recover the plaintext KEK from its encrypted form stored
-// in the database. The decrypted KEK is needed to encrypt and decrypt DEKs. The
-// decrypted KEK should be kept in memory only and never persisted in plaintext form.
-//
-// This is typically used when loading KEKs from the database at application startup
-// or when accessing a KEK that hasn't been cached yet. For performance, decrypted
-// KEKs can be cached in memory using a KekChain with appropriate expiration policies.
-//
-// Parameters:
-//   - kek: The encrypted Key Encryption Key to decrypt (must have EncryptedKey and Nonce)
-//   - masterKey: The MasterKey used to decrypt the KEK (must match the MasterKeyID in the KEK)
-//
-// Returns:
-//   - The decrypted KEK as a byte slice (32 bytes)
-//   - An error if decryption fails or authentication check fails
+// DecryptKek decrypts a KEK using the master key.
 func (km *KeyManagerService) DecryptKek(
 	kek *cryptoDomain.Kek,
 	masterKey *cryptoDomain.MasterKey,
@@ -131,19 +79,7 @@ func (km *KeyManagerService) DecryptKek(
 	return kekKey, nil
 }
 
-// CreateDek creates a new Data Encryption Key encrypted with the provided KEK.
-//
-// The DEK is generated as a random 32-byte (256-bit) key and then encrypted using
-// the KEK with the specified algorithm. The encrypted DEK should be stored alongside
-// the data it encrypts.
-//
-// Parameters:
-//   - kek: The Key Encryption Key used to encrypt the DEK (must have Key field populated)
-//   - alg: The encryption algorithm to use for the DEK (AESGCM or ChaCha20)
-//
-// Returns:
-//   - A Dek struct containing the encrypted key, nonce, and metadata
-//   - An error if the algorithm is unsupported or encryption fails
+// CreateDek creates a new DEK encrypted with the KEK.
 func (km *KeyManagerService) CreateDek(
 	kek *cryptoDomain.Kek,
 	alg cryptoDomain.Algorithm,
@@ -178,19 +114,7 @@ func (km *KeyManagerService) CreateDek(
 	return dek, nil
 }
 
-// DecryptDek decrypts a Data Encryption Key using the provided Key Encryption Key.
-//
-// This method is used to recover the plaintext DEK so it can be used to decrypt
-// application data. The decrypted DEK should be kept in memory only and never
-// persisted in plaintext form.
-//
-// Parameters:
-//   - dek: The encrypted Data Encryption Key to decrypt
-//   - kek: The Key Encryption Key used to decrypt the DEK (must have Key field populated)
-//
-// Returns:
-//   - The decrypted DEK as a byte slice (32 bytes)
-//   - An error if decryption fails or authentication check fails
+// DecryptDek decrypts a DEK using the KEK.
 func (km *KeyManagerService) DecryptDek(
 	dek *cryptoDomain.Dek,
 	kek *cryptoDomain.Kek,

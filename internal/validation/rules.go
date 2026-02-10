@@ -16,7 +16,7 @@ var (
 	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 )
 
-// WrapValidationError wraps validation errors as domain ErrInvalidInput
+// WrapValidationError wraps validation errors as domain ErrInvalidInput.
 func WrapValidationError(err error) error {
 	if err == nil {
 		return nil
@@ -24,7 +24,7 @@ func WrapValidationError(err error) error {
 	return apperrors.Wrap(apperrors.ErrInvalidInput, err.Error())
 }
 
-// PasswordStrength validates password meets minimum security requirements
+// PasswordStrength validates password meets minimum security requirements.
 type PasswordStrength struct {
 	MinLength      int
 	RequireUpper   bool
@@ -33,7 +33,7 @@ type PasswordStrength struct {
 	RequireSpecial bool
 }
 
-// Validate checks if the password meets the configured requirements
+// Validate checks if the password meets the configured requirements.
 func (p PasswordStrength) Validate(value interface{}) error {
 	s, ok := value.(string)
 	if !ok {

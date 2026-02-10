@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-// Server represents the HTTP server
+// Server represents the HTTP server.
 type Server struct {
 	server *http.Server
 	logger *slog.Logger
 }
 
-// NewServer creates a new HTTP server
+// NewServer creates a new HTTP server.
 func NewServer(
 	host string,
 	port int,
@@ -32,7 +32,7 @@ func NewServer(
 	}
 }
 
-// Start starts the HTTP server
+// Start starts the HTTP server.
 func (s *Server) Start(ctx context.Context) error {
 	// Create router
 	mux := http.NewServeMux()
@@ -58,7 +58,7 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-// Shutdown gracefully shuts down the HTTP server
+// Shutdown gracefully shuts down the HTTP server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Info("shutting down http server")
 	return s.server.Shutdown(ctx)

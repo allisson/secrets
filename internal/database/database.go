@@ -1,4 +1,4 @@
-// Package database provides database connection management and configuration.
+// Package database provides database connection management and utilities.
 package database
 
 import (
@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Config holds database configuration
+// Config holds database configuration settings.
 type Config struct {
 	Driver             string
 	ConnectionString   string
@@ -19,7 +19,7 @@ type Config struct {
 	ConnMaxLifetime    time.Duration
 }
 
-// Connect establishes a database connection
+// Connect establishes a database connection with the given configuration.
 func Connect(cfg Config) (*sql.DB, error) {
 	db, err := sql.Open(cfg.Driver, cfg.ConnectionString)
 	if err != nil {
