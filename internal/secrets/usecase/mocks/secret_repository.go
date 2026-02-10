@@ -177,49 +177,62 @@ func (_c *MockSecretRepository_GetByPath_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// Update provides a mock function with given fields: ctx, secret
-func (_m *MockSecretRepository) Update(ctx context.Context, secret *domain.Secret) error {
-	ret := _m.Called(ctx, secret)
+// GetByPathAndVersion provides a mock function with given fields: ctx, path, version
+func (_m *MockSecretRepository) GetByPathAndVersion(ctx context.Context, path string, version uint) (*domain.Secret, error) {
+	ret := _m.Called(ctx, path, version)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Update")
+		panic("no return value specified for GetByPathAndVersion")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *domain.Secret) error); ok {
-		r0 = rf(ctx, secret)
+	var r0 *domain.Secret
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.Secret, error)); ok {
+		return rf(ctx, path, version)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) *domain.Secret); ok {
+		r0 = rf(ctx, path, version)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Secret)
+		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
+		r1 = rf(ctx, path, version)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// MockSecretRepository_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
-type MockSecretRepository_Update_Call struct {
+// MockSecretRepository_GetByPathAndVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByPathAndVersion'
+type MockSecretRepository_GetByPathAndVersion_Call struct {
 	*mock.Call
 }
 
-// Update is a helper method to define mock.On call
+// GetByPathAndVersion is a helper method to define mock.On call
 //   - ctx context.Context
-//   - secret *domain.Secret
-func (_e *MockSecretRepository_Expecter) Update(ctx interface{}, secret interface{}) *MockSecretRepository_Update_Call {
-	return &MockSecretRepository_Update_Call{Call: _e.mock.On("Update", ctx, secret)}
+//   - path string
+//   - version uint
+func (_e *MockSecretRepository_Expecter) GetByPathAndVersion(ctx interface{}, path interface{}, version interface{}) *MockSecretRepository_GetByPathAndVersion_Call {
+	return &MockSecretRepository_GetByPathAndVersion_Call{Call: _e.mock.On("GetByPathAndVersion", ctx, path, version)}
 }
 
-func (_c *MockSecretRepository_Update_Call) Run(run func(ctx context.Context, secret *domain.Secret)) *MockSecretRepository_Update_Call {
+func (_c *MockSecretRepository_GetByPathAndVersion_Call) Run(run func(ctx context.Context, path string, version uint)) *MockSecretRepository_GetByPathAndVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*domain.Secret))
+		run(args[0].(context.Context), args[1].(string), args[2].(uint))
 	})
 	return _c
 }
 
-func (_c *MockSecretRepository_Update_Call) Return(_a0 error) *MockSecretRepository_Update_Call {
-	_c.Call.Return(_a0)
+func (_c *MockSecretRepository_GetByPathAndVersion_Call) Return(_a0 *domain.Secret, _a1 error) *MockSecretRepository_GetByPathAndVersion_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockSecretRepository_Update_Call) RunAndReturn(run func(context.Context, *domain.Secret) error) *MockSecretRepository_Update_Call {
+func (_c *MockSecretRepository_GetByPathAndVersion_Call) RunAndReturn(run func(context.Context, string, uint) (*domain.Secret, error)) *MockSecretRepository_GetByPathAndVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

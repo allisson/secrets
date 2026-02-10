@@ -226,6 +226,74 @@ func (p *PostgreSQLSecretRepository) GetByPath(
 	return &secret, nil
 }
 
+// GetByPathAndVersion retrieves a specific version of a secret by its path and version number from the
+// PostgreSQL database.
+//
+// This method fetches a secret using both its path identifier and version number, returning only
+// non-deleted versions. The secret is returned with all fields populated, including encrypted data.
+// This method supports transaction context via database.GetTx(), enabling consistent reads within
+// a transaction.
+//
+// Soft-deleted secrets (with deleted_at set) are excluded from results. If the specified version
+// at the given path is deleted or does not exist, this method returns ErrNotFound.
+//
+// Note: Unlike GetByPath which returns the latest version, this method returns a specific version
+// number, which is useful for accessing historical versions of a secret or for audit purposes.
+//
+// Parameters:
+//   - ctx: Context for cancellation, timeouts, and transaction propagation
+//   - path: The secret path identifier (e.g., "/app/database/password")
+//   - version: The specific version number to retrieve (e.g., 1, 2, 3)
+//
+// Returns:
+//   - The Secret if found with all encrypted fields populated
+//   - ErrNotFound if the secret doesn't exist at the specified path and version or is deleted
+//   - An error if the database query fails
+//
+// Example:
+//
+//	// Get version 2 of a secret
+//	secret, err := repo.GetByPathAndVersion(ctx, "/app/api-key", 2)
+//	if err != nil {
+//	    if errors.Is(err, apperrors.ErrNotFound) {
+//	        return nil, fmt.Errorf("secret version not found")
+//	    }
+//	    return nil, err
+//	}
+//	// Use secret.DekID to retrieve the DEK for decryption
+func (p *PostgreSQLSecretRepository) GetByPathAndVersion(
+	ctx context.Context,
+	path string,
+	version uint,
+) (*secretsDomain.Secret, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, path, version, dek_id, ciphertext, nonce, created_at, deleted_at 
+			  FROM secrets 
+			  WHERE path = $1 AND version = $2 AND deleted_at IS NULL
+			  LIMIT 1`
+
+	var secret secretsDomain.Secret
+	err := querier.QueryRowContext(ctx, query, path, version).Scan(
+		&secret.ID,
+		&secret.Path,
+		&secret.Version,
+		&secret.DekID,
+		&secret.Ciphertext,
+		&secret.Nonce,
+		&secret.CreatedAt,
+		&secret.DeletedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get secret by path and version")
+	}
+
+	return &secret, nil
+}
+
 // Delete performs a soft delete on a secret by setting the DeletedAt timestamp.
 //
 // This method does not physically remove the secret from the database. Instead,
