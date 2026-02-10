@@ -21,3 +21,8 @@ packages:
       DekRepository:
       SecretRepository:
       SecretUseCase:
+  github.com/allisson/secrets/internal/transit/usecase:
+    interfaces:
+      DekRepository:
+      TransitKeyRepository:
+      TransitKeyUseCase:
