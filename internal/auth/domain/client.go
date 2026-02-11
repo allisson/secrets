@@ -73,3 +73,27 @@ func (c *Client) IsAllowed(path string, capability Capability) bool {
 	// No matching policy found
 	return false
 }
+
+// CreateClientInput contains the parameters for creating a new authentication client.
+// The client secret will be automatically generated and cannot be specified by the caller.
+type CreateClientInput struct {
+	Name     string           // Human-readable name for identifying the client
+	IsActive bool             // Whether the client can authenticate immediately after creation
+	Policies []PolicyDocument // Authorization policies defining resource access permissions
+}
+
+// CreateClientOutput contains the result of creating a new client.
+// SECURITY: The PlainSecret is only returned once and must be securely transmitted
+// to the client. It will never be retrievable again after this response.
+type CreateClientOutput struct {
+	ID          uuid.UUID // Unique identifier for the created client (UUIDv7)
+	PlainSecret string    // Plain text secret for authentication (transmit securely, never log)
+}
+
+// UpdateClientInput contains the mutable fields for updating an existing client.
+// The client ID and secret cannot be modified through updates.
+type UpdateClientInput struct {
+	Name     string           // Updated human-readable name
+	IsActive bool             // Updated active status (false prevents authentication)
+	Policies []PolicyDocument // Updated authorization policies
+}

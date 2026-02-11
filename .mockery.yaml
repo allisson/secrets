@@ -26,3 +26,11 @@ packages:
       DekRepository:
       TransitKeyRepository:
       TransitKeyUseCase:
+  github.com/allisson/secrets/internal/auth/service:
+    interfaces:
+      SecretService:
+  github.com/allisson/secrets/internal/auth/usecase:
+    interfaces:
+      ClientRepository:
+      TokenRepository:
+      ClientUseCase:
