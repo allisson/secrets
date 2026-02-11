@@ -14,12 +14,14 @@ import (
 )
 
 // MySQLClientRepository implements Client persistence for MySQL.
-// Uses BINARY(16) for UUIDs with transaction support via database.GetTx().
+// Uses BINARY(16) for UUID storage with transaction support via database.GetTx().
 type MySQLClientRepository struct {
 	db *sql.DB
 }
 
-// Create inserts a new Client into the MySQL database.
+// Create inserts a new Client into the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns an error if UUID/policy
+// marshaling or database insertion fails.
 func (m *MySQLClientRepository) Create(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -52,7 +54,9 @@ func (m *MySQLClientRepository) Create(ctx context.Context, client *authDomain.C
 	return nil
 }
 
-// Update modifies an existing Client in the MySQL database.
+// Update modifies an existing Client in the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns an error if UUID/policy
+// marshaling or database update fails.
 func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -91,7 +95,9 @@ func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.C
 	return nil
 }
 
-// Get retrieves a Client by ID from the MySQL database.
+// Get retrieves a Client by ID from the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns ErrClientNotFound if the client
+// doesn't exist, or an error if UUID/policy unmarshaling or database query fails.
 func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error) {
 	querier := database.GetTx(ctx, m.db)
 
