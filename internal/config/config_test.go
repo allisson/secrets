@@ -31,10 +31,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 5, cfg.DBMaxIdleConnections)
 				assert.Equal(t, 5*time.Minute, cfg.DBConnMaxLifetime)
 				assert.Equal(t, "info", cfg.LogLevel)
-				assert.Equal(t, 5*time.Second, cfg.WorkerInterval)
-				assert.Equal(t, 10, cfg.WorkerBatchSize)
-				assert.Equal(t, 3, cfg.WorkerMaxRetries)
-				assert.Equal(t, 1*time.Minute, cfg.WorkerRetryInterval)
+				assert.Equal(t, 86400*time.Second, cfg.AuthTokenExpiration)
 			},
 		},
 		{
@@ -66,18 +63,12 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "load custom worker configuration",
+			name: "load custom auth configuration",
 			envVars: map[string]string{
-				"WORKER_INTERVAL":       "10",
-				"WORKER_BATCH_SIZE":     "20",
-				"WORKER_MAX_RETRIES":    "5",
-				"WORKER_RETRY_INTERVAL": "2",
+				"AUTH_TOKEN_EXPIRATION_SECONDS": "10",
 			},
 			validate: func(t *testing.T, cfg *Config) {
-				assert.Equal(t, 10*time.Second, cfg.WorkerInterval)
-				assert.Equal(t, 20, cfg.WorkerBatchSize)
-				assert.Equal(t, 5, cfg.WorkerMaxRetries)
-				assert.Equal(t, 2*time.Minute, cfg.WorkerRetryInterval)
+				assert.Equal(t, 10*time.Second, cfg.AuthTokenExpiration)
 			},
 		},
 		{

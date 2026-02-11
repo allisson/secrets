@@ -16,3 +16,12 @@ type Token struct {
 	RevokedAt *time.Time // Token revocation timestamp (nil if active)
 	CreatedAt time.Time
 }
+
+type IssueTokenInput struct {
+	ClientID     uuid.UUID
+	ClientSecret string
+}
+
+type IssueTokenOutput struct {
+	PlainToken string
+}

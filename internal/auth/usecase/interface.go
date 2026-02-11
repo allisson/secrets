@@ -76,3 +76,10 @@ type ClientUseCase interface {
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	Delete(ctx context.Context, clientID uuid.UUID) error
 }
+
+type TokenUseCase interface {
+	Issue(
+		ctx context.Context,
+		issueTokenInput *authDomain.IssueTokenInput,
+	) (*authDomain.IssueTokenOutput, error)
+}
