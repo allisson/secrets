@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -121,6 +122,9 @@ func main() {
 func runServer(ctx context.Context) error {
 	// Load configuration
 	cfg := config.Load()
+
+	// Set Gin mode based on log level
+	gin.SetMode(cfg.GetGinMode())
 
 	// Create DI container
 	container := app.NewContainer(cfg)

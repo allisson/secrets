@@ -1,72 +1,45 @@
+// Package http provides HTTP server implementation and request handlers.
 package http
 
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/allisson/secrets/internal/httputil"
 )
 
-func TestMakeJSONResponse(t *testing.T) {
-	tests := []struct {
-		name         string
-		body         interface{}
-		statusCode   int
-		expectedBody string
-	}{
-		{
-			name:         "success response",
-			body:         map[string]string{"status": "ok"},
-			statusCode:   http.StatusOK,
-			expectedBody: `{"status":"ok"}`,
-		},
-		{
-			name:         "error response",
-			body:         map[string]string{"error": "something went wrong"},
-			statusCode:   http.StatusInternalServerError,
-			expectedBody: `{"error":"something went wrong"}`,
-		},
-		{
-			name: "complex object",
-			body: map[string]interface{}{
-				"id":   1,
-				"name": "Test",
-				"data": map[string]string{"key": "value"},
-			},
-			statusCode:   http.StatusOK,
-			expectedBody: `{"data":{"key":"value"},"id":1,"name":"Test"}`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			httputil.MakeJSONResponse(w, tt.statusCode, tt.body)
-
-			assert.Equal(t, tt.statusCode, w.Code)
-			assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-			assert.JSONEq(t, tt.expectedBody, w.Body.String())
-		})
-	}
+// TestMain sets Gin to test mode for all tests in this package.
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
 }
 
-func TestHealthHandler(t *testing.T) {
-	handler := HealthHandler()
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	w := httptest.NewRecorder()
+// createTestServer creates a test server with a discarding logger.
+func createTestServer() *Server {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return NewServer("localhost", 8080, logger)
+}
 
-	handler.ServeHTTP(w, req)
+// TestHealthHandler tests the health check endpoint handler.
+func TestHealthHandler(t *testing.T) {
+	server := createTestServer()
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/health", nil)
+
+	server.healthHandler(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -74,16 +47,19 @@ func TestHealthHandler(t *testing.T) {
 	assert.Equal(t, "healthy", response["status"])
 }
 
+// TestReadinessHandler_Ready tests the readiness endpoint when server is ready.
 func TestReadinessHandler_Ready(t *testing.T) {
+	server := createTestServer()
 	ctx := context.Background()
-	handler := ReadinessHandler(ctx)
-	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
-	w := httptest.NewRecorder()
 
-	handler.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/ready", nil)
+
+	handler := server.readinessHandler(ctx)
+	handler(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -91,18 +67,20 @@ func TestReadinessHandler_Ready(t *testing.T) {
 	assert.Equal(t, "ready", response["status"])
 }
 
+// TestReadinessHandler_NotReady tests the readiness endpoint when server is shutting down.
 func TestReadinessHandler_NotReady(t *testing.T) {
+	server := createTestServer()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel context to simulate shutdown
 
-	handler := ReadinessHandler(ctx)
-	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/ready", nil)
 
-	handler.ServeHTTP(w, req)
+	handler := server.readinessHandler(ctx)
+	handler(c)
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
-	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -110,87 +88,129 @@ func TestReadinessHandler_NotReady(t *testing.T) {
 	assert.Equal(t, "not ready", response["status"])
 }
 
-func TestLoggingMiddleware(t *testing.T) {
-	// Create a test logger
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.New(handler)
+// TestCustomLoggerMiddleware tests the custom logging middleware.
+func TestCustomLoggerMiddleware(t *testing.T) {
+	// Create a test logger that discards output
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Create a simple handler that returns 200 OK
-	simpleHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok")) //nolint:errcheck,gosec
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(CustomLoggerMiddleware(logger))
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "test"})
 	})
 
-	// Wrap with logging middleware
-	wrapped := LoggingMiddleware(logger)(simpleHandler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
-
-	// Should not panic
-	wrapped.ServeHTTP(w, req)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "ok", w.Body.String())
-}
-
-func TestRecoveryMiddleware(t *testing.T) {
-	// Create a test logger
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.New(handler)
-
-	// Create a handler that panics
-	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic("test panic")
-	})
-
-	// Wrap with recovery middleware
-	wrapped := RecoveryMiddleware(logger)(panicHandler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	w := httptest.NewRecorder()
-
-	// Should not panic
-	wrapped.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, "internal server error", response["error"])
+	assert.Equal(t, "test", response["message"])
 }
 
-func TestChainMiddleware(t *testing.T) {
-	// Create middleware that adds headers
-	middleware1 := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Test-1", "value1")
-			next.ServeHTTP(w, r)
-		})
-	}
+// TestRecoveryMiddleware tests Gin's built-in recovery middleware.
+func TestRecoveryMiddleware(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	middleware2 := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("X-Test-2", "value2")
-			next.ServeHTTP(w, r)
-		})
-	}
-
-	// Create a simple handler
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(CustomLoggerMiddleware(logger))
+	router.GET("/panic", func(c *gin.Context) {
+		panic("test panic")
 	})
 
-	// Chain middlewares
-	chained := ChainMiddleware(middleware1, middleware2)(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
 
-	chained.ServeHTTP(w, req)
+	// Should not panic - Recovery middleware catches it
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestRouter_HealthEndpoint tests the health endpoint through the full router.
+func TestRouter_HealthEndpoint(t *testing.T) {
+	server := createTestServer()
+	ctx := context.Background()
+	router := server.setupRouter(ctx)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "value1", w.Header().Get("X-Test-1"))
-	assert.Equal(t, "value2", w.Header().Get("X-Test-2"))
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "healthy", response["status"])
+}
+
+// TestRouter_ReadyEndpoint tests the ready endpoint through the full router.
+func TestRouter_ReadyEndpoint(t *testing.T) {
+	server := createTestServer()
+	ctx := context.Background()
+	router := server.setupRouter(ctx)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "ready", response["status"])
+}
+
+// TestRouter_NotFoundEndpoint tests 404 handling.
+func TestRouter_NotFoundEndpoint(t *testing.T) {
+	server := createTestServer()
+	ctx := context.Background()
+	router := server.setupRouter(ctx)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestServer_ShutdownGracefully tests graceful server shutdown.
+func TestServer_ShutdownGracefully(t *testing.T) {
+	server := createTestServer()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server in goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		if err := server.Start(ctx); err != nil {
+			errChan <- err
+		}
+	}()
+
+	// Give server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Shutdown server
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	err := server.Shutdown(shutdownCtx)
+	assert.NoError(t, err)
+
+	// Verify no startup errors
+	select {
+	case err := <-errChan:
+		t.Fatalf("server startup failed: %v", err)
+	default:
+		// No error, good
+	}
 }

@@ -61,7 +61,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🔑 **Complete Repository Layer** - KEK and DEK repositories with transaction support and database-specific optimizations
 - ⚡ **Transaction Management** - ACID guarantees for atomic operations (key rotation, secret updates)
 - 💉 **Dependency Injection** - Centralized wiring with lazy initialization
-- 🌐 **RESTful API** - JSON-based HTTP API with standard status codes
+- 🌐 **Gin Web Framework** - High-performance HTTP router (v1.11.0) with custom slog middleware and standard REST API
 
 ## 🏗️ Architecture
 
@@ -1075,6 +1075,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project leverages these excellent Go libraries:
 
+- [gin-gonic/gin](https://github.com/gin-gonic/gin) - High-performance HTTP web framework
 - [google/uuid](https://github.com/google/uuid) - UUID generation with UUIDv7 support
 - [jellydator/validation](https://github.com/jellydator/validation) - Advanced input validation
 - [urfave/cli](https://github.com/urfave/cli) - CLI framework

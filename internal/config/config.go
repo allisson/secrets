@@ -64,6 +64,18 @@ func Load() *Config {
 	}
 }
 
+// GetGinMode returns the appropriate Gin mode based on log level.
+func (c *Config) GetGinMode() string {
+	switch c.LogLevel {
+	case "debug":
+		return "debug"
+	case "info", "warn", "error":
+		return "release"
+	default:
+		return "release"
+	}
+}
+
 // loadDotEnv searches for a .env file recursively from the current directory
 // up to the root directory and loads it if found.
 func loadDotEnv() {
