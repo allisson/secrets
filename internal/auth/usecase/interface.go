@@ -33,6 +33,8 @@ type TokenRepository interface {
 
 	// Get retrieves a token by ID. Returns ErrTokenNotFound if not found.
 	Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error)
+
+	GetByTokenHash(ctx context.Context, tokenHash string) (*authDomain.Token, error)
 }
 
 // ClientUseCase defines business logic operations for managing authentication clients.

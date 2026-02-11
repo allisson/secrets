@@ -101,6 +101,38 @@ func (p *PostgreSQLTokenRepository) Get(ctx context.Context, tokenID uuid.UUID) 
 	return &token, nil
 }
 
+// GetByTokenHash retrieves a Token by token hash from the PostgreSQL database. Uses transaction
+// support via database.GetTx(). Returns ErrTokenNotFound if the token doesn't exist, or an error
+// if database query fails.
+func (p *PostgreSQLTokenRepository) GetByTokenHash(
+	ctx context.Context,
+	tokenHash string,
+) (*authDomain.Token, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, token_hash, client_id, expires_at, revoked_at, created_at 
+			  FROM tokens WHERE token_hash = $1`
+
+	var token authDomain.Token
+
+	err := querier.QueryRowContext(ctx, query, tokenHash).Scan(
+		&token.ID,
+		&token.TokenHash,
+		&token.ClientID,
+		&token.ExpiresAt,
+		&token.RevokedAt,
+		&token.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, authDomain.ErrTokenNotFound
+		}
+		return nil, apperrors.Wrap(err, "failed to get token by hash")
+	}
+
+	return &token, nil
+}
+
 // NewPostgreSQLTokenRepository creates a new PostgreSQL Token repository.
 func NewPostgreSQLTokenRepository(db *sql.DB) *PostgreSQLTokenRepository {
 	return &PostgreSQLTokenRepository{db: db}
