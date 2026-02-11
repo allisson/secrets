@@ -52,6 +52,17 @@ func (m *mockTokenRepository) Get(ctx context.Context, tokenID uuid.UUID) (*auth
 	return args.Get(0).(*authDomain.Token), args.Error(1)
 }
 
+func (m *mockTokenRepository) GetByTokenHash(
+	ctx context.Context,
+	tokenHash string,
+) (*authDomain.Token, error) {
+	args := m.Called(ctx, tokenHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authDomain.Token), args.Error(1)
+}
+
 func TestTokenUseCase_Issue(t *testing.T) {
 	ctx := context.Background()
 
