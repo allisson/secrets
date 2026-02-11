@@ -26,11 +26,8 @@ type Config struct {
 	// Logging
 	LogLevel string
 
-	// Worker configuration
-	WorkerInterval      time.Duration
-	WorkerBatchSize     int
-	WorkerMaxRetries    int
-	WorkerRetryInterval time.Duration
+	// Auth
+	AuthTokenExpiration time.Duration
 }
 
 // Load loads configuration from environment variables and .env file.
@@ -56,11 +53,8 @@ func Load() *Config {
 		// Logging
 		LogLevel: env.GetString("LOG_LEVEL", "info"),
 
-		// Worker configuration
-		WorkerInterval:      env.GetDuration("WORKER_INTERVAL", 5, time.Second),
-		WorkerBatchSize:     env.GetInt("WORKER_BATCH_SIZE", 10),
-		WorkerMaxRetries:    env.GetInt("WORKER_MAX_RETRIES", 3),
-		WorkerRetryInterval: env.GetDuration("WORKER_RETRY_INTERVAL", 1, time.Minute),
+		// Auth
+		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 86400, time.Second),
 	}
 }
 

@@ -21,10 +21,7 @@ func TestNewContainer(t *testing.T) {
 		DBConnMaxLifetime:    time.Hour,
 		ServerHost:           "localhost",
 		ServerPort:           8080,
-		WorkerInterval:       time.Second,
-		WorkerBatchSize:      100,
-		WorkerMaxRetries:     3,
-		WorkerRetryInterval:  time.Second,
+		AuthTokenExpiration:  time.Second,
 	}
 
 	container := NewContainer(cfg)
