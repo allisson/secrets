@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS clients (
     secret TEXT NOT NULL,
     name TEXT NOT NULL,
     is_active BOOLEAN NOT NULL,
+    policies JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL
 );
 
@@ -18,21 +19,6 @@ CREATE TABLE IF NOT EXISTS tokens (
 );
 
 CREATE INDEX idx_tokens_client_id ON tokens(client_id);
-
--- Create policies table
-CREATE TABLE IF NOT EXISTS policies (
-    id UUID PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    document JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
-);
-
--- Create client_policies table
-CREATE TABLE IF NOT EXISTS client_policies (
-    client_id UUID NOT NULL REFERENCES clients(id),
-    policy_id UUID NOT NULL REFERENCES policies(id),
-    PRIMARY KEY (client_id, policy_id)
-);
 
 -- Create keks table
 CREATE TABLE IF NOT EXISTS keks (
