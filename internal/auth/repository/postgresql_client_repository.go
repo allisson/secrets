@@ -23,7 +23,8 @@ type PostgreSQLClientRepository struct {
 	db *sql.DB
 }
 
-// Create inserts a new Client into the PostgreSQL database.
+// Create inserts a new Client into the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns an error if policy marshaling or database insertion fails.
 func (p *PostgreSQLClientRepository) Create(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -51,7 +52,8 @@ func (p *PostgreSQLClientRepository) Create(ctx context.Context, client *authDom
 	return nil
 }
 
-// Update modifies an existing Client in the PostgreSQL database.
+// Update modifies an existing Client in the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns an error if policy marshaling or database update fails.
 func (p *PostgreSQLClientRepository) Update(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -85,7 +87,9 @@ func (p *PostgreSQLClientRepository) Update(ctx context.Context, client *authDom
 	return nil
 }
 
-// Get retrieves a Client by ID from the PostgreSQL database.
+// Get retrieves a Client by ID from the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns ErrClientNotFound if the client doesn't exist, or an error
+// if policy unmarshaling or database query fails.
 func (p *PostgreSQLClientRepository) Get(
 	ctx context.Context,
 	clientID uuid.UUID,

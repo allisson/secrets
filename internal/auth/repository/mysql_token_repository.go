@@ -18,7 +18,9 @@ type MySQLTokenRepository struct {
 	db *sql.DB
 }
 
-// Create inserts a new Token into the MySQL database.
+// Create inserts a new Token into the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns an error if UUID marshaling
+// or database insertion fails.
 func (m *MySQLTokenRepository) Create(ctx context.Context, token *authDomain.Token) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -51,7 +53,9 @@ func (m *MySQLTokenRepository) Create(ctx context.Context, token *authDomain.Tok
 	return nil
 }
 
-// Update modifies an existing Token in the MySQL database.
+// Update modifies an existing Token in the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns an error if UUID marshaling
+// or database update fails.
 func (m *MySQLTokenRepository) Update(ctx context.Context, token *authDomain.Token) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -90,7 +94,9 @@ func (m *MySQLTokenRepository) Update(ctx context.Context, token *authDomain.Tok
 	return nil
 }
 
-// Get retrieves a Token by ID from the MySQL database.
+// Get retrieves a Token by ID from the MySQL database using BINARY(16) for UUIDs.
+// Uses transaction support via database.GetTx(). Returns ErrTokenNotFound if the token
+// doesn't exist, or an error if UUID unmarshaling or database query fails.
 func (m *MySQLTokenRepository) Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error) {
 	querier := database.GetTx(ctx, m.db)
 

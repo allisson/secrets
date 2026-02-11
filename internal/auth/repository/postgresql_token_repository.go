@@ -18,7 +18,8 @@ type PostgreSQLTokenRepository struct {
 	db *sql.DB
 }
 
-// Create inserts a new Token into the PostgreSQL database.
+// Create inserts a new Token into the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns an error if database insertion fails.
 func (p *PostgreSQLTokenRepository) Create(ctx context.Context, token *authDomain.Token) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -41,7 +42,8 @@ func (p *PostgreSQLTokenRepository) Create(ctx context.Context, token *authDomai
 	return nil
 }
 
-// Update modifies an existing Token in the PostgreSQL database.
+// Update modifies an existing Token in the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns an error if database update fails.
 func (p *PostgreSQLTokenRepository) Update(ctx context.Context, token *authDomain.Token) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -70,7 +72,9 @@ func (p *PostgreSQLTokenRepository) Update(ctx context.Context, token *authDomai
 	return nil
 }
 
-// Get retrieves a Token by ID from the PostgreSQL database.
+// Get retrieves a Token by ID from the PostgreSQL database. Uses transaction support
+// via database.GetTx(). Returns ErrTokenNotFound if the token doesn't exist, or an error
+// if database query fails.
 func (p *PostgreSQLTokenRepository) Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error) {
 	querier := database.GetTx(ctx, p.db)
 
