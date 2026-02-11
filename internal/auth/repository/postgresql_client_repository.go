@@ -7,6 +7,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/google/uuid"
@@ -26,16 +27,22 @@ type PostgreSQLClientRepository struct {
 func (p *PostgreSQLClientRepository) Create(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `INSERT INTO clients (id, secret, name, is_active, created_at) 
-			  VALUES ($1, $2, $3, $4, $5)`
+	policiesJSON, err := json.Marshal(client.Policies)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client policies")
+	}
 
-	_, err := querier.ExecContext(
+	query := `INSERT INTO clients (id, secret, name, is_active, policies, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6)`
+
+	_, err = querier.ExecContext(
 		ctx,
 		query,
 		client.ID,
 		client.Secret,
 		client.Name,
 		client.IsActive,
+		policiesJSON,
 		client.CreatedAt,
 	)
 	if err != nil {
@@ -48,19 +55,26 @@ func (p *PostgreSQLClientRepository) Create(ctx context.Context, client *authDom
 func (p *PostgreSQLClientRepository) Update(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, p.db)
 
+	policiesJSON, err := json.Marshal(client.Policies)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client policies")
+	}
+
 	query := `UPDATE clients 
 			  SET secret = $1, 
 			  	  name = $2,
 				  is_active = $3,
-				  created_at = $4
-			  WHERE id = $5`
+				  policies = $4,
+				  created_at = $5
+			  WHERE id = $6`
 
-	_, err := querier.ExecContext(
+	_, err = querier.ExecContext(
 		ctx,
 		query,
 		client.Secret,
 		client.Name,
 		client.IsActive,
+		policiesJSON,
 		client.CreatedAt,
 		client.ID,
 	)
@@ -78,15 +92,17 @@ func (p *PostgreSQLClientRepository) Get(
 ) (*authDomain.Client, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, secret, name, is_active, created_at FROM clients WHERE id = $1`
+	query := `SELECT id, secret, name, is_active, policies, created_at FROM clients WHERE id = $1`
 
 	var client authDomain.Client
+	var policiesJSON []byte
 
 	err := querier.QueryRowContext(ctx, query, clientID).Scan(
 		&client.ID,
 		&client.Secret,
 		&client.Name,
 		&client.IsActive,
+		&policiesJSON,
 		&client.CreatedAt,
 	)
 	if err != nil {
@@ -94,6 +110,10 @@ func (p *PostgreSQLClientRepository) Get(
 			return nil, authDomain.ErrClientNotFound
 		}
 		return nil, apperrors.Wrap(err, "failed to get client")
+	}
+
+	if err := json.Unmarshal(policiesJSON, &client.Policies); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal client policies")
 	}
 
 	return &client, nil

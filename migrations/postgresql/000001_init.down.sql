@@ -13,12 +13,6 @@ DROP TABLE IF EXISTS deks;
 -- Drop keks table
 DROP TABLE IF EXISTS keks;
 
--- Drop client_policies table
-DROP TABLE IF EXISTS client_policies;
-
--- Drop policies table
-DROP TABLE IF EXISTS policies;
-
 -- Drop tokens table
 DROP TABLE IF EXISTS tokens;
 

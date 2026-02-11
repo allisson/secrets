@@ -19,15 +19,3 @@ type TokenRepository interface {
 	Update(ctx context.Context, token *authDomain.Token) error
 	Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error)
 }
-
-type PolicyRepository interface {
-	Create(ctx context.Context, policy *authDomain.Policy) error
-	Update(ctx context.Context, policy *authDomain.Policy) error
-	Get(ctx context.Context, name string) (*authDomain.Policy, error)
-	Delete(ctx context.Context, name string) error
-}
-
-type ClientPoliciesRepository interface {
-	Create(ctx context.Context, clientPolicies *authDomain.ClientPolicies) error
-	Delete(ctx context.Context, clientID uuid.UUID, PolicyID uuid.UUID) error
-}

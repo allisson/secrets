@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/google/uuid"
@@ -22,8 +23,13 @@ type MySQLClientRepository struct {
 func (m *MySQLClientRepository) Create(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `INSERT INTO clients (id, secret, name, is_active, created_at) 
-			  VALUES (?, ?, ?, ?, ?)`
+	policiesJSON, err := json.Marshal(client.Policies)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client policies")
+	}
+
+	query := `INSERT INTO clients (id, secret, name, is_active, policies, created_at) 
+			  VALUES (?, ?, ?, ?, ?, ?)`
 
 	id, err := client.ID.MarshalBinary()
 	if err != nil {
@@ -37,6 +43,7 @@ func (m *MySQLClientRepository) Create(ctx context.Context, client *authDomain.C
 		client.Secret,
 		client.Name,
 		client.IsActive,
+		policiesJSON,
 		client.CreatedAt,
 	)
 	if err != nil {
@@ -49,10 +56,16 @@ func (m *MySQLClientRepository) Create(ctx context.Context, client *authDomain.C
 func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.Client) error {
 	querier := database.GetTx(ctx, m.db)
 
+	policiesJSON, err := json.Marshal(client.Policies)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client policies")
+	}
+
 	query := `UPDATE clients 
 			  SET secret = ?, 
 			  	  name = ?,
 				  is_active = ?,
+				  policies = ?,
 				  created_at = ?
 			  WHERE id = ?`
 
@@ -67,6 +80,7 @@ func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.C
 		client.Secret,
 		client.Name,
 		client.IsActive,
+		policiesJSON,
 		client.CreatedAt,
 		id,
 	)
@@ -81,7 +95,7 @@ func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.C
 func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, secret, name, is_active, created_at FROM clients WHERE id = ?`
+	query := `SELECT id, secret, name, is_active, policies, created_at FROM clients WHERE id = ?`
 
 	id, err := clientID.MarshalBinary()
 	if err != nil {
@@ -90,12 +104,14 @@ func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*a
 
 	var client authDomain.Client
 	var idBytes []byte
+	var policiesJSON []byte
 
 	err = querier.QueryRowContext(ctx, query, id).Scan(
 		&idBytes,
 		&client.Secret,
 		&client.Name,
 		&client.IsActive,
+		&policiesJSON,
 		&client.CreatedAt,
 	)
 	if err != nil {
@@ -107,6 +123,10 @@ func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*a
 
 	if err := client.ID.UnmarshalBinary(idBytes); err != nil {
 		return nil, apperrors.Wrap(err, "failed to unmarshal client id")
+	}
+
+	if err := json.Unmarshal(policiesJSON, &client.Policies); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal client policies")
 	}
 
 	return &client, nil

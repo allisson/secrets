@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS clients (
     secret VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL UNIQUE,
     is_active BOOLEAN NOT NULL,
+    policies JSON NOT NULL DEFAULT (JSON_ARRAY()),
     created_at DATETIME(6) NOT NULL
 );
 
@@ -19,23 +20,6 @@ CREATE TABLE IF NOT EXISTS tokens (
 );
 
 CREATE INDEX idx_tokens_client_id ON tokens(client_id);
-
--- Create policies table
-CREATE TABLE IF NOT EXISTS policies (
-    id BINARY(16) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    document JSON NOT NULL,
-    created_at DATETIME(6) NOT NULL
-);
-
--- Create client_policies table
-CREATE TABLE IF NOT EXISTS client_policies (
-    client_id BINARY(16) NOT NULL,
-    policy_id BINARY(16) NOT NULL,
-    PRIMARY KEY (client_id, policy_id),
-    CONSTRAINT fk_client_policies_client_id FOREIGN KEY (client_id) REFERENCES clients(id),
-    CONSTRAINT fk_client_policies_policy_id FOREIGN KEY (policy_id) REFERENCES policies(id)
-);
 
 -- Create keks table
 CREATE TABLE IF NOT EXISTS keks (
