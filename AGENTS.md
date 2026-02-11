@@ -5,6 +5,7 @@ This document provides essential guidelines for AI coding agents working on the 
 ## Project Overview
 
 - **Language**: Go 1.25+
+- **Web Framework**: Gin v1.11.0
 - **Architecture**: Clean Architecture with Domain-Driven Design
 - **Databases**: PostgreSQL 12+ and MySQL 8.0+ (dual support)
 - **Pattern**: Envelope encryption (Master Key → KEK → DEK → Data)
@@ -114,9 +115,11 @@ Follow Clean Architecture strictly:
    - Transaction management via `TxManager.WithTx()`
 
 4. **Presentation Layer** (`http/`)
-   - HTTP handlers and request/response DTOs
+   - HTTP handlers using Gin web framework
+   - Request/response DTOs
    - Maps domain errors to HTTP status codes
    - Input validation using jellydator/validation
+   - Custom slog-based logging middleware
 
 5. **Service Layer** (`service/`)
    - Reusable technical services (encryption, key management)
@@ -308,4 +311,184 @@ return k.txManager.WithTx(ctx, func(ctx context.Context) error {
 func NewUseCase(txManager TxManager, repo Repository) UseCase {
     return &useCase{txManager: txManager, repo: repo}
 }
+```
+
+## HTTP Layer with Gin
+
+### Server Setup
+
+The project uses **Gin v1.11.0** as the web framework with custom slog-based middleware:
+
+```go
+// Create Gin engine without default middleware
+router := gin.New()
+
+// Apply custom middleware
+router.Use(gin.Recovery())                    // Gin's panic recovery
+router.Use(CustomLoggerMiddleware(logger))   // Custom slog logger
+
+// Health endpoints (outside API versioning)
+router.GET("/health", s.healthHandler)
+router.GET("/ready", s.readinessHandler(ctx))
+
+// API v1 routes group
+v1 := router.Group("/api/v1")
+{
+    // Business endpoints
+    v1.POST("/secrets", authMiddleware, s.createSecretHandler)
+}
+```
+
+**Key Features:**
+- Manual `http.Server` configuration for timeout control (ReadTimeout: 15s, WriteTimeout: 15s, IdleTimeout: 60s)
+- Gin mode auto-configured from `LOG_LEVEL` environment variable (debug/release)
+- Router groups for API versioning (`/api/v1`)
+- Graceful shutdown support
+
+### Handler Pattern
+
+```go
+// Handler method signature
+func (s *Server) createSecretHandler(c *gin.Context) {
+    var req CreateSecretRequest
+    
+    // 1. Parse and bind JSON
+    if err := c.ShouldBindJSON(&req); err != nil {
+        httputil.HandleValidationErrorGin(c, err, s.logger)
+        return
+    }
+    
+    // 2. Validate with jellydator/validation
+    if err := req.Validate(); err != nil {
+        httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), s.logger)
+        return
+    }
+    
+    // 3. Call use case
+    result, err := s.secretUseCase.CreateOrUpdate(c.Request.Context(), req.Path, req.Value)
+    if err != nil {
+        httputil.HandleErrorGin(c, err, s.logger)
+        return
+    }
+    
+    // 4. Return success response
+    c.JSON(http.StatusCreated, mapToResponse(result))
+}
+```
+
+### Error Handling in HTTP
+
+Use `httputil.HandleErrorGin()` to map domain errors to HTTP status codes:
+
+```go
+// Automatically maps domain errors to HTTP responses
+httputil.HandleErrorGin(c, err, s.logger)
+
+// Error mapping:
+// ErrNotFound       → 404 Not Found
+// ErrConflict       → 409 Conflict
+// ErrInvalidInput   → 422 Unprocessable Entity
+// ErrUnauthorized   → 401 Unauthorized
+// ErrForbidden      → 403 Forbidden
+// Unknown errors    → 500 Internal Server Error
+```
+
+### Request/Response DTOs
+
+```go
+type CreateSecretRequest struct {
+    Path  string `json:"path" binding:"required"`
+    Value []byte `json:"value" binding:"required"`
+}
+
+func (r *CreateSecretRequest) Validate() error {
+    return validation.ValidateStruct(r,
+        validation.Field(&r.Path, validation.Required, validation.Length(1, 255)),
+        validation.Field(&r.Value, validation.Required),
+    )
+}
+
+type SecretResponse struct {
+    ID      string    `json:"id"`
+    Path    string    `json:"path"`
+    Version int       `json:"version"`
+    CreatedAt time.Time `json:"created_at"`
+}
+```
+
+### Testing HTTP Handlers
+
+Use Gin's test utilities for HTTP handler tests:
+
+```go
+func TestHealthHandler(t *testing.T) {
+    // Set Gin to test mode
+    gin.SetMode(gin.TestMode)
+    
+    // Create test server
+    server := createTestServer()
+    
+    // Create test context
+    w := httptest.NewRecorder()
+    c, _ := gin.CreateTestContext(w)
+    c.Request = httptest.NewRequest(http.MethodGet, "/health", nil)
+    
+    // Call handler
+    server.healthHandler(c)
+    
+    // Assert response
+    assert.Equal(t, http.StatusOK, w.Code)
+    var response map[string]string
+    json.Unmarshal(w.Body.Bytes(), &response)
+    assert.Equal(t, "healthy", response["status"])
+}
+```
+
+**Integration Tests** (test full router):
+```go
+func TestRouter_HealthEndpoint(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    server := createTestServer()
+    router := server.setupRouter(context.Background())
+    
+    w := httptest.NewRecorder()
+    req := httptest.NewRequest(http.MethodGet, "/health", nil)
+    router.ServeHTTP(w, req)
+    
+    assert.Equal(t, http.StatusOK, w.Code)
+}
+```
+
+### Middleware Pattern
+
+Custom middleware follows Gin's signature:
+
+```go
+func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        start := time.Now()
+        
+        // Process request
+        c.Next()
+        
+        // Log after completion
+        logger.Info("http request",
+            slog.String("method", c.Request.Method),
+            slog.String("path", c.Request.URL.Path),
+            slog.Int("status", c.Writer.Status()),
+            slog.Duration("duration", time.Since(start)),
+            slog.String("client_ip", c.ClientIP()),
+        )
+    }
+}
+```
+
+Apply middleware globally or per route group:
+```go
+// Global middleware
+router.Use(CustomLoggerMiddleware(logger))
+
+// Per-group middleware
+v1 := router.Group("/api/v1")
+v1.Use(authMiddleware)
 ```

@@ -2,108 +2,36 @@
 package http
 
 import (
-	"context"
 	"log/slog"
-	"net/http"
 	"time"
 
-	"github.com/allisson/secrets/internal/httputil"
+	"github.com/gin-gonic/gin"
 )
 
-// Middleware defines a function to wrap http.Handler.
-type Middleware func(http.Handler) http.Handler
+// CustomLoggerMiddleware provides structured logging using slog.
+// This replaces Gin's default logger to maintain consistency with
+// the application's existing logging patterns.
+func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
 
-// LoggingMiddleware logs HTTP requests.
-func LoggingMiddleware(logger *slog.Logger) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
+		// Process request
+		c.Next()
 
-			// Create a response writer wrapper to capture status code
-			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		// Log after request is processed
+		duration := time.Since(start)
 
-			next.ServeHTTP(rw, r)
-
-			logger.Info("http request",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-				slog.Int("status", rw.statusCode),
-				slog.Duration("duration", time.Since(start)),
-				slog.String("remote_addr", r.RemoteAddr),
-			)
-		})
+		logger.Info("http request",
+			slog.String("method", c.Request.Method),
+			slog.String("path", path),
+			slog.String("query", query),
+			slog.Int("status", c.Writer.Status()),
+			slog.Int("body_size", c.Writer.Size()),
+			slog.Duration("duration", duration),
+			slog.String("client_ip", c.ClientIP()),
+			slog.String("user_agent", c.Request.UserAgent()),
+		)
 	}
-}
-
-// RecoveryMiddleware recovers from panics.
-func RecoveryMiddleware(logger *slog.Logger) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				if err := recover(); err != nil {
-					logger.Error("panic recovered",
-						slog.Any("error", err),
-						slog.String("path", r.URL.Path),
-						slog.String("method", r.Method),
-					)
-
-					httputil.MakeJSONResponse(
-						w,
-						http.StatusInternalServerError,
-						map[string]string{"error": "internal server error"},
-					)
-				}
-			}()
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// responseWriter wraps http.ResponseWriter to capture the status code.
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-// WriteHeader captures the status code and delegates to the underlying ResponseWriter.
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-// ChainMiddleware chains multiple middlewares.
-func ChainMiddleware(middlewares ...Middleware) Middleware {
-	return func(final http.Handler) http.Handler {
-		for i := len(middlewares) - 1; i >= 0; i-- {
-			final = middlewares[i](final)
-		}
-		return final
-	}
-}
-
-// HealthHandler returns a simple health check handler.
-func HealthHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		httputil.MakeJSONResponse(w, http.StatusOK, map[string]string{"status": "healthy"})
-	})
-}
-
-// ReadinessHandler returns a readiness check handler.
-func ReadinessHandler(ctx context.Context) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if context is cancelled (application is shutting down)
-		select {
-		case <-ctx.Done():
-			httputil.MakeJSONResponse(
-				w,
-				http.StatusServiceUnavailable,
-				map[string]string{"status": "not ready"},
-			)
-			return
-		default:
-		}
-
-		httputil.MakeJSONResponse(w, http.StatusOK, map[string]string{"status": "ready"})
-	})
 }

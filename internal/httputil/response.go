@@ -2,21 +2,13 @@
 package httputil
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
-
-// MakeJSONResponse writes a JSON response with the given status code and data.
-func MakeJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-	}
-}
 
 // ErrorResponse represents a structured error response.
 type ErrorResponse struct {
@@ -25,8 +17,9 @@ type ErrorResponse struct {
 	Code    string `json:"code,omitempty"`
 }
 
-// HandleError maps domain errors to HTTP status codes and returns a JSON response.
-func HandleError(w http.ResponseWriter, err error, logger *slog.Logger) {
+// HandleErrorGin maps domain errors to HTTP status codes and returns a JSON response using Gin.
+// This is an adapter for Gin's context that maintains the same error handling logic.
+func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	if err == nil {
 		return
 	}
@@ -34,7 +27,7 @@ func HandleError(w http.ResponseWriter, err error, logger *slog.Logger) {
 	var statusCode int
 	var errorResponse ErrorResponse
 
-	// Map domain errors to HTTP status codes
+	// Map domain errors to HTTP status codes (same logic as HandleError)
 	switch {
 	case apperrors.Is(err, apperrors.ErrNotFound):
 		statusCode = http.StatusNotFound
@@ -89,11 +82,11 @@ func HandleError(w http.ResponseWriter, err error, logger *slog.Logger) {
 		)
 	}
 
-	MakeJSONResponse(w, statusCode, errorResponse)
+	c.JSON(statusCode, errorResponse)
 }
 
-// HandleValidationError writes a 400 Bad Request response for validation errors.
-func HandleValidationError(w http.ResponseWriter, err error, logger *slog.Logger) {
+// HandleValidationErrorGin writes a 400 Bad Request response for validation errors using Gin.
+func HandleValidationErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	if logger != nil {
 		logger.Warn("validation failed", slog.Any("error", err))
 	}
@@ -103,5 +96,5 @@ func HandleValidationError(w http.ResponseWriter, err error, logger *slog.Logger
 		Message: err.Error(),
 	}
 
-	MakeJSONResponse(w, http.StatusBadRequest, errorResponse)
+	c.JSON(http.StatusBadRequest, errorResponse)
 }
