@@ -84,4 +84,6 @@ type TokenUseCase interface {
 		ctx context.Context,
 		issueTokenInput *authDomain.IssueTokenInput,
 	) (*authDomain.IssueTokenOutput, error)
+
+	Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
 }
