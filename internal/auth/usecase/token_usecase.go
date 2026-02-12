@@ -59,11 +59,12 @@ func (t *tokenUseCase) Issue(
 	}
 
 	// Create the token entity with expiration from config
+	expiresAt := time.Now().UTC().Add(t.config.AuthTokenExpiration)
 	token := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: tokenHash,
 		ClientID:  client.ID,
-		ExpiresAt: time.Now().UTC().Add(t.config.AuthTokenExpiration),
+		ExpiresAt: expiresAt,
 		RevokedAt: nil,
 		CreatedAt: time.Now().UTC(),
 	}
@@ -73,9 +74,10 @@ func (t *tokenUseCase) Issue(
 		return nil, err
 	}
 
-	// Return the plain token
+	// Return the plain token with expiration time
 	return &authDomain.IssueTokenOutput{
 		PlainToken: plainToken,
+		ExpiresAt:  expiresAt,
 	}, nil
 }
 

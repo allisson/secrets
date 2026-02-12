@@ -38,6 +38,24 @@ func NewClientHandler(
 	}
 }
 
+// TokenHandler handles HTTP requests for token operations.
+// It coordinates token issuance with the TokenUseCase.
+type TokenHandler struct {
+	tokenUseCase authUseCase.TokenUseCase
+	logger       *slog.Logger
+}
+
+// NewTokenHandler creates a new token handler with required dependencies.
+func NewTokenHandler(
+	tokenUseCase authUseCase.TokenUseCase,
+	logger *slog.Logger,
+) *TokenHandler {
+	return &TokenHandler{
+		tokenUseCase: tokenUseCase,
+		logger:       logger,
+	}
+}
+
 // CreateClientRequest contains the parameters for creating a new authentication client.
 type CreateClientRequest struct {
 	Name     string                      `json:"name"`
@@ -266,4 +284,80 @@ func (h *ClientHandler) DeleteHandler(c *gin.Context) {
 
 	// Return 204 No Content with empty body
 	c.Data(http.StatusNoContent, "application/json", nil)
+}
+
+// IssueTokenRequest contains the parameters for issuing an authentication token.
+type IssueTokenRequest struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+}
+
+// Validate checks if the issue token request is valid.
+func (r *IssueTokenRequest) Validate() error {
+	return validation.ValidateStruct(r,
+		validation.Field(&r.ClientID,
+			validation.Required,
+			customValidation.NotBlank,
+		),
+		validation.Field(&r.ClientSecret,
+			validation.Required,
+			customValidation.NotBlank,
+		),
+	)
+}
+
+// IssueTokenResponse contains the result of issuing a token.
+// SECURITY: The token is only returned once and must be saved securely.
+type IssueTokenResponse struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// IssueTokenHandler issues a new authentication token for a client.
+// POST /v1/token - No authentication required (this is the authentication endpoint).
+// Returns 201 Created with token and expiration time.
+func (h *TokenHandler) IssueTokenHandler(c *gin.Context) {
+	var req IssueTokenRequest
+
+	// Parse and bind JSON
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httputil.HandleValidationErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Validate request
+	if err := req.Validate(); err != nil {
+		httputil.HandleValidationErrorGin(c, customValidation.WrapValidationError(err), h.logger)
+		return
+	}
+
+	// Parse client ID as UUID
+	clientID, err := uuid.Parse(req.ClientID)
+	if err != nil {
+		httputil.HandleValidationErrorGin(c,
+			fmt.Errorf("invalid client_id format: must be a valid UUID"),
+			h.logger)
+		return
+	}
+
+	// Create input for use case
+	input := &authDomain.IssueTokenInput{
+		ClientID:     clientID,
+		ClientSecret: req.ClientSecret,
+	}
+
+	// Call use case
+	output, err := h.tokenUseCase.Issue(c.Request.Context(), input)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Return response with token and expiration
+	response := IssueTokenResponse{
+		Token:     output.PlainToken,
+		ExpiresAt: output.ExpiresAt,
+	}
+
+	c.JSON(http.StatusCreated, response)
 }

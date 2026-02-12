@@ -24,4 +24,5 @@ type IssueTokenInput struct {
 
 type IssueTokenOutput struct {
 	PlainToken string
+	ExpiresAt  time.Time
 }
