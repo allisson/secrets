@@ -88,6 +88,72 @@ func (t *tokenUseCase) Issue(
 	}, nil
 }
 
+// Authenticate validates an authentication token and returns the associated client.
+//
+// This method:
+// 1. Retrieves the token by its hash
+// 2. Validates the token is not expired
+// 3. Validates the token is not revoked
+// 4. Retrieves the associated client
+// 5. Validates the client is active
+//
+// Security Notes:
+//   - Returns ErrInvalidCredentials for token not found, expired, or revoked to prevent
+//     enumeration attacks and information leakage
+//   - Returns ErrInvalidCredentials if the associated client is not found (shouldn't happen
+//     due to foreign key constraints, but handled for safety)
+//   - Returns ErrClientInactive if the client exists but is not active
+//   - All time comparisons use UTC to prevent timezone issues
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - tokenHash: SHA-256 hash of the authentication token
+//
+// Returns:
+//   - The authenticated client if all validations pass
+//   - ErrInvalidCredentials if token is invalid, expired, revoked, or client not found
+//   - ErrClientInactive if the client is not active
+//   - Other errors from repository operations are propagated as-is
+func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error) {
+	// Get the token by hash
+	token, err := t.tokenRepo.GetByTokenHash(ctx, tokenHash)
+	if err != nil {
+		// If token not found, return generic error to prevent enumeration
+		if errors.Is(err, authDomain.ErrTokenNotFound) {
+			return nil, authDomain.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	// Check if token is expired
+	if token.ExpiresAt.Before(time.Now().UTC()) {
+		return nil, authDomain.ErrInvalidCredentials
+	}
+
+	// Check if token is revoked
+	if token.RevokedAt != nil {
+		return nil, authDomain.ErrInvalidCredentials
+	}
+
+	// Get the associated client
+	client, err := t.clientRepo.Get(ctx, token.ClientID)
+	if err != nil {
+		// If client not found, return generic error (shouldn't happen due to FK, but handle gracefully)
+		if errors.Is(err, authDomain.ErrClientNotFound) {
+			return nil, authDomain.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	// Check if client is active
+	if !client.IsActive {
+		return nil, authDomain.ErrClientInactive
+	}
+
+	// Return the authenticated client
+	return client, nil
+}
+
 // NewTokenUseCase creates a new TokenUseCase with the provided dependencies.
 func NewTokenUseCase(
 	config *config.Config,
