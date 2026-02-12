@@ -9,6 +9,9 @@ import (
 	"os"
 	"sync"
 
+	authRepository "github.com/allisson/secrets/internal/auth/repository"
+	authService "github.com/allisson/secrets/internal/auth/service"
+	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
@@ -32,30 +35,36 @@ type Container struct {
 	txManager database.TxManager
 
 	// Services
-	aeadManager cryptoService.AEADManager
-	keyManager  cryptoService.KeyManager
+	aeadManager   cryptoService.AEADManager
+	keyManager    cryptoService.KeyManager
+	secretService authService.SecretService
 
 	// Repositories
-	kekRepository cryptoUseCase.KekRepository
+	kekRepository    cryptoUseCase.KekRepository
+	clientRepository authUseCase.ClientRepository
 
 	// Use Cases
-	kekUseCase cryptoUseCase.KekUseCase
+	kekUseCase    cryptoUseCase.KekUseCase
+	clientUseCase authUseCase.ClientUseCase
 
 	// Servers and Workers
 	httpServer *http.Server
 
 	// Initialization flags and mutex for thread-safety
-	mu                 sync.Mutex
-	loggerInit         sync.Once
-	dbInit             sync.Once
-	masterKeyChainInit sync.Once
-	txManagerInit      sync.Once
-	aeadManagerInit    sync.Once
-	keyManagerInit     sync.Once
-	kekRepositoryInit  sync.Once
-	kekUseCaseInit     sync.Once
-	httpServerInit     sync.Once
-	initErrors         map[string]error
+	mu                   sync.Mutex
+	loggerInit           sync.Once
+	dbInit               sync.Once
+	masterKeyChainInit   sync.Once
+	txManagerInit        sync.Once
+	aeadManagerInit      sync.Once
+	keyManagerInit       sync.Once
+	secretServiceInit    sync.Once
+	kekRepositoryInit    sync.Once
+	clientRepositoryInit sync.Once
+	kekUseCaseInit       sync.Once
+	clientUseCaseInit    sync.Once
+	httpServerInit       sync.Once
+	initErrors           map[string]error
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -201,6 +210,50 @@ func (c *Container) HTTPServer() (*http.Server, error) {
 		return nil, storedErr
 	}
 	return c.httpServer, nil
+}
+
+// SecretService returns the secret service for authentication operations.
+func (c *Container) SecretService() authService.SecretService {
+	c.secretServiceInit.Do(func() {
+		c.secretService = c.initSecretService()
+	})
+	return c.secretService
+}
+
+// ClientRepository returns the client repository based on database driver.
+func (c *Container) ClientRepository() (authUseCase.ClientRepository, error) {
+	var err error
+	c.clientRepositoryInit.Do(func() {
+		c.clientRepository, err = c.initClientRepository()
+		if err != nil {
+			c.initErrors["clientRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["clientRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.clientRepository, nil
+}
+
+// ClientUseCase returns the client use case.
+func (c *Container) ClientUseCase() (authUseCase.ClientUseCase, error) {
+	var err error
+	c.clientUseCaseInit.Do(func() {
+		c.clientUseCase, err = c.initClientUseCase()
+		if err != nil {
+			c.initErrors["clientUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["clientUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.clientUseCase, nil
 }
 
 // Shutdown performs cleanup of all initialized resources.
@@ -349,4 +402,43 @@ func (c *Container) initKekUseCase() (cryptoUseCase.KekUseCase, error) {
 	keyManager := c.KeyManager()
 
 	return cryptoUseCase.NewKekUseCase(txManager, kekRepository, keyManager), nil
+}
+
+// initSecretService creates the secret service for authentication.
+func (c *Container) initSecretService() authService.SecretService {
+	return authService.NewSecretService()
+}
+
+// initClientRepository creates the client repository based on the database driver.
+func (c *Container) initClientRepository() (authUseCase.ClientRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for client repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return authRepository.NewPostgreSQLClientRepository(db), nil
+	case "mysql":
+		return authRepository.NewMySQLClientRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initClientUseCase creates the client use case with all its dependencies.
+func (c *Container) initClientUseCase() (authUseCase.ClientUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for client use case: %w", err)
+	}
+
+	clientRepository, err := c.ClientRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client repository for client use case: %w", err)
+	}
+
+	secretService := c.SecretService()
+
+	return authUseCase.NewClientUseCase(txManager, clientRepository, secretService), nil
 }

@@ -76,6 +76,89 @@ func main() {
 					return commands.RunRotateKek(ctx, cmd.String("algorithm"))
 				},
 			},
+			{
+				Name:  "create-client",
+				Usage: "Create a new authentication client with policies",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"n"},
+						Required: true,
+						Usage:    "Human-readable client name",
+					},
+					&cli.BoolFlag{
+						Name:    "active",
+						Aliases: []string{"a"},
+						Value:   true,
+						Usage:   "Whether the client can authenticate immediately",
+					},
+					&cli.StringFlag{
+						Name:    "policies",
+						Aliases: []string{"p"},
+						Usage:   "JSON array of policy documents (omit for interactive mode)",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"f"},
+						Value:   "text",
+						Usage:   "Output format: 'text' or 'json'",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunCreateClient(
+						ctx,
+						cmd.String("name"),
+						cmd.Bool("active"),
+						cmd.String("policies"),
+						cmd.String("format"),
+					)
+				},
+			},
+			{
+				Name:  "update-client",
+				Usage: "Update an existing authentication client's configuration",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "id",
+						Aliases:  []string{"i"},
+						Required: true,
+						Usage:    "Client ID (UUID)",
+					},
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"n"},
+						Required: true,
+						Usage:    "Human-readable client name",
+					},
+					&cli.BoolFlag{
+						Name:    "active",
+						Aliases: []string{"a"},
+						Value:   true,
+						Usage:   "Whether the client can authenticate",
+					},
+					&cli.StringFlag{
+						Name:    "policies",
+						Aliases: []string{"p"},
+						Usage:   "JSON array of policy documents (omit for interactive mode)",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"f"},
+						Value:   "text",
+						Usage:   "Output format: 'text' or 'json'",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunUpdateClient(
+						ctx,
+						cmd.String("id"),
+						cmd.String("name"),
+						cmd.Bool("active"),
+						cmd.String("policies"),
+						cmd.String("format"),
+					)
+				},
+			},
 		},
 	}
 
