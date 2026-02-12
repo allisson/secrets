@@ -23,20 +23,11 @@ type tokenUseCase struct {
 }
 
 // Issue authenticates a client and generates a new authentication token.
+// Validates client exists and is active, verifies the client secret, generates a new token
+// with expiration from config, stores the token hash, and returns the plain token (only shown once).
 //
-// This method:
-// 1. Validates the client exists and is active
-// 2. Verifies the client secret matches
-// 3. Generates a new token with expiration from config
-// 4. Stores the token hash in the database
-// 5. Returns the plain token to the caller (only shown once)
-//
-// Security Notes:
-//   - Returns ErrInvalidCredentials for both non-existent clients and wrong secrets
-//     to prevent user enumeration attacks
-//   - Returns ErrClientInactive if the client exists but is not active
-//   - The plain token is only returned once and should be transmitted securely
-//   - Token expiration is set from Config.AuthTokenExpiration
+// Security: Returns ErrInvalidCredentials for non-existent clients or wrong secrets to prevent
+// user enumeration attacks. Returns ErrClientInactive if the client exists but is not active.
 func (t *tokenUseCase) Issue(
 	ctx context.Context,
 	issueTokenInput *authDomain.IssueTokenInput,
@@ -88,32 +79,10 @@ func (t *tokenUseCase) Issue(
 	}, nil
 }
 
-// Authenticate validates an authentication token and returns the associated client.
-//
-// This method:
-// 1. Retrieves the token by its hash
-// 2. Validates the token is not expired
-// 3. Validates the token is not revoked
-// 4. Retrieves the associated client
-// 5. Validates the client is active
-//
-// Security Notes:
-//   - Returns ErrInvalidCredentials for token not found, expired, or revoked to prevent
-//     enumeration attacks and information leakage
-//   - Returns ErrInvalidCredentials if the associated client is not found (shouldn't happen
-//     due to foreign key constraints, but handled for safety)
-//   - Returns ErrClientInactive if the client exists but is not active
-//   - All time comparisons use UTC to prevent timezone issues
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - tokenHash: SHA-256 hash of the authentication token
-//
-// Returns:
-//   - The authenticated client if all validations pass
-//   - ErrInvalidCredentials if token is invalid, expired, revoked, or client not found
-//   - ErrClientInactive if the client is not active
-//   - Other errors from repository operations are propagated as-is
+// Authenticate validates a token hash and returns the associated client. Validates token
+// is not expired/revoked and client is active. Returns ErrInvalidCredentials for
+// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
+// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
 func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error) {
 	// Get the token by hash
 	token, err := t.tokenRepo.GetByTokenHash(ctx, tokenHash)

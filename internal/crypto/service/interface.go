@@ -1,7 +1,5 @@
 // Package service provides cryptographic services for envelope encryption.
-//
-// Implements AEAD ciphers (AES-256-GCM, ChaCha20-Poly1305) and manages KEK/DEK lifecycle.
-// Services follow Clean Architecture with dependency injection and stateless design.
+// Implements AEAD ciphers (AES-256-GCM, ChaCha20-Poly1305) for KEK/DEK management.
 package service
 
 import (

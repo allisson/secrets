@@ -1,7 +1,5 @@
 // Package repository implements data persistence for KEKs and DEKs.
-//
-// Provides PostgreSQL and MySQL implementations with transaction support via database.GetTx().
-// PostgreSQL uses native UUID and BYTEA types, MySQL uses BINARY(16) and BLOB types.
+// Provides PostgreSQL (UUID/BYTEA) and MySQL (BINARY/BLOB) implementations with transaction support.
 package repository
 
 import (
@@ -13,8 +11,7 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// PostgreSQLKekRepository implements KEK persistence for PostgreSQL.
-// Uses native UUID and BYTEA types with transaction support via database.GetTx().
+// PostgreSQLKekRepository implements KEK persistence for PostgreSQL using native UUID and BYTEA types.
 type PostgreSQLKekRepository struct {
 	db *sql.DB
 }

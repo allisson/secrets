@@ -9,7 +9,8 @@ import (
 )
 
 // MasterKey represents a cryptographic master key used to encrypt KEKs.
-// Should be 32 bytes (256 bits) and stored securely in KMS or environment variables.
+// Must be 32 bytes (256 bits) and stored securely in KMS or environment variables.
+// The Key field contains sensitive data and should be zeroed after use.
 type MasterKey struct {
 	ID  string // Unique identifier for the master key
 	Key []byte // The raw 32-byte master key material
@@ -44,6 +45,7 @@ func (m *MasterKeyChain) Close() {
 
 // LoadMasterKeyChainFromEnv loads master keys from MASTER_KEYS and ACTIVE_MASTER_KEY_ID environment variables.
 // Keys must be in format "id:base64key" (comma-separated) and exactly 32 bytes when decoded.
+// Returns ErrMasterKeysNotSet, ErrActiveMasterKeyIDNotSet, ErrInvalidKeySize, or ErrActiveMasterKeyNotFound on failure.
 func LoadMasterKeyChainFromEnv() (*MasterKeyChain, error) {
 	raw := os.Getenv("MASTER_KEYS")
 	if raw == "" {

@@ -14,36 +14,17 @@ import (
 	"github.com/allisson/secrets/internal/httputil"
 )
 
-// AuthenticationMiddleware provides authentication via Bearer token in the Authorization header.
+// AuthenticationMiddleware validates Bearer tokens and stores authenticated clients in request context.
 //
-// The middleware:
-// 1. Extracts the Bearer token from the Authorization header (case-insensitive)
-// 2. Hashes the token using tokenService.HashToken()
-// 3. Validates the token using tokenUseCase.Authenticate()
-// 4. Stores the authenticated client in the request context
-// 5. Allows downstream handlers to access the client via GetClient()
+// Extracts Bearer token from Authorization header, hashes it via tokenService.HashToken(),
+// validates via tokenUseCase.Authenticate(), and stores the client for downstream handlers.
 //
-// Authorization header format: "Bearer <token>" (case-insensitive "bearer")
+// Authorization header format: "Bearer <token>" (case-insensitive)
 //
-// Error handling:
-//   - Missing Authorization header → 401 Unauthorized
-//   - Malformed Authorization header → 401 Unauthorized
-//   - Invalid/expired/revoked token → 401 Unauthorized (from TokenUseCase.Authenticate)
-//   - Inactive client → 403 Forbidden (from TokenUseCase.Authenticate)
-//   - Other errors → 500 Internal Server Error
-//
-// Usage:
-//
-//	router.Use(AuthenticationMiddleware(tokenUseCase, tokenService, logger))
-//	router.GET("/protected", func(c *gin.Context) {
-//	    client, ok := GetClient(c.Request.Context())
-//	    if !ok {
-//	        // Should never happen if middleware is working correctly
-//	        c.JSON(401, gin.H{"error": "unauthorized"})
-//	        return
-//	    }
-//	    // Use client for authorization checks
-//	})
+// Returns:
+//   - 401 Unauthorized: Missing/malformed/invalid token
+//   - 403 Forbidden: Inactive client
+//   - 500 Internal Server Error: Other errors
 func AuthenticationMiddleware(
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
@@ -104,44 +85,19 @@ func AuthenticationMiddleware(
 	}
 }
 
-// AuthorizationMiddleware provides capability-based authorization for authenticated clients.
+// AuthorizationMiddleware enforces capability-based authorization for authenticated clients.
 //
-// This middleware MUST be used after AuthenticationMiddleware, as it requires an authenticated
-// client to be present in the request context. It checks if the client's policies permit the
-// requested capability on the current request path.
-//
-// The middleware:
-// 1. Retrieves the authenticated client from the request context via GetClient()
-// 2. Extracts the request path from c.Request.URL.Path
-// 3. Checks if the client is allowed to perform the specified capability on the path
-// 4. Uses Client.IsAllowed(path, capability) for policy-based authorization
-// 5. Returns 403 Forbidden if the client lacks the required permission
-// 6. Returns 401 Unauthorized if no authenticated client is found in context
+// MUST be used after AuthenticationMiddleware. Retrieves authenticated client from context,
+// extracts request path, and checks if Client.IsAllowed(path, capability) permits access.
 //
 // Path Matching:
-// The authorization check uses the Client.IsAllowed() method which supports:
-//   - Exact path matching: "/secrets/mykey" matches policy "/secrets/mykey"
-//   - Wildcard matching: "*" matches all paths (admin mode)
-//   - Prefix matching: "secret/*" matches any path starting with "secret/"
+//   - Exact: "/secrets/mykey" matches policy "/secrets/mykey"
+//   - Wildcard: "*" matches all paths
+//   - Prefix: "secret/*" matches paths starting with "secret/"
 //
-// Error handling:
-//   - No client in context → 401 Unauthorized (AuthenticationMiddleware not run)
-//   - Client lacks capability → 403 Forbidden
-//   - Path doesn't match any policy → 403 Forbidden
-//
-// Usage:
-//
-//	// Require read capability for GET /api/v1/secrets/:id
-//	router.GET("/api/v1/secrets/:id",
-//	    AuthenticationMiddleware(tokenUseCase, tokenService, logger),
-//	    AuthorizationMiddleware(authDomain.ReadCapability, logger),
-//	    handler)
-//
-//	// Require write capability for POST /api/v1/secrets
-//	router.POST("/api/v1/secrets",
-//	    AuthenticationMiddleware(tokenUseCase, tokenService, logger),
-//	    AuthorizationMiddleware(authDomain.WriteCapability, logger),
-//	    handler)
+// Returns:
+//   - 401 Unauthorized: No authenticated client in context
+//   - 403 Forbidden: Insufficient permissions
 func AuthorizationMiddleware(
 	capability authDomain.Capability,
 	logger *slog.Logger,

@@ -1,6 +1,3 @@
-// Package service provides cryptographic services for envelope encryption.
-//
-// Implements AEAD ciphers (AES-256-GCM, ChaCha20-Poly1305) and key management.
 package service
 
 import (
@@ -17,6 +14,7 @@ type AESGCMCipher struct {
 }
 
 // NewAESGCM creates a new AES-256-GCM cipher instance.
+// Returns an error if key is not exactly 32 bytes.
 func NewAESGCM(key []byte) (*AESGCMCipher, error) {
 	if len(key) != 32 {
 		return nil, errors.New("key must be exactly 32 bytes")

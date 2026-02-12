@@ -1,4 +1,5 @@
 // Package usecase implements business logic orchestration for cryptographic operations.
+// Coordinates KEK lifecycle including creation, rotation, and decryption using repositories and services.
 package usecase
 
 import (
@@ -28,6 +29,7 @@ func (k *kekUseCase) getMasterKey(
 }
 
 // Create generates and persists a new KEK using the active master key.
+// Returns ErrMasterKeyNotFound if the active master key is not in the chain.
 func (k *kekUseCase) Create(
 	ctx context.Context,
 	masterKeyChain *cryptoDomain.MasterKeyChain,
@@ -47,7 +49,8 @@ func (k *kekUseCase) Create(
 }
 
 // Rotate performs atomic KEK rotation by creating a new KEK with incremented version.
-// If no KEKs exist, creates the first KEK with version 1.
+// If no KEKs exist, creates the first KEK with version 1. Executes within a transaction.
+// Returns ErrMasterKeyNotFound if the active master key is not in the chain.
 func (k *kekUseCase) Rotate(
 	ctx context.Context,
 	masterKeyChain *cryptoDomain.MasterKeyChain,
@@ -82,6 +85,7 @@ func (k *kekUseCase) Rotate(
 }
 
 // Unwrap decrypts all KEKs from the database and returns them in a KekChain for in-memory use.
+// Returns ErrMasterKeyNotFound if any KEK's master key is not in the chain, or ErrDecryptionFailed on decryption errors.
 func (k *kekUseCase) Unwrap(
 	ctx context.Context,
 	masterKeyChain *cryptoDomain.MasterKeyChain,

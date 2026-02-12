@@ -203,34 +203,70 @@ Wrap validation errors: `validation.WrapValidationError(err)`
 
 ### Documentation
 
-**Package Documentation**: Start with package comment:
+**Docstring Format**: Use the **enhanced compact format** consistently across the codebase.
+
+**Package Documentation**: Start with concise package comment (1-2 lines):
 ```go
-// Package domain defines the core cryptographic domain models and types.
+// Package domain defines core cryptographic domain models for envelope encryption.
+// Implements Master Key → KEK → DEK → Data hierarchy with AESGCM and ChaCha20 support.
 package domain
 ```
 
 **Function Comments**: 
-- Start with function name
-- Explain purpose, not implementation
-- Document parameters and return values
-- Include usage examples for public APIs
+- Start with function name and concise description (1-2 sentences)
+- Include important context inline without formal "Parameters:" or "Returns:" sections
+- Document error cases and security notes inline
+- Use bullet lists for patterns or special cases when needed
+- Focus on "what" and "why", not implementation details
 
-Example:
+**Compact Format Examples:**
+
+Simple function:
 ```go
-// Create generates and persists a new Key Encryption Key.
+// Create generates and persists a new KEK using the active master key.
+// Returns ErrMasterKeyNotFound if the active master key is not in the chain.
+func (k *kekUseCase) Create(ctx context.Context, masterKeyChain *cryptoDomain.MasterKeyChain, alg cryptoDomain.Algorithm) error
+```
+
+Function with security notes:
+```go
+// Authenticate validates a token hash and returns the associated client. Validates token
+// is not expired/revoked and client is active. Returns ErrInvalidCredentials for
+// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
+// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
+func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
+```
+
+Function with patterns:
+```go
+// AuthorizationMiddleware enforces capability-based authorization for authenticated clients.
 //
-// This method creates the initial KEK for the system using the active master key
-// from the provided keychain.
+// MUST be used after AuthenticationMiddleware. Retrieves authenticated client from context,
+// extracts request path, and checks if Client.IsAllowed(path, capability) permits access.
 //
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - masterKeyChain: The keychain containing the active master key
-//   - alg: The encryption algorithm to use for the KEK
+// Path Matching:
+//   - Exact: "/secrets/mykey" matches policy "/secrets/mykey"
+//   - Wildcard: "*" matches all paths
+//   - Prefix: "secret/*" matches paths starting with "secret/"
 //
 // Returns:
-//   - An error if the master key is not found or KEK generation fails
-func (k *kekUseCase) Create(ctx context.Context, ...) error
+//   - 401 Unauthorized: No authenticated client in context
+//   - 403 Forbidden: Insufficient permissions
+func AuthorizationMiddleware(capability authDomain.Capability, logger *slog.Logger) gin.HandlerFunc
 ```
+
+**When to Include Details:**
+- Security implications (timing attacks, enumeration, key zeroing)
+- Error cases and return conditions
+- Transaction behavior
+- Special requirements or constraints
+- Wildcard patterns or matching rules
+
+**What to Avoid:**
+- Step-by-step implementation details (e.g., "1. Do X, 2. Do Y, 3. Do Z")
+- Redundant descriptions that simply restate the code
+- Formal "Parameters:" and "Returns:" sections (integrate inline instead)
+- Excessive examples unless for complex public APIs
 
 ### Testing
 
