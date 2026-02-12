@@ -690,6 +690,121 @@ v1.Use(authMiddleware)
 
 ## Authentication & Authorization HTTP Layer
 
+### HTTP Handler Organization Pattern
+
+The HTTP layer follows a structured organization pattern that separates concerns by domain responsibility:
+
+**Directory Structure:**
+```
+internal/auth/http/
+├── client_handler.go          # ClientHandler - manages API clients (CRUD)
+├── client_handler_test.go     # ClientHandler integration tests
+├── token_handler.go           # TokenHandler - token issuance
+├── token_handler_test.go      # TokenHandler integration tests
+├── middleware.go              # Authentication & authorization middleware
+├── middleware_test.go         # Middleware tests
+├── context.go                 # Context helper functions (WithClient, GetClient)
+├── test_helpers.go            # Shared test utilities (createTestContext)
+├── dto/                       # Data Transfer Objects package
+│   ├── request.go             # Request DTOs with validation
+│   ├── request_test.go        # Request validation tests
+│   ├── response.go            # Response DTOs with mapping functions
+│   └── response_test.go       # Response mapping tests
+└── mocks/                     # Manual mocks (separate from generated mocks)
+    └── token_usecase.go       # MockTokenUseCase
+```
+
+**Handler Organization Guidelines:**
+
+**When to Split Handlers:**
+- Split by **domain responsibility**, not by CRUD operation
+- Example: `ClientHandler` (client management) vs `TokenHandler` (token issuance)
+- Each handler struct manages one domain concept with multiple HTTP methods
+- Avoid creating separate handlers for each HTTP method (e.g., don't create `CreateClientHandler`, `UpdateClientHandler`)
+
+**DTO Package Conventions:**
+
+1. **Separation by Direction:**
+   - `request.go` - Request DTOs and validation logic
+   - `response.go` - Response DTOs and mapping functions
+
+2. **Validation Placement:**
+   - Request DTOs include `Validate() error` methods
+   - Use `github.com/jellydator/validation` for validation rules
+   - Unexported helper functions (e.g., `validatePolicyDocument()`) stay in `request.go`
+
+3. **Mapping Functions:**
+   - Response mapping functions live in `response.go`
+   - Export mapping functions that handlers need (e.g., `MapClientToResponse()`)
+   - Keep unexported helpers for internal transformations
+
+4. **Testing:**
+   - Create corresponding test files: `request_test.go`, `response_test.go`
+   - Test validation logic in isolation from HTTP handlers
+   - Test mapping functions with domain model fixtures
+
+**Test Helper Guidelines:**
+
+1. **Shared Utilities:**
+   - Extract common test setup to `test_helpers.go` (not `*_test.go` suffix)
+   - Example: `createTestContext(method, path, body) (*gin.Context, *httptest.ResponseRecorder)`
+   - Reuse across all handler test files
+
+2. **Mock Organization:**
+   - Manual mocks go in `mocks/` subdirectory (e.g., `mocks/token_usecase.go`)
+   - Generated mocks (via mockery) go in `usecase/mocks/` per .mockery.yaml configuration
+   - Keep manual and generated mocks separate to avoid conflicts
+
+**Example Handler Structure:**
+
+```go
+// client_handler.go
+package http
+
+import (
+    authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+    authDTO "github.com/allisson/secrets/internal/auth/http/dto"
+)
+
+type ClientHandler struct {
+    clientUseCase   authUseCase.ClientUseCase
+    auditLogUseCase authUseCase.AuditLogUseCase
+}
+
+func (h *ClientHandler) CreateHandler(c *gin.Context) {
+    var req authDTO.CreateClientRequest
+    
+    if err := c.ShouldBindJSON(&req); err != nil {
+        httputil.HandleValidationErrorGin(c, err, h.logger)
+        return
+    }
+    
+    if err := req.Validate(); err != nil {
+        httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), h.logger)
+        return
+    }
+    
+    client, secret, err := h.clientUseCase.Create(c.Request.Context(), ...)
+    if err != nil {
+        httputil.HandleErrorGin(c, err, h.logger)
+        return
+    }
+    
+    response := authDTO.CreateClientResponse{
+        ID:     client.ID.String(),
+        Secret: secret,
+    }
+    c.JSON(http.StatusCreated, response)
+}
+```
+
+**Key Patterns:**
+- Import DTOs with alias: `authDTO "github.com/allisson/secrets/internal/auth/http/dto"`
+- Use `authDTO.CreateClientRequest` for request binding
+- Call `req.Validate()` after binding
+- Use `authDTO.MapClientToResponse(client)` for response mapping
+- Keep handlers thin - delegate business logic to use cases
+
 ### Authentication Middleware
 
 The project implements Bearer token authentication via `AuthenticationMiddleware`:
@@ -863,8 +978,11 @@ c.Data(http.StatusNoContent, "application/json", nil)  // NOT c.Status()
 ```
 
 **Reference:** 
-- Implementation: `/internal/auth/http/handler.go`
-- Tests: `/internal/auth/http/handler_test.go`
+- Implementation: `/internal/auth/http/client_handler.go` and `/internal/auth/http/token_handler.go`
+- Tests: `/internal/auth/http/client_handler_test.go` and `/internal/auth/http/token_handler_test.go`
+- DTOs: `/internal/auth/http/dto/` package (request.go, response.go)
+- Test Helpers: `/internal/auth/http/test_helpers.go`
+- Mocks: `/internal/auth/http/mocks/token_usecase.go`
 
 ### Route Registration with Authentication & Authorization
 

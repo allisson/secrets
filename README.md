@@ -195,7 +195,22 @@ secrets/
 │   │   ├── service/            # Token and secret hashing services
 │   │   ├── usecase/            # Client, Token, and AuditLog business logic
 │   │   ├── repository/         # Data access (PostgreSQL & MySQL)
-│   │   └── http/               # HTTP handlers and middleware
+│   │   └── http/               # HTTP presentation layer
+│   │       ├── client_handler.go         # Client management handlers
+│   │       ├── client_handler_test.go    # Client handler tests
+│   │       ├── token_handler.go          # Token issuance handlers
+│   │       ├── token_handler_test.go     # Token handler tests
+│   │       ├── middleware.go             # Auth & authz middleware
+│   │       ├── middleware_test.go        # Middleware tests
+│   │       ├── context.go                # Context helpers
+│   │       ├── test_helpers.go           # Shared test utilities
+│   │       ├── dto/                      # Data Transfer Objects
+│   │       │   ├── request.go            # Request DTOs + validation
+│   │       │   ├── request_test.go       # Request DTO tests
+│   │       │   ├── response.go           # Response DTOs + mapping
+│   │       │   └── response_test.go      # Response DTO tests
+│   │       └── mocks/                    # Manual mocks
+│   │           └── token_usecase.go      # Mock TokenUseCase
 │   ├── crypto/                 # Cryptographic domain module
 │   │   ├── domain/             # Entities: Kek, Dek, MasterKey
 │   │   ├── service/            # Encryption services
