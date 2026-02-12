@@ -489,7 +489,10 @@ The project uses **Gin v1.11.0** as the web framework with custom slog-based mid
 router := gin.New()
 
 // Apply custom middleware
-router.Use(gin.Recovery())                    // Gin's panic recovery
+router.Use(gin.Recovery())                   // Gin's panic recovery
+router.Use(requestid.New(requestid.WithGenerator(func() string {
+    return uuid.Must(uuid.NewV7()).String()
+})))                                         // Request ID with UUIDv7
 router.Use(CustomLoggerMiddleware(logger))   // Custom slog logger
 
 // Health endpoints (outside API versioning)
@@ -509,6 +512,7 @@ v1 := router.Group("/api/v1")
 - Gin mode auto-configured from `LOG_LEVEL` environment variable (debug/release)
 - Router groups for API versioning (`/api/v1`)
 - Graceful shutdown support
+- Request ID tracking with UUIDv7 (`X-Request-Id` header)
 
 ### Handler Pattern
 
@@ -643,14 +647,40 @@ func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
             slog.Int("status", c.Writer.Status()),
             slog.Duration("duration", time.Since(start)),
             slog.String("client_ip", c.ClientIP()),
+            slog.String("request_id", requestid.Get(c)),
         )
     }
 }
 ```
 
+**Request ID Tracking:**
+- Every HTTP request automatically generates a unique UUIDv7 request ID
+- Request ID is included in `X-Request-Id` response header
+- Request ID is logged with every HTTP request for tracing
+- Handlers can access request ID using `requestid.Get(c)` for distributed tracing
+
+Example log output with request ID:
+```json
+{
+  "time": "2026-02-12T10:30:45Z",
+  "level": "INFO",
+  "msg": "http request",
+  "method": "GET",
+  "path": "/api/v1/secrets",
+  "status": 200,
+  "duration": "15ms",
+  "client_ip": "192.168.1.100",
+  "request_id": "01933e4a-7890-7abc-def0-123456789abc"
+}
+```
+
 Apply middleware globally or per route group:
 ```go
-// Global middleware
+// Global middleware (in order)
+router.Use(gin.Recovery())
+router.Use(requestid.New(requestid.WithGenerator(func() string {
+    return uuid.Must(uuid.NewV7()).String()
+})))
 router.Use(CustomLoggerMiddleware(logger))
 
 // Per-group middleware

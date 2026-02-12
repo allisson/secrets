@@ -12,7 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,6 +97,9 @@ func TestCustomLoggerMiddleware(t *testing.T) {
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(requestid.New(requestid.WithGenerator(func() string {
+		return uuid.Must(uuid.NewV7()).String()
+	})))
 	router.Use(CustomLoggerMiddleware(logger))
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "test"})
@@ -213,4 +218,77 @@ func TestServer_ShutdownGracefully(t *testing.T) {
 	default:
 		// No error, good
 	}
+}
+
+// TestRequestIDMiddleware_HeaderPresent verifies X-Request-Id header is present in response.
+func TestRequestIDMiddleware_HeaderPresent(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(requestid.New(requestid.WithGenerator(func() string {
+		return uuid.Must(uuid.NewV7()).String()
+	})))
+	router.GET("/test", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "test"})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Verify X-Request-Id header is present
+	requestID := w.Header().Get("X-Request-Id")
+	assert.NotEmpty(t, requestID, "X-Request-Id header should be present")
+
+	// Verify it's a valid UUID
+	parsedUUID, err := uuid.Parse(requestID)
+	require.NoError(t, err, "X-Request-Id should be a valid UUID")
+	assert.NotEqual(t, uuid.Nil, parsedUUID, "X-Request-Id should not be nil UUID")
+
+	_ = logger // Prevent unused variable error
+}
+
+// TestRequestIDMiddleware_AccessibleInHandler verifies request ID can be retrieved in handlers.
+func TestRequestIDMiddleware_AccessibleInHandler(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(requestid.New(requestid.WithGenerator(func() string {
+		return uuid.Must(uuid.NewV7()).String()
+	})))
+
+	var capturedRequestID string
+	router.GET("/test", func(c *gin.Context) {
+		// Capture request ID from context
+		capturedRequestID = requestid.Get(c)
+		c.JSON(http.StatusOK, gin.H{"request_id": capturedRequestID})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Verify request ID from handler matches response header
+	headerRequestID := w.Header().Get("X-Request-Id")
+	assert.Equal(t, headerRequestID, capturedRequestID,
+		"Request ID from handler should match X-Request-Id header")
+
+	// Verify request ID is included in JSON response
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, capturedRequestID, response["request_id"])
+
+	// Verify it's a valid UUIDv7
+	parsedUUID, err := uuid.Parse(capturedRequestID)
+	require.NoError(t, err, "Request ID should be a valid UUID")
+	assert.Equal(t, uuid.Version(7), parsedUUID.Version(), "Request ID should be UUIDv7")
+
+	_ = logger // Prevent unused variable error
 }
