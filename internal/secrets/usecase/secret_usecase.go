@@ -119,7 +119,7 @@ func (s *secretUseCase) createOrUpdateSecret(
 	return newSecret, nil
 }
 
-// Get retrieves and decrypts a secret by its path.
+// Get retrieves and decrypts a secret by its path (latest version).
 func (s *secretUseCase) Get(ctx context.Context, path string) (*secretsDomain.Secret, error) {
 	// Retrieve the secret by path
 	secret, err := s.secretRepo.GetByPath(ctx, path)
@@ -127,6 +127,29 @@ func (s *secretUseCase) Get(ctx context.Context, path string) (*secretsDomain.Se
 		return nil, err
 	}
 
+	return s.decryptSecret(ctx, secret)
+}
+
+// GetByVersion retrieves and decrypts a secret by its path and specific version.
+func (s *secretUseCase) GetByVersion(
+	ctx context.Context,
+	path string,
+	version uint,
+) (*secretsDomain.Secret, error) {
+	// Retrieve the secret by path and version
+	secret, err := s.secretRepo.GetByPathAndVersion(ctx, path, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.decryptSecret(ctx, secret)
+}
+
+// decryptSecret is a helper method that decrypts a secret's ciphertext.
+func (s *secretUseCase) decryptSecret(
+	ctx context.Context,
+	secret *secretsDomain.Secret,
+) (*secretsDomain.Secret, error) {
 	// Retrieve the DEK
 	dek, err := s.dekRepo.Get(ctx, secret.DekID)
 	if err != nil {

@@ -39,6 +39,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🗑️ **Soft Deletion** - Mark secrets as deleted without losing historical data
 - 🔄 **Immutable History** - Each version is a separate database record with its own DEK
 - 📝 **Version Tracking** - Retrieve current or specific historical versions of secrets
+- 🌐 **REST API** - Full CRUD operations via HTTP endpoints with authentication and authorization
 
 ### 🛡️ Access Control & Authentication
 
@@ -63,7 +64,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🔑 **Complete Repository Layer** - KEK and DEK repositories with transaction support and database-specific optimizations
 - ⚡ **Transaction Management** - ACID guarantees for atomic operations (key rotation, secret updates)
 - 💉 **Dependency Injection** - Centralized wiring with lazy initialization
-- 🌐 **Gin Web Framework** - High-performance HTTP router (v1.11.0) with custom slog middleware, REST API under `/v1/`, and capability-based authorization
+- 🌐 **Gin Web Framework** - High-performance HTTP router (v1.11.0) with custom slog middleware, REST API under `/v1/` (clients, secrets), and capability-based authorization
 
 ## 🏗️ Architecture
 
@@ -219,7 +220,16 @@ secrets/
 │   └── secrets/                # Secrets management module
 │       ├── domain/             # Entities: Secret (with versioning)
 │       ├── usecase/            # Secret operations (create/update/get/delete)
-│       └── repository/         # Secret persistence (PostgreSQL & MySQL)
+│       ├── repository/         # Secret persistence (PostgreSQL & MySQL)
+│       └── http/               # HTTP presentation layer
+│           ├── secret_handler.go         # Secret management handlers
+│           ├── secret_handler_test.go    # Secret handler tests
+│           ├── test_helpers.go           # Shared test utilities
+│           └── dto/                      # Data Transfer Objects
+│               ├── request.go            # Request DTOs + validation
+│               ├── request_test.go       # Request DTO tests
+│               ├── response.go           # Response DTOs + mapping
+│               └── response_test.go      # Response DTO tests
 ├── migrations/
 │   ├── postgresql/             # PostgreSQL migrations
 │   └── mysql/                  # MySQL migrations
@@ -289,6 +299,17 @@ curl -X POST http://localhost:8080/v1/token \
     "client_id": "<client-id-from-step-9>",
     "client_secret": "<secret-from-step-9>"
   }'
+# Save the token from the response
+
+# Create your first secret (use the token from previous step)
+curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token-from-previous-step>" \
+  -H "Content-Type: application/json" \
+  -d '{"value":"my-super-secret-password"}'
+
+# Retrieve the secret
+curl http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token-from-previous-step>"
 ```
 
 ### 📦 Installation
@@ -891,7 +912,7 @@ Policy documents define what paths and capabilities a client has access to.
   },
   {
     "path": "/v1/secrets/*",
-    "capabilities": ["read", "write", "delete"]
+    "capabilities": ["encrypt", "decrypt", "delete"]
   },
   {
     "path": "/v1/transit/*",
@@ -900,114 +921,245 @@ Policy documents define what paths and capabilities a client has access to.
 ]
 ```
 
-**Note:** Currently only `/v1/clients` endpoints are implemented. The `/v1/secrets` and `/v1/transit` paths shown above are examples for when those APIs become available (see Planned Features section below).
+**Example Policy - Application with Secrets Access:**
+```json
+[
+  {
+    "path": "/v1/clients/*",
+    "capabilities": ["read"]
+  },
+  {
+    "path": "/v1/secrets/app/production/*",
+    "capabilities": ["encrypt", "decrypt"]
+  }
+]
+```
 
-## 🚧 Planned Features
+**Example Policy - Read-Only Secrets Access:**
+```json
+[
+  {
+    "path": "/v1/secrets/*",
+    "capabilities": ["decrypt"]
+  }
+]
+```
 
-The following API endpoints are planned but not yet implemented. The underlying business logic (domain models, use cases, repositories) exists, but HTTP handlers are under development.
+**Example Policy - Full Secrets Management:**
+```json
+[
+  {
+    "path": "/v1/secrets/*",
+    "capabilities": ["encrypt", "decrypt", "delete"]
+  }
+]
+```
 
-### 📦 Secrets Management API
+**Note:** `/v1/clients` and `/v1/secrets` endpoints are fully implemented. Transit Encryption API (`/v1/transit/*`) and Audit Logs API (`/v1/audit-logs`) are planned but not yet implemented (see Planned Features section below).
 
-**Status:** 🚧 Under Development
+### 📦 Secrets Management
 
-Secrets are managed with automatic versioning - every update creates a new version while preserving the complete history.
+The Secrets Management API provides secure storage and retrieval of sensitive data using envelope encryption. All endpoints require authentication and appropriate capabilities.
 
-#### Create/Update Secret
+#### 🔒 Security Warnings
 
-Creates a new secret or a new version of an existing secret. Each version is stored as a separate database record with its own Data Encryption Key (DEK).
+**CRITICAL SECURITY CONSIDERATIONS:**
+- ⚠️ **HTTPS Required**: ALWAYS use HTTPS in production. Secrets are returned as plaintext in GET responses
+- ⚠️ **No Logging**: DO NOT log API response bodies containing secret values
+- ⚠️ **Memory Handling**: Client applications MUST zero secret values from memory after use
+- ⚠️ **Access Control**: Use fine-grained policies to restrict secret access to authorized clients only
+- ⚠️ **Audit Trail**: All secret operations are logged for compliance and security monitoring
+
+#### Authentication & Authorization
+
+All secret endpoints require:
+- **Authentication**: Valid Bearer token in `Authorization` header
+- **Authorization**: Appropriate capability for the operation:
+  - `POST` requires `EncryptCapability`
+  - `GET` requires `DecryptCapability`
+  - `DELETE` requires `DeleteCapability`
+
+#### Create or Update Secret
+
+Creates a new secret (version 1) or updates an existing secret (creates new version).
 
 ```bash
-POST /v1/secrets
+POST /v1/secrets/*path
 ```
+
+**Authentication:** Required  
+**Authorization:** `EncryptCapability` for path `/v1/secrets/*path`
 
 **Request Body:**
 ```json
 {
-  "path": "/app/production/database-password",
-  "value": "super-secret-password"
+  "value": "my-secret-value"
 }
 ```
 
-**Response (New Secret - Version 1):**
+**Notes:**
+- The secret path is part of the URL (e.g., `/v1/secrets/app/production/db-password`)
+- The `value` field contains the plaintext secret to be encrypted
+- First creation sets version to 1
+- Subsequent updates create new versions (2, 3, 4...)
+- Each version is encrypted with its own Data Encryption Key (DEK)
+
+**Response (201 Created):**
 ```json
 {
   "id": "018d7e95-1a23-7890-bcde-f1234567890a",
-  "path": "/app/production/database-password",
+  "path": "app/production/db-password",
   "version": 1,
-  "created_at": "2026-02-02T20:13:45Z"
+  "created_at": "2026-02-12T20:13:45Z"
 }
 ```
 
-**Example: Updating a Secret**
+**Security Note:** The response excludes the plaintext value for security. The secret is encrypted and stored in the database.
 
-When you update an existing secret, a new version is automatically created:
-
+**Example - Create New Secret:**
 ```bash
-# First creation (version 1)
-curl -X POST http://localhost:8080/v1/secrets \
+curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"path": "/app/prod/api-key", "value": "secret-v1"}'
-
-# Update creates version 2
-curl -X POST http://localhost:8080/v1/secrets \
-  -H "Content-Type: application/json" \
-  -d '{"path": "/app/prod/api-key", "value": "secret-v2"}'
-
-# Another update creates version 3
-curl -X POST http://localhost:8080/v1/secrets \
-  -H "Content-Type: application/json" \
-  -d '{"path": "/app/prod/api-key", "value": "secret-v3"}'
+  -d '{
+    "value": "super-secret-password-v1"
+  }'
 ```
 
-**Version Management:**
-- ✅ **Automatic Versioning**: Version number auto-increments on each update
-- ✅ **Immutable History**: Previous versions remain unchanged in the database
-- ✅ **Independent Encryption**: Each version has its own DEK for maximum security
-- ✅ **Audit Trail**: Complete history of all secret changes preserved
-
-#### Get Secret
-
-Retrieves and decrypts the **latest version** of a secret at the specified path.
-
+**Example - Update Existing Secret (Creates Version 2):**
 ```bash
-GET /v1/secrets?path=/app/production/database-password
+curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "value": "super-secret-password-v2"
+  }'
 ```
 
 **Response:**
 ```json
 {
-  "id": "018d7e95-1a23-7890-bcde-f1234567890a",
-  "path": "/app/production/database-password",
-  "value": "super-secret-password",
-  "version": 3,
-  "created_at": "2026-02-02T20:15:30Z"
+  "id": "018d7e96-4d56-7890-bcde-f1234567890b",
+  "path": "app/production/database-password",
+  "version": 2,
+  "created_at": "2026-02-12T21:30:15Z"
 }
 ```
 
-**Notes:**
-- 🔍 Returns the most recent (highest version number) secret
-- 🔓 Automatically decrypts the secret value using the envelope encryption chain
-- 📊 Includes version number to track which version is current
+**Path Organization:**
+- Use hierarchical paths for organization: `/app/env/service/credential`
+- Examples:
+  - `/app/production/database-password`
+  - `/infrastructure/aws/access-key`
+  - `/services/payment/api-token`
 
-#### Delete Secret (Soft Delete)
+#### Get Secret
 
-Performs a soft delete on the **current version** of a secret. The secret is marked as deleted but preserved in the database for audit purposes.
+Retrieves and decrypts a secret by its path. Returns the latest version by default, or a specific version if the `version` query parameter is provided.
 
 ```bash
-DELETE /v1/secrets?path=/app/production/database-password
+GET /v1/secrets/*path
+GET /v1/secrets/*path?version=N
 ```
 
-**Behavior:**
-- 🗑️ Sets the `deleted_at` timestamp on the current version
-- 📜 Preserves the secret data for audit trail and compliance
-- 🔒 Previous versions remain unaffected
-- ⚠️ Deleted secrets cannot be retrieved via the API
+**Authentication:** Required  
+**Authorization:** `DecryptCapability` for path `/v1/secrets/*path`
+
+**Query Parameters:**
+- `version` (optional) - Specific version number to retrieve (positive integer)
+  - Omit to get the latest version
+  - Must be a valid unsigned integer (1, 2, 3...)
+  - Returns 422 if invalid format
+
+**Response (200 OK):**
+```json
+{
+  "id": "018d7e96-4d56-7890-bcde-f1234567890b",
+  "path": "app/production/database-password",
+  "value": "super-secret-password-v2",
+  "version": 2,
+  "created_at": "2026-02-12T21:30:15Z"
+}
+```
+
+**Security Note:** The `value` field contains the plaintext secret. Handle with extreme care.
+
+**Example - Get Latest Version:**
+```bash
+curl http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example - Get Specific Version:**
+```bash
+# Get version 1 (original secret)
+curl http://localhost:8080/v1/secrets/app/production/database-password?version=1 \
+  -H "Authorization: Bearer <token>"
+
+# Get version 2 (first update)
+curl http://localhost:8080/v1/secrets/app/production/database-password?version=2 \
+  -H "Authorization: Bearer <token>"
+```
+
+**Use Cases for Version Retrieval:**
+- 🔍 **Audit & Investigation**: Review historical secret values during security incidents
+- 🔄 **Rollback**: Retrieve previous version to restore after problematic update
+- 📊 **Compliance**: Access historical data for regulatory requirements
+- 🐛 **Debugging**: Compare current vs. previous versions to identify issues
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `DecryptCapability` for the path
+- `404 Not Found` - Secret not found at path, or version doesn't exist
+- `422 Unprocessable Entity` - Invalid version parameter (not a positive integer)
+
+**Important Notes:**
+- 🔓 Secrets are automatically decrypted using the envelope encryption chain (Master Key → KEK → DEK → Secret)
+- 📊 Each version has independent encryption with its own DEK for maximum security isolation
+- 🗑️ Deleted secrets (soft delete) cannot be retrieved via the API
+- ⚡ Version retrieval has the same performance as latest version (single database query)
+
+#### Delete Secret
+
+Performs a soft delete on the current version of a secret. The secret is marked as deleted but preserved in the database for audit purposes.
+
+```bash
+DELETE /v1/secrets/*path
+```
+
+**Authentication:** Required  
+**Authorization:** `DeleteCapability` for path `/v1/secrets/*path`
+
+**Response (204 No Content):**  
+Empty body (HTTP status code only)
 
 **Example:**
 ```bash
-# Delete the current version of a secret
-curl -X DELETE "http://localhost:8080/v1/secrets?path=/app/prod/api-key"
+curl -X DELETE http://localhost:8080/v1/secrets/app/production/database-password \
+  -H "Authorization: Bearer <token>"
 ```
+
+**Behavior:**
+- 🗑️ Sets the `deleted_at` timestamp on the **current version only**
+- 📜 Preserves the encrypted secret data for audit trail and compliance
+- 🔒 Previous versions remain unaffected and accessible (if not deleted)
+- ⚠️ Deleted secrets cannot be retrieved via GET endpoint
+- 💾 Data remains in database for forensic analysis and compliance requirements
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `DeleteCapability` for the path
+- `404 Not Found` - Secret not found at path
+
+**Important Notes:**
+- ✅ This is a **soft delete** - data is NOT physically removed from the database
+- ✅ Hard deletion (physical removal) is not currently supported via API
+- ✅ Database administrators can recover soft-deleted secrets if needed
+- ✅ Consider key rotation policies if secrets are suspected to be compromised
+
+## 🚧 Planned Features
+
+The following API endpoints are planned but not yet implemented. The underlying business logic for some features exists, but HTTP handlers are under development.
 
 ### 🚄 Transit Encryption API (Encryption-as-a-Service)
 
@@ -1185,7 +1337,7 @@ The application provides several CLI commands for managing the system:
 - **Purpose**: Start the HTTP API server
 - **Requirements**: Database migrated, KEK created
 - **Port**: Configured via `SERVER_PORT` environment variable (default: 8080)
-- **Endpoints**: Health check, secrets, transit, clients, policies, audit logs
+- **Endpoints**: Health check (`/health`, `/ready`), token issuance (`/v1/token`), client management (`/v1/clients`), secrets management (`/v1/secrets`)
 
 #### `create-client` - Create Authentication Client
 ```bash

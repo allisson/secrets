@@ -188,6 +188,66 @@ func (_c *MockSecretUseCase_Get_Call) RunAndReturn(run func(context.Context, str
 	return _c
 }
 
+// GetByVersion provides a mock function with given fields: ctx, path, version
+func (_m *MockSecretUseCase) GetByVersion(ctx context.Context, path string, version uint) (*domain.Secret, error) {
+	ret := _m.Called(ctx, path, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByVersion")
+	}
+
+	var r0 *domain.Secret
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.Secret, error)); ok {
+		return rf(ctx, path, version)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) *domain.Secret); ok {
+		r0 = rf(ctx, path, version)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Secret)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
+		r1 = rf(ctx, path, version)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSecretUseCase_GetByVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByVersion'
+type MockSecretUseCase_GetByVersion_Call struct {
+	*mock.Call
+}
+
+// GetByVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - path string
+//   - version uint
+func (_e *MockSecretUseCase_Expecter) GetByVersion(ctx interface{}, path interface{}, version interface{}) *MockSecretUseCase_GetByVersion_Call {
+	return &MockSecretUseCase_GetByVersion_Call{Call: _e.mock.On("GetByVersion", ctx, path, version)}
+}
+
+func (_c *MockSecretUseCase_GetByVersion_Call) Run(run func(ctx context.Context, path string, version uint)) *MockSecretUseCase_GetByVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(uint))
+	})
+	return _c
+}
+
+func (_c *MockSecretUseCase_GetByVersion_Call) Return(_a0 *domain.Secret, _a1 error) *MockSecretUseCase_GetByVersion_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSecretUseCase_GetByVersion_Call) RunAndReturn(run func(context.Context, string, uint) (*domain.Secret, error)) *MockSecretUseCase_GetByVersion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockSecretUseCase creates a new instance of MockSecretUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockSecretUseCase(t interface {
