@@ -33,5 +33,7 @@ packages:
     interfaces:
       ClientRepository:
       TokenRepository:
+      AuditLogRepository:
       ClientUseCase:
       TokenUseCase:
+      AuditLogUseCase:

@@ -17,6 +17,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - [⚙️ Configuration](#️-configuration)
 - [💻 Usage](#-usage)
 - [📖 API Reference](#-api-reference)
+- [🚧 Planned Features](#-planned-features)
 - [🛠️ Development](#️-development)
 - [🧪 Testing](#-testing)
 - [🔒 Security](#-security)
@@ -45,6 +46,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🎫 **Token Management** - Time-limited tokens with expiration and revocation
 - 📋 **Policy-based Authorization** - JSON policy documents for fine-grained access control
 - 🔗 **Client-Policy Binding** - Associate multiple policies with each client
+- 🔌 **Client Management API** - REST endpoints for CRUD operations on API clients (Create, Read, Update, Delete)
 
 ### 🔒 Security & Compliance
 
@@ -61,7 +63,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 - 🔑 **Complete Repository Layer** - KEK and DEK repositories with transaction support and database-specific optimizations
 - ⚡ **Transaction Management** - ACID guarantees for atomic operations (key rotation, secret updates)
 - 💉 **Dependency Injection** - Centralized wiring with lazy initialization
-- 🌐 **Gin Web Framework** - High-performance HTTP router (v1.11.0) with custom slog middleware and standard REST API
+- 🌐 **Gin Web Framework** - High-performance HTTP router (v1.11.0) with custom slog middleware, REST API under `/v1/`, and capability-based authorization
 
 ## 🏗️ Architecture
 
@@ -188,6 +190,12 @@ secrets/
 │   ├── httputil/               # HTTP utilities (JSON responses)
 │   ├── validation/             # Custom validation rules
 │   ├── testutil/               # Test utilities
+│   ├── auth/                   # Authentication & authorization module
+│   │   ├── domain/             # Entities: Client, Token, AuditLog, PolicyDocument
+│   │   ├── service/            # Token and secret hashing services
+│   │   ├── usecase/            # Client, Token, and AuditLog business logic
+│   │   ├── repository/         # Data access (PostgreSQL & MySQL)
+│   │   └── http/               # HTTP handlers and middleware
 │   ├── crypto/                 # Cryptographic domain module
 │   │   ├── domain/             # Entities: Kek, Dek, MasterKey
 │   │   ├── service/            # Encryption services
@@ -561,46 +569,264 @@ Response:
 
 ### 🔐 Authentication
 
-All API endpoints (except `/health`) require authentication using client tokens:
+All API endpoints (except `/health` and `/ready`) require authentication using client tokens:
 
 ```bash
 # Include token in Authorization header
-curl -H "Authorization: Bearer <token>" http://localhost:8080/api/secrets
+curl -H "Authorization: Bearer <token>" http://localhost:8080/v1/clients
 ```
 
-### 🔑 Key Management Operations
+### 👤 Client Management
 
-#### Create Initial KEK
+Client management endpoints provide CRUD operations for API clients. All endpoints require authentication with a valid Bearer token and appropriate capabilities.
+
+#### Authentication
+
+All client management endpoints require authentication using Bearer tokens:
 
 ```bash
-POST /api/keks/create
+curl -H "Authorization: Bearer <token>" http://localhost:8080/v1/clients
 ```
 
-Creates the first Key Encryption Key using the active master key.
+**Note:** The "Bearer" prefix is case-insensitive (`bearer`, `Bearer`, `BEARER` all work).
+
+#### Create Client
+
+Creates a new API client with a name and policy document.
+
+```bash
+POST /v1/clients
+```
+
+**Authentication:** Required  
+**Authorization:** `WriteCapability` for path `/v1/clients`
 
 **Request Body:**
 ```json
 {
-  "algorithm": "aes-gcm"  # Options: "aes-gcm", "chacha20-poly1305"
+  "name": "production-app",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/clients/*",
+      "capabilities": ["read", "write"]
+    },
+    {
+      "path": "/v1/secrets/*",
+      "capabilities": ["read"]
+    }
+  ]
 }
 ```
 
-#### Rotate KEK
-
-```bash
-POST /api/keks/rotate
+**Response (201 Created):**
+```json
+{
+  "id": "018d7e95-1a23-7890-bcde-f1234567890a",
+  "secret": "sec_1234567890abcdef"
+}
 ```
 
-Creates a new KEK version and marks the previous one as inactive.
+**Important:** The client secret is only returned during creation and cannot be retrieved later. Store it securely.
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/v1/clients \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-app",
+    "is_active": true,
+    "policies": [
+      {"path": "*", "capabilities": ["read"]}
+    ]
+  }'
+```
+
+#### Get Client
+
+Retrieves a client by ID. The client secret is never returned.
+
+```bash
+GET /v1/clients/:id
+```
+
+**Authentication:** Required  
+**Authorization:** `ReadCapability` for path `/v1/clients/:id`
+
+**Response (200 OK):**
+```json
+{
+  "id": "018d7e95-1a23-7890-bcde-f1234567890a",
+  "name": "production-app",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/clients/*",
+      "capabilities": ["read", "write"]
+    }
+  ],
+  "created_at": "2026-02-12T20:13:45Z"
+}
+```
+
+**Example:**
+```bash
+curl http://localhost:8080/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Update Client
+
+Updates an existing client's name, active status, or policy document.
+
+```bash
+PUT /v1/clients/:id
+```
+
+**Authentication:** Required  
+**Authorization:** `WriteCapability` for path `/v1/clients/:id`
 
 **Request Body:**
 ```json
 {
-  "algorithm": "aes-gcm"
+  "name": "production-app-updated",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/clients/*",
+      "capabilities": ["read", "write", "delete"]
+    }
+  ]
 }
 ```
 
-### 📦 Secrets Operations
+**Response (200 OK):**
+```json
+{
+  "id": "018d7e95-1a23-7890-bcde-f1234567890a",
+  "name": "production-app-updated",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/clients/*",
+      "capabilities": ["read", "write", "delete"]
+    }
+  ],
+  "created_at": "2026-02-12T20:13:45Z"
+}
+```
+
+**Example:**
+```bash
+curl -X PUT http://localhost:8080/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "updated-name",
+    "is_active": true,
+    "policies": [
+      {"path": "*", "capabilities": ["read", "write"]}
+    ]
+  }'
+```
+
+#### Delete Client
+
+Deletes a client. This operation is permanent and cannot be undone.
+
+```bash
+DELETE /v1/clients/:id
+```
+
+**Authentication:** Required  
+**Authorization:** `DeleteCapability` for path `/v1/clients/:id`
+
+**Response (204 No Content):**  
+Empty body
+
+**Example:**
+```bash
+curl -X DELETE http://localhost:8080/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+#### Policy Document Structure
+
+Policy documents define what paths and capabilities a client has access to.
+
+**Structure:**
+```json
+[
+  {
+    "path": "<path-pattern>",
+    "capabilities": ["<capability1>", "<capability2>"]
+  }
+]
+```
+
+**Path Matching Patterns:**
+- **Exact match:** `/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a` (matches only this exact path)
+- **Wildcard:** `*` (matches all paths)
+- **Prefix:** `/v1/clients/*` (matches all paths starting with `/v1/clients/`)
+
+**Available Capabilities:**
+- `read` - View resources
+- `write` - Create/update resources
+- `delete` - Delete resources
+- `encrypt` - Encrypt data (transit encryption)
+- `decrypt` - Decrypt data (transit encryption)
+- `rotate` - Rotate keys
+
+**Example Policy - Read-Only Access to Client Management:**
+```json
+[
+  {
+    "path": "/v1/clients/*",
+    "capabilities": ["read"]
+  }
+]
+```
+
+**Example Policy - Admin Access:**
+```json
+[
+  {
+    "path": "*",
+    "capabilities": ["read", "write", "delete", "encrypt", "decrypt", "rotate"]
+  }
+]
+```
+
+**Note:** The wildcard `*` policy grants access to all current and future API endpoints.
+
+**Example Policy - Multiple Paths with Different Capabilities:**
+```json
+[
+  {
+    "path": "/v1/clients/*",
+    "capabilities": ["read", "write"]
+  },
+  {
+    "path": "/v1/secrets/*",
+    "capabilities": ["read", "write", "delete"]
+  },
+  {
+    "path": "/v1/transit/*",
+    "capabilities": ["encrypt", "decrypt"]
+  }
+]
+```
+
+**Note:** Currently only `/v1/clients` endpoints are implemented. The `/v1/secrets` and `/v1/transit` paths shown above are examples for when those APIs become available (see Planned Features section below).
+
+## 🚧 Planned Features
+
+The following API endpoints are planned but not yet implemented. The underlying business logic (domain models, use cases, repositories) exists, but HTTP handlers are under development.
+
+### 📦 Secrets Management API
+
+**Status:** 🚧 Under Development
 
 Secrets are managed with automatic versioning - every update creates a new version while preserving the complete history.
 
@@ -609,7 +835,7 @@ Secrets are managed with automatic versioning - every update creates a new versi
 Creates a new secret or a new version of an existing secret. Each version is stored as a separate database record with its own Data Encryption Key (DEK).
 
 ```bash
-POST /api/secrets
+POST /v1/secrets
 ```
 
 **Request Body:**
@@ -636,17 +862,17 @@ When you update an existing secret, a new version is automatically created:
 
 ```bash
 # First creation (version 1)
-curl -X POST http://localhost:8080/api/secrets \
+curl -X POST http://localhost:8080/v1/secrets \
   -H "Content-Type: application/json" \
   -d '{"path": "/app/prod/api-key", "value": "secret-v1"}'
 
 # Update creates version 2
-curl -X POST http://localhost:8080/api/secrets \
+curl -X POST http://localhost:8080/v1/secrets \
   -H "Content-Type: application/json" \
   -d '{"path": "/app/prod/api-key", "value": "secret-v2"}'
 
 # Another update creates version 3
-curl -X POST http://localhost:8080/api/secrets \
+curl -X POST http://localhost:8080/v1/secrets \
   -H "Content-Type: application/json" \
   -d '{"path": "/app/prod/api-key", "value": "secret-v3"}'
 ```
@@ -662,7 +888,7 @@ curl -X POST http://localhost:8080/api/secrets \
 Retrieves and decrypts the **latest version** of a secret at the specified path.
 
 ```bash
-GET /api/secrets?path=/app/production/database-password
+GET /v1/secrets?path=/app/production/database-password
 ```
 
 **Response:**
@@ -686,7 +912,7 @@ GET /api/secrets?path=/app/production/database-password
 Performs a soft delete on the **current version** of a secret. The secret is marked as deleted but preserved in the database for audit purposes.
 
 ```bash
-DELETE /api/secrets?path=/app/production/database-password
+DELETE /v1/secrets?path=/app/production/database-password
 ```
 
 **Behavior:**
@@ -698,15 +924,17 @@ DELETE /api/secrets?path=/app/production/database-password
 **Example:**
 ```bash
 # Delete the current version of a secret
-curl -X DELETE "http://localhost:8080/api/secrets?path=/app/prod/api-key"
+curl -X DELETE "http://localhost:8080/v1/secrets?path=/app/prod/api-key"
 ```
 
-### 🚄 Transit Encryption (Encryption-as-a-Service)
+### 🚄 Transit Encryption API (Encryption-as-a-Service)
+
+**Status:** 🚧 Under Development
 
 #### Create Transit Key
 
 ```bash
-POST /api/transit/keys
+POST /v1/transit/keys
 ```
 
 **Request Body:**
@@ -720,7 +948,7 @@ POST /api/transit/keys
 #### Encrypt Data
 
 ```bash
-POST /api/transit/encrypt/{key_name}
+POST /v1/transit/encrypt/{key_name}
 ```
 
 **Request Body:**
@@ -740,7 +968,7 @@ POST /api/transit/encrypt/{key_name}
 #### Decrypt Data
 
 ```bash
-POST /api/transit/decrypt/{key_name}
+POST /v1/transit/decrypt/{key_name}
 ```
 
 **Request Body:**
@@ -757,82 +985,14 @@ POST /api/transit/decrypt/{key_name}
 }
 ```
 
-### 👤 Client Management
+### 📜 Audit Logs API
 
-#### Create Client
-
-```bash
-POST /api/clients
-```
-
-**Request Body:**
-```json
-{
-  "name": "production-app",
-  "secret": "client-secret-value"
-}
-```
-
-#### Create Token
-
-```bash
-POST /api/tokens
-```
-
-**Request Body:**
-```json
-{
-  "client_id": "018d7e95-1a23-7890-bcde-f1234567890a",
-  "client_secret": "client-secret-value",
-  "expires_in": 3600  # Expiration in seconds
-}
-```
-
-**Response:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expires_at": "2026-02-02T21:13:45Z"
-}
-```
-
-### 📋 Policy Management
-
-#### Create Policy
-
-```bash
-POST /api/policies
-```
-
-**Request Body:**
-```json
-{
-  "name": "read-production-secrets",
-  "document": {
-    "version": "1",
-    "statements": [
-      {
-        "effect": "allow",
-        "actions": ["secrets:read"],
-        "resources": ["/app/production/*"]
-      }
-    ]
-  }
-}
-```
-
-#### Attach Policy to Client
-
-```bash
-POST /api/clients/{client_id}/policies/{policy_id}
-```
-
-### 📜 Audit Logs
+**Status:** 🚧 Under Development
 
 #### List Audit Logs
 
 ```bash
-GET /api/audit-logs?limit=100&offset=0
+GET /v1/audit-logs?limit=100&offset=0
 ```
 
 **Response:**
