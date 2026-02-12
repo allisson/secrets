@@ -15,7 +15,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Server represents the HTTP server.
@@ -48,7 +50,10 @@ func (s *Server) setupRouter(ctx context.Context) *gin.Engine {
 	router := gin.New()
 
 	// Apply custom middleware
-	router.Use(gin.Recovery())                   // Gin's panic recovery
+	router.Use(gin.Recovery()) // Gin's panic recovery
+	router.Use(requestid.New(requestid.WithGenerator(func() string {
+		return uuid.Must(uuid.NewV7()).String()
+	}))) // Request ID with UUIDv7
 	router.Use(CustomLoggerMiddleware(s.logger)) // Custom slog logger
 
 	// Health and readiness endpoints (outside API versioning)

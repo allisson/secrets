@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,6 +33,7 @@ func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			slog.Duration("duration", duration),
 			slog.String("client_ip", c.ClientIP()),
 			slog.String("user_agent", c.Request.UserAgent()),
+			slog.String("request_id", requestid.Get(c)),
 		)
 	}
 }
