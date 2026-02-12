@@ -1,8 +1,5 @@
-// Package domain defines the core cryptographic domain models for envelope encryption.
-//
-// It implements a three-tier key hierarchy: Master Key → KEK → DEK → Data.
-// KEKs encrypt Data Encryption Keys, enabling efficient key rotation without
-// re-encrypting all data. Supports AESGCM and ChaCha20 algorithms with 256-bit keys.
+// Package domain defines core cryptographic domain models for envelope encryption.
+// Implements Master Key → KEK → DEK → Data hierarchy with AESGCM and ChaCha20 support.
 package domain
 
 import (
@@ -13,7 +10,8 @@ import (
 )
 
 // Kek represents a Key Encryption Key used to encrypt Data Encryption Keys.
-// It is itself encrypted with a master key and stored in the database.
+// Encrypted with a master key and stored in the database. The Key field contains
+// sensitive plaintext data (populated after decryption) and should be zeroed after use.
 type Kek struct {
 	ID           uuid.UUID // Unique identifier (UUIDv7)
 	MasterKeyID  string    // ID of the master key used to encrypt this KEK
@@ -46,7 +44,7 @@ func (k *KekChain) Get(id uuid.UUID) (*Kek, bool) {
 	return nil, false
 }
 
-// Close securely clears all KEKs from the chain and resets the active ID.
+// Close securely zeros all KEK keys from memory, clears the chain, and resets the active ID.
 func (k *KekChain) Close() {
 	// Zero all KEK keys before clearing
 	k.keys.Range(func(key, value interface{}) bool {
@@ -60,7 +58,7 @@ func (k *KekChain) Close() {
 }
 
 // NewKekChain creates a new KekChain with the first KEK as active.
-// KEKs must be ordered by version descending (newest first).
+// KEKs must be ordered by version descending (newest first) and slice must not be empty.
 func NewKekChain(keks []*Kek) *KekChain {
 	kc := &KekChain{
 		activeID: keks[0].ID,

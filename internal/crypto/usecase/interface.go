@@ -1,4 +1,4 @@
-// Package usecase defines business logic interfaces for cryptographic operations.
+// Package usecase defines business logic interfaces for KEK operations and repository contracts.
 package usecase
 
 import (

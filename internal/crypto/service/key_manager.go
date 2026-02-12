@@ -22,7 +22,8 @@ func NewKeyManager(aeadManager AEADManager) *KeyManagerService {
 	}
 }
 
-// CreateKek creates a new KEK encrypted with the master key.
+// CreateKek generates a random 32-byte KEK, encrypts it with the master key, and returns the encrypted KEK.
+// The plaintext KEK is included in the returned Kek.Key field and should be zeroed after use.
 func (km *KeyManagerService) CreateKek(
 	masterKey *cryptoDomain.MasterKey,
 	alg cryptoDomain.Algorithm,
@@ -60,6 +61,7 @@ func (km *KeyManagerService) CreateKek(
 }
 
 // DecryptKek decrypts a KEK using the master key.
+// Returns ErrDecryptionFailed if decryption fails due to wrong key or corrupted data.
 func (km *KeyManagerService) DecryptKek(
 	kek *cryptoDomain.Kek,
 	masterKey *cryptoDomain.MasterKey,
@@ -79,7 +81,8 @@ func (km *KeyManagerService) DecryptKek(
 	return kekKey, nil
 }
 
-// CreateDek creates a new DEK encrypted with the KEK.
+// CreateDek generates a random 32-byte DEK and encrypts it with the KEK.
+// The plaintext DEK is NOT included in the returned struct and must be derived separately.
 func (km *KeyManagerService) CreateDek(
 	kek *cryptoDomain.Kek,
 	alg cryptoDomain.Algorithm,
@@ -115,6 +118,7 @@ func (km *KeyManagerService) CreateDek(
 }
 
 // DecryptDek decrypts a DEK using the KEK.
+// Returns ErrDecryptionFailed if decryption fails due to wrong key or corrupted data.
 func (km *KeyManagerService) DecryptDek(
 	dek *cryptoDomain.Dek,
 	kek *cryptoDomain.Kek,

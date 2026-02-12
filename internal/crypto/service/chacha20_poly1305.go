@@ -14,6 +14,7 @@ type ChaCha20Poly1305Cipher struct {
 }
 
 // NewChaCha20Poly1305 creates a new ChaCha20-Poly1305 cipher instance.
+// Returns an error if key is not exactly 32 bytes.
 func NewChaCha20Poly1305(key []byte) (*ChaCha20Poly1305Cipher, error) {
 	aead, err := chacha20poly1305.New(key)
 	if err != nil {

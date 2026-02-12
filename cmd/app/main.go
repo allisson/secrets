@@ -170,55 +170,14 @@ func runServer(ctx context.Context) error {
 	return nil
 }
 
-// runCreateMasterKey generates a new master key and displays the environment variable configuration.
+// runCreateMasterKey generates a cryptographically secure 32-byte master key for envelope encryption.
+// Creates the root key used to encrypt all KEKs. Key material is zeroed from memory after encoding.
+// If keyID is empty, generates a default ID in format "master-key-YYYY-MM-DD".
 //
-// This command is a helper for generating cryptographically secure master keys for use in
-// envelope encryption. The generated key is 32 bytes (256 bits) suitable for AES-256 encryption.
-// This is the recommended way to generate master keys for the Secrets system.
+// Output format: MASTER_KEYS="<keyID>:<base64-encoded-key>" and ACTIVE_MASTER_KEY_ID="<keyID>"
 //
-// The key is generated using crypto/rand.Read which provides cryptographically secure random bytes.
-// After encoding, the key material is immediately zeroed from memory for security. The output
-// format matches the MASTER_KEYS and ACTIVE_MASTER_KEY_ID environment variables expected by
-// LoadMasterKeyChainFromEnv.
-//
-// Parameters:
-//   - keyID: Optional key ID for the master key (e.g., "prod-master-key-2025")
-//     If empty, a default ID in the format "master-key-YYYY-MM-DD" is generated
-//
-// Output format:
-//
-//	MASTER_KEYS="<keyID>:<base64-encoded-key>"
-//	ACTIVE_MASTER_KEY_ID="<keyID>"
-//
-// The command also displays helpful comments about key rotation with multiple keys.
-//
-// Workflow example:
-//
-//	# Step 1: Generate master key
-//	./bin/app create-master-key --id prod-master-key-2025
-//
-//	# Step 2: Copy output to .env file
-//	# MASTER_KEYS="prod-master-key-2025:..."
-//	# ACTIVE_MASTER_KEY_ID="prod-master-key-2025"
-//
-//	# Step 3: Run migrations
-//	./bin/app migrate
-//
-//	# Step 4: Create initial KEK
-//	./bin/app create-kek
-//
-//	# Step 5: Start server
-//	./bin/app server
-//
-// Security notes:
-//   - Store the output securely (e.g., in a secrets manager or encrypted vault)
-//   - Never commit master keys to version control
-//   - For production, consider using a proper KMS instead of environment variables
-//   - Rotate master keys periodically according to your security policy (e.g., every 90 days)
-//   - When rotating, generate a new key, add it to MASTER_KEYS, update ACTIVE_MASTER_KEY_ID, and rotate KEKs
-//
-// Returns:
-//   - An error if key generation fails
+// Security: Store output securely (secrets manager/KMS), never commit to version control, rotate
+// every 90 days. For production, consider using a proper KMS instead of environment variables.
 func runCreateMasterKey(keyID string) error {
 	// Generate default key ID if not provided
 	if keyID == "" {
@@ -286,22 +245,10 @@ func runMigrations() error {
 }
 
 // runCreateKek creates a new Key Encryption Key using the specified algorithm.
+// Should only be run once during initial system setup. The KEK is encrypted using
+// the active master key from MASTER_KEYS environment variable.
 //
-// This command should only be run once during initial system setup to create the
-// first KEK in the database. The KEK is encrypted using the active master key
-// from the MASTER_KEYS environment variable.
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - algorithmStr: The encryption algorithm ("aes-gcm" or "chacha20-poly1305")
-//
-// Requirements:
-//   - Database must be migrated (run 'migrate' command first)
-//   - MASTER_KEYS environment variable must be set
-//   - ACTIVE_MASTER_KEY_ID environment variable must be set
-//
-// Returns:
-//   - An error if the KEK already exists or creation fails
+// Requirements: Database must be migrated, MASTER_KEYS and ACTIVE_MASTER_KEY_ID must be set.
 func runCreateKek(ctx context.Context, algorithmStr string) error {
 	// Load configuration
 	cfg := config.Load()
@@ -357,28 +304,14 @@ func runCreateKek(ctx context.Context, algorithmStr string) error {
 }
 
 // runRotateKek rotates the existing Key Encryption Key using the specified algorithm.
+// Creates a new KEK version and marks the previous active KEK as inactive. The new KEK is
+// encrypted using the active master key. This operation is atomic and maintains backward
+// compatibility - existing DEKs encrypted with the old KEK remain readable.
 //
-// This command creates a new KEK version and marks the previous active KEK as inactive.
-// The new KEK is encrypted using the active master key from the MASTER_KEYS environment
-// variable. This operation is atomic and maintains backward compatibility - existing
-// DEKs encrypted with the old KEK remain readable.
+// Key rotation recommended every 90 days or when suspecting KEK compromise, changing encryption
+// algorithms, or rotating master keys.
 //
-// Key rotation is recommended every 90 days or when:
-//   - Suspecting KEK compromise
-//   - Changing encryption algorithms
-//   - Rotating master keys
-//
-// Parameters:
-//   - ctx: Context for cancellation and timeouts
-//   - algorithmStr: The encryption algorithm for the new KEK ("aes-gcm" or "chacha20-poly1305")
-//
-// Requirements:
-//   - An active KEK must already exist (run 'create-kek' first)
-//   - MASTER_KEYS environment variable must be set
-//   - ACTIVE_MASTER_KEY_ID environment variable must be set
-//
-// Returns:
-//   - An error if no active KEK exists or rotation fails
+// Requirements: An active KEK must already exist, MASTER_KEYS and ACTIVE_MASTER_KEY_ID must be set.
 func runRotateKek(ctx context.Context, algorithmStr string) error {
 	// Load configuration
 	cfg := config.Load()

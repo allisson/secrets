@@ -13,6 +13,7 @@ func NewAEADManager() *AEADManagerService {
 }
 
 // CreateCipher creates an AEAD cipher instance for the specified algorithm.
+// Returns ErrInvalidKeySize if key is not 32 bytes or ErrUnsupportedAlgorithm if algorithm is unknown.
 func (am *AEADManagerService) CreateCipher(key []byte, alg cryptoDomain.Algorithm) (AEAD, error) {
 	// Validate key size
 	if len(key) != 32 {
