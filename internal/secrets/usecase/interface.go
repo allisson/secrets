@@ -29,10 +29,15 @@ type SecretRepository interface {
 // SecretUseCase defines the interface for secret management business logic.
 type SecretUseCase interface {
 	CreateOrUpdate(ctx context.Context, path string, value []byte) (*secretsDomain.Secret, error)
-	// Get retrieves and decrypts a secret by its path.
+	// Get retrieves and decrypts a secret by its path (latest version).
 	//
 	// Security Note: The returned Secret contains plaintext data in the Plaintext field.
 	// Callers MUST zero this data after use by calling cryptoDomain.Zero(secret.Plaintext).
 	Get(ctx context.Context, path string) (*secretsDomain.Secret, error)
+	// GetByVersion retrieves and decrypts a secret by its path and specific version.
+	//
+	// Security Note: The returned Secret contains plaintext data in the Plaintext field.
+	// Callers MUST zero this data after use by calling cryptoDomain.Zero(secret.Plaintext).
+	GetByVersion(ctx context.Context, path string, version uint) (*secretsDomain.Secret, error)
 	Delete(ctx context.Context, path string) error
 }

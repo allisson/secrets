@@ -20,6 +20,9 @@ import (
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
+	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
+	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
+	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
 
 // Container holds all application dependencies with lazy initialization.
@@ -43,12 +46,15 @@ type Container struct {
 
 	// Repositories
 	kekRepository      cryptoUseCase.KekRepository
+	dekRepository      secretsUseCase.DekRepository
+	secretRepository   secretsUseCase.SecretRepository
 	clientRepository   authUseCase.ClientRepository
 	tokenRepository    authUseCase.TokenRepository
 	auditLogRepository authUseCase.AuditLogRepository
 
 	// Use Cases
 	kekUseCase      cryptoUseCase.KekUseCase
+	secretUseCase   secretsUseCase.SecretUseCase
 	clientUseCase   authUseCase.ClientUseCase
 	tokenUseCase    authUseCase.TokenUseCase
 	auditLogUseCase authUseCase.AuditLogUseCase
@@ -56,6 +62,7 @@ type Container struct {
 	// HTTP Handlers
 	clientHandler *authHTTP.ClientHandler
 	tokenHandler  *authHTTP.TokenHandler
+	secretHandler *secretsHTTP.SecretHandler
 
 	// Servers and Workers
 	httpServer *http.Server
@@ -71,15 +78,19 @@ type Container struct {
 	secretServiceInit      sync.Once
 	tokenServiceInit       sync.Once
 	kekRepositoryInit      sync.Once
+	dekRepositoryInit      sync.Once
+	secretRepositoryInit   sync.Once
 	clientRepositoryInit   sync.Once
 	tokenRepositoryInit    sync.Once
 	auditLogRepositoryInit sync.Once
 	kekUseCaseInit         sync.Once
+	secretUseCaseInit      sync.Once
 	clientUseCaseInit      sync.Once
 	tokenUseCaseInit       sync.Once
 	auditLogUseCaseInit    sync.Once
 	clientHandlerInit      sync.Once
 	tokenHandlerInit       sync.Once
+	secretHandlerInit      sync.Once
 	httpServerInit         sync.Once
 	initErrors             map[string]error
 }
@@ -389,6 +400,78 @@ func (c *Container) TokenHandler() (*authHTTP.TokenHandler, error) {
 	return c.tokenHandler, nil
 }
 
+// DekRepository returns the DEK repository based on database driver.
+func (c *Container) DekRepository() (secretsUseCase.DekRepository, error) {
+	var err error
+	c.dekRepositoryInit.Do(func() {
+		c.dekRepository, err = c.initDekRepository()
+		if err != nil {
+			c.initErrors["dekRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["dekRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.dekRepository, nil
+}
+
+// SecretRepository returns the secret repository based on database driver.
+func (c *Container) SecretRepository() (secretsUseCase.SecretRepository, error) {
+	var err error
+	c.secretRepositoryInit.Do(func() {
+		c.secretRepository, err = c.initSecretRepository()
+		if err != nil {
+			c.initErrors["secretRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["secretRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.secretRepository, nil
+}
+
+// SecretUseCase returns the secret use case.
+func (c *Container) SecretUseCase() (secretsUseCase.SecretUseCase, error) {
+	var err error
+	c.secretUseCaseInit.Do(func() {
+		c.secretUseCase, err = c.initSecretUseCase()
+		if err != nil {
+			c.initErrors["secretUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["secretUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.secretUseCase, nil
+}
+
+// SecretHandler returns the HTTP handler for secret management operations.
+func (c *Container) SecretHandler() (*secretsHTTP.SecretHandler, error) {
+	var err error
+	c.secretHandlerInit.Do(func() {
+		c.secretHandler, err = c.initSecretHandler()
+		if err != nil {
+			c.initErrors["secretHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["secretHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.secretHandler, nil
+}
+
 // Shutdown performs cleanup of all initialized resources.
 func (c *Container) Shutdown(ctx context.Context) error {
 	c.mu.Lock()
@@ -500,6 +583,11 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get token handler: %w", err)
 	}
 
+	secretHandler, err := c.SecretHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret handler: %w", err)
+	}
+
 	tokenUseCase, err := c.TokenUseCase()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
@@ -513,7 +601,14 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 	}
 
 	// Setup router with dependencies
-	server.SetupRouter(clientHandler, tokenHandler, tokenUseCase, tokenService, auditLogUseCase)
+	server.SetupRouter(
+		clientHandler,
+		tokenHandler,
+		secretHandler,
+		tokenUseCase,
+		tokenService,
+		auditLogUseCase,
+	)
 
 	return server, nil
 }
@@ -702,4 +797,112 @@ func (c *Container) initTokenHandler() (*authHTTP.TokenHandler, error) {
 	logger := c.Logger()
 
 	return authHTTP.NewTokenHandler(tokenUseCase, logger), nil
+}
+
+// initDekRepository creates the DEK repository based on the database driver.
+func (c *Container) initDekRepository() (secretsUseCase.DekRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for dek repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+	case "mysql":
+		return cryptoRepository.NewMySQLDekRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initSecretRepository creates the secret repository based on the database driver.
+func (c *Container) initSecretRepository() (secretsUseCase.SecretRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for secret repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return secretsRepository.NewPostgreSQLSecretRepository(db), nil
+	case "mysql":
+		return secretsRepository.NewMySQLSecretRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initSecretUseCase creates the secret use case with all its dependencies.
+func (c *Container) initSecretUseCase() (secretsUseCase.SecretUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for secret use case: %w", err)
+	}
+
+	dekRepository, err := c.DekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dek repository for secret use case: %w", err)
+	}
+
+	secretRepository, err := c.SecretRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret repository for secret use case: %w", err)
+	}
+
+	kekChain, err := c.loadKekChain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kek chain for secret use case: %w", err)
+	}
+
+	aeadManager := c.AEADManager()
+	keyManager := c.KeyManager()
+
+	return secretsUseCase.NewSecretUseCase(
+		txManager,
+		dekRepository,
+		secretRepository,
+		kekChain,
+		aeadManager,
+		keyManager,
+		cryptoDomain.AESGCM,
+	), nil
+}
+
+// initSecretHandler creates the secret HTTP handler with all its dependencies.
+func (c *Container) initSecretHandler() (*secretsHTTP.SecretHandler, error) {
+	secretUseCase, err := c.SecretUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret use case for secret handler: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for secret handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return secretsHTTP.NewSecretHandler(secretUseCase, auditLogUseCase, logger), nil
+}
+
+// loadKekChain loads all KEKs from the database and creates a KEK chain.
+func (c *Container) loadKekChain() (*cryptoDomain.KekChain, error) {
+	kekUseCase, err := c.KekUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kek use case: %w", err)
+	}
+
+	masterKeyChain, err := c.MasterKeyChain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get master key chain: %w", err)
+	}
+
+	// Unwrap all KEKs using the master key chain
+	kekChain, err := kekUseCase.Unwrap(context.Background(), masterKeyChain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unwrap keks: %w", err)
+	}
+
+	return kekChain, nil
 }

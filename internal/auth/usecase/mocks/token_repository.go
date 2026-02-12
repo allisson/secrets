@@ -130,6 +130,65 @@ func (_c *MockTokenRepository_Get_Call) RunAndReturn(run func(context.Context, u
 	return _c
 }
 
+// GetByTokenHash provides a mock function with given fields: ctx, tokenHash
+func (_m *MockTokenRepository) GetByTokenHash(ctx context.Context, tokenHash string) (*domain.Token, error) {
+	ret := _m.Called(ctx, tokenHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByTokenHash")
+	}
+
+	var r0 *domain.Token
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.Token, error)); ok {
+		return rf(ctx, tokenHash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.Token); ok {
+		r0 = rf(ctx, tokenHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Token)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, tokenHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTokenRepository_GetByTokenHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByTokenHash'
+type MockTokenRepository_GetByTokenHash_Call struct {
+	*mock.Call
+}
+
+// GetByTokenHash is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokenHash string
+func (_e *MockTokenRepository_Expecter) GetByTokenHash(ctx interface{}, tokenHash interface{}) *MockTokenRepository_GetByTokenHash_Call {
+	return &MockTokenRepository_GetByTokenHash_Call{Call: _e.mock.On("GetByTokenHash", ctx, tokenHash)}
+}
+
+func (_c *MockTokenRepository_GetByTokenHash_Call) Run(run func(ctx context.Context, tokenHash string)) *MockTokenRepository_GetByTokenHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_GetByTokenHash_Call) Return(_a0 *domain.Token, _a1 error) *MockTokenRepository_GetByTokenHash_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTokenRepository_GetByTokenHash_Call) RunAndReturn(run func(context.Context, string) (*domain.Token, error)) *MockTokenRepository_GetByTokenHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, token
 func (_m *MockTokenRepository) Update(ctx context.Context, token *domain.Token) error {
 	ret := _m.Called(ctx, token)

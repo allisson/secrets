@@ -23,6 +23,7 @@ import (
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 )
 
 // Server represents the HTTP server.
@@ -54,6 +55,7 @@ func NewServer(
 func (s *Server) SetupRouter(
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
+	secretHandler *secretsHTTP.SecretHandler,
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
 	auditLogUseCase authUseCase.AuditLogUseCase,
@@ -104,6 +106,24 @@ func (s *Server) SetupRouter(
 			clients.DELETE("/:id",
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				clientHandler.DeleteHandler,
+			)
+		}
+
+		// Secret management endpoints
+		secrets := v1.Group("/secrets")
+		secrets.Use(authMiddleware) // All secret routes require authentication
+		{
+			secrets.POST("/*path",
+				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+				secretHandler.CreateOrUpdateHandler,
+			)
+			secrets.GET("/*path",
+				authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+				secretHandler.GetHandler,
+			)
+			secrets.DELETE("/*path",
+				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+				secretHandler.DeleteHandler,
 			)
 		}
 	}
