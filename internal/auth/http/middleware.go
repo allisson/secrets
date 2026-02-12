@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authService "github.com/allisson/secrets/internal/auth/service"
@@ -89,6 +91,7 @@ func AuthenticationMiddleware(
 //
 // MUST be used after AuthenticationMiddleware. Retrieves authenticated client from context,
 // extracts request path, and checks if Client.IsAllowed(path, capability) permits access.
+// Creates audit logs for all authorization attempts (both successful and failed).
 //
 // Path Matching:
 //   - Exact: "/secrets/mykey" matches policy "/secrets/mykey"
@@ -100,6 +103,7 @@ func AuthenticationMiddleware(
 //   - 403 Forbidden: Insufficient permissions
 func AuthorizationMiddleware(
 	capability authDomain.Capability,
+	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -116,7 +120,12 @@ func AuthorizationMiddleware(
 		path := c.Request.URL.Path
 
 		// Check if client is allowed to perform the capability on the path
-		if !client.IsAllowed(path, capability) {
+		allowed := client.IsAllowed(path, capability)
+
+		// Create audit log for the authorization attempt
+		createAuditLog(c, auditLogUseCase, client, capability, path, allowed, logger)
+
+		if !allowed {
 			logger.Debug("authorization failed: insufficient permissions",
 				slog.String("client_id", client.ID.String()),
 				slog.String("client_name", client.Name),
@@ -140,5 +149,51 @@ func AuthorizationMiddleware(
 
 		// Continue to next handler
 		c.Next()
+	}
+}
+
+// createAuditLog creates an audit log entry for an authorization attempt. Extracts the
+// request ID from context or generates a new UUIDv7 if missing. Includes metadata with
+// authorization outcome, client IP, and user agent. Logs errors but does not block the
+// request if audit log creation fails.
+func createAuditLog(
+	c *gin.Context,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+	client *authDomain.Client,
+	capability authDomain.Capability,
+	path string,
+	allowed bool,
+	logger *slog.Logger,
+) {
+	// Extract or generate request ID
+	requestIDStr := requestid.Get(c)
+	requestID, err := uuid.Parse(requestIDStr)
+	if err != nil {
+		requestID = uuid.Must(uuid.NewV7())
+		logger.Debug("invalid request ID, generated new one",
+			slog.String("original", requestIDStr),
+			slog.String("new", requestID.String()))
+	}
+
+	// Build metadata
+	metadata := map[string]any{
+		"allowed":    allowed,
+		"ip":         c.ClientIP(),
+		"user_agent": c.Request.UserAgent(),
+	}
+
+	// Create audit log (non-blocking on error)
+	if err := auditLogUseCase.Create(
+		c.Request.Context(),
+		requestID,
+		client.ID,
+		capability,
+		path,
+		metadata,
+	); err != nil {
+		logger.Error("failed to create audit log",
+			slog.Any("error", err),
+			slog.String("client_id", client.ID.String()),
+			slog.String("path", path))
 	}
 }

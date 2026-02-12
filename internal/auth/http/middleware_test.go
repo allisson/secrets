@@ -60,6 +60,23 @@ func (m *mockTokenService) HashToken(plainToken string) string {
 	return args.String(0)
 }
 
+// mockAuditLogUseCase is a mock implementation of AuditLogUseCase for testing.
+type mockAuditLogUseCase struct {
+	mock.Mock
+}
+
+func (m *mockAuditLogUseCase) Create(
+	ctx context.Context,
+	requestID uuid.UUID,
+	clientID uuid.UUID,
+	capability authDomain.Capability,
+	path string,
+	metadata map[string]any,
+) error {
+	args := m.Called(ctx, requestID, clientID, capability, path, metadata)
+	return args.Error(0)
+}
+
 // TestMain sets Gin to test mode for all tests in this package.
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
@@ -523,6 +540,7 @@ func TestWithCapability_AllTypes(t *testing.T) {
 func TestAuthorizationMiddleware_Success(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create client with read capability on specific path
 	client := &authDomain.Client{
@@ -537,6 +555,14 @@ func TestAuthorizationMiddleware_Success(t *testing.T) {
 		},
 	}
 
+	// Expect audit log creation for successful authorization
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.ReadCapability, "/api/v1/secrets", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == true &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router with middleware
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -545,7 +571,7 @@ func TestAuthorizationMiddleware_Success(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/api/v1/secrets", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	})
@@ -557,6 +583,7 @@ func TestAuthorizationMiddleware_Success(t *testing.T) {
 
 	// Assertions
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Success_WildcardPath tests authorization with wildcard "*" path.
@@ -589,6 +616,16 @@ func TestAuthorizationMiddleware_Success_WildcardPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAuditLogUC := &mockAuditLogUseCase{}
+
+			// Expect audit log creation for successful authorization
+			mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+				tc.capability, tc.path, mock.MatchedBy(func(metadata map[string]any) bool {
+					return metadata["allowed"] == true &&
+						metadata["ip"] != nil &&
+						metadata["user_agent"] != nil
+				})).Return(nil).Once()
+
 			// Create test router
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
@@ -596,7 +633,7 @@ func TestAuthorizationMiddleware_Success_WildcardPath(t *testing.T) {
 				c.Request = c.Request.WithContext(ctx)
 				c.Next()
 			})
-			router.Use(AuthorizationMiddleware(tc.capability, logger))
+			router.Use(AuthorizationMiddleware(tc.capability, mockAuditLogUC, logger))
 			router.GET(tc.path, func(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"message": "success"})
 			})
@@ -608,6 +645,7 @@ func TestAuthorizationMiddleware_Success_WildcardPath(t *testing.T) {
 
 			// Should succeed with wildcard policy
 			assert.Equal(t, http.StatusOK, w.Code)
+			mockAuditLogUC.AssertExpectations(t)
 		})
 	}
 }
@@ -643,6 +681,16 @@ func TestAuthorizationMiddleware_Success_PrefixWildcard(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAuditLogUC := &mockAuditLogUseCase{}
+
+			// Expect audit log creation (with appropriate allowed value)
+			mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+				authDomain.ReadCapability, tc.path, mock.MatchedBy(func(metadata map[string]any) bool {
+					return metadata["allowed"] == tc.shouldSucceed &&
+						metadata["ip"] != nil &&
+						metadata["user_agent"] != nil
+				})).Return(nil).Once()
+
 			// Create test router
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
@@ -650,7 +698,7 @@ func TestAuthorizationMiddleware_Success_PrefixWildcard(t *testing.T) {
 				c.Request = c.Request.WithContext(ctx)
 				c.Next()
 			})
-			router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+			router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 			router.GET("/*path", func(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"message": "success"})
 			})
@@ -665,6 +713,7 @@ func TestAuthorizationMiddleware_Success_PrefixWildcard(t *testing.T) {
 			} else {
 				assert.Equal(t, http.StatusForbidden, w.Code)
 			}
+			mockAuditLogUC.AssertExpectations(t)
 		})
 	}
 }
@@ -702,6 +751,16 @@ func TestAuthorizationMiddleware_Success_MultipleCapabilities(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAuditLogUC := &mockAuditLogUseCase{}
+
+			// Expect audit log creation for successful authorization
+			mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+				tc.capability, "/api/v1/secrets", mock.MatchedBy(func(metadata map[string]any) bool {
+					return metadata["allowed"] == true &&
+						metadata["ip"] != nil &&
+						metadata["user_agent"] != nil
+				})).Return(nil).Once()
+
 			// Create test router
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
@@ -709,7 +768,7 @@ func TestAuthorizationMiddleware_Success_MultipleCapabilities(t *testing.T) {
 				c.Request = c.Request.WithContext(ctx)
 				c.Next()
 			})
-			router.Use(AuthorizationMiddleware(tc.capability, logger))
+			router.Use(AuthorizationMiddleware(tc.capability, mockAuditLogUC, logger))
 			router.GET("/api/v1/secrets", func(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"message": "success"})
 			})
@@ -721,6 +780,7 @@ func TestAuthorizationMiddleware_Success_MultipleCapabilities(t *testing.T) {
 
 			// Should succeed for all capabilities
 			assert.Equal(t, http.StatusOK, w.Code)
+			mockAuditLogUC.AssertExpectations(t)
 		})
 	}
 }
@@ -728,10 +788,13 @@ func TestAuthorizationMiddleware_Success_MultipleCapabilities(t *testing.T) {
 // TestAuthorizationMiddleware_Error_NoClientInContext tests missing client in context.
 func TestAuthorizationMiddleware_Error_NoClientInContext(t *testing.T) {
 	logger := createTestLogger()
+	mockAuditLogUC := &mockAuditLogUseCase{}
+
+	// No audit log should be created when there's no client in context
 
 	// Create test router without AuthenticationMiddleware
 	router := gin.New()
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/test", func(c *gin.Context) {
 		t.Fatal("handler should not be called when authorization fails")
 	})
@@ -748,12 +811,14 @@ func TestAuthorizationMiddleware_Error_NoClientInContext(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "unauthorized", response.Error)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Error_ClientLacksCapability tests client without required capability.
 func TestAuthorizationMiddleware_Error_ClientLacksCapability(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create client with only read capability
 	client := &authDomain.Client{
@@ -768,6 +833,14 @@ func TestAuthorizationMiddleware_Error_ClientLacksCapability(t *testing.T) {
 		},
 	}
 
+	// Expect audit log creation for failed authorization
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.WriteCapability, "/api/v1/secrets", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == false &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router requiring write capability
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -775,7 +848,7 @@ func TestAuthorizationMiddleware_Error_ClientLacksCapability(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.WriteCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.WriteCapability, mockAuditLogUC, logger))
 	router.POST("/api/v1/secrets", func(c *gin.Context) {
 		t.Fatal("handler should not be called when authorization fails")
 	})
@@ -792,12 +865,14 @@ func TestAuthorizationMiddleware_Error_ClientLacksCapability(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "forbidden", response.Error)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Error_PathNotInPolicy tests path not matching any policy.
 func TestAuthorizationMiddleware_Error_PathNotInPolicy(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create client with access to /api/v1/secrets only
 	client := &authDomain.Client{
@@ -812,6 +887,14 @@ func TestAuthorizationMiddleware_Error_PathNotInPolicy(t *testing.T) {
 		},
 	}
 
+	// Expect audit log creation for failed authorization
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.ReadCapability, "/api/v1/keys", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == false &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router for different path
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -819,7 +902,7 @@ func TestAuthorizationMiddleware_Error_PathNotInPolicy(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/api/v1/keys", func(c *gin.Context) {
 		t.Fatal("handler should not be called when authorization fails")
 	})
@@ -836,6 +919,7 @@ func TestAuthorizationMiddleware_Error_PathNotInPolicy(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "forbidden", response.Error)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Error_WrongCapabilityForPath tests wrong capability for path.
@@ -871,6 +955,16 @@ func TestAuthorizationMiddleware_Error_WrongCapabilityForPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAuditLogUC := &mockAuditLogUseCase{}
+
+			// Expect audit log creation for failed authorization
+			mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+				tc.capability, tc.path, mock.MatchedBy(func(metadata map[string]any) bool {
+					return metadata["allowed"] == false &&
+						metadata["ip"] != nil &&
+						metadata["user_agent"] != nil
+				})).Return(nil).Once()
+
 			// Create test router
 			router := gin.New()
 			router.Use(func(c *gin.Context) {
@@ -878,7 +972,7 @@ func TestAuthorizationMiddleware_Error_WrongCapabilityForPath(t *testing.T) {
 				c.Request = c.Request.WithContext(ctx)
 				c.Next()
 			})
-			router.Use(AuthorizationMiddleware(tc.capability, logger))
+			router.Use(AuthorizationMiddleware(tc.capability, mockAuditLogUC, logger))
 			router.GET(tc.path, func(c *gin.Context) {
 				t.Fatal("handler should not be called when authorization fails")
 			})
@@ -895,6 +989,7 @@ func TestAuthorizationMiddleware_Error_WrongCapabilityForPath(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
 			assert.Equal(t, "forbidden", response.Error)
+			mockAuditLogUC.AssertExpectations(t)
 		})
 	}
 }
@@ -905,6 +1000,7 @@ func TestAuthorizationMiddleware_Error_WrongCapabilityForPath(t *testing.T) {
 func TestAuthorizationMiddleware_Error_EmptyPath(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create client with wildcard access
 	client := &authDomain.Client{
@@ -919,6 +1015,14 @@ func TestAuthorizationMiddleware_Error_EmptyPath(t *testing.T) {
 		},
 	}
 
+	// Expect audit log creation for successful authorization (wildcard matches "/")
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.ReadCapability, "/", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == true &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router - use "/" as the path (Gin's normalized empty path)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -926,7 +1030,7 @@ func TestAuthorizationMiddleware_Error_EmptyPath(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	})
@@ -938,6 +1042,7 @@ func TestAuthorizationMiddleware_Error_EmptyPath(t *testing.T) {
 
 	// Should succeed - "/" is a valid path and wildcard "*" matches everything
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Error_InactiveClientStillAuthorizes tests that inactive clients
@@ -945,6 +1050,7 @@ func TestAuthorizationMiddleware_Error_EmptyPath(t *testing.T) {
 func TestAuthorizationMiddleware_Error_InactiveClientStillAuthorizes(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create inactive client with valid policies
 	// Note: This scenario shouldn't happen in practice because AuthenticationMiddleware
@@ -961,6 +1067,14 @@ func TestAuthorizationMiddleware_Error_InactiveClientStillAuthorizes(t *testing.
 		},
 	}
 
+	// Expect audit log creation for successful authorization
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.ReadCapability, "/api/v1/secrets", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == true &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -969,7 +1083,7 @@ func TestAuthorizationMiddleware_Error_InactiveClientStillAuthorizes(t *testing.
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/api/v1/secrets", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	})
@@ -983,12 +1097,14 @@ func TestAuthorizationMiddleware_Error_InactiveClientStillAuthorizes(t *testing.
 	// AuthenticationMiddleware is responsible for checking IsActive.
 	// So this should succeed from an authorization perspective.
 	assert.Equal(t, http.StatusOK, w.Code)
+	mockAuditLogUC.AssertExpectations(t)
 }
 
 // TestAuthorizationMiddleware_Error_NoPolicies tests client with no policies.
 func TestAuthorizationMiddleware_Error_NoPolicies(t *testing.T) {
 	logger := createTestLogger()
 	clientID := uuid.Must(uuid.NewV7())
+	mockAuditLogUC := &mockAuditLogUseCase{}
 
 	// Create client with no policies
 	client := &authDomain.Client{
@@ -998,6 +1114,14 @@ func TestAuthorizationMiddleware_Error_NoPolicies(t *testing.T) {
 		Policies: []authDomain.PolicyDocument{}, // Empty policies
 	}
 
+	// Expect audit log creation for failed authorization
+	mockAuditLogUC.On("Create", mock.Anything, mock.AnythingOfType("uuid.UUID"), clientID,
+		authDomain.ReadCapability, "/api/v1/secrets", mock.MatchedBy(func(metadata map[string]any) bool {
+			return metadata["allowed"] == false &&
+				metadata["ip"] != nil &&
+				metadata["user_agent"] != nil
+		})).Return(nil).Once()
+
 	// Create test router
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -1005,7 +1129,7 @@ func TestAuthorizationMiddleware_Error_NoPolicies(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, logger))
+	router.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditLogUC, logger))
 	router.GET("/api/v1/secrets", func(c *gin.Context) {
 		t.Fatal("handler should not be called when authorization fails")
 	})
@@ -1022,4 +1146,5 @@ func TestAuthorizationMiddleware_Error_NoPolicies(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "forbidden", response.Error)
+	mockAuditLogUC.AssertExpectations(t)
 }
