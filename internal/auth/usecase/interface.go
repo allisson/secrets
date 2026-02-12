@@ -37,6 +37,10 @@ type TokenRepository interface {
 	GetByTokenHash(ctx context.Context, tokenHash string) (*authDomain.Token, error)
 }
 
+type AuditLogRepository interface {
+	Create(ctx context.Context, auditLog *authDomain.AuditLog) error
+}
+
 // ClientUseCase defines business logic operations for managing authentication clients.
 // It orchestrates client lifecycle including secret generation, policy management,
 // and soft deletion while maintaining audit history.
@@ -86,4 +90,15 @@ type TokenUseCase interface {
 	) (*authDomain.IssueTokenOutput, error)
 
 	Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
+}
+
+type AuditLogUseCase interface {
+	Create(
+		ctx context.Context,
+		requestID uuid.UUID,
+		clientID uuid.UUID,
+		capability authDomain.Capability,
+		path string,
+		metadata map[string]any,
+	) error
 }

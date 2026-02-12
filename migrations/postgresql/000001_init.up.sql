@@ -68,13 +68,12 @@ CREATE TABLE IF NOT EXISTS transit_keys (
 -- Create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY,
-    previous_hash BYTEA,
-    entry_hash BYTEA NOT NULL,
-    actor TEXT NOT NULL,
-    action TEXT NOT NULL,
-    resource TEXT NOT NULL,
+    request_id UUID NOT NULL,
+    client_id UUID NOT NULL,
+    capability TEXT NOT NULL,
+    path TEXT NOT NULL,
     metadata JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
