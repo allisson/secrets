@@ -133,6 +133,11 @@ func AuthorizationMiddleware(
 			slog.String("path", path),
 			slog.String("capability", string(capability)))
 
+		// Store path and capability in context for audit logging
+		ctx := WithPath(c.Request.Context(), path)
+		ctx = WithCapability(ctx, capability)
+		c.Request = c.Request.WithContext(ctx)
+
 		// Continue to next handler
 		c.Next()
 	}

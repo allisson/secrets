@@ -417,6 +417,108 @@ func TestWithClient_NilClient(t *testing.T) {
 	assert.Nil(t, retrievedClient, "client should be nil")
 }
 
+// TestGetPath_WithPath tests GetPath when path is in context.
+func TestGetPath_WithPath(t *testing.T) {
+	ctx := context.Background()
+	expectedPath := "/api/v1/secrets"
+
+	// Store path in context
+	ctx = WithPath(ctx, expectedPath)
+
+	// Retrieve path
+	retrievedPath, ok := GetPath(ctx)
+
+	// Assertions
+	assert.True(t, ok, "GetPath should return true")
+	assert.Equal(t, expectedPath, retrievedPath)
+}
+
+// TestGetPath_WithoutPath tests GetPath when no path is in context.
+func TestGetPath_WithoutPath(t *testing.T) {
+	ctx := context.Background()
+
+	// Try to retrieve path from empty context
+	retrievedPath, ok := GetPath(ctx)
+
+	// Assertions
+	assert.False(t, ok, "GetPath should return false")
+	assert.Equal(t, "", retrievedPath, "path should be empty string")
+}
+
+// TestWithPath_EmptyString tests storing empty string path in context.
+func TestWithPath_EmptyString(t *testing.T) {
+	ctx := context.Background()
+
+	// Store empty path
+	ctx = WithPath(ctx, "")
+
+	// Retrieve path
+	retrievedPath, ok := GetPath(ctx)
+
+	// Assertions
+	assert.True(t, ok, "GetPath should return true (value was set)")
+	assert.Equal(t, "", retrievedPath, "path should be empty string")
+}
+
+// TestGetCapability_WithCapability tests GetCapability when capability is in context.
+func TestGetCapability_WithCapability(t *testing.T) {
+	ctx := context.Background()
+	expectedCapability := authDomain.ReadCapability
+
+	// Store capability in context
+	ctx = WithCapability(ctx, expectedCapability)
+
+	// Retrieve capability
+	retrievedCapability, ok := GetCapability(ctx)
+
+	// Assertions
+	assert.True(t, ok, "GetCapability should return true")
+	assert.Equal(t, expectedCapability, retrievedCapability)
+}
+
+// TestGetCapability_WithoutCapability tests GetCapability when no capability is in context.
+func TestGetCapability_WithoutCapability(t *testing.T) {
+	ctx := context.Background()
+
+	// Try to retrieve capability from empty context
+	retrievedCapability, ok := GetCapability(ctx)
+
+	// Assertions
+	assert.False(t, ok, "GetCapability should return false")
+	assert.Equal(t, authDomain.Capability(""), retrievedCapability, "capability should be empty")
+}
+
+// TestWithCapability_AllTypes tests storing different capability types in context.
+func TestWithCapability_AllTypes(t *testing.T) {
+	testCases := []struct {
+		name       string
+		capability authDomain.Capability
+	}{
+		{"ReadCapability", authDomain.ReadCapability},
+		{"WriteCapability", authDomain.WriteCapability},
+		{"DeleteCapability", authDomain.DeleteCapability},
+		{"EncryptCapability", authDomain.EncryptCapability},
+		{"DecryptCapability", authDomain.DecryptCapability},
+		{"RotateCapability", authDomain.RotateCapability},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			// Store capability in context
+			ctx = WithCapability(ctx, tc.capability)
+
+			// Retrieve capability
+			retrievedCapability, ok := GetCapability(ctx)
+
+			// Assertions
+			assert.True(t, ok, "GetCapability should return true")
+			assert.Equal(t, tc.capability, retrievedCapability)
+		})
+	}
+}
+
 // TestAuthorizationMiddleware_Success tests successful authorization with exact path match.
 func TestAuthorizationMiddleware_Success(t *testing.T) {
 	logger := createTestLogger()
