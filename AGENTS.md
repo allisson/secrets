@@ -349,6 +349,135 @@ func NewUseCase(txManager TxManager, repo Repository) UseCase {
 }
 ```
 
+## CLI Commands Structure
+
+The application uses **urfave/cli v3** for command-line interface with commands organized in separate files.
+
+### Directory Structure
+```
+cmd/app/
+├── commands/           # Command implementations package
+│   ├── helpers.go      # Unexported helper functions (closeContainer, closeMigrate)
+│   ├── server.go       # RunServer() - HTTP server command
+│   ├── migrations.go   # RunMigrations() - Database migration command
+│   ├── master_key.go   # RunCreateMasterKey() - Master key generation command
+│   ├── create_kek.go   # RunCreateKek() - KEK creation command (+ parseAlgorithm helper)
+│   └── rotate_kek.go   # RunRotateKek() - KEK rotation command
+└── main.go             # CLI setup and routing only (~87 lines)
+```
+
+### Command Organization
+
+**Exported Functions**: Command entry points are exported with `Run` prefix (e.g., `RunServer`, `RunMigrations`)
+
+**Unexported Helpers**: Shared utilities remain package-private (e.g., `closeContainer`, `parseAlgorithm`)
+
+**Single Responsibility**: Each command lives in its own file for better maintainability
+
+**Shared Logic**: Common algorithm parsing and cleanup functions are reused across commands
+
+### Command Implementation Pattern
+
+```go
+// Package commands contains CLI command implementations.
+package commands
+
+import (
+    "context"
+    "fmt"
+    "log/slog"
+    
+    "github.com/allisson/secrets/internal/app"
+    "github.com/allisson/secrets/internal/config"
+)
+
+// RunCommandName performs the command operation.
+// Brief description of what the command does and any requirements.
+func RunCommandName(ctx context.Context, args string) error {
+    // Load configuration
+    cfg := config.Load()
+    
+    // Create DI container
+    container := app.NewContainer(cfg)
+    logger := container.Logger()
+    
+    // Ensure cleanup on exit
+    defer closeContainer(container, logger)
+    
+    // Command implementation
+    // ...
+    
+    return nil
+}
+
+// unexported helper functions shared across commands
+func closeContainer(container *app.Container, logger *slog.Logger) {
+    if err := container.Shutdown(context.Background()); err != nil {
+        logger.Error("failed to shutdown container", slog.Any("error", err))
+    }
+}
+```
+
+### CLI Setup in main.go
+
+The `main.go` file contains only CLI definitions and routes to command functions:
+
+```go
+package main
+
+import (
+    "context"
+    "log/slog"
+    "os"
+    
+    "github.com/urfave/cli/v3"
+    
+    "github.com/allisson/secrets/cmd/app/commands"
+)
+
+func main() {
+    cmd := &cli.Command{
+        Name:    "app",
+        Usage:   "Application description",
+        Version: "1.0.0",
+        Commands: []*cli.Command{
+            {
+                Name:  "server",
+                Usage: "Start the HTTP server",
+                Action: func(ctx context.Context, cmd *cli.Command) error {
+                    return commands.RunServer(ctx)
+                },
+            },
+            // Additional commands...
+        },
+    }
+    
+    if err := cmd.Run(context.Background(), os.Args); err != nil {
+        slog.Error("application error", slog.Any("error", err))
+        os.Exit(1)
+    }
+}
+```
+
+### Available Commands
+
+**Server Commands:**
+- `app server` - Start HTTP server with graceful shutdown
+- `app migrate` - Run database migrations (PostgreSQL or MySQL)
+
+**Cryptographic Key Management:**
+- `app create-master-key [--id <key-id>]` - Generate new 32-byte master key
+- `app create-kek [--algorithm aes-gcm|chacha20-poly1305]` - Create initial KEK
+- `app rotate-kek [--algorithm aes-gcm|chacha20-poly1305]` - Rotate existing KEK
+
+### Command Testing
+
+When adding new commands:
+1. Create new file in `cmd/app/commands/` with `Run<CommandName>` function
+2. Add command definition to `main.go` CLI setup
+3. Verify with `make build && ./bin/app --help`
+4. Test command execution: `./bin/app <command-name>`
+
 ## HTTP Layer with Gin
 
 ### Server Setup
