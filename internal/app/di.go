@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 
+	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
@@ -38,33 +39,47 @@ type Container struct {
 	aeadManager   cryptoService.AEADManager
 	keyManager    cryptoService.KeyManager
 	secretService authService.SecretService
+	tokenService  authService.TokenService
 
 	// Repositories
-	kekRepository    cryptoUseCase.KekRepository
-	clientRepository authUseCase.ClientRepository
+	kekRepository      cryptoUseCase.KekRepository
+	clientRepository   authUseCase.ClientRepository
+	tokenRepository    authUseCase.TokenRepository
+	auditLogRepository authUseCase.AuditLogRepository
 
 	// Use Cases
-	kekUseCase    cryptoUseCase.KekUseCase
-	clientUseCase authUseCase.ClientUseCase
+	kekUseCase      cryptoUseCase.KekUseCase
+	clientUseCase   authUseCase.ClientUseCase
+	tokenUseCase    authUseCase.TokenUseCase
+	auditLogUseCase authUseCase.AuditLogUseCase
+
+	// HTTP Handlers
+	clientHandler *authHTTP.ClientHandler
 
 	// Servers and Workers
 	httpServer *http.Server
 
 	// Initialization flags and mutex for thread-safety
-	mu                   sync.Mutex
-	loggerInit           sync.Once
-	dbInit               sync.Once
-	masterKeyChainInit   sync.Once
-	txManagerInit        sync.Once
-	aeadManagerInit      sync.Once
-	keyManagerInit       sync.Once
-	secretServiceInit    sync.Once
-	kekRepositoryInit    sync.Once
-	clientRepositoryInit sync.Once
-	kekUseCaseInit       sync.Once
-	clientUseCaseInit    sync.Once
-	httpServerInit       sync.Once
-	initErrors           map[string]error
+	mu                     sync.Mutex
+	loggerInit             sync.Once
+	dbInit                 sync.Once
+	masterKeyChainInit     sync.Once
+	txManagerInit          sync.Once
+	aeadManagerInit        sync.Once
+	keyManagerInit         sync.Once
+	secretServiceInit      sync.Once
+	tokenServiceInit       sync.Once
+	kekRepositoryInit      sync.Once
+	clientRepositoryInit   sync.Once
+	tokenRepositoryInit    sync.Once
+	auditLogRepositoryInit sync.Once
+	kekUseCaseInit         sync.Once
+	clientUseCaseInit      sync.Once
+	tokenUseCaseInit       sync.Once
+	auditLogUseCaseInit    sync.Once
+	clientHandlerInit      sync.Once
+	httpServerInit         sync.Once
+	initErrors             map[string]error
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -256,6 +271,104 @@ func (c *Container) ClientUseCase() (authUseCase.ClientUseCase, error) {
 	return c.clientUseCase, nil
 }
 
+// TokenService returns the token service for authentication operations.
+func (c *Container) TokenService() authService.TokenService {
+	c.tokenServiceInit.Do(func() {
+		c.tokenService = c.initTokenService()
+	})
+	return c.tokenService
+}
+
+// TokenRepository returns the token repository based on database driver.
+func (c *Container) TokenRepository() (authUseCase.TokenRepository, error) {
+	var err error
+	c.tokenRepositoryInit.Do(func() {
+		c.tokenRepository, err = c.initTokenRepository()
+		if err != nil {
+			c.initErrors["tokenRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["tokenRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.tokenRepository, nil
+}
+
+// AuditLogRepository returns the audit log repository based on database driver.
+func (c *Container) AuditLogRepository() (authUseCase.AuditLogRepository, error) {
+	var err error
+	c.auditLogRepositoryInit.Do(func() {
+		c.auditLogRepository, err = c.initAuditLogRepository()
+		if err != nil {
+			c.initErrors["auditLogRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["auditLogRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.auditLogRepository, nil
+}
+
+// TokenUseCase returns the token use case.
+func (c *Container) TokenUseCase() (authUseCase.TokenUseCase, error) {
+	var err error
+	c.tokenUseCaseInit.Do(func() {
+		c.tokenUseCase, err = c.initTokenUseCase()
+		if err != nil {
+			c.initErrors["tokenUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["tokenUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.tokenUseCase, nil
+}
+
+// AuditLogUseCase returns the audit log use case.
+func (c *Container) AuditLogUseCase() (authUseCase.AuditLogUseCase, error) {
+	var err error
+	c.auditLogUseCaseInit.Do(func() {
+		c.auditLogUseCase, err = c.initAuditLogUseCase()
+		if err != nil {
+			c.initErrors["auditLogUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["auditLogUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.auditLogUseCase, nil
+}
+
+// ClientHandler returns the HTTP handler for client management operations.
+func (c *Container) ClientHandler() (*authHTTP.ClientHandler, error) {
+	var err error
+	c.clientHandlerInit.Do(func() {
+		c.clientHandler, err = c.initClientHandler()
+		if err != nil {
+			c.initErrors["clientHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["clientHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.clientHandler, nil
+}
+
 // Shutdown performs cleanup of all initialized resources.
 func (c *Container) Shutdown(ctx context.Context) error {
 	c.mu.Lock()
@@ -356,6 +469,27 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		logger,
 	)
 
+	// Get dependencies for routing
+	clientHandler, err := c.ClientHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client handler: %w", err)
+	}
+
+	tokenUseCase, err := c.TokenUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token use case: %w", err)
+	}
+
+	tokenService := c.TokenService()
+
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
+	}
+
+	// Setup router with dependencies
+	server.SetupRouter(clientHandler, tokenUseCase, tokenService, auditLogUseCase)
+
 	return server, nil
 }
 
@@ -441,4 +575,94 @@ func (c *Container) initClientUseCase() (authUseCase.ClientUseCase, error) {
 	secretService := c.SecretService()
 
 	return authUseCase.NewClientUseCase(txManager, clientRepository, secretService), nil
+}
+
+// initTokenService creates the token service for authentication.
+func (c *Container) initTokenService() authService.TokenService {
+	return authService.NewTokenService()
+}
+
+// initTokenRepository creates the token repository based on the database driver.
+func (c *Container) initTokenRepository() (authUseCase.TokenRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for token repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return authRepository.NewPostgreSQLTokenRepository(db), nil
+	case "mysql":
+		return authRepository.NewMySQLTokenRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initAuditLogRepository creates the audit log repository based on the database driver.
+func (c *Container) initAuditLogRepository() (authUseCase.AuditLogRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for audit log repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return authRepository.NewPostgreSQLAuditLogRepository(db), nil
+	case "mysql":
+		return authRepository.NewMySQLAuditLogRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTokenUseCase creates the token use case with all its dependencies.
+func (c *Container) initTokenUseCase() (authUseCase.TokenUseCase, error) {
+	clientRepository, err := c.ClientRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client repository for token use case: %w", err)
+	}
+
+	tokenRepository, err := c.TokenRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token repository for token use case: %w", err)
+	}
+
+	secretService := c.SecretService()
+	tokenService := c.TokenService()
+
+	return authUseCase.NewTokenUseCase(
+		c.config,
+		clientRepository,
+		tokenRepository,
+		secretService,
+		tokenService,
+	), nil
+}
+
+// initAuditLogUseCase creates the audit log use case with all its dependencies.
+func (c *Container) initAuditLogUseCase() (authUseCase.AuditLogUseCase, error) {
+	auditLogRepository, err := c.AuditLogRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log repository for audit log use case: %w", err)
+	}
+
+	return authUseCase.NewAuditLogUseCase(auditLogRepository), nil
+}
+
+// initClientHandler creates the client HTTP handler with all its dependencies.
+func (c *Container) initClientHandler() (*authHTTP.ClientHandler, error) {
+	clientUseCase, err := c.ClientUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client use case for client handler: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for client handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return authHTTP.NewClientHandler(clientUseCase, auditLogUseCase, logger), nil
 }

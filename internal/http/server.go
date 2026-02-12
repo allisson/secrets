@@ -18,6 +18,11 @@ import (
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	authHTTP "github.com/allisson/secrets/internal/auth/http"
+	authService "github.com/allisson/secrets/internal/auth/service"
+	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
 
 // Server represents the HTTP server.
@@ -44,8 +49,14 @@ func NewServer(
 	}
 }
 
-// setupRouter configures the Gin router with all routes and middleware.
-func (s *Server) setupRouter(ctx context.Context) *gin.Engine {
+// SetupRouter configures the Gin router with all routes and middleware.
+// This method is called during server initialization with all required dependencies.
+func (s *Server) SetupRouter(
+	clientHandler *authHTTP.ClientHandler,
+	tokenUseCase authUseCase.TokenUseCase,
+	tokenService authService.TokenService,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+) {
 	// Create Gin engine without default middleware
 	router := gin.New()
 
@@ -58,23 +69,51 @@ func (s *Server) setupRouter(ctx context.Context) *gin.Engine {
 
 	// Health and readiness endpoints (outside API versioning)
 	router.GET("/health", s.healthHandler)
-	router.GET("/ready", s.readinessHandler(ctx))
+	router.GET("/ready", s.readinessHandler)
 
-	// API v1 routes group (for future use)
-	v1 := router.Group("/api/v1")
+	// Create authentication middleware
+	authMiddleware := authHTTP.AuthenticationMiddleware(
+		tokenUseCase,
+		tokenService,
+		s.logger,
+	)
+
+	// API v1 routes
+	v1 := router.Group("/v1")
 	{
-		// Future business endpoints will go here
-		// Example: v1.POST("/secrets", authMiddleware, s.createSecretHandler)
-		_ = v1 // Prevent unused variable error
+		// Client management endpoints
+		clients := v1.Group("/clients")
+		clients.Use(authMiddleware) // All client routes require authentication
+		{
+			clients.POST("",
+				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+				clientHandler.CreateHandler,
+			)
+			clients.GET("/:id",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				clientHandler.GetHandler,
+			)
+			clients.PUT("/:id",
+				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+				clientHandler.UpdateHandler,
+			)
+			clients.DELETE("/:id",
+				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+				clientHandler.DeleteHandler,
+			)
+		}
 	}
 
-	return router
+	s.router = router
 }
 
 // Start starts the HTTP server.
 func (s *Server) Start(ctx context.Context) error {
-	// Setup router
-	s.router = s.setupRouter(ctx)
+	// Router must be set up before starting
+	if s.router == nil {
+		return fmt.Errorf("router not initialized - call SetupRouter first")
+	}
+
 	s.server.Handler = s.router
 
 	s.logger.Info("starting http server", slog.String("addr", s.server.Addr))
@@ -97,15 +136,7 @@ func (s *Server) healthHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 }
 
-// readinessHandler returns a readiness check handler that's context-aware.
-func (s *Server) readinessHandler(shutdownCtx context.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		select {
-		case <-shutdownCtx.Done():
-			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready"})
-			return
-		default:
-		}
-		c.JSON(http.StatusOK, gin.H{"status": "ready"})
-	}
+// readinessHandler returns a simple readiness check response.
+func (s *Server) readinessHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ready"})
 }

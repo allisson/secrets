@@ -52,14 +52,12 @@ func TestHealthHandler(t *testing.T) {
 // TestReadinessHandler_Ready tests the readiness endpoint when server is ready.
 func TestReadinessHandler_Ready(t *testing.T) {
 	server := createTestServer()
-	ctx := context.Background()
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/ready", nil)
 
-	handler := server.readinessHandler(ctx)
-	handler(c)
+	server.readinessHandler(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -67,27 +65,6 @@ func TestReadinessHandler_Ready(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "ready", response["status"])
-}
-
-// TestReadinessHandler_NotReady tests the readiness endpoint when server is shutting down.
-func TestReadinessHandler_NotReady(t *testing.T) {
-	server := createTestServer()
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel context to simulate shutdown
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/ready", nil)
-
-	handler := server.readinessHandler(ctx)
-	handler(c)
-
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
-
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.Equal(t, "not ready", response["status"])
 }
 
 // TestCustomLoggerMiddleware tests the custom logging middleware.
@@ -138,11 +115,26 @@ func TestRecoveryMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
+// createMinimalRouter creates a minimal router with only health and ready endpoints for testing.
+func createMinimalRouter(server *Server) *gin.Engine {
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(requestid.New(requestid.WithGenerator(func() string {
+		return uuid.Must(uuid.NewV7()).String()
+	})))
+	router.Use(CustomLoggerMiddleware(server.logger))
+
+	// Register only health endpoints for basic router tests
+	router.GET("/health", server.healthHandler)
+	router.GET("/ready", server.readinessHandler)
+
+	return router
+}
+
 // TestRouter_HealthEndpoint tests the health endpoint through the full router.
 func TestRouter_HealthEndpoint(t *testing.T) {
 	server := createTestServer()
-	ctx := context.Background()
-	router := server.setupRouter(ctx)
+	router := createMinimalRouter(server)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -159,8 +151,7 @@ func TestRouter_HealthEndpoint(t *testing.T) {
 // TestRouter_ReadyEndpoint tests the ready endpoint through the full router.
 func TestRouter_ReadyEndpoint(t *testing.T) {
 	server := createTestServer()
-	ctx := context.Background()
-	router := server.setupRouter(ctx)
+	router := createMinimalRouter(server)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
@@ -177,8 +168,7 @@ func TestRouter_ReadyEndpoint(t *testing.T) {
 // TestRouter_NotFoundEndpoint tests 404 handling.
 func TestRouter_NotFoundEndpoint(t *testing.T) {
 	server := createTestServer()
-	ctx := context.Background()
-	router := server.setupRouter(ctx)
+	router := createMinimalRouter(server)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/nonexistent", nil)
@@ -190,6 +180,11 @@ func TestRouter_NotFoundEndpoint(t *testing.T) {
 // TestServer_ShutdownGracefully tests graceful server shutdown.
 func TestServer_ShutdownGracefully(t *testing.T) {
 	server := createTestServer()
+
+	// Initialize router with minimal setup
+	router := createMinimalRouter(server)
+	server.router = router
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

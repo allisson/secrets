@@ -687,3 +687,248 @@ router.Use(CustomLoggerMiddleware(logger))
 v1 := router.Group("/api/v1")
 v1.Use(authMiddleware)
 ```
+
+## Authentication & Authorization HTTP Layer
+
+### Authentication Middleware
+
+The project implements Bearer token authentication via `AuthenticationMiddleware`:
+
+```go
+// AuthenticationMiddleware validates Bearer tokens and sets authenticated client in context
+func AuthenticationMiddleware(tokenUseCase authUseCase.TokenUseCase, logger *slog.Logger) gin.HandlerFunc
+```
+
+**Behavior:**
+- Extracts token from `Authorization` header (case-insensitive "Bearer" prefix: `bearer`, `Bearer`, `BEARER`)
+- Validates token hash via `TokenUseCase.Authenticate()` which checks:
+  - Token exists and is not expired/revoked
+  - Associated client exists and is active
+  - All time comparisons use UTC
+- Sets authenticated client in context via `authHTTP.WithClient(c, client)`
+- Returns 401 Unauthorized for:
+  - Missing Authorization header
+  - Malformed header (not "Bearer <token>")
+  - Invalid/expired/revoked token
+  - Inactive client
+  - Database errors (prevents enumeration attacks)
+
+**Usage:**
+```go
+// Apply to routes requiring authentication
+router.POST("/v1/clients", authenticationMiddleware, handler)
+```
+
+**Reference:** `/internal/auth/http/middleware.go` (lines 15-74)
+
+**Context Helpers:**
+- `authHTTP.WithClient(c, client)` - Store client in context
+- `authHTTP.GetClient(c)` - Retrieve client from context
+- See `/internal/auth/http/context.go` for all context helpers
+
+### Authorization Middleware
+
+Enforces capability-based authorization via `AuthorizationMiddleware`:
+
+```go
+// AuthorizationMiddleware checks if authenticated client has required capability for the request path
+func AuthorizationMiddleware(capability authDomain.Capability, logger *slog.Logger) gin.HandlerFunc
+```
+
+**Requirements:**
+- **MUST** be used after `AuthenticationMiddleware`
+- Authenticated client must be present in context
+
+**Behavior:**
+- Retrieves authenticated client from context via `authHTTP.GetClient(c)`
+- Extracts request path from `c.Request.URL.Path`
+- Stores path and capability in context for audit logging
+- Checks `client.IsAllowed(path, capability)` which implements path matching:
+  - **Exact match:** `/secrets/mykey` matches policy path `/secrets/mykey`
+  - **Wildcard:** `*` matches all paths
+  - **Prefix:** `secrets/*` matches paths starting with `secrets/`
+- Returns 401 Unauthorized if no authenticated client in context
+- Returns 403 Forbidden if client lacks required capability for path
+
+**Usage:**
+```go
+// Apply with specific capability per route
+router.POST("/v1/clients", authMiddleware, authzMiddleware(authDomain.WriteCapability), handler)
+router.GET("/v1/clients/:id", authMiddleware, authzMiddleware(authDomain.ReadCapability), handler)
+router.DELETE("/v1/clients/:id", authMiddleware, authzMiddleware(authDomain.DeleteCapability), handler)
+```
+
+**Available Capabilities:**
+- `ReadCapability` - View resources
+- `WriteCapability` - Create/update resources
+- `DeleteCapability` - Delete resources
+- `EncryptCapability` - Encrypt data
+- `DecryptCapability` - Decrypt data
+- `RotateCapability` - Rotate keys
+
+**Reference:** `/internal/auth/http/middleware.go` (lines 76-130)
+
+### Client Management Handler Pattern
+
+Client management handlers follow this pattern:
+
+```go
+// ClientHandler handles HTTP requests for client management
+type ClientHandler struct {
+    clientUseCase   authUseCase.ClientUseCase
+    auditLogUseCase authUseCase.AuditLogUseCase
+}
+
+func NewClientHandler(clientUseCase authUseCase.ClientUseCase, auditLogUseCase authUseCase.AuditLogUseCase) *ClientHandler
+```
+
+**Request DTOs:**
+```go
+type CreateClientRequest struct {
+    Name           string                    `json:"name" binding:"required"`
+    IsActive       bool                      `json:"is_active"`
+    PolicyDocument *authDomain.PolicyDocument `json:"policy_document" binding:"required"`
+}
+
+type UpdateClientRequest struct {
+    Name           string                    `json:"name" binding:"required"`
+    IsActive       bool                      `json:"is_active"`
+    PolicyDocument *authDomain.PolicyDocument `json:"policy_document" binding:"required"`
+}
+```
+
+**Response DTOs:**
+```go
+// CreateClientResponse includes the client secret (only returned on creation)
+type CreateClientResponse struct {
+    ID     string `json:"id"`
+    Secret string `json:"secret"`
+}
+
+// ClientResponse excludes the secret for Get/Update operations
+type ClientResponse struct {
+    ID             string                    `json:"id"`
+    Name           string                    `json:"name"`
+    IsActive       bool                      `json:"is_active"`
+    PolicyDocument *authDomain.PolicyDocument `json:"policy_document"`
+    CreatedAt      time.Time                 `json:"created_at"`
+    UpdatedAt      time.Time                 `json:"updated_at"`
+}
+```
+
+**Handler Methods:**
+- `CreateHandler(c *gin.Context)` - POST, returns 201 with ID and secret
+- `GetHandler(c *gin.Context)` - GET by UUID param, returns 200 with client (no secret)
+- `UpdateHandler(c *gin.Context)` - PUT by UUID param, returns 200 with updated client
+- `DeleteHandler(c *gin.Context)` - DELETE by UUID param, returns 204 No Content
+
+**Key Patterns:**
+
+**UUID Extraction from URL:**
+```go
+id, err := uuid.Parse(c.Param("id"))
+if err != nil {
+    httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), h.logger)
+    return
+}
+```
+
+**Policy Document Validation:**
+```go
+// validatePolicyDocument ensures policy document has valid structure
+func validatePolicyDocument(doc *authDomain.PolicyDocument) error {
+    if doc == nil {
+        return errors.New("policy_document is required")
+    }
+    for _, policy := range doc.Policies {
+        if policy.Path == "" {
+            return errors.New("policy path cannot be empty")
+        }
+        if len(policy.Capabilities) == 0 {
+            return errors.New("policy capabilities cannot be empty")
+        }
+    }
+    return nil
+}
+```
+
+**DELETE Handler Pattern:**
+```go
+// DELETE must use c.Data() to properly set 204 No Content with empty body
+if err := h.clientUseCase.Delete(c.Request.Context(), id); err != nil {
+    httputil.HandleErrorGin(c, err, h.logger)
+    return
+}
+c.Data(http.StatusNoContent, "application/json", nil)  // NOT c.Status()
+```
+
+**Reference:** 
+- Implementation: `/internal/auth/http/handler.go`
+- Tests: `/internal/auth/http/handler_test.go`
+
+### Route Registration with Authentication & Authorization
+
+Client management routes are registered in `SetupRouter()` with middleware chaining:
+
+```go
+func (s *Server) SetupRouter(
+    clientHandler *authHTTP.ClientHandler,
+    tokenUseCase authUseCase.TokenUseCase,
+    tokenService authService.TokenService,
+    auditLogUseCase authUseCase.AuditLogUseCase,
+) {
+    // Create middleware instances
+    authMiddleware := authHTTP.AuthenticationMiddleware(tokenUseCase, s.logger)
+    auditMiddleware := authHTTP.AuditLogMiddleware(auditLogUseCase, s.logger)
+    
+    // Register client management routes under /v1/clients
+    v1 := s.router.Group("/v1")
+    v1.Use(auditMiddleware)  // Apply audit logging to all v1 routes
+    {
+        clients := v1.Group("/clients")
+        {
+            // POST /v1/clients - Create client (requires WriteCapability)
+            clients.POST("", 
+                authMiddleware,
+                authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, s.logger),
+                clientHandler.CreateHandler,
+            )
+            
+            // GET /v1/clients/:id - Get client (requires ReadCapability)
+            clients.GET("/:id",
+                authMiddleware,
+                authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, s.logger),
+                clientHandler.GetHandler,
+            )
+            
+            // PUT /v1/clients/:id - Update client (requires WriteCapability)
+            clients.PUT("/:id",
+                authMiddleware,
+                authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, s.logger),
+                clientHandler.UpdateHandler,
+            )
+            
+            // DELETE /v1/clients/:id - Delete client (requires DeleteCapability)
+            clients.DELETE("/:id",
+                authMiddleware,
+                authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, s.logger),
+                clientHandler.DeleteHandler,
+            )
+        }
+    }
+}
+```
+
+**Middleware Execution Order:**
+1. Global middleware (Recovery, RequestID, CustomLogger)
+2. Route group middleware (AuditLog)
+3. Route-specific middleware (Authentication → Authorization)
+4. Handler
+
+**Capability Mapping:**
+- `POST /v1/clients` → `WriteCapability` (create new client)
+- `GET /v1/clients/:id` → `ReadCapability` (view client details)
+- `PUT /v1/clients/:id` → `WriteCapability` (modify client)
+- `DELETE /v1/clients/:id` → `DeleteCapability` (remove client)
+
+**Reference:** `/internal/http/server.go` (SetupRouter method)
