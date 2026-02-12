@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
@@ -56,7 +57,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 			ExpiresAt:  expiresAt,
 		}
 
-		mockUseCase.On("Issue", nil, expectedInput).
+		mockUseCase.On("Issue", mock.Anything, expectedInput).
 			Return(expectedOutput, nil).
 			Once()
 
@@ -182,7 +183,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 			ClientSecret: "wrong_secret",
 		}
 
-		mockUseCase.On("Issue", nil, nil).
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
 			Return(nil, authDomain.ErrInvalidCredentials).
 			Once()
 
@@ -209,7 +210,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 			ClientSecret: "test_secret_123",
 		}
 
-		mockUseCase.On("Issue", nil, nil).
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
 			Return(nil, authDomain.ErrClientInactive).
 			Once()
 
@@ -236,7 +237,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 			ClientSecret: "test_secret_123",
 		}
 
-		mockUseCase.On("Issue", nil, nil).
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
 			Return(nil, errors.New("database connection failed")).
 			Once()
 
