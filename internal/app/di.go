@@ -55,6 +55,7 @@ type Container struct {
 
 	// HTTP Handlers
 	clientHandler *authHTTP.ClientHandler
+	tokenHandler  *authHTTP.TokenHandler
 
 	// Servers and Workers
 	httpServer *http.Server
@@ -78,6 +79,7 @@ type Container struct {
 	tokenUseCaseInit       sync.Once
 	auditLogUseCaseInit    sync.Once
 	clientHandlerInit      sync.Once
+	tokenHandlerInit       sync.Once
 	httpServerInit         sync.Once
 	initErrors             map[string]error
 }
@@ -369,6 +371,24 @@ func (c *Container) ClientHandler() (*authHTTP.ClientHandler, error) {
 	return c.clientHandler, nil
 }
 
+// TokenHandler returns the HTTP handler for token operations.
+func (c *Container) TokenHandler() (*authHTTP.TokenHandler, error) {
+	var err error
+	c.tokenHandlerInit.Do(func() {
+		c.tokenHandler, err = c.initTokenHandler()
+		if err != nil {
+			c.initErrors["tokenHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["tokenHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.tokenHandler, nil
+}
+
 // Shutdown performs cleanup of all initialized resources.
 func (c *Container) Shutdown(ctx context.Context) error {
 	c.mu.Lock()
@@ -475,6 +495,11 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get client handler: %w", err)
 	}
 
+	tokenHandler, err := c.TokenHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token handler: %w", err)
+	}
+
 	tokenUseCase, err := c.TokenUseCase()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
@@ -488,7 +513,7 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 	}
 
 	// Setup router with dependencies
-	server.SetupRouter(clientHandler, tokenUseCase, tokenService, auditLogUseCase)
+	server.SetupRouter(clientHandler, tokenHandler, tokenUseCase, tokenService, auditLogUseCase)
 
 	return server, nil
 }
@@ -665,4 +690,16 @@ func (c *Container) initClientHandler() (*authHTTP.ClientHandler, error) {
 	logger := c.Logger()
 
 	return authHTTP.NewClientHandler(clientUseCase, auditLogUseCase, logger), nil
+}
+
+// initTokenHandler creates the token HTTP handler with all its dependencies.
+func (c *Container) initTokenHandler() (*authHTTP.TokenHandler, error) {
+	tokenUseCase, err := c.TokenUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token use case for token handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return authHTTP.NewTokenHandler(tokenUseCase, logger), nil
 }

@@ -2,7 +2,9 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +34,44 @@ func setupTestHandler(t *testing.T) (*ClientHandler, *mocks.MockClientUseCase) {
 	handler := NewClientHandler(mockClientUseCase, nil, logger)
 
 	return handler, mockClientUseCase
+}
+
+// MockTokenUseCase is a mock implementation of TokenUseCase for testing.
+type MockTokenUseCase struct {
+	mock.Mock
+}
+
+func (m *MockTokenUseCase) Issue(
+	ctx context.Context,
+	input *authDomain.IssueTokenInput,
+) (*authDomain.IssueTokenOutput, error) {
+	args := m.Called(ctx, input)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authDomain.IssueTokenOutput), args.Error(1)
+}
+
+func (m *MockTokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error) {
+	args := m.Called(ctx, tokenHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authDomain.Client), args.Error(1)
+}
+
+// setupTokenTestHandler creates a test token handler with mocked dependencies.
+func setupTokenTestHandler(t *testing.T) (*TokenHandler, *MockTokenUseCase) {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+
+	mockTokenUseCase := &MockTokenUseCase{}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	handler := NewTokenHandler(mockTokenUseCase, logger)
+
+	return handler, mockTokenUseCase
 }
 
 // createTestContext creates a test Gin context with the given request.
@@ -562,4 +602,281 @@ func TestMapClientToResponse(t *testing.T) {
 	assert.Len(t, response.Policies, 1)
 	assert.Equal(t, "/v1/secrets/*", response.Policies[0].Path)
 	assert.Equal(t, now, response.CreatedAt)
+}
+
+func TestTokenHandler_IssueTokenHandler(t *testing.T) {
+	t.Run("Success_ValidCredentials", func(t *testing.T) {
+		handler, mockUseCase := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		plainToken := "tok_1234567890abcdef"
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "test_secret_123",
+		}
+
+		expectedInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: "test_secret_123",
+		}
+
+		expectedOutput := &authDomain.IssueTokenOutput{
+			PlainToken: plainToken,
+			ExpiresAt:  expiresAt,
+		}
+
+		mockUseCase.On("Issue", mock.Anything, expectedInput).
+			Return(expectedOutput, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		var response IssueTokenResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, plainToken, response.Token)
+		assert.Equal(t, expiresAt.Unix(), response.ExpiresAt.Unix())
+
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("Error_InvalidJSON", func(t *testing.T) {
+		handler, _ := setupTokenTestHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", nil)
+		c.Request.Body = io.NopCloser(bytes.NewReader([]byte("invalid json")))
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_MissingClientID", func(t *testing.T) {
+		handler, _ := setupTokenTestHandler(t)
+
+		request := IssueTokenRequest{
+			ClientID:     "",
+			ClientSecret: "test_secret_123",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_MissingClientSecret", func(t *testing.T) {
+		handler, _ := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidUUIDFormat", func(t *testing.T) {
+		handler, _ := setupTokenTestHandler(t)
+
+		request := IssueTokenRequest{
+			ClientID:     "invalid-uuid",
+			ClientSecret: "test_secret_123",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_BlankClientSecret", func(t *testing.T) {
+		handler, _ := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "   ",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidCredentials", func(t *testing.T) {
+		handler, mockUseCase := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "wrong_secret",
+		}
+
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
+			Return(nil, authDomain.ErrInvalidCredentials).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "unauthorized", response["error"])
+
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("Error_ClientInactive", func(t *testing.T) {
+		handler, mockUseCase := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "test_secret_123",
+		}
+
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
+			Return(nil, authDomain.ErrClientInactive).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "forbidden", response["error"])
+
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("Error_RepositoryError", func(t *testing.T) {
+		handler, mockUseCase := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "test_secret_123",
+		}
+
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
+			Return(nil, errors.New("database connection failed")).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", response["error"])
+
+		mockUseCase.AssertExpectations(t)
+	})
+}
+
+func TestIssueTokenRequest_Validate(t *testing.T) {
+	t.Run("Success_ValidRequest", func(t *testing.T) {
+		clientID := uuid.Must(uuid.NewV7())
+		req := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "test_secret_123",
+		}
+
+		err := req.Validate()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_MissingClientID", func(t *testing.T) {
+		req := IssueTokenRequest{
+			ClientID:     "",
+			ClientSecret: "test_secret_123",
+		}
+
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_MissingClientSecret", func(t *testing.T) {
+		clientID := uuid.Must(uuid.NewV7())
+		req := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "",
+		}
+
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_BlankClientID", func(t *testing.T) {
+		req := IssueTokenRequest{
+			ClientID:     "   ",
+			ClientSecret: "test_secret_123",
+		}
+
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_BlankClientSecret", func(t *testing.T) {
+		clientID := uuid.Must(uuid.NewV7())
+		req := IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "   ",
+		}
+
+		err := req.Validate()
+		assert.Error(t, err)
+	})
 }

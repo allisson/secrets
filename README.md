@@ -43,7 +43,7 @@ Secrets is a secure key management and secrets storage system built with Go, des
 ### 🛡️ Access Control & Authentication
 
 - 👤 **Client Authentication** - API clients with secret-based authentication
-- 🎫 **Token Management** - Time-limited tokens with expiration and revocation
+- 🎫 **Token Management** - Time-limited tokens with expiration, revocation, and client credential exchange
 - 📋 **Policy-based Authorization** - JSON policy documents for fine-grained access control
 - 🔗 **Client-Policy Binding** - Associate multiple policies with each client
 - 🔌 **Client Management API** - REST endpoints for CRUD operations on API clients (Create, Read, Update, Delete)
@@ -252,14 +252,28 @@ make dev-postgres
 # 8. Create the initial Key Encryption Key (KEK)
 ./bin/app create-kek
 
-# 9. Start the server
+# 9. Create a bootstrap admin client
+./bin/app create-client --name "bootstrap-admin" \
+  --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]'
+# Save the client_id and secret from the output
+
+# 10. Start the server
 ./bin/app server
 ```
 
 The server will be available at `http://localhost:8080`. Test with:
 
 ```bash
+# Health check
 curl http://localhost:8080/health
+
+# Obtain an authentication token (use client_id and secret from step 9)
+curl -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "<client-id-from-step-9>",
+    "client_secret": "<secret-from-step-9>"
+  }'
 ```
 
 ### 📦 Installation
@@ -346,6 +360,9 @@ LOG_LEVEL=info                              # Log level: debug, info, warn, erro
 # Master Keys (Envelope Encryption)
 MASTER_KEYS=default:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y=  # Format: id:base64key
 ACTIVE_MASTER_KEY_ID=default                # ID of active master key for new KEKs
+
+# Authentication
+AUTH_TOKEN_EXPIRATION_SECONDS=86400         # Token lifetime in seconds (default: 86400 = 24 hours)
 
 # Worker Configuration (for future async operations)
 WORKER_INTERVAL=5                           # Worker polling interval (seconds)
@@ -575,6 +592,56 @@ All API endpoints (except `/health` and `/ready`) require authentication using c
 # Include token in Authorization header
 curl -H "Authorization: Bearer <token>" http://localhost:8080/v1/clients
 ```
+
+### 🎫 Token Issuance
+
+Before using authenticated endpoints, clients must obtain a token using their client credentials.
+
+#### Issue Token
+
+Exchanges client credentials for a time-limited authentication token.
+
+```bash
+POST /v1/token
+```
+
+**Authentication:** Not required (this IS the authentication endpoint)
+
+**Request Body:**
+```json
+{
+  "client_id": "018d7e95-1a23-7890-bcde-f1234567890a",
+  "client_secret": "sec_1234567890abcdef"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "token": "tok_abcdef1234567890...",
+  "expires_at": "2026-02-13T20:13:45Z"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "018d7e95-1a23-7890-bcde-f1234567890a",
+    "client_secret": "sec_1234567890abcdef"
+  }'
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid client credentials
+- `403 Forbidden` - Client is not active
+- `422 Unprocessable Entity` - Invalid request format or missing fields
+
+**Token Details:**
+- ⏱️ **Expiration**: Tokens expire after 24 hours (configurable via `AUTH_TOKEN_EXPIRATION_SECONDS`, default: 86400)
+- 🔄 **Renewal**: Request a new token before expiration using the same credentials
+- 🔒 **Storage**: Store tokens securely and never commit them to version control
 
 ### 👤 Client Management
 
@@ -1040,6 +1107,8 @@ The application provides several CLI commands for managing the system:
 | `create-master-key` | Generate a new Master Key | `./bin/app create-master-key [--id <key-id>]` |
 | `create-kek` | Create initial Key Encryption Key | `./bin/app create-kek [--algorithm <alg>]` |
 | `rotate-kek` | Rotate the Key Encryption Key | `./bin/app rotate-kek [--algorithm <alg>]` |
+| `create-client` | Create a new authentication client | `./bin/app create-client --name <name> [--policies <json>]` |
+| `update-client` | Update an existing client | `./bin/app update-client --id <uuid> --name <name> [--policies <json>]` |
 
 **Command Details:**
 
@@ -1102,6 +1171,44 @@ The application provides several CLI commands for managing the system:
 - **Requirements**: Database migrated, KEK created
 - **Port**: Configured via `SERVER_PORT` environment variable (default: 8080)
 - **Endpoints**: Health check, secrets, transit, clients, policies, audit logs
+
+#### `create-client` - Create Authentication Client
+```bash
+# Interactive mode (prompts for policies)
+./bin/app create-client --name "my-app"
+
+# Non-interactive mode with JSON policies
+./bin/app create-client --name "my-app" \
+  --policies '[{"path":"*","capabilities":["read","write"]}]'
+
+# Create inactive client
+./bin/app create-client --name "my-app" --active=false \
+  --policies '[{"path":"/v1/secrets/*","capabilities":["read"]}]'
+
+# JSON output format (for automation)
+./bin/app create-client --name "my-app" --format json \
+  --policies '[{"path":"*","capabilities":["read"]}]'
+```
+- **Purpose**: Create new API client with policies
+- **Output**: Client ID and secret (shown only once)
+- **When to run**: To create new API clients for applications
+- **Modes**: Interactive (prompts for input) or non-interactive (JSON policies via flag)
+
+#### `update-client` - Update Authentication Client
+```bash
+# Update client configuration
+./bin/app update-client \
+  --id "018d7e95-1a23-7890-bcde-f1234567890a" \
+  --name "updated-name" \
+  --policies '[{"path":"*","capabilities":["read"]}]'
+
+# Deactivate a client
+./bin/app update-client --id "..." --name "..." --active=false \
+  --policies '[{"path":"*","capabilities":["read"]}]'
+```
+- **Purpose**: Update existing client's name, active status, or policies
+- **When to run**: To modify client permissions or deactivate compromised clients
+- **Note**: Does not change the client secret (cannot be retrieved/changed)
 
 ### 🔨 Build Commands
 

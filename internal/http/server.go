@@ -53,6 +53,7 @@ func NewServer(
 // This method is called during server initialization with all required dependencies.
 func (s *Server) SetupRouter(
 	clientHandler *authHTTP.ClientHandler,
+	tokenHandler *authHTTP.TokenHandler,
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
 	auditLogUseCase authUseCase.AuditLogUseCase,
@@ -81,6 +82,9 @@ func (s *Server) SetupRouter(
 	// API v1 routes
 	v1 := router.Group("/v1")
 	{
+		// Token issuance endpoint (no authentication required)
+		v1.POST("/token", tokenHandler.IssueTokenHandler)
+
 		// Client management endpoints
 		clients := v1.Group("/clients")
 		clients.Use(authMiddleware) // All client routes require authentication
