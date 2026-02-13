@@ -24,6 +24,7 @@ import (
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
+	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 )
 
 // Server represents the HTTP server.
@@ -56,6 +57,8 @@ func (s *Server) SetupRouter(
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
 	secretHandler *secretsHTTP.SecretHandler,
+	transitKeyHandler *transitHTTP.TransitKeyHandler,
+	cryptoHandler *transitHTTP.CryptoHandler,
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
 	auditLogUseCase authUseCase.AuditLogUseCase,
@@ -125,6 +128,44 @@ func (s *Server) SetupRouter(
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				secretHandler.DeleteHandler,
 			)
+		}
+
+		// Transit encryption endpoints
+		transit := v1.Group("/transit")
+		transit.Use(authMiddleware) // All transit routes require authentication
+		{
+			keys := transit.Group("/keys")
+			{
+				// Create new transit key
+				keys.POST("",
+					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+					transitKeyHandler.CreateHandler,
+				)
+
+				// Rotate transit key to new version
+				keys.POST("/:name/rotate",
+					authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
+					transitKeyHandler.RotateHandler,
+				)
+
+				// Delete transit key
+				keys.DELETE("/:id",
+					authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+					transitKeyHandler.DeleteHandler,
+				)
+
+				// Encrypt plaintext with transit key
+				keys.POST("/:name/encrypt",
+					authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+					cryptoHandler.EncryptHandler,
+				)
+
+				// Decrypt ciphertext with transit key
+				keys.POST("/:name/decrypt",
+					authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+					cryptoHandler.DecryptHandler,
+				)
+			}
 		}
 	}
 

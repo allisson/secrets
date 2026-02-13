@@ -23,6 +23,9 @@ import (
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
+	transitHTTP "github.com/allisson/secrets/internal/transit/http"
+	transitRepository "github.com/allisson/secrets/internal/transit/repository"
+	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
 // Container holds all application dependencies with lazy initialization.
@@ -45,54 +48,64 @@ type Container struct {
 	tokenService  authService.TokenService
 
 	// Repositories
-	kekRepository      cryptoUseCase.KekRepository
-	dekRepository      secretsUseCase.DekRepository
-	secretRepository   secretsUseCase.SecretRepository
-	clientRepository   authUseCase.ClientRepository
-	tokenRepository    authUseCase.TokenRepository
-	auditLogRepository authUseCase.AuditLogRepository
+	kekRepository        cryptoUseCase.KekRepository
+	dekRepository        secretsUseCase.DekRepository
+	secretRepository     secretsUseCase.SecretRepository
+	clientRepository     authUseCase.ClientRepository
+	tokenRepository      authUseCase.TokenRepository
+	auditLogRepository   authUseCase.AuditLogRepository
+	transitKeyRepository transitUseCase.TransitKeyRepository
+	transitDekRepository transitUseCase.DekRepository
 
 	// Use Cases
-	kekUseCase      cryptoUseCase.KekUseCase
-	secretUseCase   secretsUseCase.SecretUseCase
-	clientUseCase   authUseCase.ClientUseCase
-	tokenUseCase    authUseCase.TokenUseCase
-	auditLogUseCase authUseCase.AuditLogUseCase
+	kekUseCase        cryptoUseCase.KekUseCase
+	secretUseCase     secretsUseCase.SecretUseCase
+	clientUseCase     authUseCase.ClientUseCase
+	tokenUseCase      authUseCase.TokenUseCase
+	auditLogUseCase   authUseCase.AuditLogUseCase
+	transitKeyUseCase transitUseCase.TransitKeyUseCase
 
 	// HTTP Handlers
-	clientHandler *authHTTP.ClientHandler
-	tokenHandler  *authHTTP.TokenHandler
-	secretHandler *secretsHTTP.SecretHandler
+	clientHandler     *authHTTP.ClientHandler
+	tokenHandler      *authHTTP.TokenHandler
+	secretHandler     *secretsHTTP.SecretHandler
+	transitKeyHandler *transitHTTP.TransitKeyHandler
+	cryptoHandler     *transitHTTP.CryptoHandler
 
 	// Servers and Workers
 	httpServer *http.Server
 
 	// Initialization flags and mutex for thread-safety
-	mu                     sync.Mutex
-	loggerInit             sync.Once
-	dbInit                 sync.Once
-	masterKeyChainInit     sync.Once
-	txManagerInit          sync.Once
-	aeadManagerInit        sync.Once
-	keyManagerInit         sync.Once
-	secretServiceInit      sync.Once
-	tokenServiceInit       sync.Once
-	kekRepositoryInit      sync.Once
-	dekRepositoryInit      sync.Once
-	secretRepositoryInit   sync.Once
-	clientRepositoryInit   sync.Once
-	tokenRepositoryInit    sync.Once
-	auditLogRepositoryInit sync.Once
-	kekUseCaseInit         sync.Once
-	secretUseCaseInit      sync.Once
-	clientUseCaseInit      sync.Once
-	tokenUseCaseInit       sync.Once
-	auditLogUseCaseInit    sync.Once
-	clientHandlerInit      sync.Once
-	tokenHandlerInit       sync.Once
-	secretHandlerInit      sync.Once
-	httpServerInit         sync.Once
-	initErrors             map[string]error
+	mu                       sync.Mutex
+	loggerInit               sync.Once
+	dbInit                   sync.Once
+	masterKeyChainInit       sync.Once
+	txManagerInit            sync.Once
+	aeadManagerInit          sync.Once
+	keyManagerInit           sync.Once
+	secretServiceInit        sync.Once
+	tokenServiceInit         sync.Once
+	kekRepositoryInit        sync.Once
+	dekRepositoryInit        sync.Once
+	secretRepositoryInit     sync.Once
+	clientRepositoryInit     sync.Once
+	tokenRepositoryInit      sync.Once
+	auditLogRepositoryInit   sync.Once
+	transitKeyRepositoryInit sync.Once
+	transitDekRepositoryInit sync.Once
+	kekUseCaseInit           sync.Once
+	secretUseCaseInit        sync.Once
+	clientUseCaseInit        sync.Once
+	tokenUseCaseInit         sync.Once
+	auditLogUseCaseInit      sync.Once
+	transitKeyUseCaseInit    sync.Once
+	clientHandlerInit        sync.Once
+	tokenHandlerInit         sync.Once
+	secretHandlerInit        sync.Once
+	transitKeyHandlerInit    sync.Once
+	cryptoHandlerInit        sync.Once
+	httpServerInit           sync.Once
+	initErrors               map[string]error
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -588,6 +601,16 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get secret handler: %w", err)
 	}
 
+	transitKeyHandler, err := c.TransitKeyHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transit key handler: %w", err)
+	}
+
+	cryptoHandler, err := c.CryptoHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get crypto handler: %w", err)
+	}
+
 	tokenUseCase, err := c.TokenUseCase()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
@@ -605,6 +628,8 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		clientHandler,
 		tokenHandler,
 		secretHandler,
+		transitKeyHandler,
+		cryptoHandler,
 		tokenUseCase,
 		tokenService,
 		auditLogUseCase,
@@ -905,4 +930,197 @@ func (c *Container) loadKekChain() (*cryptoDomain.KekChain, error) {
 	}
 
 	return kekChain, nil
+}
+
+// TransitKeyRepository returns the transit key repository instance.
+func (c *Container) TransitKeyRepository() (transitUseCase.TransitKeyRepository, error) {
+	var err error
+	c.transitKeyRepositoryInit.Do(func() {
+		c.transitKeyRepository, err = c.initTransitKeyRepository()
+		if err != nil {
+			c.initErrors["transitKeyRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["transitKeyRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.transitKeyRepository, nil
+}
+
+// TransitDekRepository returns the DEK repository for transit use case.
+func (c *Container) TransitDekRepository() (transitUseCase.DekRepository, error) {
+	var err error
+	c.transitDekRepositoryInit.Do(func() {
+		c.transitDekRepository, err = c.initTransitDekRepository()
+		if err != nil {
+			c.initErrors["transitDekRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["transitDekRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.transitDekRepository, nil
+}
+
+// TransitKeyUseCase returns the transit key use case instance.
+func (c *Container) TransitKeyUseCase() (transitUseCase.TransitKeyUseCase, error) {
+	var err error
+	c.transitKeyUseCaseInit.Do(func() {
+		c.transitKeyUseCase, err = c.initTransitKeyUseCase()
+		if err != nil {
+			c.initErrors["transitKeyUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["transitKeyUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.transitKeyUseCase, nil
+}
+
+// TransitKeyHandler returns the transit key HTTP handler instance.
+func (c *Container) TransitKeyHandler() (*transitHTTP.TransitKeyHandler, error) {
+	var err error
+	c.transitKeyHandlerInit.Do(func() {
+		c.transitKeyHandler, err = c.initTransitKeyHandler()
+		if err != nil {
+			c.initErrors["transitKeyHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["transitKeyHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.transitKeyHandler, nil
+}
+
+// CryptoHandler returns the crypto HTTP handler instance.
+func (c *Container) CryptoHandler() (*transitHTTP.CryptoHandler, error) {
+	var err error
+	c.cryptoHandlerInit.Do(func() {
+		c.cryptoHandler, err = c.initCryptoHandler()
+		if err != nil {
+			c.initErrors["cryptoHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["cryptoHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.cryptoHandler, nil
+}
+
+// initTransitKeyRepository creates the transit key repository based on the database driver.
+func (c *Container) initTransitKeyRepository() (transitUseCase.TransitKeyRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for transit key repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return transitRepository.NewPostgreSQLTransitKeyRepository(db), nil
+	case "mysql":
+		return transitRepository.NewMySQLTransitKeyRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTransitDekRepository creates the DEK repository for transit use case.
+func (c *Container) initTransitDekRepository() (transitUseCase.DekRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for transit dek repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+	case "mysql":
+		return cryptoRepository.NewMySQLDekRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTransitKeyUseCase creates the transit key use case with all its dependencies.
+func (c *Container) initTransitKeyUseCase() (transitUseCase.TransitKeyUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for transit key use case: %w", err)
+	}
+
+	transitKeyRepository, err := c.TransitKeyRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transit key repository for transit key use case: %w", err)
+	}
+
+	dekRepository, err := c.TransitDekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dek repository for transit key use case: %w", err)
+	}
+
+	kekChain, err := c.loadKekChain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kek chain for transit key use case: %w", err)
+	}
+
+	keyManager := c.KeyManager()
+	aeadManager := c.AEADManager()
+
+	return transitUseCase.NewTransitKeyUseCase(
+		txManager,
+		transitKeyRepository,
+		dekRepository,
+		keyManager,
+		aeadManager,
+		kekChain,
+	), nil
+}
+
+// initTransitKeyHandler creates the transit key HTTP handler with all its dependencies.
+func (c *Container) initTransitKeyHandler() (*transitHTTP.TransitKeyHandler, error) {
+	transitKeyUseCase, err := c.TransitKeyUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transit key use case for transit key handler: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for transit key handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return transitHTTP.NewTransitKeyHandler(transitKeyUseCase, auditLogUseCase, logger), nil
+}
+
+// initCryptoHandler creates the crypto HTTP handler with all its dependencies.
+func (c *Container) initCryptoHandler() (*transitHTTP.CryptoHandler, error) {
+	transitKeyUseCase, err := c.TransitKeyUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transit key use case for crypto handler: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for crypto handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return transitHTTP.NewCryptoHandler(transitKeyUseCase, auditLogUseCase, logger), nil
 }

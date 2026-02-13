@@ -96,6 +96,54 @@ The system implements a complete three-tier envelope encryption architecture wit
 └─────────────────┘
 ```
 
+### 🚄 Transit Encryption Model
+
+Transit Encryption extends the envelope encryption hierarchy with a fourth tier for encryption-as-a-service operations:
+
+```
+┌─────────────────┐
+│   Master Key    │  (Environment/KMS - Root of trust)
+│   256-bit AES   │
+└────────┬────────┘
+         │ encrypts
+         ▼
+┌─────────────────┐
+│ Key Encryption  │  (Database - Encrypted with master key)
+│  Key (KEK)      │  Version: 1, 2, 3... (rotation support)
+└────────┬────────┘
+         │ encrypts
+         ▼
+┌─────────────────┐
+│ Data Encryption │  (Database - Per-transit key version)
+│  Key (DEK)      │  One DEK per transit key version
+└────────┬────────┘
+         │ encrypts
+         ▼
+┌─────────────────┐
+│  Transit Key    │  (Database - Versioned encryption keys)
+│  (Versioned)    │  Used for application data encryption
+└────────┬────────┘
+         │ encrypts
+         ▼
+┌─────────────────┐
+│ Application     │  (NOT stored - returned to client)
+│ Data (Plaintext)│  Client handles ciphertext
+└─────────────────┘
+```
+
+**Key Differences: Secrets Management vs Transit Encryption**
+
+| Aspect | Secrets Management | Transit Encryption |
+|--------|-------------------|-------------------|
+| **Data Storage** | Encrypted data stored in database | Data NOT stored (encryption-as-a-service) |
+| **Use Case** | Long-term secret storage (passwords, API keys) | Encrypt data for external storage (databases, logs) |
+| **Key Hierarchy** | Master Key → KEK → DEK → Secret Data | Master Key → KEK → DEK → Transit Key → App Data |
+| **Versioning** | Secret versions (each with own DEK) | Transit key versions (each with own DEK) |
+| **Client Receives** | Plaintext secret value | Versioned ciphertext string |
+| **Ciphertext Format** | Internal (database only) | `"version:base64-ciphertext"` (e.g., `"1:ZW5jcnlwdGVk..."`) |
+| **Key Rotation** | Transparent (old versions remain readable) | Transparent (version prefix enables decryption) |
+| **Ideal For** | Credentials, tokens, certificates | PII, sensitive logs, database fields |
+
 ### 🗄️ Database Schema
 
 The system uses the following core tables for key management and secret storage:
@@ -230,6 +278,21 @@ secrets/
 │               ├── request_test.go       # Request DTO tests
 │               ├── response.go           # Response DTOs + mapping
 │               └── response_test.go      # Response DTO tests
+│   └── transit/                # Transit encryption module (encryption-as-a-service)
+│       ├── domain/             # Entities: TransitKey, EncryptedBlob (versioning)
+│       ├── usecase/            # Transit operations (create/rotate/encrypt/decrypt)
+│       ├── repository/         # Transit key persistence (PostgreSQL & MySQL)
+│       └── http/               # HTTP presentation layer
+│           ├── transit_key_handler.go    # Transit key management handlers
+│           ├── transit_key_handler_test.go  # Transit key handler tests
+│           ├── crypto_handler.go         # Encrypt/decrypt handlers
+│           ├── crypto_handler_test.go    # Crypto handler tests
+│           ├── test_helpers.go           # Shared test utilities
+│           └── dto/                      # Data Transfer Objects
+│               ├── request.go            # Request DTOs + validation
+│               ├── request_test.go       # Request DTO tests
+│               ├── response.go           # Response DTOs + mapping
+│               └── response_test.go      # Response DTO tests
 ├── migrations/
 │   ├── postgresql/             # PostgreSQL migrations
 │   └── mysql/                  # MySQL migrations
@@ -310,6 +373,29 @@ curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
 # Retrieve the secret
 curl http://localhost:8080/v1/secrets/app/production/database-password \
   -H "Authorization: Bearer <token-from-previous-step>"
+
+# (Optional) Test transit encryption for encryption-as-a-service
+# 11. Create a transit encryption key
+curl -X POST http://localhost:8080/v1/transit/keys \
+  -H "Authorization: Bearer <token-from-previous-step>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-app-encryption",
+    "algorithm": "aes-gcm"
+  }'
+
+# Encrypt data (server does NOT store the data)
+curl -X POST http://localhost:8080/v1/transit/keys/my-app-encryption/encrypt \
+  -H "Authorization: Bearer <token-from-previous-step>" \
+  -H "Content-Type: application/json" \
+  -d '{"plaintext":"c2Vuc2l0aXZlLWRhdGE="}'
+# Save the ciphertext from response (format: "1:base64...")
+
+# Decrypt data
+curl -X POST http://localhost:8080/v1/transit/keys/my-app-encryption/decrypt \
+  -H "Authorization: Bearer <token-from-previous-step>" \
+  -H "Content-Type: application/json" \
+  -d '{"ciphertext":"<ciphertext-from-previous-step>"}'
 ```
 
 ### 📦 Installation
@@ -955,7 +1041,125 @@ Policy documents define what paths and capabilities a client has access to.
 ]
 ```
 
-**Note:** `/v1/clients` and `/v1/secrets` endpoints are fully implemented. Transit Encryption API (`/v1/transit/*`) and Audit Logs API (`/v1/audit-logs`) are planned but not yet implemented (see Planned Features section below).
+#### Transit Encryption Policy Examples
+
+The following examples demonstrate policy configurations for transit encryption (encryption-as-a-service) use cases. Transit encryption allows applications to encrypt/decrypt data without storing it server-side.
+
+**Example Policy - Encrypt-Only Access (Data Producer):**
+
+Use case: Application that encrypts sensitive data before storing in external database, but never needs to decrypt.
+
+```json
+[
+  {
+    "path": "/v1/transit/keys/user-pii/encrypt",
+    "capabilities": ["encrypt"]
+  }
+]
+```
+
+**Example Policy - Decrypt-Only Access (Data Consumer):**
+
+Use case: Analytics service that reads encrypted data from database and decrypts for processing, but cannot encrypt new data.
+
+```json
+[
+  {
+    "path": "/v1/transit/keys/user-pii/decrypt",
+    "capabilities": ["decrypt"]
+  }
+]
+```
+
+**Example Policy - Full Transit Key Management (Admin):**
+
+Use case: Security team managing transit encryption keys with full control over creation, rotation, and deletion.
+
+```json
+[
+  {
+    "path": "/v1/transit/keys",
+    "capabilities": ["write"]
+  },
+  {
+    "path": "/v1/transit/keys/*/rotate",
+    "capabilities": ["rotate"]
+  },
+  {
+    "path": "/v1/transit/keys/*",
+    "capabilities": ["read", "write", "delete", "encrypt", "decrypt"]
+  }
+]
+```
+
+**Example Policy - Multiple Transit Keys with Different Permissions:**
+
+Use case: Application with separate encryption keys for different data types (PII, payment data, logs) with granular access control.
+
+```json
+[
+  {
+    "path": "/v1/transit/keys/user-pii/encrypt",
+    "capabilities": ["encrypt"]
+  },
+  {
+    "path": "/v1/transit/keys/user-pii/decrypt",
+    "capabilities": ["decrypt"]
+  },
+  {
+    "path": "/v1/transit/keys/payment-data/encrypt",
+    "capabilities": ["encrypt"]
+  },
+  {
+    "path": "/v1/transit/keys/audit-logs/encrypt",
+    "capabilities": ["encrypt"]
+  }
+]
+```
+
+**Example Policy - Separation of Duties (SOC 2 Compliance):**
+
+Use case: Enforce separation of duties where different clients handle encryption vs. decryption to meet compliance requirements.
+
+**Client 1 (Encryption Service):**
+```json
+[
+  {
+    "path": "/v1/transit/keys/compliance-data/encrypt",
+    "capabilities": ["encrypt"]
+  }
+]
+```
+
+**Client 2 (Decryption Service):**
+```json
+[
+  {
+    "path": "/v1/transit/keys/compliance-data/decrypt",
+    "capabilities": ["decrypt"]
+  }
+]
+```
+
+**Client 3 (Key Administrator):**
+```json
+[
+  {
+    "path": "/v1/transit/keys",
+    "capabilities": ["write"]
+  },
+  {
+    "path": "/v1/transit/keys/*/rotate",
+    "capabilities": ["rotate"]
+  },
+  {
+    "path": "/v1/transit/keys/*",
+    "capabilities": ["read", "delete"]
+  }
+]
+```
+
+**Note:** Transit Encryption API (`/v1/transit/*`) is fully implemented and production-ready. Audit Logs API (`/v1/audit-logs`) is planned but not yet implemented (see Planned Features section below).
 
 ### 📦 Secrets Management
 
@@ -1157,19 +1361,94 @@ curl -X DELETE http://localhost:8080/v1/secrets/app/production/database-password
 - ✅ Database administrators can recover soft-deleted secrets if needed
 - ✅ Consider key rotation policies if secrets are suspected to be compromised
 
-## 🚧 Planned Features
-
-The following API endpoints are planned but not yet implemented. The underlying business logic for some features exists, but HTTP handlers are under development.
-
 ### 🚄 Transit Encryption API (Encryption-as-a-Service)
 
-**Status:** 🚧 Under Development
+The Transit Encryption API provides encryption-as-a-service, allowing applications to encrypt and decrypt data without storing it server-side. This is ideal for encrypting sensitive data before storing it in external systems (databases, logs, object storage) while maintaining centralized key management.
+
+#### 🔒 Security Warnings
+
+**CRITICAL SECURITY CONSIDERATIONS:**
+- ⚠️ **HTTPS Required**: ALWAYS use HTTPS in production. Plaintext is transmitted in API requests/responses
+- ⚠️ **No Server Storage**: Transit encrypted data is NOT stored server-side. Client applications must store ciphertext
+- ⚠️ **Memory Handling**: Client applications MUST zero plaintext from memory after encryption/decryption
+- ⚠️ **Access Control**: Use fine-grained policies to restrict encryption/decryption access (`EncryptCapability`, `DecryptCapability`)
+- ⚠️ **Key Rotation**: Regularly rotate transit keys. Old versions remain functional for backward compatibility
+- ⚠️ **Audit Trail**: All transit operations are logged for compliance and security monitoring
+
+#### Authentication & Authorization
+
+All transit endpoints require:
+- **Authentication**: Valid Bearer token in `Authorization` header
+- **Authorization**: Appropriate capability for the operation:
+  - `POST /v1/transit/keys` requires `WriteCapability`
+  - `POST /v1/transit/keys/:name/rotate` requires `RotateCapability`
+  - `DELETE /v1/transit/keys/:id` requires `DeleteCapability`
+  - `POST /v1/transit/keys/:name/encrypt` requires `EncryptCapability`
+  - `POST /v1/transit/keys/:name/decrypt` requires `DecryptCapability`
+
+#### 🔑 Ciphertext Format
+
+Transit encryption uses a versioned ciphertext format that enables transparent key rotation:
+
+**Format:** `"version:base64-ciphertext"`
+
+**Example:** `"1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA=="`
+
+**Components:**
+- `version` - Transit key version number (integer: 1, 2, 3...)
+- `:` - Delimiter
+- `base64-ciphertext` - Base64-encoded AEAD output (nonce + ciphertext + authentication tag)
+
+**Key Rotation Behavior:**
+- Encryption always uses the **latest** transit key version
+- Decryption automatically uses the version specified in the ciphertext prefix
+- Old ciphertext remains decryptable after key rotation (backward compatibility)
+- Applications don't need to modify code or re-encrypt data during key rotation
+
+#### 📦 Binary Data Handling
+
+**JSON Encoding Rules:**
+- Go's `json.Marshal` automatically base64-encodes `[]byte` fields
+- Plaintext and ciphertext are transmitted as base64 strings in JSON
+- Client applications must base64-encode binary data before sending
+- Client applications must base64-decode after receiving
+
+**Examples:**
+
+**Text Data (UTF-8):**
+```bash
+# Plain text "hello world"
+echo -n "hello world" | base64  # Output: aGVsbG8gd29ybGQ=
+
+# Send to API
+curl -X POST http://localhost:8080/v1/transit/keys/mykey/encrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"plaintext":"aGVsbG8gd29ybGQ="}'
+```
+
+**Binary Data:**
+```bash
+# Binary file (e.g., image)
+base64 image.png > image_b64.txt
+
+# Send to API
+curl -X POST http://localhost:8080/v1/transit/keys/mykey/encrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"plaintext\":\"$(cat image_b64.txt)\"}"
+```
 
 #### Create Transit Key
+
+Creates a new named transit encryption key for encryption-as-a-service operations.
 
 ```bash
 POST /v1/transit/keys
 ```
+
+**Authentication:** Required  
+**Authorization:** `WriteCapability` for path `/v1/transit/keys`
 
 **Request Body:**
 ```json
@@ -1179,45 +1458,712 @@ POST /v1/transit/keys
 }
 ```
 
-#### Encrypt Data
+**Fields:**
+- `name` (required) - Unique name for the transit key (1-255 characters, alphanumeric and hyphens)
+- `algorithm` (required) - Encryption algorithm: `"aes-gcm"` or `"chacha20-poly1305"`
+
+**Response (201 Created):**
+```json
+{
+  "id": "018d7e95-1a23-7890-bcde-f1234567890a",
+  "name": "payment-encryption",
+  "algorithm": "aes-gcm",
+  "version": 1,
+  "created_at": "2026-02-13T20:13:45Z"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/v1/transit/keys \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "user-pii-encryption",
+    "algorithm": "aes-gcm"
+  }'
+```
+
+**Use Cases:**
+- 💳 **Payment Data**: Encrypt credit card numbers before storing in database
+- 👤 **PII Protection**: Encrypt names, emails, SSNs for GDPR/CCPA compliance
+- 📊 **Audit Logs**: Encrypt sensitive log entries while maintaining searchability on metadata
+- 🗄️ **Database Fields**: Application-level encryption for specific columns (defense in depth)
+- 🌐 **API Responses**: Encrypt sensitive fields in API responses for client-side storage
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `WriteCapability` for the path
+- `409 Conflict` - Transit key with this name already exists
+- `422 Unprocessable Entity` - Invalid request format or unsupported algorithm
+
+**Important Notes:**
+- ✅ Transit key names must be unique across the system
+- ✅ Algorithm choice affects performance and compatibility (AES-GCM for hardware acceleration, ChaCha20 for software-only environments)
+- ✅ Transit keys are versioned - rotation creates new versions while preserving old ones
+- ✅ Each transit key version has its own Data Encryption Key (DEK) for cryptographic isolation
+
+#### Rotate Transit Key
+
+Rotates a transit key by creating a new version. Old versions remain active for decryption, but new encryptions use the latest version.
 
 ```bash
-POST /v1/transit/encrypt/{key_name}
+POST /v1/transit/keys/:name/rotate
 ```
+
+**Authentication:** Required  
+**Authorization:** `RotateCapability` for path `/v1/transit/keys/:name/rotate`
+
+**Request Body:** Empty (no request body required)
+
+**Response (200 OK):**
+```json
+{
+  "id": "018d7e96-4d56-7890-bcde-f1234567890b",
+  "name": "payment-encryption",
+  "algorithm": "aes-gcm",
+  "version": 2,
+  "created_at": "2026-02-14T10:30:00Z"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/v1/transit/keys/payment-encryption/rotate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json"
+```
+
+**When to Rotate:**
+- ⏰ **Regularly**: Every 90 days as a security best practice
+- 🚨 **Security Incident**: When suspecting key compromise
+- 📋 **Compliance**: Per regulatory requirements (PCI-DSS, HIPAA, etc.)
+- 📊 **Volume Threshold**: After encrypting a certain volume of data (e.g., 1 billion operations)
+
+**Rotation Behavior:**
+- ✅ New version is created and becomes the active version for encryption
+- ✅ Old versions remain available for decryption (backward compatibility)
+- ✅ Ciphertext encrypted with old versions remains valid indefinitely
+- ✅ No re-encryption of existing data required
+- ✅ Atomic operation - either fully succeeds or fully fails
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `RotateCapability` for the path
+- `404 Not Found` - Transit key not found
+
+**Important Notes:**
+- 🔄 **Zero Downtime**: Rotation does not interrupt encryption/decryption operations
+- 📦 **No Re-encryption Needed**: Existing ciphertext remains valid and decryptable
+- 🗑️ **Soft Delete Protection**: Cannot rotate deleted transit keys
+- ⚡ **Performance**: No performance impact on existing ciphertext decryption
+
+#### Delete Transit Key
+
+Performs a soft delete on a transit key. The key is marked as deleted but preserved in the database for decrypting existing ciphertext.
+
+```bash
+DELETE /v1/transit/keys/:id
+```
+
+**Authentication:** Required  
+**Authorization:** `DeleteCapability` for path `/v1/transit/keys/:id`
+
+**URL Parameters:**
+- `id` (required) - UUID of the transit key (not the name)
+
+**Response (204 No Content):**  
+Empty body (HTTP status code only)
+
+**Example:**
+```bash
+curl -X DELETE http://localhost:8080/v1/transit/keys/018d7e95-1a23-7890-bcde-f1234567890a \
+  -H "Authorization: Bearer <token>"
+```
+
+**Behavior:**
+- 🗑️ Marks all versions of the transit key as deleted
+- 🔒 Prevents new encryption operations with this key
+- ✅ Allows decryption of existing ciphertext (for data recovery)
+- 📜 Preserves key material for audit trail and compliance
+- 💾 Data remains in database for forensic analysis
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `DeleteCapability` for the path
+- `404 Not Found` - Transit key not found
+
+**Important Notes:**
+- ✅ This is a **soft delete** - key material is NOT physically removed
+- ⚠️ **Decryption Still Works**: Existing ciphertext remains decryptable after deletion
+- ⚠️ **Encryption Blocked**: New encryption operations fail with 404 Not Found
+- ✅ Hard deletion (physical removal) is not currently supported via API
+
+#### Encrypt Data
+
+Encrypts plaintext data using a named transit key. The encrypted data is returned to the client and NOT stored server-side.
+
+```bash
+POST /v1/transit/keys/:name/encrypt
+```
+
+**Authentication:** Required  
+**Authorization:** `EncryptCapability` for path `/v1/transit/keys/:name/encrypt`
+
+**URL Parameters:**
+- `name` (required) - Transit key name (not UUID)
 
 **Request Body:**
 ```json
 {
-  "plaintext": "sensitive-data-to-encrypt"
+  "plaintext": "aGVsbG8gd29ybGQ="
 }
 ```
 
-**Response:**
+**Fields:**
+- `plaintext` (required) - Base64-encoded data to encrypt (Go automatically base64-encodes `[]byte` in JSON)
+
+**Response (200 OK):**
 ```json
 {
-  "ciphertext": "vault:v1:base64-encoded-ciphertext"
+  "ciphertext": "1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA==",
+  "version": 1
 }
 ```
+
+**Fields:**
+- `ciphertext` - Versioned ciphertext string (format: `"version:base64-ciphertext"`)
+- `version` - Transit key version used for encryption (for informational purposes)
+
+**Example - Text Data:**
+```bash
+# Encrypt text "sensitive-data"
+curl -X POST http://localhost:8080/v1/transit/keys/user-pii-encryption/encrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plaintext": "c2Vuc2l0aXZlLWRhdGE="
+  }'
+```
+
+**Example - Binary Data:**
+```bash
+# Encrypt binary file
+FILE_B64=$(base64 -i secret.pdf)
+curl -X POST http://localhost:8080/v1/transit/keys/document-encryption/encrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"plaintext\":\"$FILE_B64\"}"
+```
+
+**Use Cases:**
+- 💳 **Tokenization**: Encrypt credit card numbers before database storage
+- 👤 **GDPR Compliance**: Encrypt PII (names, emails, addresses) in user records
+- 📊 **Sensitive Logs**: Encrypt log entries containing credentials or API keys
+- 🗄️ **Column-Level Encryption**: Protect specific database columns (SSN, medical records)
+- 🌐 **Client-Side Storage**: Encrypt data before sending to client browser (localStorage, IndexedDB)
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `EncryptCapability` for the path
+- `404 Not Found` - Transit key not found or deleted
+- `422 Unprocessable Entity` - Invalid request format or missing plaintext
+
+**Important Notes:**
+- ✅ **Always Uses Latest Version**: Encryption uses the current active version of the transit key
+- 🔐 **AEAD Protection**: Authenticated encryption prevents tampering
+- 📦 **No Server Storage**: Plaintext and ciphertext are never persisted server-side
+- 🔄 **Idempotent**: Same plaintext encrypts to different ciphertext each time (random nonce)
+- 🧹 **Memory Safety**: Plaintext is zeroed from server memory after encryption
 
 #### Decrypt Data
 
+Decrypts ciphertext using a named transit key. The version is automatically extracted from the ciphertext prefix.
+
 ```bash
-POST /v1/transit/decrypt/{key_name}
+POST /v1/transit/keys/:name/decrypt
 ```
+
+**Authentication:** Required  
+**Authorization:** `DecryptCapability` for path `/v1/transit/keys/:name/decrypt`
+
+**URL Parameters:**
+- `name` (required) - Transit key name (must match the key used for encryption)
 
 **Request Body:**
 ```json
 {
-  "ciphertext": "vault:v1:base64-encoded-ciphertext"
+  "ciphertext": "1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA=="
 }
 ```
 
-**Response:**
+**Fields:**
+- `ciphertext` (required) - Versioned ciphertext string from encrypt operation (format: `"version:base64-ciphertext"`)
+
+**Response (200 OK):**
 ```json
 {
-  "plaintext": "sensitive-data-to-encrypt"
+  "plaintext": "aGVsbG8gd29ybGQ=",
+  "version": 1
 }
 ```
+
+**Fields:**
+- `plaintext` - Base64-encoded decrypted data (Go automatically base64-encodes `[]byte` in JSON)
+- `version` - Transit key version used for decryption (extracted from ciphertext prefix)
+
+**Example - Text Data:**
+```bash
+# Decrypt ciphertext
+curl -X POST http://localhost:8080/v1/transit/keys/user-pii-encryption/decrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ciphertext": "1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA=="
+  }'
+
+# Decode the base64 plaintext
+echo "aGVsbG8gd29ybGQ=" | base64 --decode  # Output: hello world
+```
+
+**Example - Binary Data:**
+```bash
+# Decrypt and save to file
+RESPONSE=$(curl -s -X POST http://localhost:8080/v1/transit/keys/document-encryption/decrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"ciphertext":"2:..."}')
+
+PLAINTEXT=$(echo "$RESPONSE" | jq -r '.plaintext')
+echo "$PLAINTEXT" | base64 --decode > decrypted_secret.pdf
+```
+
+**Version Handling:**
+- 🔄 **Automatic Version Selection**: Version is parsed from ciphertext prefix (e.g., `"1:"`, `"2:"`, `"3:"`)
+- ✅ **Backward Compatibility**: Old ciphertext remains decryptable after key rotation
+- 🔑 **Multiple Versions**: System maintains all historical transit key versions for decryption
+- 📦 **No Client Changes**: Applications don't need code changes during key rotation
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `DecryptCapability` for the path
+- `404 Not Found` - Transit key not found
+- `422 Unprocessable Entity` - Invalid ciphertext format, corrupted data, or authentication failure
+
+**Important Notes:**
+- ✅ **Version Agnostic**: Works with any version of the transit key (supports key rotation)
+- 🔐 **AEAD Verification**: Decryption fails if ciphertext has been tampered with
+- 📦 **No Server Storage**: Plaintext and ciphertext are never persisted server-side
+- 🗑️ **Deleted Keys**: Decryption still works for soft-deleted transit keys
+- 🧹 **Memory Safety**: Plaintext is zeroed from server memory after response is sent
+
+#### Client Library Examples
+
+The following examples demonstrate how to use the Transit Encryption API from different programming languages.
+
+##### Python Example
+
+```python
+import requests
+import base64
+import json
+
+class TransitClient:
+    def __init__(self, base_url, token):
+        self.base_url = base_url
+        self.headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+    
+    def create_key(self, name, algorithm="aes-gcm"):
+        """Create a new transit encryption key."""
+        url = f"{self.base_url}/v1/transit/keys"
+        data = {"name": name, "algorithm": algorithm}
+        response = requests.post(url, headers=self.headers, json=data)
+        response.raise_for_status()
+        return response.json()
+    
+    def encrypt(self, key_name, plaintext):
+        """Encrypt plaintext data.
+        
+        Args:
+            key_name: Name of the transit key
+            plaintext: bytes or str to encrypt
+        
+        Returns:
+            Versioned ciphertext string (e.g., "1:base64...")
+        """
+        url = f"{self.base_url}/v1/transit/keys/{key_name}/encrypt"
+        
+        # Convert to bytes if string
+        if isinstance(plaintext, str):
+            plaintext = plaintext.encode('utf-8')
+        
+        # Base64 encode for JSON
+        plaintext_b64 = base64.b64encode(plaintext).decode('utf-8')
+        
+        data = {"plaintext": plaintext_b64}
+        response = requests.post(url, headers=self.headers, json=data)
+        response.raise_for_status()
+        
+        return response.json()["ciphertext"]
+    
+    def decrypt(self, key_name, ciphertext):
+        """Decrypt ciphertext data.
+        
+        Args:
+            key_name: Name of the transit key
+            ciphertext: Versioned ciphertext string from encrypt()
+        
+        Returns:
+            Decrypted plaintext as bytes
+        """
+        url = f"{self.base_url}/v1/transit/keys/{key_name}/decrypt"
+        
+        data = {"ciphertext": ciphertext}
+        response = requests.post(url, headers=self.headers, json=data)
+        response.raise_for_status()
+        
+        # Decode base64 plaintext
+        plaintext_b64 = response.json()["plaintext"]
+        return base64.b64decode(plaintext_b64)
+
+# Usage Example
+client = TransitClient("http://localhost:8080", "your-token-here")
+
+# Create transit key
+key_info = client.create_key("python-app-encryption", "aes-gcm")
+print(f"Created key: {key_info['name']} (version {key_info['version']})")
+
+# Encrypt text data
+plaintext = "sensitive user data"
+ciphertext = client.encrypt("python-app-encryption", plaintext)
+print(f"Ciphertext: {ciphertext}")
+
+# Decrypt data
+decrypted = client.decrypt("python-app-encryption", ciphertext)
+print(f"Decrypted: {decrypted.decode('utf-8')}")
+
+# Encrypt binary data (e.g., image file)
+with open("photo.jpg", "rb") as f:
+    image_data = f.read()
+
+encrypted_image = client.encrypt("python-app-encryption", image_data)
+
+# Store encrypted_image in database
+# ...
+
+# Later: decrypt and save
+decrypted_image = client.decrypt("python-app-encryption", encrypted_image)
+with open("photo_decrypted.jpg", "wb") as f:
+    f.write(decrypted_image)
+```
+
+##### JavaScript/Node.js Example
+
+```javascript
+const axios = require('axios');
+
+class TransitClient {
+  constructor(baseURL, token) {
+    this.client = axios.create({
+      baseURL: baseURL,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+
+  async createKey(name, algorithm = 'aes-gcm') {
+    /**
+     * Create a new transit encryption key.
+     */
+    const response = await this.client.post('/v1/transit/keys', {
+      name: name,
+      algorithm: algorithm
+    });
+    return response.data;
+  }
+
+  async encrypt(keyName, plaintext) {
+    /**
+     * Encrypt plaintext data.
+     * 
+     * @param {string} keyName - Name of the transit key
+     * @param {string|Buffer} plaintext - Data to encrypt
+     * @returns {string} Versioned ciphertext string (e.g., "1:base64...")
+     */
+    // Convert to Buffer if string
+    const buffer = Buffer.isBuffer(plaintext) 
+      ? plaintext 
+      : Buffer.from(plaintext, 'utf-8');
+    
+    // Base64 encode for JSON
+    const plaintextB64 = buffer.toString('base64');
+    
+    const response = await this.client.post(
+      `/v1/transit/keys/${keyName}/encrypt`,
+      { plaintext: plaintextB64 }
+    );
+    
+    return response.data.ciphertext;
+  }
+
+  async decrypt(keyName, ciphertext) {
+    /**
+     * Decrypt ciphertext data.
+     * 
+     * @param {string} keyName - Name of the transit key
+     * @param {string} ciphertext - Versioned ciphertext from encrypt()
+     * @returns {Buffer} Decrypted plaintext as Buffer
+     */
+    const response = await this.client.post(
+      `/v1/transit/keys/${keyName}/decrypt`,
+      { ciphertext: ciphertext }
+    );
+    
+    // Decode base64 plaintext
+    const plaintextB64 = response.data.plaintext;
+    return Buffer.from(plaintextB64, 'base64');
+  }
+}
+
+// Usage Example
+(async () => {
+  const client = new TransitClient('http://localhost:8080', 'your-token-here');
+
+  // Create transit key
+  const keyInfo = await client.createKey('nodejs-app-encryption', 'aes-gcm');
+  console.log(`Created key: ${keyInfo.name} (version ${keyInfo.version})`);
+
+  // Encrypt text data
+  const plaintext = 'sensitive user data';
+  const ciphertext = await client.encrypt('nodejs-app-encryption', plaintext);
+  console.log(`Ciphertext: ${ciphertext}`);
+
+  // Decrypt data
+  const decrypted = await client.decrypt('nodejs-app-encryption', ciphertext);
+  console.log(`Decrypted: ${decrypted.toString('utf-8')}`);
+
+  // Encrypt binary data (e.g., PDF file)
+  const fs = require('fs').promises;
+  const pdfData = await fs.readFile('document.pdf');
+  
+  const encryptedPDF = await client.encrypt('nodejs-app-encryption', pdfData);
+  
+  // Store encryptedPDF in database
+  // await database.save({ file: encryptedPDF });
+  
+  // Later: decrypt and save
+  const decryptedPDF = await client.decrypt('nodejs-app-encryption', encryptedPDF);
+  await fs.writeFile('document_decrypted.pdf', decryptedPDF);
+})();
+```
+
+##### Go Example
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+)
+
+type TransitClient struct {
+    BaseURL string
+    Token   string
+    Client  *http.Client
+}
+
+func NewTransitClient(baseURL, token string) *TransitClient {
+    return &TransitClient{
+        BaseURL: baseURL,
+        Token:   token,
+        Client:  &http.Client{},
+    }
+}
+
+func (c *TransitClient) CreateKey(name, algorithm string) (map[string]interface{}, error) {
+    // Create a new transit encryption key
+    reqBody := map[string]string{
+        "name":      name,
+        "algorithm": algorithm,
+    }
+    
+    jsonData, err := json.Marshal(reqBody)
+    if err != nil {
+        return nil, err
+    }
+    
+    req, err := http.NewRequest("POST", c.BaseURL+"/v1/transit/keys", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+    
+    req.Header.Set("Authorization", "Bearer "+c.Token)
+    req.Header.Set("Content-Type", "application/json")
+    
+    resp, err := c.Client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    
+    if resp.StatusCode != http.StatusCreated {
+        return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+    }
+    
+    var result map[string]interface{}
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return nil, err
+    }
+    
+    return result, nil
+}
+
+func (c *TransitClient) Encrypt(keyName string, plaintext []byte) (string, error) {
+    // Encrypt plaintext data
+    // Base64 encode for JSON (Go's json.Marshal does this automatically for []byte)
+    plaintextB64 := base64.StdEncoding.EncodeToString(plaintext)
+    
+    reqBody := map[string]string{
+        "plaintext": plaintextB64,
+    }
+    
+    jsonData, err := json.Marshal(reqBody)
+    if err != nil {
+        return "", err
+    }
+    
+    url := fmt.Sprintf("%s/v1/transit/keys/%s/encrypt", c.BaseURL, keyName)
+    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+    if err != nil {
+        return "", err
+    }
+    
+    req.Header.Set("Authorization", "Bearer "+c.Token)
+    req.Header.Set("Content-Type", "application/json")
+    
+    resp, err := c.Client.Do(req)
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+    
+    if resp.StatusCode != http.StatusOK {
+        return "", fmt.Errorf("unexpected status: %d", resp.StatusCode)
+    }
+    
+    var result map[string]interface{}
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return "", err
+    }
+    
+    return result["ciphertext"].(string), nil
+}
+
+func (c *TransitClient) Decrypt(keyName, ciphertext string) ([]byte, error) {
+    // Decrypt ciphertext data
+    reqBody := map[string]string{
+        "ciphertext": ciphertext,
+    }
+    
+    jsonData, err := json.Marshal(reqBody)
+    if err != nil {
+        return nil, err
+    }
+    
+    url := fmt.Sprintf("%s/v1/transit/keys/%s/decrypt", c.BaseURL, keyName)
+    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+    if err != nil {
+        return nil, err
+    }
+    
+    req.Header.Set("Authorization", "Bearer "+c.Token)
+    req.Header.Set("Content-Type", "application/json")
+    
+    resp, err := c.Client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+    }
+    
+    var result map[string]interface{}
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return nil, err
+    }
+    
+    // Decode base64 plaintext
+    plaintextB64 := result["plaintext"].(string)
+    return base64.StdEncoding.DecodeString(plaintextB64)
+}
+
+func main() {
+    client := NewTransitClient("http://localhost:8080", "your-token-here")
+    
+    // Create transit key
+    keyInfo, err := client.CreateKey("go-app-encryption", "aes-gcm")
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Created key: %s (version %.0f)\n", keyInfo["name"], keyInfo["version"])
+    
+    // Encrypt text data
+    plaintext := []byte("sensitive user data")
+    ciphertext, err := client.Encrypt("go-app-encryption", plaintext)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Ciphertext: %s\n", ciphertext)
+    
+    // Decrypt data
+    decrypted, err := client.Decrypt("go-app-encryption", ciphertext)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Decrypted: %s\n", string(decrypted))
+    
+    // Encrypt binary data (e.g., image file)
+    imageData, err := os.ReadFile("photo.jpg")
+    if err != nil {
+        panic(err)
+    }
+    
+    encryptedImage, err := client.Encrypt("go-app-encryption", imageData)
+    if err != nil {
+        panic(err)
+    }
+    
+    // Store encryptedImage in database
+    // db.Save(encryptedImage)
+    
+    // Later: decrypt and save
+    decryptedImage, err := client.Decrypt("go-app-encryption", encryptedImage)
+    if err != nil {
+        panic(err)
+    }
+    
+    if err := os.WriteFile("photo_decrypted.jpg", decryptedImage, 0644); err != nil {
+        panic(err)
+    }
+}
+```
+
+## 🚧 Planned Features
+
+The following API endpoints are planned but not yet implemented.
 
 ### 📜 Audit Logs API
 
@@ -1337,7 +2283,7 @@ The application provides several CLI commands for managing the system:
 - **Purpose**: Start the HTTP API server
 - **Requirements**: Database migrated, KEK created
 - **Port**: Configured via `SERVER_PORT` environment variable (default: 8080)
-- **Endpoints**: Health check (`/health`, `/ready`), token issuance (`/v1/token`), client management (`/v1/clients`), secrets management (`/v1/secrets`)
+- **Endpoints**: Health check (`/health`, `/ready`), token issuance (`/v1/token`), client management (`/v1/clients`), secrets management (`/v1/secrets`), transit encryption (`/v1/transit`)
 
 #### `create-client` - Create Authentication Client
 ```bash
