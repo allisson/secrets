@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -64,6 +64,11 @@ deps: ## Download dependencies
 	@echo "Downloading dependencies..."
 	@go mod download
 	@go mod tidy
+
+mocks: ## Regenerate mock implementations
+	@echo "Regenerating mocks..."
+	@mockery
+	@echo "Mocks regenerated"
 
 # Database migrations
 migrate-up: ## Run database migrations up
