@@ -77,6 +77,14 @@ func (m *mockAuditLogUseCase) Create(
 	return args.Error(0)
 }
 
+func (m *mockAuditLogUseCase) List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error) {
+	args := m.Called(ctx, offset, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*authDomain.AuditLog), args.Error(1)
+}
+
 // TestMain sets Gin to test mode for all tests in this package.
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)

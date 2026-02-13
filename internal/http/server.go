@@ -56,6 +56,7 @@ func NewServer(
 func (s *Server) SetupRouter(
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
+	auditLogHandler *authHTTP.AuditLogHandler,
 	secretHandler *secretsHTTP.SecretHandler,
 	transitKeyHandler *transitHTTP.TransitKeyHandler,
 	cryptoHandler *transitHTTP.CryptoHandler,
@@ -113,6 +114,16 @@ func (s *Server) SetupRouter(
 			clients.DELETE("/:id",
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				clientHandler.DeleteHandler,
+			)
+		}
+
+		// Audit log endpoints
+		auditLogs := v1.Group("/audit-logs")
+		auditLogs.Use(authMiddleware) // All audit log routes require authentication
+		{
+			auditLogs.GET("",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				auditLogHandler.ListHandler,
 			)
 		}
 

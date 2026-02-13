@@ -68,6 +68,7 @@ type Container struct {
 	// HTTP Handlers
 	clientHandler     *authHTTP.ClientHandler
 	tokenHandler      *authHTTP.TokenHandler
+	auditLogHandler   *authHTTP.AuditLogHandler
 	secretHandler     *secretsHTTP.SecretHandler
 	transitKeyHandler *transitHTTP.TransitKeyHandler
 	cryptoHandler     *transitHTTP.CryptoHandler
@@ -101,6 +102,7 @@ type Container struct {
 	transitKeyUseCaseInit    sync.Once
 	clientHandlerInit        sync.Once
 	tokenHandlerInit         sync.Once
+	auditLogHandlerInit      sync.Once
 	secretHandlerInit        sync.Once
 	transitKeyHandlerInit    sync.Once
 	cryptoHandlerInit        sync.Once
@@ -413,6 +415,24 @@ func (c *Container) TokenHandler() (*authHTTP.TokenHandler, error) {
 	return c.tokenHandler, nil
 }
 
+// AuditLogHandler returns the HTTP handler for audit log operations.
+func (c *Container) AuditLogHandler() (*authHTTP.AuditLogHandler, error) {
+	var err error
+	c.auditLogHandlerInit.Do(func() {
+		c.auditLogHandler, err = c.initAuditLogHandler()
+		if err != nil {
+			c.initErrors["auditLogHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["auditLogHandler"]; exists {
+		return nil, storedErr
+	}
+	return c.auditLogHandler, nil
+}
+
 // DekRepository returns the DEK repository based on database driver.
 func (c *Container) DekRepository() (secretsUseCase.DekRepository, error) {
 	var err error
@@ -596,6 +616,11 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get token handler: %w", err)
 	}
 
+	auditLogHandler, err := c.AuditLogHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log handler: %w", err)
+	}
+
 	secretHandler, err := c.SecretHandler()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret handler: %w", err)
@@ -627,6 +652,7 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 	server.SetupRouter(
 		clientHandler,
 		tokenHandler,
+		auditLogHandler,
 		secretHandler,
 		transitKeyHandler,
 		cryptoHandler,
@@ -822,6 +848,18 @@ func (c *Container) initTokenHandler() (*authHTTP.TokenHandler, error) {
 	logger := c.Logger()
 
 	return authHTTP.NewTokenHandler(tokenUseCase, logger), nil
+}
+
+// initAuditLogHandler creates the audit log HTTP handler with all its dependencies.
+func (c *Container) initAuditLogHandler() (*authHTTP.AuditLogHandler, error) {
+	auditLogUseCase, err := c.AuditLogUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for audit log handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return authHTTP.NewAuditLogHandler(auditLogUseCase, logger), nil
 }
 
 // initDekRepository creates the DEK repository based on the database driver.
