@@ -98,6 +98,10 @@ func (s *Server) SetupRouter(
 				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
 				clientHandler.CreateHandler,
 			)
+			clients.GET("",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				clientHandler.ListHandler,
+			)
 			clients.GET("/:id",
 				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
 				clientHandler.GetHandler,

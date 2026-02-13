@@ -130,6 +130,66 @@ func (_c *MockClientRepository_Get_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
+// List provides a mock function with given fields: ctx, offset, limit
+func (_m *MockClientRepository) List(ctx context.Context, offset int, limit int) ([]*domain.Client, error) {
+	ret := _m.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain.Client
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain.Client, error)); ok {
+		return rf(ctx, offset, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []*domain.Client); ok {
+		r0 = rf(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.Client)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = rf(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientRepository_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockClientRepository_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockClientRepository_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockClientRepository_List_Call {
+	return &MockClientRepository_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockClientRepository_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockClientRepository_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockClientRepository_List_Call) Return(_a0 []*domain.Client, _a1 error) *MockClientRepository_List_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientRepository_List_Call) RunAndReturn(run func(context.Context, int, int) ([]*domain.Client, error)) *MockClientRepository_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, client
 func (_m *MockClientRepository) Update(ctx context.Context, client *domain.Client) error {
 	ret := _m.Called(ctx, client)

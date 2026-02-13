@@ -56,6 +56,17 @@ func (m *mockClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*au
 	return args.Get(0).(*authDomain.Client), args.Error(1)
 }
 
+func (m *mockClientRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*authDomain.Client, error) {
+	args := m.Called(ctx, offset, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*authDomain.Client), args.Error(1)
+}
+
 func TestClientUseCase_Create(t *testing.T) {
 	ctx := context.Background()
 
@@ -529,6 +540,129 @@ func TestClientUseCase_Delete(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
+		mockClientRepo.AssertExpectations(t)
+	})
+}
+
+func TestClientUseCase_List(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListClients", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		// Test data
+		expectedClients := []*authDomain.Client{
+			{
+				ID:       uuid.Must(uuid.NewV7()),
+				Secret:   "hashed-secret-1",
+				Name:     "client-1",
+				IsActive: true,
+				Policies: []authDomain.PolicyDocument{},
+			},
+			{
+				ID:       uuid.Must(uuid.NewV7()),
+				Secret:   "hashed-secret-2",
+				Name:     "client-2",
+				IsActive: true,
+				Policies: []authDomain.PolicyDocument{},
+			},
+		}
+
+		// Setup expectations
+		mockClientRepo.On("List", ctx, 0, 50).
+			Return(expectedClients, nil).
+			Once()
+
+		// Execute
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		clients, err := uc.List(ctx, 0, 50)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, clients, 2)
+		assert.Equal(t, expectedClients, clients)
+		mockClientRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithCustomPagination", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		expectedClients := []*authDomain.Client{
+			{
+				ID:       uuid.Must(uuid.NewV7()),
+				Secret:   "hashed-secret",
+				Name:     "client",
+				IsActive: true,
+				Policies: []authDomain.PolicyDocument{},
+			},
+		}
+
+		// Setup expectations
+		mockClientRepo.On("List", ctx, 10, 20).
+			Return(expectedClients, nil).
+			Once()
+
+		// Execute
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		clients, err := uc.List(ctx, 10, 20)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, clients, 1)
+		mockClientRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_EmptyList", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		emptyClients := []*authDomain.Client{}
+
+		// Setup expectations
+		mockClientRepo.On("List", ctx, 0, 50).
+			Return(emptyClients, nil).
+			Once()
+
+		// Execute
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		clients, err := uc.List(ctx, 0, 50)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Empty(t, clients)
+		assert.NotNil(t, clients)
+		mockClientRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error_RepositoryError", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		expectedErr := errors.New("database connection error")
+
+		// Setup expectations
+		mockClientRepo.On("List", ctx, 0, 50).
+			Return(nil, expectedErr).
+			Once()
+
+		// Execute
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		clients, err := uc.List(ctx, 0, 50)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, clients)
+		assert.Equal(t, expectedErr, err)
 		mockClientRepo.AssertExpectations(t)
 	})
 }

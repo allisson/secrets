@@ -34,6 +34,22 @@ func MapClientToResponse(client *authDomain.Client) ClientResponse {
 	}
 }
 
+// ListClientsResponse represents a paginated list of clients in API responses.
+type ListClientsResponse struct {
+	Clients []ClientResponse `json:"clients"`
+}
+
+// MapClientsToListResponse converts a slice of domain clients to a list API response.
+func MapClientsToListResponse(clients []*authDomain.Client) ListClientsResponse {
+	clientResponses := make([]ClientResponse, 0, len(clients))
+	for _, client := range clients {
+		clientResponses = append(clientResponses, MapClientToResponse(client))
+	}
+	return ListClientsResponse{
+		Clients: clientResponses,
+	}
+}
+
 // IssueTokenResponse contains the result of issuing a token.
 // SECURITY: The token is only returned once and must be saved securely.
 type IssueTokenResponse struct {

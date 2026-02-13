@@ -345,6 +345,21 @@ make dev-postgres
   --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]'
 # Save the client_id and secret from the output
 
+# 9a. (Optional) List all clients to verify creation
+# First, obtain a token using the client credentials from step 9
+curl -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "<client-id-from-step-9>",
+    "client_secret": "<secret-from-step-9>"
+  }'
+# Save the token from the response
+
+# List all clients
+curl http://localhost:8080/v1/clients \
+  -H "Authorization: Bearer <token-from-previous-request>"
+# You should see your bootstrap-admin client in the response
+
 # 10. Start the server
 ./bin/app server
 ```
@@ -941,6 +956,82 @@ Empty body
 curl -X DELETE http://localhost:8080/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a \
   -H "Authorization: Bearer <admin-token>"
 ```
+
+#### List Clients
+
+Lists all API clients with pagination support. Results are ordered by ID in descending order (newest first).
+
+```bash
+GET /v1/clients
+```
+
+**Authentication:** Required  
+**Authorization:** `ReadCapability` for path `/v1/clients`
+
+**Query Parameters:**
+- `offset` (optional) - Starting position for pagination (default: 0, must be >= 0)
+- `limit` (optional) - Number of clients to return (default: 50, max: 100, must be >= 1)
+
+**Response (200 OK):**
+```json
+{
+  "clients": [
+    {
+      "id": "018d7e97-5e67-7890-bcde-f1234567890c",
+      "name": "production-app",
+      "is_active": true,
+      "policies": [
+        {
+          "path": "/v1/clients/*",
+          "capabilities": ["read", "write"]
+        }
+      ],
+      "created_at": "2026-02-13T10:30:00Z"
+    },
+    {
+      "id": "018d7e95-1a23-7890-bcde-f1234567890a",
+      "name": "staging-app",
+      "is_active": true,
+      "policies": [
+        {
+          "path": "/v1/secrets/*",
+          "capabilities": ["decrypt"]
+        }
+      ],
+      "created_at": "2026-02-12T20:13:45Z"
+    }
+  ]
+}
+```
+
+**Example - Default Pagination:**
+```bash
+# Get first 50 clients (default)
+curl http://localhost:8080/v1/clients \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example - Custom Pagination:**
+```bash
+# Get 20 clients starting from offset 10
+curl http://localhost:8080/v1/clients?offset=10&limit=20 \
+  -H "Authorization: Bearer <token>"
+
+# Get next page
+curl http://localhost:8080/v1/clients?offset=30&limit=20 \
+  -H "Authorization: Bearer <token>"
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `ReadCapability` for `/v1/clients`
+- `422 Unprocessable Entity` - Invalid query parameters (negative offset, limit out of range, non-numeric values)
+
+**Important Notes:**
+- 🔢 **Ordering**: Clients are ordered by ID DESC (newest first) using UUIDv7's time-based properties
+- 🔒 **Security**: Client secrets are never returned in list responses
+- 📄 **Pagination**: Simple offset/limit pagination without total count metadata
+- ⚠️ **Limits**: Maximum limit is 100 clients per request. Use offset for pagination.
 
 #### Policy Document Structure
 
