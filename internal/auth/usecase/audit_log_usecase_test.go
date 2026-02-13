@@ -22,6 +22,17 @@ func (m *mockAuditLogRepository) Create(ctx context.Context, auditLog *authDomai
 	return args.Error(0)
 }
 
+func (m *mockAuditLogRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*authDomain.AuditLog, error) {
+	args := m.Called(ctx, offset, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*authDomain.AuditLog), args.Error(1)
+}
+
 func TestAuditLogUseCase_Create(t *testing.T) {
 	ctx := context.Background()
 

@@ -45,6 +45,17 @@ func (a *auditLogUseCase) Create(
 	return nil
 }
 
+// List retrieves audit logs ordered by ID descending (newest first) with pagination.
+// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
+func (a *auditLogUseCase) List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error) {
+	auditLogs, err := a.auditLogRepo.List(ctx, offset, limit)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list audit logs")
+	}
+
+	return auditLogs, nil
+}
+
 // NewAuditLogUseCase creates a new AuditLogUseCase with the provided dependencies.
 func NewAuditLogUseCase(auditLogRepo AuditLogRepository) AuditLogUseCase {
 	return &auditLogUseCase{

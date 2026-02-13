@@ -51,8 +51,9 @@ Secrets is a secure key management and secrets storage system built with Go, des
 
 ### 🔒 Security & Compliance
 
-- 📜 **Immutable Audit Logs** - Cryptographic hash chaining for tamper-evident logging
+- 📜 **Immutable Audit Logs** - Append-only audit trail for compliance and security monitoring
 - 📊 **Comprehensive Logging** - Track all operations with actor, action, resource, and metadata
+- 🔍 **Audit Log API** - Query and retrieve audit logs with pagination for compliance reporting and security analysis
 - 🧹 **Secure Memory Handling** - Automatic zeroing of sensitive key material
 - 💾 **Database Encryption** - All sensitive data encrypted at rest
 
@@ -2317,41 +2318,260 @@ func main() {
 }
 ```
 
-## 🚧 Planned Features
-
-The following API endpoints are planned but not yet implemented.
-
 ### 📜 Audit Logs API
 
-**Status:** 🚧 Under Development
+The Audit Logs API provides immutable, queryable records of all operations performed in the system. Every authenticated API request automatically generates an audit log entry for compliance, security monitoring, and forensic investigation.
+
+#### 🔒 Security & Compliance Features
+
+**Audit Log Characteristics:**
+- 📝 **Automatic Logging**: All authenticated operations are automatically logged via authorization middleware
+- 🔒 **Immutable Records**: Audit logs cannot be modified or deleted after creation (append-only)
+- 🔍 **Comprehensive Tracking**: Captures request ID, client ID, capability, path, and custom metadata
+- 📊 **Compliance Ready**: Meets requirements for SOC 2, GDPR, HIPAA, and PCI-DSS auditing
+- 🕵️ **Forensic Investigation**: Complete audit trail for security incident analysis
+- ⏱️ **Time-Ordered**: Logs are ordered by ID descending (newest first) using UUIDv7's time-based properties
+- 🚫 **Non-Blocking**: Audit log failures don't block API operations (logged as errors)
+
+#### Authentication & Authorization
+
+All audit log endpoints require:
+- **Authentication**: Valid Bearer token in `Authorization` header
+- **Authorization**: `ReadCapability` for path `/v1/audit-logs`
+
+#### What Gets Logged
+
+Audit logs automatically capture every authorization attempt (both successful and denied):
+- ✅ **Client Operations**: Create, read, update, delete API clients
+- ✅ **Secret Operations**: Encrypt (create/update), decrypt (read), delete secrets
+- ✅ **Transit Operations**: Create transit keys, rotate keys, encrypt, decrypt data
+- ✅ **Token Operations**: Token issuance (authentication events)
+- ✅ **Audit Log Access**: Reading audit logs themselves
+- ✅ **Request Context**: Request ID, client ID, capability used, resource path
+- ✅ **Authorization Outcome**: Whether access was allowed or denied
+- ✅ **Client Information**: IP address and user agent from HTTP request
+
+**Metadata Structure:**
+
+Each audit log entry includes metadata with the following fields:
+```json
+{
+  "allowed": true,           // Authorization outcome (true = success, false = denied)
+  "ip": "192.168.1.100",     // Client IP address
+  "user_agent": "curl/7.68.0" // HTTP User-Agent header
+}
+```
+
+#### Use Cases
+
+- 🔍 **Security Monitoring**: Detect anomalous access patterns and unauthorized access attempts
+- 📋 **Compliance Auditing**: Generate reports for regulatory compliance (SOC 2, GDPR, HIPAA, PCI-DSS)
+- 🐛 **Debugging**: Trace request flows using request IDs across distributed systems
+- 🚨 **Incident Response**: Investigate security breaches with complete operation history
+- 📊 **Analytics**: Analyze API usage patterns and client behavior
+- 🔐 **Access Reviews**: Verify clients are accessing only authorized resources
+- ⚠️ **Failed Access Detection**: Identify clients attempting unauthorized operations
 
 #### List Audit Logs
 
+Retrieves audit log entries with pagination support. Results are ordered by ID in descending order (newest first).
+
 ```bash
-GET /v1/audit-logs?limit=100&offset=0
+GET /v1/audit-logs
 ```
 
-**Response:**
+**Authentication:** Required  
+**Authorization:** `ReadCapability` for path `/v1/audit-logs`
+
+**Query Parameters:**
+- `offset` (optional) - Starting position for pagination (default: 0, must be >= 0)
+- `limit` (optional) - Number of logs to return (default: 50, min: 1, max: 100)
+
+**Response (200 OK):**
 ```json
 {
-  "logs": [
+  "audit_logs": [
     {
-      "id": "018d7e95-1a23-7890-bcde-f1234567890a",
-      "actor": "client-id-or-system",
-      "action": "secrets.create",
-      "resource": "/app/production/database-password",
+      "id": "018d7e97-5e67-7890-bcde-f1234567890c",
+      "request_id": "018d7e97-5e66-7890-bcde-f1234567890b",
+      "client_id": "018d7e95-1a23-7890-bcde-f1234567890a",
+      "capability": "decrypt",
+      "path": "/v1/secrets/app/production/database-password",
       "metadata": {
+        "allowed": true,
+        "ip": "192.168.1.100",
+        "user_agent": "python-requests/2.28.1"
+      },
+      "created_at": "2026-02-13T20:15:30Z"
+    },
+    {
+      "id": "018d7e97-4d56-7890-bcde-f1234567890b",
+      "request_id": "018d7e97-4d55-7890-bcde-f1234567890a",
+      "client_id": "018d7e95-1a23-7890-bcde-f1234567890a",
+      "capability": "encrypt",
+      "path": "/v1/secrets/app/production/api-key",
+      "metadata": {
+        "allowed": true,
         "ip": "192.168.1.100",
         "user_agent": "curl/7.68.0"
       },
-      "entry_hash": "sha256-hash",
-      "previous_hash": "sha256-previous-hash",
-      "created_at": "2026-02-02T20:13:45Z"
+      "created_at": "2026-02-13T20:13:45Z"
+    },
+    {
+      "id": "018d7e97-3c45-7890-bcde-f1234567890a",
+      "request_id": "018d7e97-3c44-7890-bcde-f1234567890b",
+      "client_id": "018d7e96-2b34-7890-bcde-f1234567890b",
+      "capability": "write",
+      "path": "/v1/clients",
+      "metadata": {
+        "allowed": true,
+        "ip": "192.168.1.50",
+        "user_agent": "Go-http-client/1.1"
+      },
+      "created_at": "2026-02-13T19:45:20Z"
+    },
+    {
+      "id": "018d7e97-2b34-7890-bcde-f1234567890a",
+      "request_id": "018d7e97-2b33-7890-bcde-f1234567890b",
+      "client_id": "018d7e96-1a23-7890-bcde-f1234567890c",
+      "capability": "read",
+      "path": "/v1/clients/018d7e95-1a23-7890-bcde-f1234567890a",
+      "metadata": {
+        "allowed": false,
+        "ip": "192.168.1.200",
+        "user_agent": "curl/7.68.0"
+      },
+      "created_at": "2026-02-13T19:30:15Z"
     }
-  ],
-  "total": 1234
+  ]
 }
 ```
+
+**Field Descriptions:**
+- `id` - Unique audit log entry ID (UUIDv7, time-ordered)
+- `request_id` - Request ID for distributed tracing (matches `X-Request-Id` response header)
+- `client_id` - ID of the authenticated client that performed the operation
+- `capability` - Capability used for authorization (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`)
+- `path` - Resource path that was accessed (e.g., `/v1/secrets/app/prod/db-password`)
+- `metadata` - Additional context:
+  - `allowed` - Authorization outcome (true = granted, false = denied)
+  - `ip` - Client IP address (extracted via `c.ClientIP()`)
+  - `user_agent` - HTTP User-Agent header
+- `created_at` - Timestamp when the operation occurred (UTC, ISO 8601 format)
+
+**Example - Default Pagination:**
+```bash
+# Get first 50 audit logs (default)
+curl http://localhost:8080/v1/audit-logs \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example - Custom Pagination:**
+```bash
+# Get 20 audit logs starting from offset 10
+curl http://localhost:8080/v1/audit-logs?offset=10&limit=20 \
+  -H "Authorization: Bearer <token>"
+
+# Get next page
+curl http://localhost:8080/v1/audit-logs?offset=30&limit=20 \
+  -H "Authorization: Bearer <token>"
+
+# Get maximum allowed logs per request (100)
+curl http://localhost:8080/v1/audit-logs?offset=0&limit=100 \
+  -H "Authorization: Bearer <token>"
+```
+
+**Example - Filter Failed Authorization Attempts:**
+```bash
+# Get recent logs and filter for denied access (client-side filtering)
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | select(.metadata.allowed == false)'
+```
+
+**Example - Track Specific Client Activity:**
+```bash
+# Get all operations by a specific client (client-side filtering)
+CLIENT_ID="018d7e95-1a23-7890-bcde-f1234567890a"
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq --arg cid "$CLIENT_ID" '.audit_logs[] | select(.client_id == $cid)'
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or missing authentication token
+- `403 Forbidden` - Client lacks `ReadCapability` for `/v1/audit-logs`
+- `422 Unprocessable Entity` - Invalid query parameters:
+  - Negative offset value (e.g., `offset=-1`)
+  - Limit less than 1 or greater than 100 (e.g., `limit=0` or `limit=200`)
+  - Non-numeric offset or limit values (e.g., `offset=abc`)
+
+**Important Notes:**
+- 🔢 **Ordering**: Audit logs are ordered by ID DESC (newest first) using UUIDv7's time-based properties
+- 📄 **Pagination**: Simple offset/limit pagination without total count metadata (for performance)
+- 🔒 **Immutability**: Audit logs cannot be modified or deleted via API (append-only design)
+- 📦 **Empty Results**: Returns `{"audit_logs": []}` when no logs exist (not null)
+- ⚠️ **Limits**: Maximum limit is 100 logs per request to prevent performance degradation
+- 🔍 **Metadata Flexibility**: Metadata structure is consistent but extensible for future enhancements
+- 🌐 **Request Tracing**: Use `request_id` to correlate audit logs with application logs and distributed traces
+- 📊 **Authorization Tracking**: Both successful (`allowed: true`) and failed (`allowed: false`) attempts are logged
+- 🚫 **Non-Blocking**: Audit log creation failures are logged as errors but don't block API responses
+
+**Compliance Considerations:**
+- ✅ **Data Retention**: Audit logs are retained indefinitely for compliance (no automatic deletion)
+- ✅ **Access Control**: Only clients with `ReadCapability` for `/v1/audit-logs` can view logs
+- ✅ **Complete Audit Trail**: All authorization attempts are logged, including denied operations
+- ✅ **Time Accuracy**: All timestamps use UTC for consistent cross-timezone auditing
+- ✅ **Tamper Resistance**: Append-only design prevents modification of historical logs
+- ✅ **Request Correlation**: Request IDs enable end-to-end tracing across systems
+
+**Monitoring & Alerting Use Cases:**
+
+**Detect Failed Authorization Attempts:**
+```bash
+# Monitor for repeated failed access attempts (potential breach)
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | select(.metadata.allowed == false) | {client_id, path, ip: .metadata.ip, time: .created_at}'
+```
+
+**Track High-Privilege Operations:**
+```bash
+# Identify all delete and rotate operations (sensitive capabilities)
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | select(.capability == "delete" or .capability == "rotate")'
+```
+
+**Analyze Access Patterns:**
+```bash
+# Get summary of operations by capability
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq '[.audit_logs[] | .capability] | group_by(.) | map({capability: .[0], count: length})'
+```
+
+**Trace Specific Request:**
+```bash
+# Find all operations related to a specific request ID
+REQUEST_ID="018d7e97-5e66-7890-bcde-f1234567890b"
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq --arg rid "$REQUEST_ID" '.audit_logs[] | select(.request_id == $rid)'
+```
+
+**Security Alert: Detect IP Changes for Client:**
+```bash
+# Identify if a client is accessing from multiple IPs (potential credential theft)
+CLIENT_ID="018d7e95-1a23-7890-bcde-f1234567890a"
+curl -s http://localhost:8080/v1/audit-logs?limit=100 \
+  -H "Authorization: Bearer <token>" | \
+  jq --arg cid "$CLIENT_ID" '[.audit_logs[] | select(.client_id == $cid) | .metadata.ip] | unique'
+```
+
+## 🚧 Planned Features
+
+The following API endpoints are planned but not yet implemented.
 
 ## 🛠️ Development
 

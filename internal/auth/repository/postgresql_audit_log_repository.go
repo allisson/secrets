@@ -54,6 +54,67 @@ func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *aut
 	return nil
 }
 
+// List retrieves audit logs ordered by ID descending (newest first) with pagination.
+// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
+// Handles NULL metadata gracefully by returning nil map for those entries.
+func (p *PostgreSQLAuditLogRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*authDomain.AuditLog, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, request_id, client_id, capability, path, metadata, created_at 
+			  FROM audit_logs 
+			  ORDER BY id DESC 
+			  LIMIT $1 OFFSET $2`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list audit logs")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	// Initialize empty slice to avoid returning nil for empty results
+	auditLogs := make([]*authDomain.AuditLog, 0)
+	for rows.Next() {
+		var auditLog authDomain.AuditLog
+		var metadataJSON []byte
+		var capability string
+
+		err := rows.Scan(
+			&auditLog.ID,
+			&auditLog.RequestID,
+			&auditLog.ClientID,
+			&capability,
+			&auditLog.Path,
+			&metadataJSON,
+			&auditLog.CreatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan audit log")
+		}
+
+		auditLog.Capability = authDomain.Capability(capability)
+
+		// Unmarshal metadata if not NULL
+		if metadataJSON != nil {
+			if err := json.Unmarshal(metadataJSON, &auditLog.Metadata); err != nil {
+				return nil, apperrors.Wrap(err, "failed to unmarshal audit log metadata")
+			}
+		}
+
+		auditLogs = append(auditLogs, &auditLog)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "failed to iterate audit logs")
+	}
+
+	return auditLogs, nil
+}
+
 // NewPostgreSQLAuditLogRepository creates a new PostgreSQL AuditLog repository.
 func NewPostgreSQLAuditLogRepository(db *sql.DB) *PostgreSQLAuditLogRepository {
 	return &PostgreSQLAuditLogRepository{db: db}

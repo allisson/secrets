@@ -43,6 +43,10 @@ type TokenRepository interface {
 
 type AuditLogRepository interface {
 	Create(ctx context.Context, auditLog *authDomain.AuditLog) error
+
+	// List retrieves audit logs ordered by ID descending (newest first) with pagination.
+	// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
+	List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error)
 }
 
 // ClientUseCase defines business logic operations for managing authentication clients.
@@ -109,4 +113,8 @@ type AuditLogUseCase interface {
 		path string,
 		metadata map[string]any,
 	) error
+
+	// List retrieves audit logs ordered by ID descending (newest first) with pagination.
+	// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
+	List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error)
 }
