@@ -328,3 +328,316 @@ func TestMySQLAuditLogRepository_Create_TransactionRollback(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 }
+
+func TestMySQLAuditLogRepository_List_SortingByCreatedAt(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create audit logs with different created_at timestamps
+	now := time.Now().UTC()
+	auditLog1 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.ReadCapability,
+		Path:       "/secrets/oldest",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-2 * time.Hour),
+	}
+	auditLog2 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.WriteCapability,
+		Path:       "/secrets/middle",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-1 * time.Hour),
+	}
+	auditLog3 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.DeleteCapability,
+		Path:       "/secrets/newest",
+		Metadata:   nil,
+		CreatedAt:  now,
+	}
+
+	require.NoError(t, repo.Create(ctx, auditLog1))
+	require.NoError(t, repo.Create(ctx, auditLog2))
+	require.NoError(t, repo.Create(ctx, auditLog3))
+
+	// List all audit logs without filters
+	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, auditLogs, 3)
+
+	// Verify they are sorted by created_at DESC (newest first)
+	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
+	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
+	assert.Equal(t, auditLog1.ID, auditLogs[2].ID)
+}
+
+func TestMySQLAuditLogRepository_List_WithCreatedAtFromFilter(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create audit logs with different timestamps
+	now := time.Now().UTC()
+	auditLog1 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.ReadCapability,
+		Path:       "/secrets/before",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-3 * time.Hour),
+	}
+	auditLog2 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.WriteCapability,
+		Path:       "/secrets/after1",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-1 * time.Hour),
+	}
+	auditLog3 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.DeleteCapability,
+		Path:       "/secrets/after2",
+		Metadata:   nil,
+		CreatedAt:  now,
+	}
+
+	require.NoError(t, repo.Create(ctx, auditLog1))
+	require.NoError(t, repo.Create(ctx, auditLog2))
+	require.NoError(t, repo.Create(ctx, auditLog3))
+
+	// Filter with created_at_from = now - 2 hours (should return 2 logs)
+	createdAtFrom := now.Add(-2 * time.Hour)
+	auditLogs, err := repo.List(ctx, 0, 10, &createdAtFrom, nil)
+	require.NoError(t, err)
+	require.Len(t, auditLogs, 2)
+
+	// Verify only logs after the filter time are returned (newest first)
+	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
+	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
+}
+
+func TestMySQLAuditLogRepository_List_WithCreatedAtToFilter(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create audit logs with different timestamps
+	now := time.Now().UTC()
+	auditLog1 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.ReadCapability,
+		Path:       "/secrets/before1",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-3 * time.Hour),
+	}
+	auditLog2 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.WriteCapability,
+		Path:       "/secrets/before2",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-1 * time.Hour),
+	}
+	auditLog3 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.DeleteCapability,
+		Path:       "/secrets/after",
+		Metadata:   nil,
+		CreatedAt:  now,
+	}
+
+	require.NoError(t, repo.Create(ctx, auditLog1))
+	require.NoError(t, repo.Create(ctx, auditLog2))
+	require.NoError(t, repo.Create(ctx, auditLog3))
+
+	// Filter with created_at_to = now - 30 minutes (should return 2 logs)
+	createdAtTo := now.Add(-30 * time.Minute)
+	auditLogs, err := repo.List(ctx, 0, 10, nil, &createdAtTo)
+	require.NoError(t, err)
+	require.Len(t, auditLogs, 2)
+
+	// Verify only logs before the filter time are returned (newest first)
+	assert.Equal(t, auditLog2.ID, auditLogs[0].ID)
+	assert.Equal(t, auditLog1.ID, auditLogs[1].ID)
+}
+
+func TestMySQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create audit logs with different timestamps
+	now := time.Now().UTC()
+	auditLog1 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.ReadCapability,
+		Path:       "/secrets/before-range",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-5 * time.Hour),
+	}
+	auditLog2 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.WriteCapability,
+		Path:       "/secrets/in-range1",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-3 * time.Hour),
+	}
+	auditLog3 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.DeleteCapability,
+		Path:       "/secrets/in-range2",
+		Metadata:   nil,
+		CreatedAt:  now.Add(-2 * time.Hour),
+	}
+	auditLog4 := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.EncryptCapability,
+		Path:       "/secrets/after-range",
+		Metadata:   nil,
+		CreatedAt:  now,
+	}
+
+	require.NoError(t, repo.Create(ctx, auditLog1))
+	require.NoError(t, repo.Create(ctx, auditLog2))
+	require.NoError(t, repo.Create(ctx, auditLog3))
+	require.NoError(t, repo.Create(ctx, auditLog4))
+
+	// Filter with date range: now - 4 hours to now - 1 hour (should return 2 logs)
+	createdAtFrom := now.Add(-4 * time.Hour)
+	createdAtTo := now.Add(-1 * time.Hour)
+	auditLogs, err := repo.List(ctx, 0, 10, &createdAtFrom, &createdAtTo)
+	require.NoError(t, err)
+	require.Len(t, auditLogs, 2)
+
+	// Verify only logs within the range are returned (newest first)
+	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
+	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
+}
+
+func TestMySQLAuditLogRepository_List_NoFilters(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create multiple audit logs
+	now := time.Now().UTC()
+	for i := 0; i < 5; i++ {
+		auditLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   uuid.Must(uuid.NewV7()),
+			Capability: authDomain.ReadCapability,
+			Path:       "/secrets/test",
+			Metadata:   nil,
+			CreatedAt:  now.Add(time.Duration(-i) * time.Hour),
+		}
+		require.NoError(t, repo.Create(ctx, auditLog))
+	}
+
+	// List all without filters
+	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
+	require.NoError(t, err)
+	assert.Len(t, auditLogs, 5)
+
+	// Verify sorting (newest first)
+	for i := 0; i < len(auditLogs)-1; i++ {
+		assert.True(t, auditLogs[i].CreatedAt.After(auditLogs[i+1].CreatedAt) ||
+			auditLogs[i].CreatedAt.Equal(auditLogs[i+1].CreatedAt))
+	}
+}
+
+func TestMySQLAuditLogRepository_List_EmptyResult(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// List when no audit logs exist
+	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
+	require.NoError(t, err)
+	assert.Len(t, auditLogs, 0)
+	assert.NotNil(t, auditLogs) // Should return empty slice, not nil
+}
+
+func TestMySQLAuditLogRepository_List_Pagination(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create 10 audit logs
+	now := time.Now().UTC()
+	for i := 0; i < 10; i++ {
+		auditLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   uuid.Must(uuid.NewV7()),
+			Capability: authDomain.ReadCapability,
+			Path:       "/secrets/test",
+			Metadata:   nil,
+			CreatedAt:  now.Add(time.Duration(-i) * time.Minute),
+		}
+		require.NoError(t, repo.Create(ctx, auditLog))
+	}
+
+	// First page (limit 3, offset 0)
+	page1, err := repo.List(ctx, 0, 3, nil, nil)
+	require.NoError(t, err)
+	assert.Len(t, page1, 3)
+
+	// Second page (limit 3, offset 3)
+	page2, err := repo.List(ctx, 3, 3, nil, nil)
+	require.NoError(t, err)
+	assert.Len(t, page2, 3)
+
+	// Verify pages don't overlap
+	assert.NotEqual(t, page1[0].ID, page2[0].ID)
+
+	// Verify page2 has older logs than page1
+	assert.True(t, page2[0].CreatedAt.Before(page1[len(page1)-1].CreatedAt))
+}

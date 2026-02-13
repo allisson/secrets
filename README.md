@@ -1253,7 +1253,7 @@ Use case: Enforce separation of duties where different clients handle encryption
 ]
 ```
 
-**Note:** Transit Encryption API (`/v1/transit/*`) is fully implemented and production-ready. Audit Logs API (`/v1/audit-logs`) is planned but not yet implemented (see Planned Features section below).
+**Note:** Transit Encryption API (`/v1/transit/*`) and Audit Logs API (`/v1/audit-logs`) are both fully implemented and production-ready.
 
 ---
 
@@ -2330,7 +2330,7 @@ The Audit Logs API provides immutable, queryable records of all operations perfo
 - 🔍 **Comprehensive Tracking**: Captures request ID, client ID, capability, path, and custom metadata
 - 📊 **Compliance Ready**: Meets requirements for SOC 2, GDPR, HIPAA, and PCI-DSS auditing
 - 🕵️ **Forensic Investigation**: Complete audit trail for security incident analysis
-- ⏱️ **Time-Ordered**: Logs are ordered by ID descending (newest first) using UUIDv7's time-based properties
+- ⏱️ **Time-Ordered**: Logs are ordered by creation timestamp descending (newest first) for precise chronological ordering
 - 🚫 **Non-Blocking**: Audit log failures don't block API operations (logged as errors)
 
 #### Authentication & Authorization
@@ -2374,7 +2374,7 @@ Each audit log entry includes metadata with the following fields:
 
 #### List Audit Logs
 
-Retrieves audit log entries with pagination support. Results are ordered by ID in descending order (newest first).
+Retrieves audit log entries with pagination and optional time-based filtering. Results are ordered by creation timestamp in descending order (newest first).
 
 ```bash
 GET /v1/audit-logs
@@ -2386,6 +2386,8 @@ GET /v1/audit-logs
 **Query Parameters:**
 - `offset` (optional) - Starting position for pagination (default: 0, must be >= 0)
 - `limit` (optional) - Number of logs to return (default: 50, min: 1, max: 100)
+- `created_at_from` (optional) - Filter logs from this timestamp onwards (RFC3339 format, inclusive >=, timezone-aware)
+- `created_at_to` (optional) - Filter logs up to this timestamp (RFC3339 format, inclusive <=, timezone-aware)
 
 **Response (200 OK):**
 ```json
@@ -2481,6 +2483,37 @@ curl http://localhost:8080/v1/audit-logs?offset=0&limit=100 \
   -H "Authorization: Bearer <token>"
 ```
 
+**Example - Time-Based Filtering:**
+```bash
+# Get logs from the last hour (assuming current time is 2026-02-13T21:00:00Z)
+curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T20:00:00Z" \
+  -H "Authorization: Bearer <token>"
+
+# Get logs up to a specific time
+curl "http://localhost:8080/v1/audit-logs?created_at_to=2026-02-13T12:00:00Z" \
+  -H "Authorization: Bearer <token>"
+
+# Get logs within a specific time window (e.g., between 10 AM and 3 PM)
+curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T10:00:00Z&created_at_to=2026-02-13T15:00:00Z" \
+  -H "Authorization: Bearer <token>"
+
+# Time filtering with timezone-aware timestamps (automatically converted to UTC)
+# Example: EST (UTC-5) - queries for 10 AM to 3 PM Eastern Time
+curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T10:00:00-05:00&created_at_to=2026-02-13T15:00:00-05:00" \
+  -H "Authorization: Bearer <token>"
+
+# Combine time filtering with pagination
+curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T00:00:00Z&limit=20&offset=0" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Technical Notes:**
+- RFC3339 format: `YYYY-MM-DDTHH:MM:SSZ` (UTC) or `YYYY-MM-DDTHH:MM:SS±HH:MM` (with timezone offset)
+- All timestamps are automatically converted to UTC for consistent querying
+- Both filters are inclusive: `created_at_from` uses `>=` and `created_at_to` uses `<=`
+- Filters can be used independently (only `from`, only `to`) or together (time range)
+- Performance: Time-based queries use indexed `created_at` column for efficient filtering
+
 **Example - Filter Failed Authorization Attempts:**
 ```bash
 # Get recent logs and filter for denied access (client-side filtering)
@@ -2505,9 +2538,12 @@ curl -s http://localhost:8080/v1/audit-logs?limit=100 \
   - Negative offset value (e.g., `offset=-1`)
   - Limit less than 1 or greater than 100 (e.g., `limit=0` or `limit=200`)
   - Non-numeric offset or limit values (e.g., `offset=abc`)
+  - Invalid RFC3339 timestamp format (e.g., `created_at_from=2026-02-13` or `created_at_from=invalid-date`)
+  - `created_at_from` is after `created_at_to` (e.g., `created_at_from=2026-02-13T15:00:00Z&created_at_to=2026-02-13T10:00:00Z`)
 
 **Important Notes:**
-- 🔢 **Ordering**: Audit logs are ordered by ID DESC (newest first) using UUIDv7's time-based properties
+- 🔢 **Ordering**: Audit logs are ordered by `created_at DESC` (newest first) for precise chronological ordering
+- 🕐 **Time Filtering**: Supports RFC3339 timestamp filtering with automatic timezone conversion to UTC (both filters are inclusive)
 - 📄 **Pagination**: Simple offset/limit pagination without total count metadata (for performance)
 - 🔒 **Immutability**: Audit logs cannot be modified or deleted via API (append-only design)
 - 📦 **Empty Results**: Returns `{"audit_logs": []}` when no logs exist (not null)
@@ -2541,6 +2577,36 @@ curl -s http://localhost:8080/v1/audit-logs?limit=100 \
 curl -s http://localhost:8080/v1/audit-logs?limit=100 \
   -H "Authorization: Bearer <token>" | \
   jq '.audit_logs[] | select(.capability == "delete" or .capability == "rotate")'
+```
+
+**Monitor Recent Failed Authorization Attempts:**
+```bash
+# Show failed access attempts in the last 24 hours
+YESTERDAY=$(date -u -d '24 hours ago' '+%Y-%m-%dT%H:%M:%SZ')  # Linux/macOS
+curl -s "http://localhost:8080/v1/audit-logs?created_at_from=$YESTERDAY&limit=100" \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | select(.metadata.allowed == false) | {client_id, path, ip: .metadata.ip, time: .created_at}'
+
+# Show failed attempts in a specific time window (e.g., during business hours)
+curl -s "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T09:00:00Z&created_at_to=2026-02-13T17:00:00Z" \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | select(.metadata.allowed == false)'
+```
+
+**Audit Specific Time Period:**
+```bash
+# Generate compliance report for a specific date range (e.g., monthly audit)
+curl -s "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-01T00:00:00Z&created_at_to=2026-02-28T23:59:59Z&limit=100" \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | {time: .created_at, client: .client_id, action: .capability, resource: .path, allowed: .metadata.allowed}'
+```
+
+**Detect Unusual After-Hours Activity:**
+```bash
+# Find operations outside business hours (6 PM to 6 AM UTC)
+curl -s "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T18:00:00Z&created_at_to=2026-02-14T06:00:00Z" \
+  -H "Authorization: Bearer <token>" | \
+  jq '.audit_logs[] | {time: .created_at, client: .client_id, capability: .capability, path: .path}'
 ```
 
 **Analyze Access Patterns:**

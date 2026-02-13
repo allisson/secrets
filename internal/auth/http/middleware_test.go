@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -77,8 +78,12 @@ func (m *mockAuditLogUseCase) Create(
 	return args.Error(0)
 }
 
-func (m *mockAuditLogUseCase) List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error) {
-	args := m.Called(ctx, offset, limit)
+func (m *mockAuditLogUseCase) List(
+	ctx context.Context,
+	offset, limit int,
+	createdAtFrom, createdAtTo *time.Time,
+) ([]*authDomain.AuditLog, error) {
+	args := m.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

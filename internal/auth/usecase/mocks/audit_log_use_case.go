@@ -8,6 +8,8 @@ import (
 	domain "github.com/allisson/secrets/internal/auth/domain"
 	mock "github.com/stretchr/testify/mock"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -75,9 +77,9 @@ func (_c *MockAuditLogUseCase_Create_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// List provides a mock function with given fields: ctx, offset, limit
-func (_m *MockAuditLogUseCase) List(ctx context.Context, offset int, limit int) ([]*domain.AuditLog, error) {
-	ret := _m.Called(ctx, offset, limit)
+// List provides a mock function with given fields: ctx, offset, limit, createdAtFrom, createdAtTo
+func (_m *MockAuditLogUseCase) List(ctx context.Context, offset int, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error) {
+	ret := _m.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -85,19 +87,19 @@ func (_m *MockAuditLogUseCase) List(ctx context.Context, offset int, limit int) 
 
 	var r0 []*domain.AuditLog
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain.AuditLog, error)); ok {
-		return rf(ctx, offset, limit)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int, *time.Time, *time.Time) ([]*domain.AuditLog, error)); ok {
+		return rf(ctx, offset, limit, createdAtFrom, createdAtTo)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) []*domain.AuditLog); ok {
-		r0 = rf(ctx, offset, limit)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int, *time.Time, *time.Time) []*domain.AuditLog); ok {
+		r0 = rf(ctx, offset, limit, createdAtFrom, createdAtTo)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*domain.AuditLog)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
-		r1 = rf(ctx, offset, limit)
+	if rf, ok := ret.Get(1).(func(context.Context, int, int, *time.Time, *time.Time) error); ok {
+		r1 = rf(ctx, offset, limit, createdAtFrom, createdAtTo)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -114,13 +116,15 @@ type MockAuditLogUseCase_List_Call struct {
 //   - ctx context.Context
 //   - offset int
 //   - limit int
-func (_e *MockAuditLogUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockAuditLogUseCase_List_Call {
-	return &MockAuditLogUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+//   - createdAtFrom *time.Time
+//   - createdAtTo *time.Time
+func (_e *MockAuditLogUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}, createdAtFrom interface{}, createdAtTo interface{}) *MockAuditLogUseCase_List_Call {
+	return &MockAuditLogUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit, createdAtFrom, createdAtTo)}
 }
 
-func (_c *MockAuditLogUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockAuditLogUseCase_List_Call {
+func (_c *MockAuditLogUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int, createdAtFrom *time.Time, createdAtTo *time.Time)) *MockAuditLogUseCase_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(int))
+		run(args[0].(context.Context), args[1].(int), args[2].(int), args[3].(*time.Time), args[4].(*time.Time))
 	})
 	return _c
 }
@@ -130,7 +134,7 @@ func (_c *MockAuditLogUseCase_List_Call) Return(_a0 []*domain.AuditLog, _a1 erro
 	return _c
 }
 
-func (_c *MockAuditLogUseCase_List_Call) RunAndReturn(run func(context.Context, int, int) ([]*domain.AuditLog, error)) *MockAuditLogUseCase_List_Call {
+func (_c *MockAuditLogUseCase_List_Call) RunAndReturn(run func(context.Context, int, int, *time.Time, *time.Time) ([]*domain.AuditLog, error)) *MockAuditLogUseCase_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
