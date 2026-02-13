@@ -1,39 +1,41 @@
-with-expecter: true
-dir: "{{.InterfaceDir}}/mocks"
-mockname: "Mock{{.InterfaceName}}"
-outpkg: "mocks"
-filename: "{{.InterfaceName | snakecase}}.go"
+dir: '{{.InterfaceDir}}/mocks'
+structname: Mock{{.InterfaceName}}
+filename: mocks.go
+pkgname: mocks
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
-  github.com/allisson/secrets/internal/crypto/usecase:
-    interfaces:
-      KekRepository:
-      KekUseCase:
-  github.com/allisson/secrets/internal/crypto/service:
-    interfaces:
-      KeyManager:
-      AEADManager:
-      AEAD:
-  github.com/allisson/secrets/internal/database:
-    interfaces:
-      TxManager:
-  github.com/allisson/secrets/internal/secrets/usecase:
-    interfaces:
-      DekRepository:
-      SecretRepository:
-      SecretUseCase:
-  github.com/allisson/secrets/internal/transit/usecase:
-    interfaces:
-      DekRepository:
-      TransitKeyRepository:
-      TransitKeyUseCase:
   github.com/allisson/secrets/internal/auth/service:
     interfaces:
-      SecretService:
+      SecretService: {}
   github.com/allisson/secrets/internal/auth/usecase:
     interfaces:
-      ClientRepository:
-      TokenRepository:
-      AuditLogRepository:
-      ClientUseCase:
-      TokenUseCase:
-      AuditLogUseCase:
+      AuditLogRepository: {}
+      AuditLogUseCase: {}
+      ClientRepository: {}
+      ClientUseCase: {}
+      TokenRepository: {}
+      TokenUseCase: {}
+  github.com/allisson/secrets/internal/crypto/service:
+    interfaces:
+      AEAD: {}
+      AEADManager: {}
+      KeyManager: {}
+  github.com/allisson/secrets/internal/crypto/usecase:
+    interfaces:
+      KekRepository: {}
+      KekUseCase: {}
+  github.com/allisson/secrets/internal/database:
+    interfaces:
+      TxManager: {}
+  github.com/allisson/secrets/internal/secrets/usecase:
+    interfaces:
+      DekRepository: {}
+      SecretRepository: {}
+      SecretUseCase: {}
+  github.com/allisson/secrets/internal/transit/usecase:
+    interfaces:
+      DekRepository: {}
+      TransitKeyRepository: {}
+      TransitKeyUseCase: {}

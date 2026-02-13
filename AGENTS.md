@@ -47,6 +47,9 @@ make test-db-down       # Stop and remove test containers
 
 # View coverage report
 make test-coverage      # Opens HTML coverage report in browser
+
+# Regenerate mock implementations
+make mocks              # Regenerates all mocks using mockery v3
 ```
 
 ### Running a Single Test
@@ -283,9 +286,9 @@ t.Run("Success_CreateKekWithAESGCM", func(t *testing.T) { ... })
 t.Run("Error_MasterKeyNotFound", func(t *testing.T) { ... })
 ```
 
-**Mocks**: Generate using mockery (.mockery.yaml configuration):
+**Mocks**: Generate using mockery v3 (.mockery.yaml configuration):
 ```bash
-go generate ./...
+make mocks
 ```
 
 **Test Structure**:
@@ -752,7 +755,7 @@ internal/auth/http/
 
 2. **Mock Organization:**
    - Manual mocks go in `mocks/` subdirectory (e.g., `mocks/token_usecase.go`)
-   - Generated mocks (via mockery) go in `usecase/mocks/` per .mockery.yaml configuration
+   - Generated mocks (via mockery v3) are consolidated in `mocks/mocks.go` per package
    - Keep manual and generated mocks separate to avoid conflicts
 
 **Example Handler Structure:**
