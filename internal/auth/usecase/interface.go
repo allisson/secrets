@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -44,9 +45,15 @@ type TokenRepository interface {
 type AuditLogRepository interface {
 	Create(ctx context.Context, auditLog *authDomain.AuditLog) error
 
-	// List retrieves audit logs ordered by ID descending (newest first) with pagination.
-	// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
-	List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error)
+	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
+	// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional
+	// filters (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps
+	// are expected in UTC. Returns empty slice if no audit logs found.
+	List(
+		ctx context.Context,
+		offset, limit int,
+		createdAtFrom, createdAtTo *time.Time,
+	) ([]*authDomain.AuditLog, error)
 }
 
 // ClientUseCase defines business logic operations for managing authentication clients.
@@ -114,7 +121,13 @@ type AuditLogUseCase interface {
 		metadata map[string]any,
 	) error
 
-	// List retrieves audit logs ordered by ID descending (newest first) with pagination.
-	// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
-	List(ctx context.Context, offset, limit int) ([]*authDomain.AuditLog, error)
+	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
+	// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional
+	// filters (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps
+	// are expected in UTC. Returns empty slice if no audit logs found.
+	List(
+		ctx context.Context,
+		offset, limit int,
+		createdAtFrom, createdAtTo *time.Time,
+	) ([]*authDomain.AuditLog, error)
 }

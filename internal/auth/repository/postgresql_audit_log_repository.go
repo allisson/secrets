@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/database"
@@ -54,21 +57,49 @@ func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *aut
 	return nil
 }
 
-// List retrieves audit logs ordered by ID descending (newest first) with pagination.
-// Uses offset and limit for pagination control. Returns empty slice if no audit logs found.
-// Handles NULL metadata gracefully by returning nil map for those entries.
+// List retrieves audit logs ordered by created_at descending (newest first) with pagination
+// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional filters
+// (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps are expected
+// in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
+// returning nil map for those entries.
 func (p *PostgreSQLAuditLogRepository) List(
 	ctx context.Context,
 	offset, limit int,
+	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, request_id, client_id, capability, path, metadata, created_at 
-			  FROM audit_logs 
-			  ORDER BY id DESC 
-			  LIMIT $1 OFFSET $2`
+	// Build dynamic WHERE clause based on provided filters
+	var conditions []string
+	var args []interface{}
+	paramIndex := 1
 
-	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if createdAtFrom != nil {
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", paramIndex))
+		args = append(args, *createdAtFrom)
+		paramIndex++
+	}
+
+	if createdAtTo != nil {
+		conditions = append(conditions, fmt.Sprintf("created_at <= $%d", paramIndex))
+		args = append(args, *createdAtTo)
+		paramIndex++
+	}
+
+	// Build query
+	query := `SELECT id, request_id, client_id, capability, path, metadata, created_at 
+			  FROM audit_logs`
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", paramIndex, paramIndex+1)
+
+	// Add limit and offset to args
+	args = append(args, limit, offset)
+
+	rows, err := querier.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list audit logs")
 	}

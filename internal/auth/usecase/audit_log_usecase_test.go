@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -25,8 +26,9 @@ func (m *mockAuditLogRepository) Create(ctx context.Context, auditLog *authDomai
 func (m *mockAuditLogRepository) List(
 	ctx context.Context,
 	offset, limit int,
+	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
-	args := m.Called(ctx, offset, limit)
+	args := m.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -305,6 +307,197 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, complexMetadata, capturedAuditLog.Metadata, "complex metadata should be preserved")
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuditLogUseCase_List(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListWithoutFilters", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		expectedAuditLogs := []*authDomain.AuditLog{
+			{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   uuid.Must(uuid.NewV7()),
+				Capability: authDomain.ReadCapability,
+				Path:       "/secrets/test",
+				Metadata:   nil,
+				CreatedAt:  time.Now().UTC(),
+			},
+		}
+
+		mockRepo.On("List", ctx, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedAuditLogs, auditLogs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithCreatedAtFromFilter", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		now := time.Now().UTC()
+		createdAtFrom := now.Add(-1 * time.Hour)
+
+		expectedAuditLogs := []*authDomain.AuditLog{
+			{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   uuid.Must(uuid.NewV7()),
+				Capability: authDomain.WriteCapability,
+				Path:       "/secrets/recent",
+				Metadata:   nil,
+				CreatedAt:  now,
+			},
+		}
+
+		mockRepo.On("List", ctx, 0, 50, &createdAtFrom, (*time.Time)(nil)).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, &createdAtFrom, nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedAuditLogs, auditLogs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithCreatedAtToFilter", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		now := time.Now().UTC()
+		createdAtTo := now.Add(-1 * time.Hour)
+
+		expectedAuditLogs := []*authDomain.AuditLog{
+			{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   uuid.Must(uuid.NewV7()),
+				Capability: authDomain.DeleteCapability,
+				Path:       "/secrets/old",
+				Metadata:   nil,
+				CreatedAt:  now.Add(-2 * time.Hour),
+			},
+		}
+
+		mockRepo.On("List", ctx, 0, 50, (*time.Time)(nil), &createdAtTo).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, nil, &createdAtTo)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedAuditLogs, auditLogs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithBothFilters", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		now := time.Now().UTC()
+		createdAtFrom := now.Add(-3 * time.Hour)
+		createdAtTo := now.Add(-1 * time.Hour)
+
+		expectedAuditLogs := []*authDomain.AuditLog{
+			{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   uuid.Must(uuid.NewV7()),
+				Capability: authDomain.EncryptCapability,
+				Path:       "/secrets/range",
+				Metadata:   nil,
+				CreatedAt:  now.Add(-2 * time.Hour),
+			},
+		}
+
+		mockRepo.On("List", ctx, 0, 50, &createdAtFrom, &createdAtTo).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, &createdAtFrom, &createdAtTo)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedAuditLogs, auditLogs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListEmptyResult", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		expectedAuditLogs := []*authDomain.AuditLog{}
+
+		mockRepo.On("List", ctx, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
+
+		assert.NoError(t, err)
+		assert.Len(t, auditLogs, 0)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithPagination", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		expectedAuditLogs := []*authDomain.AuditLog{
+			{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   uuid.Must(uuid.NewV7()),
+				Capability: authDomain.ReadCapability,
+				Path:       "/secrets/page2",
+				Metadata:   nil,
+				CreatedAt:  time.Now().UTC(),
+			},
+		}
+
+		mockRepo.On("List", ctx, 10, 25, (*time.Time)(nil), (*time.Time)(nil)).
+			Return(expectedAuditLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 10, 25, nil, nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedAuditLogs, auditLogs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error_RepositoryFailure", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		repositoryErr := errors.New("database connection failed")
+		mockRepo.On("List", ctx, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			Return(nil, repositoryErr).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
+
+		assert.Error(t, err)
+		assert.Nil(t, auditLogs)
+		assert.Contains(t, err.Error(), "failed to list audit logs")
+		assert.Contains(t, err.Error(), "database connection failed")
 		mockRepo.AssertExpectations(t)
 	})
 }
