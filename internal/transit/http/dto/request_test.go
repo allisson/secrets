@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -116,7 +117,17 @@ func TestRotateTransitKeyRequest_Validate(t *testing.T) {
 func TestEncryptRequest_Validate(t *testing.T) {
 	t.Run("Success_ValidRequest", func(t *testing.T) {
 		req := EncryptRequest{
-			Plaintext: []byte("my secret data"),
+			Plaintext: base64.StdEncoding.EncodeToString([]byte("my secret data")),
+		}
+
+		err := req.Validate()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Success_BinaryData", func(t *testing.T) {
+		binaryData := []byte{0x00, 0xFF, 0xAB, 0xCD, 0xEF}
+		req := EncryptRequest{
+			Plaintext: base64.StdEncoding.EncodeToString(binaryData),
 		}
 
 		err := req.Validate()
@@ -125,16 +136,25 @@ func TestEncryptRequest_Validate(t *testing.T) {
 
 	t.Run("Error_EmptyPlaintext", func(t *testing.T) {
 		req := EncryptRequest{
-			Plaintext: []byte{},
+			Plaintext: "",
 		}
 
 		err := req.Validate()
 		assert.Error(t, err)
 	})
 
-	t.Run("Error_NilPlaintext", func(t *testing.T) {
+	t.Run("Error_InvalidBase64", func(t *testing.T) {
 		req := EncryptRequest{
-			Plaintext: nil,
+			Plaintext: "not-valid-base64!@#$",
+		}
+
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_BlankString", func(t *testing.T) {
+		req := EncryptRequest{
+			Plaintext: "   ",
 		}
 
 		err := req.Validate()

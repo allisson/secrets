@@ -2,6 +2,7 @@
 package dto
 
 import (
+	"encoding/base64"
 	"time"
 
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
@@ -36,6 +37,14 @@ type EncryptResponse struct {
 // DecryptResponse contains the result of a decryption operation.
 // SECURITY: The Plaintext field contains sensitive data and should be transmitted over HTTPS.
 type DecryptResponse struct {
-	Plaintext []byte `json:"plaintext"`
+	Plaintext string `json:"plaintext"` // Base64-encoded plaintext
 	Version   uint   `json:"version"`
+}
+
+// MapDecryptResponse converts plaintext bytes and version to an API response.
+func MapDecryptResponse(plaintext []byte, version uint) DecryptResponse {
+	return DecryptResponse{
+		Plaintext: base64.StdEncoding.EncodeToString(plaintext),
+		Version:   version,
+	}
 }

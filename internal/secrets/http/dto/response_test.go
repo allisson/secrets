@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -70,8 +71,17 @@ func TestMapSecretToGetResponse(t *testing.T) {
 		assert.Equal(t, secretID.String(), response.ID)
 		assert.Equal(t, "database/password", response.Path)
 		assert.Equal(t, uint(1), response.Version)
-		assert.Equal(t, plaintext, response.Value) // Value should be included
+		assert.Equal(
+			t,
+			base64.StdEncoding.EncodeToString(plaintext),
+			response.Value,
+		) // Value should be base64-encoded
 		assert.Equal(t, now, response.CreatedAt)
+
+		// Verify we can decode it back
+		decoded, err := base64.StdEncoding.DecodeString(response.Value)
+		assert.NoError(t, err)
+		assert.Equal(t, plaintext, decoded)
 	})
 
 	t.Run("Success_EmptyPlaintext", func(t *testing.T) {
@@ -107,7 +117,37 @@ func TestMapSecretToGetResponse(t *testing.T) {
 
 		response := MapSecretToGetResponse(secret)
 
-		assert.Equal(t, plaintext, response.Value)
-		assert.Len(t, response.Value, 10000)
+		expectedBase64 := base64.StdEncoding.EncodeToString(plaintext)
+		assert.Equal(t, expectedBase64, response.Value)
+
+		// Verify decoding
+		decoded, err := base64.StdEncoding.DecodeString(response.Value)
+		assert.NoError(t, err)
+		assert.Len(t, decoded, 10000)
+		assert.Equal(t, plaintext, decoded)
+	})
+
+	t.Run("Success_BinaryData", func(t *testing.T) {
+		secretID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+		binaryData := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD}
+
+		secret := &secretsDomain.Secret{
+			ID:        secretID,
+			Path:      "binary/secret",
+			Version:   1,
+			Plaintext: binaryData,
+			CreatedAt: now,
+		}
+
+		response := MapSecretToGetResponse(secret)
+
+		expectedBase64 := base64.StdEncoding.EncodeToString(binaryData)
+		assert.Equal(t, expectedBase64, response.Value)
+
+		// Verify decoding preserves binary data
+		decoded, err := base64.StdEncoding.DecodeString(response.Value)
+		assert.NoError(t, err)
+		assert.Equal(t, binaryData, decoded)
 	})
 }

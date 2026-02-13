@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -65,15 +66,33 @@ func TestEncryptResponse(t *testing.T) {
 }
 
 func TestDecryptResponse(t *testing.T) {
-	t.Run("Success_CreateResponse", func(t *testing.T) {
+	t.Run("Success_MapPlaintextToBase64", func(t *testing.T) {
 		plaintext := []byte("my secret data")
+		version := uint(1)
 
-		response := DecryptResponse{
-			Plaintext: plaintext,
-			Version:   1,
-		}
+		response := MapDecryptResponse(plaintext, version)
 
-		assert.Equal(t, plaintext, response.Plaintext)
-		assert.Equal(t, uint(1), response.Version)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(plaintext), response.Plaintext)
+		assert.Equal(t, version, response.Version)
+	})
+
+	t.Run("Success_EmptyPlaintext", func(t *testing.T) {
+		plaintext := []byte{}
+		version := uint(2)
+
+		response := MapDecryptResponse(plaintext, version)
+
+		assert.Equal(t, base64.StdEncoding.EncodeToString(plaintext), response.Plaintext)
+		assert.Equal(t, version, response.Version)
+	})
+
+	t.Run("Success_BinaryData", func(t *testing.T) {
+		plaintext := []byte{0x00, 0xFF, 0xAB, 0xCD, 0xEF}
+		version := uint(3)
+
+		response := MapDecryptResponse(plaintext, version)
+
+		assert.Equal(t, base64.StdEncoding.EncodeToString(plaintext), response.Plaintext)
+		assert.Equal(t, version, response.Version)
 	})
 }

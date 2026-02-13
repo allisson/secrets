@@ -365,10 +365,11 @@ curl -X POST http://localhost:8080/v1/token \
 # Save the token from the response
 
 # Create your first secret (use the token from previous step)
+# Note: value must be base64-encoded
 curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
   -H "Authorization: Bearer <token-from-previous-step>" \
   -H "Content-Type: application/json" \
-  -d '{"value":"my-super-secret-password"}'
+  -d '{"value":"bXktc3VwZXItc2VjcmV0LXBhc3N3b3Jk"}'
 
 # Retrieve the secret
 curl http://localhost:8080/v1/secrets/app/production/database-password \
@@ -385,13 +386,14 @@ curl -X POST http://localhost:8080/v1/transit/keys \
   }'
 
 # Encrypt data (server does NOT store the data)
+# Note: plaintext must be base64-encoded
 curl -X POST http://localhost:8080/v1/transit/keys/my-app-encryption/encrypt \
   -H "Authorization: Bearer <token-from-previous-step>" \
   -H "Content-Type: application/json" \
   -d '{"plaintext":"c2Vuc2l0aXZlLWRhdGE="}'
 # Save the ciphertext from response (format: "1:base64...")
 
-# Decrypt data
+# Decrypt data (returns base64-encoded plaintext)
 curl -X POST http://localhost:8080/v1/transit/keys/my-app-encryption/decrypt \
   -H "Authorization: Bearer <token-from-previous-step>" \
   -H "Content-Type: application/json" \
@@ -1161,6 +1163,36 @@ Use case: Enforce separation of duties where different clients handle encryption
 
 **Note:** Transit Encryption API (`/v1/transit/*`) is fully implemented and production-ready. Audit Logs API (`/v1/audit-logs`) is planned but not yet implemented (see Planned Features section below).
 
+---
+
+## 📡 API Reference
+
+### 🚨 Breaking Change: Base64 Encoding Required
+
+**IMPORTANT:** All plaintext data in API requests and responses must now be base64-encoded:
+
+**Secrets Management:**
+- `POST /v1/secrets/*path` - Request `value` field must be base64-encoded
+- `GET /v1/secrets/*path` - Response `value` field is base64-encoded
+
+**Transit Encryption:**
+- `POST /v1/transit/keys/:name/encrypt` - Request `plaintext` field must be base64-encoded
+- `POST /v1/transit/keys/:name/decrypt` - Response `plaintext` field is base64-encoded
+
+**Migration Example:**
+```bash
+# Old API (no longer works):
+curl -d '{"value":"my-secret"}' ...
+
+# New API (base64-encoded):
+echo -n "my-secret" | base64  # Output: bXktc2VjcmV0
+curl -d '{"value":"bXktc2VjcmV0"}' ...
+```
+
+This change improves binary data handling and ensures consistent encoding across all endpoints.
+
+---
+
 ### 📦 Secrets Management
 
 The Secrets Management API provides secure storage and retrieval of sensitive data using envelope encryption. All endpoints require authentication and appropriate capabilities.
@@ -1197,13 +1229,13 @@ POST /v1/secrets/*path
 **Request Body:**
 ```json
 {
-  "value": "my-secret-value"
+  "value": "bXktc2VjcmV0LXZhbHVl"
 }
 ```
 
 **Notes:**
 - The secret path is part of the URL (e.g., `/v1/secrets/app/production/db-password`)
-- The `value` field contains the plaintext secret to be encrypted
+- The `value` field MUST be base64-encoded
 - First creation sets version to 1
 - Subsequent updates create new versions (2, 3, 4...)
 - Each version is encrypted with its own Data Encryption Key (DEK)
@@ -1222,21 +1254,29 @@ POST /v1/secrets/*path
 
 **Example - Create New Secret:**
 ```bash
+# First, base64-encode your secret
+echo -n "super-secret-password-v1" | base64
+# Output: c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYx
+
 curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "value": "super-secret-password-v1"
+    "value": "c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYx"
   }'
 ```
 
 **Example - Update Existing Secret (Creates Version 2):**
 ```bash
+# Base64-encode the new value
+echo -n "super-secret-password-v2" | base64
+# Output: c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYy
+
 curl -X POST http://localhost:8080/v1/secrets/app/production/database-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "value": "super-secret-password-v2"
+    "value": "c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYy"
   }'
 ```
 
@@ -1280,18 +1320,25 @@ GET /v1/secrets/*path?version=N
 {
   "id": "018d7e96-4d56-7890-bcde-f1234567890b",
   "path": "app/production/database-password",
-  "value": "super-secret-password-v2",
+  "value": "c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYy",
   "version": 2,
   "created_at": "2026-02-12T21:30:15Z"
 }
 ```
 
-**Security Note:** The `value` field contains the plaintext secret. Handle with extreme care.
+**Security Note:** The `value` field contains the base64-encoded plaintext secret. Decode and handle with extreme care.
 
 **Example - Get Latest Version:**
 ```bash
 curl http://localhost:8080/v1/secrets/app/production/database-password \
   -H "Authorization: Bearer <token>"
+
+# Response includes base64-encoded value:
+# {"id":"...","path":"...","value":"c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYy","version":2,"created_at":"..."}
+
+# Decode the value:
+echo "c3VwZXItc2VjcmV0LXBhc3N3b3JkLXYy" | base64 -d
+# Output: super-secret-password-v2
 ```
 
 **Example - Get Specific Version:**
@@ -1407,11 +1454,10 @@ Transit encryption uses a versioned ciphertext format that enables transparent k
 
 #### 📦 Binary Data Handling
 
-**JSON Encoding Rules:**
-- Go's `json.Marshal` automatically base64-encodes `[]byte` fields
-- Plaintext and ciphertext are transmitted as base64 strings in JSON
-- Client applications must base64-encode binary data before sending
-- Client applications must base64-decode after receiving
+**All plaintext data MUST be base64-encoded before sending to the API:**
+- Request `plaintext` fields require base64 encoding
+- Response `plaintext` fields are base64 encoded
+- Ciphertext is already in versioned format: `"version:base64"`
 
 **Examples:**
 
@@ -1420,11 +1466,22 @@ Transit encryption uses a versioned ciphertext format that enables transparent k
 # Plain text "hello world"
 echo -n "hello world" | base64  # Output: aGVsbG8gd29ybGQ=
 
-# Send to API
+# Send to API (plaintext must be base64-encoded)
 curl -X POST http://localhost:8080/v1/transit/keys/mykey/encrypt \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"plaintext":"aGVsbG8gd29ybGQ="}'
+
+# Response: {"ciphertext":"1:ZXhhbXBsZS1jaXBoZXJ0ZXh0","version":1}
+
+# Decrypt (response plaintext is base64-encoded)
+curl -X POST http://localhost:8080/v1/transit/keys/mykey/decrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"ciphertext":"1:ZXhhbXBsZS1jaXBoZXJ0ZXh0"}'
+
+# Response: {"plaintext":"aGVsbG8gd29ybGQ=","version":1}
+# Decode: echo "aGVsbG8gd29ybGQ=" | base64 -d  # Output: hello world
 ```
 
 **Binary Data:**
@@ -1621,7 +1678,7 @@ POST /v1/transit/keys/:name/encrypt
 ```
 
 **Fields:**
-- `plaintext` (required) - Base64-encoded data to encrypt (Go automatically base64-encodes `[]byte` in JSON)
+- `plaintext` (required) - Base64-encoded data to encrypt
 
 **Response (200 OK):**
 ```json
@@ -1637,6 +1694,10 @@ POST /v1/transit/keys/:name/encrypt
 
 **Example - Text Data:**
 ```bash
+# First, base64-encode your plaintext
+echo -n "sensitive-data" | base64
+# Output: c2Vuc2l0aXZlLWRhdGE=
+
 # Encrypt text "sensitive-data"
 curl -X POST http://localhost:8080/v1/transit/keys/user-pii-encryption/encrypt \
   -H "Authorization: Bearer <token>" \
@@ -1644,6 +1705,8 @@ curl -X POST http://localhost:8080/v1/transit/keys/user-pii-encryption/encrypt \
   -d '{
     "plaintext": "c2Vuc2l0aXZlLWRhdGE="
   }'
+
+# Response: {"ciphertext":"1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA==","version":1}
 ```
 
 **Example - Binary Data:**
@@ -1709,7 +1772,7 @@ POST /v1/transit/keys/:name/decrypt
 ```
 
 **Fields:**
-- `plaintext` - Base64-encoded decrypted data (Go automatically base64-encodes `[]byte` in JSON)
+- `plaintext` - Base64-encoded decrypted data
 - `version` - Transit key version used for decryption (extracted from ciphertext prefix)
 
 **Example - Text Data:**
@@ -1722,8 +1785,10 @@ curl -X POST http://localhost:8080/v1/transit/keys/user-pii-encryption/decrypt \
     "ciphertext": "1:ZW5jcnlwdGVkLWRhdGEtd2l0aC1ub25jZS1hbmQtYXV0aA=="
   }'
 
+# Response: {"plaintext":"c2Vuc2l0aXZlLWRhdGE=","version":1}
+
 # Decode the base64 plaintext
-echo "aGVsbG8gd29ybGQ=" | base64 --decode  # Output: hello world
+echo "c2Vuc2l0aXZlLWRhdGE=" | base64 -d  # Output: sensitive-data
 ```
 
 **Example - Binary Data:**

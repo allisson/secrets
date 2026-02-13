@@ -3,12 +3,14 @@ package dto
 
 import (
 	validation "github.com/jellydator/validation"
+
+	customValidation "github.com/allisson/secrets/internal/validation"
 )
 
 // CreateOrUpdateSecretRequest contains the parameters for creating or updating a secret.
 // The path is extracted from the URL parameter, not the request body.
 type CreateOrUpdateSecretRequest struct {
-	Value []byte `json:"value" binding:"required"`
+	Value string `json:"value" binding:"required"` // base64-encoded plaintext
 }
 
 // Validate checks if the create or update secret request is valid.
@@ -16,7 +18,8 @@ func (r *CreateOrUpdateSecretRequest) Validate() error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Value,
 			validation.Required,
-			validation.Length(1, 0), // At least 1 byte
+			customValidation.NotBlank,
+			customValidation.Base64,
 		),
 	)
 }
