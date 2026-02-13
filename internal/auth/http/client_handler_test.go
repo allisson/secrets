@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -477,5 +478,201 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, "not_found", response["error"])
+	})
+}
+
+func TestClientHandler_ListHandler(t *testing.T) {
+	t.Run("Success_DefaultPagination", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		client1ID := uuid.Must(uuid.NewV7())
+		client2ID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+
+		expectedClients := []*authDomain.Client{
+			{
+				ID:       client1ID,
+				Secret:   "hashed-secret-1",
+				Name:     "Client 1",
+				IsActive: true,
+				Policies: []authDomain.PolicyDocument{
+					{
+						Path:         "/v1/secrets/*",
+						Capabilities: []authDomain.Capability{authDomain.ReadCapability},
+					},
+				},
+				CreatedAt: now,
+			},
+			{
+				ID:        client2ID,
+				Secret:    "hashed-secret-2",
+				Name:      "Client 2",
+				IsActive:  false,
+				Policies:  []authDomain.PolicyDocument{},
+				CreatedAt: now.Add(-time.Hour),
+			},
+		}
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 50).
+			Return(expectedClients, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListClientsResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Clients, 2)
+		assert.Equal(t, client1ID.String(), response.Clients[0].ID)
+		assert.Equal(t, "Client 1", response.Clients[0].Name)
+		assert.True(t, response.Clients[0].IsActive)
+		assert.Equal(t, client2ID.String(), response.Clients[1].ID)
+		assert.Equal(t, "Client 2", response.Clients[1].Name)
+		assert.False(t, response.Clients[1].IsActive)
+	})
+
+	t.Run("Success_CustomPagination", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		expectedClients := []*authDomain.Client{}
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 10, 20).
+			Return(expectedClients, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?offset=10&limit=20", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListClientsResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Empty(t, response.Clients)
+		assert.NotNil(t, response.Clients)
+	})
+
+	t.Run("Success_EmptyList", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 50).
+			Return([]*authDomain.Client{}, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListClientsResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Empty(t, response.Clients)
+	})
+
+	t.Run("Error_InvalidOffset_Negative", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?offset=-1", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidOffset_NonNumeric", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?offset=abc", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidLimit_Zero", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=0", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidLimit_ExceedsMax", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=101", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidLimit_NonNumeric", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=xyz", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_UseCaseError", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		expectedErr := errors.New("database error")
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 50).
+			Return(nil, expectedErr).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "internal_error", response["error"])
 	})
 }

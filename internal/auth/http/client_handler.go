@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -174,4 +175,40 @@ func (h *ClientHandler) DeleteHandler(c *gin.Context) {
 
 	// Return 204 No Content with empty body
 	c.Data(http.StatusNoContent, "application/json", nil)
+}
+
+// ListHandler retrieves clients with pagination support.
+// GET /v1/clients?offset=0&limit=50 - Requires ReadCapability on path /v1/clients.
+// Returns 200 OK with paginated client list.
+func (h *ClientHandler) ListHandler(c *gin.Context) {
+	// Parse offset query parameter (default: 0)
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		httputil.HandleValidationErrorGin(c,
+			fmt.Errorf("invalid offset parameter: must be a non-negative integer"),
+			h.logger)
+		return
+	}
+
+	// Parse limit query parameter (default: 50, max: 100)
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		httputil.HandleValidationErrorGin(c,
+			fmt.Errorf("invalid limit parameter: must be between 1 and 100"),
+			h.logger)
+		return
+	}
+
+	// Call use case
+	clients, err := h.clientUseCase.List(c.Request.Context(), offset, limit)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Map to response
+	response := dto.MapClientsToListResponse(clients)
+	c.JSON(http.StatusOK, response)
 }

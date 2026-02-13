@@ -20,6 +20,10 @@ type ClientRepository interface {
 
 	// Get retrieves a client by ID. Returns ErrClientNotFound if not found.
 	Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error)
+
+	// List retrieves clients ordered by ID descending (newest first) with pagination.
+	// Uses offset and limit for pagination control. Returns empty slice if no clients found.
+	List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error)
 }
 
 // TokenRepository defines persistence operations for authentication tokens.
@@ -74,6 +78,10 @@ type ClientUseCase interface {
 	//
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error)
+
+	// List retrieves clients ordered by ID descending (newest first) with pagination.
+	// Uses offset and limit for pagination control. Returns empty slice if no clients found.
+	List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error)
 
 	// Delete performs a soft delete by setting IsActive to false, preventing authentication
 	// while preserving the client record for audit purposes. The client's data remains in

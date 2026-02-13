@@ -138,6 +138,65 @@ func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*a
 	return &client, nil
 }
 
+// List retrieves clients ordered by ID descending with pagination support using BINARY(16)
+// for UUIDs. Uses transaction support via database.GetTx(). Returns empty slice if no clients
+// found, or an error if UUID/policy unmarshaling or database query fails.
+func (m *MySQLClientRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*authDomain.Client, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, secret, name, is_active, policies, created_at 
+			  FROM clients 
+			  ORDER BY id DESC 
+			  LIMIT ? OFFSET ?`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list clients")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	// Initialize empty slice to avoid returning nil for empty results
+	clients := make([]*authDomain.Client, 0)
+	for rows.Next() {
+		var client authDomain.Client
+		var idBytes []byte
+		var policiesJSON []byte
+
+		err := rows.Scan(
+			&idBytes,
+			&client.Secret,
+			&client.Name,
+			&client.IsActive,
+			&policiesJSON,
+			&client.CreatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan client row")
+		}
+
+		if err := client.ID.UnmarshalBinary(idBytes); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal client id")
+		}
+
+		if err := json.Unmarshal(policiesJSON, &client.Policies); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal client policies")
+		}
+
+		clients = append(clients, &client)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating client rows")
+	}
+
+	return clients, nil
+}
+
 // NewMySQLClientRepository creates a new MySQL Client repository.
 func NewMySQLClientRepository(db *sql.DB) *MySQLClientRepository {
 	return &MySQLClientRepository{db: db}
