@@ -50,7 +50,7 @@ func (r *RotateTransitKeyRequest) Validate() error {
 
 // EncryptRequest contains the parameters for encrypting data.
 type EncryptRequest struct {
-	Plaintext []byte `json:"plaintext"`
+	Plaintext string `json:"plaintext"` // Base64-encoded plaintext
 }
 
 // Validate checks if the encrypt request is valid.
@@ -58,7 +58,8 @@ func (r *EncryptRequest) Validate() error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Plaintext,
 			validation.Required,
-			validation.Length(1, 0), // At least 1 byte
+			customValidation.NotBlank,
+			customValidation.Base64,
 		),
 	)
 }

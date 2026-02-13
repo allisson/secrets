@@ -3,6 +3,7 @@
 package http
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -70,8 +71,19 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case
-	secret, err := h.secretUseCase.CreateOrUpdate(c.Request.Context(), path, req.Value)
+	// Decode base64 value
+	value, err := base64.StdEncoding.DecodeString(req.Value)
+	if err != nil {
+		httputil.HandleValidationErrorGin(
+			c,
+			fmt.Errorf("invalid base64 value: %w", err),
+			h.logger,
+		)
+		return
+	}
+
+	// Call use case with decoded bytes
+	secret, err := h.secretUseCase.CreateOrUpdate(c.Request.Context(), path, value)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return

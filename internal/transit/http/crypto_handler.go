@@ -2,6 +2,7 @@
 package http
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -67,8 +68,15 @@ func (h *CryptoHandler) EncryptHandler(c *gin.Context) {
 		return
 	}
 
+	// Decode base64 plaintext
+	plaintext, err := base64.StdEncoding.DecodeString(req.Plaintext)
+	if err != nil {
+		httputil.HandleValidationErrorGin(c, fmt.Errorf("invalid base64 plaintext: %w", err), h.logger)
+		return
+	}
+
 	// Call use case
-	encryptedBlob, err := h.transitKeyUseCase.Encrypt(c.Request.Context(), name, req.Plaintext)
+	encryptedBlob, err := h.transitKeyUseCase.Encrypt(c.Request.Context(), name, plaintext)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
@@ -128,10 +136,7 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 	// SECURITY: Zero plaintext after mapping to response
 	defer cryptoDomain.Zero(decryptedBlob.Plaintext)
 
-	// Return response with plaintext
-	response := dto.DecryptResponse{
-		Plaintext: decryptedBlob.Plaintext,
-		Version:   decryptedBlob.Version,
-	}
+	// Return response with base64-encoded plaintext
+	response := dto.MapDecryptResponse(decryptedBlob.Plaintext, decryptedBlob.Version)
 	c.JSON(http.StatusOK, response)
 }

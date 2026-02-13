@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,7 +46,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		now := time.Now().UTC()
 
 		request := dto.CreateOrUpdateSecretRequest{
-			Value: value,
+			Value: base64.StdEncoding.EncodeToString(value),
 		}
 
 		expectedSecret := &secretsDomain.Secret{
@@ -85,7 +86,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		now := time.Now().UTC()
 
 		request := dto.CreateOrUpdateSecretRequest{
-			Value: value,
+			Value: base64.StdEncoding.EncodeToString(value),
 		}
 
 		expectedSecret := &secretsDomain.Secret{
@@ -135,7 +136,27 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateOrUpdateSecretRequest{
-			Value: []byte{},
+			Value: "",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/secrets/database/password", request)
+		c.Params = gin.Params{{Key: "path", Value: "/database/password"}}
+
+		handler.CreateOrUpdateHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_InvalidBase64", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		request := dto.CreateOrUpdateSecretRequest{
+			Value: "not-valid-base64!@#$%",
 		}
 
 		c, w := createTestContext(http.MethodPost, "/v1/secrets/database/password", request)
@@ -155,7 +176,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateOrUpdateSecretRequest{
-			Value: []byte("value"),
+			Value: base64.StdEncoding.EncodeToString([]byte("value")),
 		}
 
 		c, w := createTestContext(http.MethodPost, "/v1/secrets/", request)
@@ -179,7 +200,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		value := []byte("value")
 
 		request := dto.CreateOrUpdateSecretRequest{
-			Value: value,
+			Value: base64.StdEncoding.EncodeToString(value),
 		}
 
 		mockUseCase.EXPECT().
@@ -237,7 +258,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 		assert.Equal(t, secretID.String(), response.ID)
 		assert.Equal(t, path, response.Path)
 		assert.Equal(t, uint(1), response.Version)
-		assert.Equal(t, expectedPlaintext, response.Value)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(expectedPlaintext), response.Value)
 	})
 
 	t.Run("Success_GetSpecificVersion", func(t *testing.T) {
@@ -277,7 +298,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 		assert.Equal(t, secretID.String(), response.ID)
 		assert.Equal(t, path, response.Path)
 		assert.Equal(t, version, response.Version)
-		assert.Equal(t, expectedPlaintext, response.Value)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(expectedPlaintext), response.Value)
 	})
 
 	t.Run("Error_InvalidVersionParameter", func(t *testing.T) {

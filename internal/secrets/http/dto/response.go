@@ -2,19 +2,20 @@
 package dto
 
 import (
+	"encoding/base64"
 	"time"
 
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
 
 // SecretResponse represents a secret in API responses.
-// SECURITY: The Value field contains plaintext and is only included in GET responses.
+// SECURITY: The Value field contains base64-encoded plaintext and is only included in GET responses.
 // Must be transmitted over HTTPS in production.
 type SecretResponse struct {
 	ID        string    `json:"id"`
 	Path      string    `json:"path"`
 	Version   uint      `json:"version"`
-	Value     []byte    `json:"value,omitempty"` // Only included in GET responses
+	Value     string    `json:"value,omitempty"` // base64-encoded plaintext, only included in GET responses
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -30,14 +31,14 @@ func MapSecretToCreateResponse(secret *secretsDomain.Secret) SecretResponse {
 }
 
 // MapSecretToGetResponse converts a domain secret to an API response for GET operations.
-// The plaintext value is included in the response. SECURITY: Caller must zero plaintext
+// The plaintext value is base64-encoded before inclusion. SECURITY: Caller must zero plaintext
 // from the domain object after mapping using cryptoDomain.Zero(secret.Plaintext).
 func MapSecretToGetResponse(secret *secretsDomain.Secret) SecretResponse {
 	return SecretResponse{
 		ID:        secret.ID.String(),
 		Path:      secret.Path,
 		Version:   secret.Version,
-		Value:     secret.Plaintext, // Include decrypted value
+		Value:     base64.StdEncoding.EncodeToString(secret.Plaintext),
 		CreatedAt: secret.CreatedAt,
 	}
 }

@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -39,7 +40,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		plaintext := []byte("my secret data")
 
 		request := dto.EncryptRequest{
-			Plaintext: plaintext,
+			Plaintext: base64.StdEncoding.EncodeToString(plaintext),
 		}
 
 		encryptedBlob := &transitDomain.EncryptedBlob{
@@ -70,7 +71,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		handler, _ := setupTestCryptoHandler(t)
 
 		request := dto.EncryptRequest{
-			Plaintext: []byte("my secret data"),
+			Plaintext: base64.StdEncoding.EncodeToString([]byte("my secret data")),
 		}
 
 		c, w := createTestContext(http.MethodPost, "/v1/transit/keys//encrypt", request)
@@ -97,7 +98,27 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		handler, _ := setupTestCryptoHandler(t)
 
 		request := dto.EncryptRequest{
-			Plaintext: []byte{},
+			Plaintext: "",
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/transit/keys/test-key/encrypt", request)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.EncryptHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("Error_ValidationFailed_InvalidBase64", func(t *testing.T) {
+		handler, _ := setupTestCryptoHandler(t)
+
+		request := dto.EncryptRequest{
+			Plaintext: "not-valid-base64!@#$",
 		}
 
 		c, w := createTestContext(http.MethodPost, "/v1/transit/keys/test-key/encrypt", request)
@@ -119,7 +140,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		plaintext := []byte("my secret data")
 
 		request := dto.EncryptRequest{
-			Plaintext: plaintext,
+			Plaintext: base64.StdEncoding.EncodeToString(plaintext),
 		}
 
 		mockUseCase.EXPECT().
@@ -171,7 +192,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		var response dto.DecryptResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedPlaintext, response.Plaintext)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(expectedPlaintext), response.Plaintext)
 		assert.Equal(t, uint(1), response.Version)
 	})
 
