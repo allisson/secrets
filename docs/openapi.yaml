@@ -1,0 +1,385 @@
+openapi: 3.0.3
+info:
+  title: Secrets API
+  version: v1
+  description: >-
+    Baseline OpenAPI specification for Secrets API v1. This is intentionally concise
+    and focuses on high-traffic endpoints and common payloads.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: auth
+  - name: clients
+  - name: secrets
+  - name: transit
+  - name: audit
+paths:
+  /health:
+    get:
+      tags: [auth]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+  /v1/token:
+    post:
+      tags: [auth]
+      summary: Issue bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+      responses:
+        "201":
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/clients:
+    get:
+      tags: [clients]
+      summary: List clients
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Clients list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [clients]
+      summary: Create client
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientCreateRequest"
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  secret:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/secrets/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [secrets]
+      summary: Create or update secret
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecretWriteRequest"
+      responses:
+        "201":
+          description: Secret written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecretWriteResponse"
+    get:
+      tags: [secrets]
+      summary: Read latest secret
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Secret value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecretReadResponse"
+    delete:
+      tags: [secrets]
+      summary: Delete latest secret version
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+  /v1/transit/keys:
+    post:
+      tags: [transit]
+      summary: Create transit key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitKeyCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitKeyResponse"
+  /v1/transit/keys/{name}/encrypt:
+    post:
+      tags: [transit]
+      summary: Encrypt payload using transit key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plaintext:
+                  type: string
+                  description: Base64-encoded plaintext
+              required: [plaintext]
+      responses:
+        "200":
+          description: Encrypted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ciphertext:
+                    type: string
+                  version:
+                    type: integer
+  /v1/transit/keys/{name}/decrypt:
+    post:
+      tags: [transit]
+      summary: Decrypt ciphertext using transit key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ciphertext:
+                  type: string
+              required: [ciphertext]
+      responses:
+        "200":
+          description: Decrypted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plaintext:
+                    type: string
+  /v1/audit-logs:
+    get:
+      tags: [audit]
+      summary: List audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit logs list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audit_logs:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error, message]
+    TokenRequest:
+      type: object
+      properties:
+        client_id:
+          type: string
+        client_secret:
+          type: string
+      required: [client_id, client_secret]
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [token, expires_at]
+    ClientCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        is_active:
+          type: boolean
+        policies:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              capabilities:
+                type: array
+                items:
+                  type: string
+      required: [name, policies]
+    SecretWriteRequest:
+      type: object
+      properties:
+        value:
+          type: string
+          description: Base64-encoded plaintext
+      required: [value]
+    SecretWriteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    SecretReadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        version:
+          type: integer
+        value:
+          type: string
+          description: Base64-encoded plaintext
+        created_at:
+          type: string
+          format: date-time
+    TransitKeyCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        algorithm:
+          type: string
+      required: [name, algorithm]
+    TransitKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        algorithm:
+          type: string
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time

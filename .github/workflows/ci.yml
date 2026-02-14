@@ -7,6 +7,66 @@ on:
     branches: [main]
 
 jobs:
+  docs:
+    name: Docs Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Docs changelog guard (docs-only PRs)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
+          if [ -z "$CHANGED_FILES" ]; then
+            exit 0
+          fi
+
+          docs_only=true
+          changelog_updated=false
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            if [ "$file" = "docs/CHANGELOG.md" ]; then
+              changelog_updated=true
+            fi
+
+            case "$file" in
+              docs/*|README.md)
+                ;;
+              *)
+                docs_only=false
+                ;;
+            esac
+          done <<EOF
+          $CHANGED_FILES
+          EOF
+
+          if [ "$docs_only" = true ] && [ "$changelog_updated" = false ]; then
+            echo "docs-only PRs must update docs/CHANGELOG.md"
+            exit 1
+          fi
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          config: .markdownlint.json
+          globs: |
+            README.md
+            docs/**/*.md
+            .github/pull_request_template.md
+
+      - name: Markdown link check (offline)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --include-fragments --no-progress "README.md" "docs/**/*.md" ".github/pull_request_template.md"
+
   test:
     name: Test
     runs-on: ubuntu-latest
