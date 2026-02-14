@@ -50,9 +50,20 @@ Use this quick route before diving into detailed sections:
 
 - Symptom: request rejected with `422`
 - Likely cause: malformed JSON, invalid query params, missing required fields
+
+Common 422 cases:
+
+| Endpoint | Common cause | Fix |
+| --- | --- | --- |
+| `POST /v1/secrets/*path` | `value` is missing or not base64 | Send `value` as base64-encoded bytes |
+| `POST /v1/transit/keys/:name/encrypt` | `plaintext` is missing or not base64 | Send `plaintext` as base64-encoded bytes |
+| `POST /v1/transit/keys/:name/decrypt` | `ciphertext` not in `<version>:<base64-ciphertext>` format | Pass `ciphertext` exactly as returned by encrypt |
+| `GET /v1/audit-logs` | invalid `offset`/`limit`/timestamp format | Use numeric `offset`/`limit` and RFC3339 timestamps |
+
 - Fix:
   - validate JSON body and required fields
   - for secrets/transit endpoints, send base64 values where required
+  - for transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`)
   - validate `offset`, `limit`, and RFC3339 timestamps on audit endpoints
 
 ## Database connection failure

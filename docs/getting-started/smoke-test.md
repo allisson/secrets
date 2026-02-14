@@ -15,6 +15,8 @@ Script path: `docs/getting-started/smoke-test.sh`
 5. `POST /v1/transit/keys`
 6. `POST /v1/transit/keys/:name/encrypt` and `/decrypt`
 
+For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`).
+
 ## Prerequisites
 
 - Running Secrets server
@@ -40,6 +42,9 @@ Optional variables:
 
 - `SECRET_PATH` (default: `/app/prod/smoke-test`)
 - `TRANSIT_KEY_NAME` (default: `smoke-test-key`)
+
+Expected output includes `Smoke test completed successfully`.
+If transit decrypt fails with `422`, see [Troubleshooting](troubleshooting.md#422-unprocessable-entity).
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 

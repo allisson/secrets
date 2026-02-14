@@ -72,6 +72,8 @@ Risk note: should not include `decrypt` unless CI must read values.
 
 Use for services that should encrypt sensitive values but never decrypt.
 
+See [Transit API](transit.md) for encrypt/decrypt request and response contracts.
+
 ```json
 [
   {
@@ -86,6 +88,9 @@ Risk note: encrypt-only separation limits plaintext exposure.
 ## 4) Transit decrypt-only service
 
 Use for tightly scoped decryption workers.
+
+See [Decrypt input contract](transit.md#decrypt-input-contract) for required
+`ciphertext` format.
 
 ```json
 [

@@ -53,6 +53,7 @@ async function transitFlow(token) {
     body: JSON.stringify({ plaintext: toBase64("john@example.com") }),
   });
   if (!encryptRes.ok) throw new Error(`encrypt failed: ${encryptRes.status}`);
+  // For transit decrypt, pass ciphertext exactly as returned by encrypt: "<version>:<base64-ciphertext>".
   const { ciphertext } = await encryptRes.json();
 
   const decryptRes = await fetch(`${BASE_URL}/v1/transit/keys/js-pii/decrypt`, {
@@ -64,7 +65,13 @@ async function transitFlow(token) {
     body: JSON.stringify({ ciphertext }),
   });
   if (!decryptRes.ok) throw new Error(`decrypt failed: ${decryptRes.status}`);
-  console.log(await decryptRes.json());
+  const decrypted = await decryptRes.json();
+  if (decrypted.plaintext !== toBase64("john@example.com")) {
+    throw new Error("round-trip verification failed");
+  }
+  const decoded = Buffer.from(decrypted.plaintext, "base64").toString("utf8");
+  console.log("decrypted value:", decoded);
+  console.log("Transit round-trip verified");
 }
 
 async function main() {

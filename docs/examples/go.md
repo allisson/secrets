@@ -38,7 +38,17 @@ func main() {
         panic(err)
     }
 
-    fmt.Println("decrypted plaintext (base64):", plaintextB64)
+    if plaintextB64 != base64.StdEncoding.EncodeToString([]byte("john@example.com")) {
+        panic("round-trip verification failed")
+    }
+
+    decoded, err := base64.StdEncoding.DecodeString(plaintextB64)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("decrypted value:", string(decoded))
+
+    fmt.Println("Transit round-trip verified")
 }
 
 func issueToken(clientID, clientSecret string) (string, error) {
@@ -108,6 +118,7 @@ func transitEncrypt(token, keyName, plaintext string) (string, error) {
     if err := json.Unmarshal(raw, &out); err != nil {
         return "", err
     }
+    // For transit decrypt, pass ciphertext exactly as returned by encrypt: "<version>:<base64-ciphertext>".
     return out.Ciphertext, nil
 }
 

@@ -55,6 +55,7 @@ def transit_encrypt_decrypt(token: str) -> None:
         timeout=10,
     )
     encrypted.raise_for_status()
+    # For transit decrypt, pass ciphertext exactly as returned by encrypt: "<version>:<base64-ciphertext>".
     ciphertext = encrypted.json()["ciphertext"]
 
     decrypted = requests.post(
@@ -64,7 +65,12 @@ def transit_encrypt_decrypt(token: str) -> None:
         timeout=10,
     )
     decrypted.raise_for_status()
-    print("decrypted payload:", decrypted.json())
+    plaintext_b64 = decrypted.json()["plaintext"]
+    if plaintext_b64 != b64("john@example.com"):
+        raise RuntimeError("round-trip verification failed")
+    plaintext = base64.b64decode(plaintext_b64).decode("utf-8")
+    print("decrypted value:", plaintext)
+    print("Transit round-trip verified")
 
 
 if __name__ == "__main__":

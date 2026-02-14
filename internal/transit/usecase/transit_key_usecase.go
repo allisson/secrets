@@ -197,10 +197,10 @@ func (t *transitKeyUseCase) Encrypt(
 func (t *transitKeyUseCase) Decrypt(
 	ctx context.Context,
 	name string,
-	ciphertext []byte,
+	ciphertext string,
 ) (*transitDomain.EncryptedBlob, error) {
-	// Parse encrypted blob from ciphertext
-	blob, err := transitDomain.NewEncryptedBlob(string(ciphertext))
+	// Parse encrypted blob from ciphertext string format "version:base64..."
+	blob, err := transitDomain.NewEncryptedBlob(ciphertext)
 	if err != nil {
 		return nil, err
 	}

@@ -922,7 +922,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", []byte(ciphertextStr))
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
 
 		// Assert
 		assert.NoError(t, err)
@@ -992,7 +992,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", []byte(ciphertextStr))
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1014,7 +1014,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		kekChain := createTestKekChain(kek.ID, kek)
 		defer kekChain.Close()
 
-		invalidCiphertext := []byte("invalid-blob-format")
+		invalidCiphertext := "invalid-blob-format"
 
 		// Execute
 		uc := NewTransitKeyUseCase(
@@ -1058,7 +1058,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", []byte(ciphertextStr))
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
 
 		// Assert
 		assert.Error(t, err)
@@ -1116,7 +1116,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", []byte(ciphertextStr))
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
 
 		// Assert
 		assert.Error(t, err)
@@ -1183,7 +1183,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", []byte(ciphertextStr))
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
 
 		// Assert
 		assert.Error(t, err)
