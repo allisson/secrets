@@ -146,6 +146,43 @@ func (p *PostgreSQLAuditLogRepository) List(
 	return auditLogs, nil
 }
 
+// DeleteOlderThan removes audit logs created before the specified timestamp.
+// When dryRun is true, returns count via SELECT COUNT(*) without deletion. When false,
+// executes DELETE and returns affected rows. Uses transaction support via database.GetTx().
+// All timestamps are expected in UTC.
+func (p *PostgreSQLAuditLogRepository) DeleteOlderThan(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	if dryRun {
+		// Use COUNT query for dry-run mode
+		query := `SELECT COUNT(*) FROM audit_logs WHERE created_at < $1`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count audit logs")
+		}
+		return count, nil
+	}
+
+	// Execute actual deletion
+	query := `DELETE FROM audit_logs WHERE created_at < $1`
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to delete audit logs")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get affected rows count")
+	}
+
+	return count, nil
+}
+
 // NewPostgreSQLAuditLogRepository creates a new PostgreSQL AuditLog repository.
 func NewPostgreSQLAuditLogRepository(db *sql.DB) *PostgreSQLAuditLogRepository {
 	return &PostgreSQLAuditLogRepository{db: db}

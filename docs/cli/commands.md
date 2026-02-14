@@ -12,10 +12,10 @@ Local binary:
 ./bin/app <command> [flags]
 ```
 
-Docker image (v0.1.0):
+Docker image (v0.2.0):
 
 ```bash
-docker run --rm --env-file .env allisson/secrets:v0.1.0 <command> [flags]
+docker run --rm --env-file .env allisson/secrets:v0.2.0 <command> [flags]
 ```
 
 ## Core Runtime
@@ -132,6 +132,53 @@ Flags:
 - Prefer `--format json` for automation
 - Store client secrets in a secure secret manager
 - Use least-privilege policies per workload and path
+
+## Audit Log Maintenance
+
+### `clean-audit-logs`
+
+Deletes audit logs older than a specified retention period.
+
+Flags:
+
+- `--days`, `-d` (required): delete logs older than this many days
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion)
+./bin/app clean-audit-logs --days 90 --dry-run
+
+# Execute deletion
+./bin/app clean-audit-logs --days 90 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.2.0 \
+  clean-audit-logs --days 90 --dry-run --format json
+```
+
+Example text output:
+
+```text
+Dry-run mode: Would delete 1234 audit log(s) older than 90 day(s)
+```
+
+Example JSON output:
+
+```json
+{
+  "count": 1234,
+  "days": 90,
+  "dry_run": true
+}
+```
+
+Requirements:
+
+- Database must be reachable and migrated
+- Use `--dry-run` before deletion in production environments
 
 ## See also
 

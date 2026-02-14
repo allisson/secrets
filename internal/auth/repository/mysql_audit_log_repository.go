@@ -171,6 +171,43 @@ func (m *MySQLAuditLogRepository) List(
 	return auditLogs, nil
 }
 
+// DeleteOlderThan removes audit logs created before the specified timestamp.
+// When dryRun is true, returns count via SELECT COUNT(*) without deletion. When false,
+// executes DELETE and returns affected rows. Uses transaction support via database.GetTx().
+// All timestamps are expected in UTC.
+func (m *MySQLAuditLogRepository) DeleteOlderThan(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	if dryRun {
+		// Use COUNT query for dry-run mode
+		query := `SELECT COUNT(*) FROM audit_logs WHERE created_at < ?`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count audit logs")
+		}
+		return count, nil
+	}
+
+	// Execute actual deletion
+	query := `DELETE FROM audit_logs WHERE created_at < ?`
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to delete audit logs")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get affected rows count")
+	}
+
+	return count, nil
+}
+
 // NewMySQLAuditLogRepository creates a new MySQL AuditLog repository.
 func NewMySQLAuditLogRepository(db *sql.DB) *MySQLAuditLogRepository {
 	return &MySQLAuditLogRepository{db: db}

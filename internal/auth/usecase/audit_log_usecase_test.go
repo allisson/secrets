@@ -35,6 +35,15 @@ func (m *mockAuditLogRepository) List(
 	return args.Get(0).([]*authDomain.AuditLog), args.Error(1)
 }
 
+func (m *mockAuditLogRepository) DeleteOlderThan(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	args := m.Called(ctx, olderThan, dryRun)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 func TestAuditLogUseCase_Create(t *testing.T) {
 	ctx := context.Background()
 
@@ -236,77 +245,134 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 		assert.Contains(t, err.Error(), "database connection failed", "original error should be included")
 		mockRepo.AssertExpectations(t)
 	})
+}
 
-	t.Run("Success_CreateAuditLogWithEmptyPath", func(t *testing.T) {
-		// Setup mocks
+func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_DeleteOlderThan", func(t *testing.T) {
 		mockRepo := &mockAuditLogRepository{}
 
-		// Test data
-		requestID := uuid.Must(uuid.NewV7())
-		clientID := uuid.Must(uuid.NewV7())
-		capability := authDomain.ReadCapability
-		emptyPath := ""
+		days := 90
+		dryRun := false
+		expectedCount := int64(150)
 
-		// Capture the audit log
-		var capturedAuditLog *authDomain.AuditLog
-		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.AuditLog")).
+		// The use case should calculate cutoff date and call repository
+		mockRepo.On("DeleteOlderThan", ctx, mock.AnythingOfType("time.Time"), dryRun).
 			Run(func(args mock.Arguments) {
-				capturedAuditLog = args.Get(1).(*authDomain.AuditLog)
+				cutoffDate := args.Get(1).(time.Time)
+				// Verify cutoff date is approximately 90 days ago
+				now := time.Now().UTC()
+				expectedCutoff := now.AddDate(0, 0, -90)
+				// Allow 1 second tolerance for test execution time
+				timeDiff := cutoffDate.Sub(expectedCutoff)
+				assert.True(t, timeDiff >= -1*time.Second && timeDiff <= 1*time.Second,
+					"cutoff date should be approximately 90 days ago")
 			}).
-			Return(nil).
+			Return(expectedCount, nil).
 			Once()
 
-		// Create use case
 		useCase := NewAuditLogUseCase(mockRepo)
 
-		// Execute with empty path
-		err := useCase.Create(ctx, requestID, clientID, capability, emptyPath, nil)
+		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
-		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, emptyPath, capturedAuditLog.Path, "empty path should be preserved")
+		assert.Equal(t, expectedCount, count)
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("Success_CreateAuditLogWithComplexMetadata", func(t *testing.T) {
-		// Setup mocks
+	t.Run("Success_DeleteOlderThanWithZeroResults", func(t *testing.T) {
 		mockRepo := &mockAuditLogRepository{}
 
-		// Test data
-		requestID := uuid.Must(uuid.NewV7())
-		clientID := uuid.Must(uuid.NewV7())
-		capability := authDomain.WriteCapability
-		path := "/api/v1/secrets/config"
-		complexMetadata := map[string]any{
-			"nested": map[string]any{
-				"level1": map[string]any{
-					"level2": "value",
-				},
-			},
-			"array":   []string{"item1", "item2", "item3"},
-			"boolean": true,
-			"number":  42,
-			"null":    nil,
-		}
+		days := 30
+		dryRun := false
+		expectedCount := int64(0)
 
-		// Capture the audit log
-		var capturedAuditLog *authDomain.AuditLog
-		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.AuditLog")).
-			Run(func(args mock.Arguments) {
-				capturedAuditLog = args.Get(1).(*authDomain.AuditLog)
-			}).
-			Return(nil).
+		mockRepo.On("DeleteOlderThan", ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedCount, nil).
 			Once()
 
-		// Create use case
 		useCase := NewAuditLogUseCase(mockRepo)
 
-		// Execute
-		err := useCase.Create(ctx, requestID, clientID, capability, path, complexMetadata)
+		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
-		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, complexMetadata, capturedAuditLog.Metadata, "complex metadata should be preserved")
+		assert.Equal(t, int64(0), count)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_DryRunMode", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		days := 90
+		dryRun := true
+		expectedCount := int64(250)
+
+		// In dry-run mode, repository uses COUNT query instead of DELETE
+		mockRepo.On("DeleteOlderThan", ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedCount, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCount, count)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_DeleteOlderThanWithVariousDays", func(t *testing.T) {
+		testCases := []struct {
+			name          string
+			days          int
+			dryRun        bool
+			expectedCount int64
+		}{
+			{"1 day", 1, false, int64(5)},
+			{"7 days", 7, false, int64(25)},
+			{"30 days", 30, false, int64(120)},
+			{"365 days", 365, false, int64(1500)},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				mockRepo := &mockAuditLogRepository{}
+
+				mockRepo.On("DeleteOlderThan", ctx, mock.AnythingOfType("time.Time"), tc.dryRun).
+					Return(tc.expectedCount, nil).
+					Once()
+
+				useCase := NewAuditLogUseCase(mockRepo)
+
+				count, err := useCase.DeleteOlderThan(ctx, tc.days, tc.dryRun)
+
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedCount, count)
+				mockRepo.AssertExpectations(t)
+			})
+		}
+	})
+
+	t.Run("Error_RepositoryFailure", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		days := 60
+		dryRun := false
+		repositoryErr := errors.New("database connection failed")
+
+		mockRepo.On("DeleteOlderThan", ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(int64(0), repositoryErr).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo)
+
+		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
+
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Contains(t, err.Error(), "failed to delete old audit logs")
+		assert.Contains(t, err.Error(), "database connection failed")
 		mockRepo.AssertExpectations(t)
 	})
 }

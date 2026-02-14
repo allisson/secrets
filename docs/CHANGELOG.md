@@ -2,6 +2,14 @@
 
 > Last updated: 2026-02-14
 
+## 2026-02-14 (docs v3 - v0.2.0 release prep)
+
+- Added `clean-audit-logs` command documentation with dry-run and JSON/text output examples
+- Added audit-log retention cleanup runbook to production operations guide
+- Clarified audit log retention is a CLI cleanup workflow, while API remains list/query (`GET /v1/audit-logs`)
+- Updated pinned Docker image tags and release references from `v0.1.0` to `v0.2.0`
+- Added release notes page: `docs/releases/v0.2.0.md` and kept `v0.1.0` as historical
+
 ## 2026-02-14 (docs v2 - v0.1.0 release prep)
 
 - Added first-client bootstrap flow to Docker and local development guides using `create-client`

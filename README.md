@@ -13,7 +13,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.1.0
+docker pull allisson/secrets:v0.2.0
 ```
 
 Use pinned tags for reproducible setups. `latest` is also available for fast iteration.
@@ -36,7 +36,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.1.0 release notes**: [docs/releases/v0.1.0.md](docs/releases/v0.1.0.md)
+- 🚀 **v0.2.0 release notes**: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md)
 
 - **By Topic**
 - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)

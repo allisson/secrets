@@ -60,6 +60,12 @@ type AuditLogRepository interface {
 		offset, limit int,
 		createdAtFrom, createdAtTo *time.Time,
 	) ([]*authDomain.AuditLog, error)
+
+	// DeleteOlderThan removes audit logs with created_at before the specified timestamp.
+	// When dryRun is true, returns count via SELECT COUNT(*) without deletion. When false,
+	// executes DELETE and returns affected rows. Supports transaction-aware operations via
+	// context propagation. All timestamps are expected in UTC.
+	DeleteOlderThan(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)
 }
 
 // ClientUseCase defines business logic operations for managing authentication clients.
@@ -151,4 +157,10 @@ type AuditLogUseCase interface {
 		offset, limit int,
 		createdAtFrom, createdAtTo *time.Time,
 	) ([]*authDomain.AuditLog, error)
+
+	// DeleteOlderThan removes audit logs older than the specified number of days.
+	// When dryRun is true, returns count without deletion. When false, executes DELETE
+	// and returns affected rows. The cutoff date is calculated as current UTC time minus
+	// the specified days.
+	DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error)
 }

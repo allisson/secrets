@@ -657,6 +657,78 @@ func (_c *MockAuditLogRepository_Create_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// DeleteOlderThan provides a mock function for the type MockAuditLogRepository
+func (_mock *MockAuditLogRepository) DeleteOlderThan(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error) {
+	ret := _mock.Called(ctx, olderThan, dryRun)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteOlderThan")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, bool) (int64, error)); ok {
+		return returnFunc(ctx, olderThan, dryRun)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, bool) int64); ok {
+		r0 = returnFunc(ctx, olderThan, dryRun)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time, bool) error); ok {
+		r1 = returnFunc(ctx, olderThan, dryRun)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockAuditLogRepository_DeleteOlderThan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOlderThan'
+type MockAuditLogRepository_DeleteOlderThan_Call struct {
+	*mock.Call
+}
+
+// DeleteOlderThan is a helper method to define mock.On call
+//   - ctx context.Context
+//   - olderThan time.Time
+//   - dryRun bool
+func (_e *MockAuditLogRepository_Expecter) DeleteOlderThan(ctx interface{}, olderThan interface{}, dryRun interface{}) *MockAuditLogRepository_DeleteOlderThan_Call {
+	return &MockAuditLogRepository_DeleteOlderThan_Call{Call: _e.mock.On("DeleteOlderThan", ctx, olderThan, dryRun)}
+}
+
+func (_c *MockAuditLogRepository_DeleteOlderThan_Call) Run(run func(ctx context.Context, olderThan time.Time, dryRun bool)) *MockAuditLogRepository_DeleteOlderThan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 bool
+		if args[2] != nil {
+			arg2 = args[2].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuditLogRepository_DeleteOlderThan_Call) Return(n int64, err error) *MockAuditLogRepository_DeleteOlderThan_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockAuditLogRepository_DeleteOlderThan_Call) RunAndReturn(run func(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)) *MockAuditLogRepository_DeleteOlderThan_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // List provides a mock function for the type MockAuditLogRepository
 func (_mock *MockAuditLogRepository) List(ctx context.Context, offset int, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error) {
 	ret := _mock.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
@@ -1367,6 +1439,78 @@ func (_c *MockAuditLogUseCase_Create_Call) Return(err error) *MockAuditLogUseCas
 }
 
 func (_c *MockAuditLogUseCase_Create_Call) RunAndReturn(run func(ctx context.Context, requestID uuid.UUID, clientID uuid.UUID, capability domain.Capability, path string, metadata map[string]any) error) *MockAuditLogUseCase_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteOlderThan provides a mock function for the type MockAuditLogUseCase
+func (_mock *MockAuditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error) {
+	ret := _mock.Called(ctx, days, dryRun)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteOlderThan")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, bool) (int64, error)); ok {
+		return returnFunc(ctx, days, dryRun)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, bool) int64); ok {
+		r0 = returnFunc(ctx, days, dryRun)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, bool) error); ok {
+		r1 = returnFunc(ctx, days, dryRun)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockAuditLogUseCase_DeleteOlderThan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOlderThan'
+type MockAuditLogUseCase_DeleteOlderThan_Call struct {
+	*mock.Call
+}
+
+// DeleteOlderThan is a helper method to define mock.On call
+//   - ctx context.Context
+//   - days int
+//   - dryRun bool
+func (_e *MockAuditLogUseCase_Expecter) DeleteOlderThan(ctx interface{}, days interface{}, dryRun interface{}) *MockAuditLogUseCase_DeleteOlderThan_Call {
+	return &MockAuditLogUseCase_DeleteOlderThan_Call{Call: _e.mock.On("DeleteOlderThan", ctx, days, dryRun)}
+}
+
+func (_c *MockAuditLogUseCase_DeleteOlderThan_Call) Run(run func(ctx context.Context, days int, dryRun bool)) *MockAuditLogUseCase_DeleteOlderThan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 bool
+		if args[2] != nil {
+			arg2 = args[2].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_DeleteOlderThan_Call) Return(n int64, err error) *MockAuditLogUseCase_DeleteOlderThan_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_DeleteOlderThan_Call) RunAndReturn(run func(ctx context.Context, days int, dryRun bool) (int64, error)) *MockAuditLogUseCase_DeleteOlderThan_Call {
 	_c.Call.Return(run)
 	return _c
 }
