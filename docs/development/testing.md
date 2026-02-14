@@ -12,6 +12,7 @@ make lint
 make test
 make test-with-db
 make mocks
+make docs-check-examples
 ```
 
 ## Run specific tests

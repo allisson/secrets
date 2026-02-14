@@ -19,6 +19,14 @@ All endpoints require Bearer authentication.
 - `GET /v1/secrets/*path` (read latest)
 - `DELETE /v1/secrets/*path` (soft delete latest)
 
+## Status Code Quick Reference
+
+| Endpoint | Success | Common error statuses |
+| --- | --- | --- |
+| `POST /v1/secrets/*path` | `201` | `401`, `403`, `422` |
+| `GET /v1/secrets/*path` | `200` | `401`, `403`, `404` |
+| `DELETE /v1/secrets/*path` | `204` | `401`, `403`, `404` |
+
 ## Create or Update Secret
 
 ```bash
@@ -150,4 +158,6 @@ Expected result: write returns `201 Created`; read returns `200 OK` with base64 
 - [Authentication API](authentication.md)
 - [Policies cookbook](policies.md)
 - [Response shapes](response-shapes.md)
+- [API compatibility policy](versioning-policy.md)
 - [Curl examples](../examples/curl.md)
+- [Glossary](../concepts/glossary.md)

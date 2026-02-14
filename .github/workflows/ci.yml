@@ -62,6 +62,9 @@ jobs:
             docs/**/*.md
             .github/pull_request_template.md
 
+      - name: Example shape checks
+        run: python3 docs/tools/check_example_shapes.py
+
       - name: Markdown link check (offline)
         uses: lycheeverse/lychee-action@v2
         with:

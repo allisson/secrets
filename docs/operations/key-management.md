@@ -79,6 +79,21 @@ Operational step:
 4. Verify secret read/write and transit encrypt/decrypt
 5. Review audit logs for anomalies
 
+## Transit Create/Rotate Automation
+
+When automating transit key lifecycle:
+
+- call create once per key name (`POST /v1/transit/keys`)
+- if create returns `409 Conflict`, treat it as "key already initialized"
+- call rotate (`POST /v1/transit/keys/:name/rotate`) to create a new active version
+
+Example decision flow:
+
+```text
+create key -> 201 Created: continue
+create key -> 409 Conflict: rotate key
+```
+
 ## Related
 
 - 🏭 Production deployment: `docs/operations/production.md`

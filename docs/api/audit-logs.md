@@ -18,6 +18,12 @@ Authorization: `read` capability for `/v1/audit-logs`.
 
 - `GET /v1/audit-logs`
 
+## Status Code Quick Reference
+
+| Endpoint | Success | Common error statuses |
+| --- | --- | --- |
+| `GET /v1/audit-logs` | `200` | `401`, `403`, `422` |
+
 Query parameters:
 
 - `offset` (default `0`)
@@ -153,3 +159,5 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
 - [Clients API](clients.md)
 - [Policies cookbook](policies.md)
 - [Response shapes](response-shapes.md)
+- [API compatibility policy](versioning-policy.md)
+- [Glossary](../concepts/glossary.md)

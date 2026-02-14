@@ -29,6 +29,16 @@ Capability mapping:
 - `PUT /v1/clients/:id` -> `write`
 - `DELETE /v1/clients/:id` -> `delete`
 
+## Status Code Quick Reference
+
+| Endpoint | Success | Common error statuses |
+| --- | --- | --- |
+| `POST /v1/clients` | `201` | `401`, `403`, `409`, `422` |
+| `GET /v1/clients` | `200` | `401`, `403`, `422` |
+| `GET /v1/clients/:id` | `200` | `401`, `403`, `404`, `422` |
+| `PUT /v1/clients/:id` | `200` | `401`, `403`, `404`, `409`, `422` |
+| `DELETE /v1/clients/:id` | `204` | `401`, `403`, `404`, `422` |
+
 ## Create Client
 
 ```bash
@@ -138,3 +148,5 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 - [Policies cookbook](policies.md)
 - [Audit logs API](audit-logs.md)
 - [Response shapes](response-shapes.md)
+- [API compatibility policy](versioning-policy.md)
+- [Glossary](../concepts/glossary.md)

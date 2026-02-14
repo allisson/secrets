@@ -29,6 +29,19 @@
 - Added transit decrypt input contract examples (valid/invalid) and representative `422` payloads
 - Added OpenAPI decrypt request examples and explicit `401`/`403`/`404` responses
 - Added 422 troubleshooting matrix and transit round-trip verification/decode notes in examples
+- Clarified transit key create behavior: duplicate key names now documented as `409 Conflict` and rotate is required for new versions
+- Added transit create-vs-rotate guidance, idempotency notes, endpoint error matrix, and representative `409` conflict payload examples
+- Added transit automation runbook note for handling create `409` by rotating keys
+- Added API status code quick-reference tables to clients, secrets, transit, and audit docs
+- Added glossary page and cross-links from API/reference documentation
+- Added example-page common mistakes sections (curl, python, javascript, go)
+- Added docs contribution policy for breaking vs non-breaking documentation updates
+- Added docs freshness SLA table in docs index
+- Added failure playbooks for 401/403/409 incident triage
+- Added API compatibility/versioning policy page for breaking/non-breaking expectations
+- Added ADRs for envelope encryption model and transit versioned ciphertext contract
+- Added executable example shape checks (`make docs-check-examples`) and CI integration
+- Added environment bootstrap sections to all examples pages
 
 ## See also
 

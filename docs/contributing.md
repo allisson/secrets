@@ -25,6 +25,13 @@ Use this guide when adding or editing project documentation.
 - Include `Last updated` metadata in new docs
 - For API docs, include `Applies to: API v1`
 
+## Breaking vs Non-Breaking Docs Changes
+
+- Treat endpoint path changes, request/response contract changes, and status code behavior changes as breaking docs updates
+- Breaking docs updates must include: updated API page, updated examples, and `docs/CHANGELOG.md` entry
+- Treat wording clarifications, formatting, and cross-links as non-breaking docs updates
+- Non-breaking docs updates should still run `make docs-lint` and keep links accurate
+
 ## Security Messaging
 
 - Use this exact warning where base64 appears:
@@ -44,9 +51,12 @@ Run the same style/link checks locally before opening a PR:
 
 ```bash
 make docs-lint
+make docs-check-examples
 ```
 
 This target runs markdown linting and offline markdown link validation.
+
+`make docs-check-examples` validates representative JSON response shapes used in docs.
 
 ## PR Checklist
 

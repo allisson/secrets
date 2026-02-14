@@ -5,6 +5,19 @@
 
 Transit API encrypts/decrypts data without storing your application payload.
 
+## 📑 Table of Contents
+
+- [Endpoints](#endpoints)
+- [Status Code Quick Reference](#status-code-quick-reference)
+- [Create Transit Key](#create-transit-key)
+- [Rotate Transit Key](#rotate-transit-key)
+- [Encrypt Data](#encrypt-data)
+- [Decrypt Data](#decrypt-data)
+- [Common Errors](#common-errors)
+- [Endpoint Error Matrix](#endpoint-error-matrix)
+- [Error Payload Examples](#error-payload-examples)
+- [Quick Flow (Under 2 Minutes)](#-quick-flow-under-2-minutes)
+
 ## Compatibility
 
 - API surface: `/v1/transit/keys*`
@@ -29,7 +42,26 @@ Capability mapping:
 - `POST /v1/transit/keys/:name/encrypt` -> `encrypt`
 - `POST /v1/transit/keys/:name/decrypt` -> `decrypt`
 
+## Status Code Quick Reference
+
+| Endpoint | Success | Common error statuses |
+| --- | --- | --- |
+| `POST /v1/transit/keys` | `201` | `401`, `403`, `409`, `422` |
+| `POST /v1/transit/keys/:name/rotate` | `200` | `401`, `403`, `404`, `422` |
+| `POST /v1/transit/keys/:name/encrypt` | `200` | `401`, `403`, `404`, `422` |
+| `POST /v1/transit/keys/:name/decrypt` | `200` | `401`, `403`, `404`, `422` |
+| `DELETE /v1/transit/keys/:id` | `204` | `401`, `403`, `404`, `422` |
+
 ## Create Transit Key
+
+Creates the initial transit key version (`version = 1`) for a key name.
+Use `POST /v1/transit/keys/:name/rotate` to create newer versions.
+
+### Create vs Rotate
+
+- Use `POST /v1/transit/keys` when a key name is created for the first time.
+- Use `POST /v1/transit/keys/:name/rotate` for every subsequent version.
+- If create is called again for the same key name, API returns `409 Conflict`.
 
 ```bash
 curl -X POST http://localhost:8080/v1/transit/keys \
@@ -49,6 +81,14 @@ Example response (`201 Created`):
   "created_at": "2026-02-14T18:30:00Z"
 }
 ```
+
+If a key with the same `name` already exists at version `1`, create returns
+`409 Conflict` (`transit key already exists`).
+
+### Idempotency
+
+- `POST /v1/transit/keys` is not idempotent for an existing key name and returns `409 Conflict`.
+- `POST /v1/transit/keys/:name/rotate` intentionally creates a new key version on each successful call.
 
 ## Rotate Transit Key
 
@@ -121,6 +161,16 @@ Example decrypt response (`200 OK`):
 - `409 Conflict`: key already exists on create
 - `422 Unprocessable Entity`: malformed request payload, invalid blob format, or invalid ciphertext base64
 
+## Endpoint Error Matrix
+
+| Endpoint | 401 | 403 | 404 | 409 | 422 |
+| --- | --- | --- | --- | --- | --- |
+| `POST /v1/transit/keys` | missing/invalid token | missing `write` capability | - | key name already initialized (`version=1`) | invalid create payload |
+| `POST /v1/transit/keys/:name/rotate` | missing/invalid token | missing `rotate` capability | key name not found | - | invalid rotate payload |
+| `POST /v1/transit/keys/:name/encrypt` | missing/invalid token | missing `encrypt` capability | key name not found | - | `plaintext` missing/invalid base64 |
+| `POST /v1/transit/keys/:name/decrypt` | missing/invalid token | missing `decrypt` capability | key/version not found | - | malformed `<version>:<base64-ciphertext>` |
+| `DELETE /v1/transit/keys/:id` | missing/invalid token | missing `delete` capability | key ID not found | - | invalid UUID |
+
 ## Error Payload Examples
 
 Representative error payloads (exact messages may vary):
@@ -149,6 +199,15 @@ Representative error payloads (exact messages may vary):
 {
   "error": "validation_error",
   "message": "plaintext must be base64-encoded"
+}
+```
+
+`409 Conflict`
+
+```json
+{
+  "error": "conflict",
+  "message": "transit key already exists"
 }
 ```
 
@@ -215,4 +274,6 @@ Expected result: key creation returns `201 Created`; encrypt returns `200 OK` wi
 - [Authentication API](authentication.md)
 - [Policies cookbook](policies.md)
 - [Response shapes](response-shapes.md)
+- [API compatibility policy](versioning-policy.md)
 - [Curl examples](../examples/curl.md)
+- [Glossary](../concepts/glossary.md)

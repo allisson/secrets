@@ -4,13 +4,29 @@
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
+## Bootstrap
+
+Prerequisites:
+
+- Python 3.10+
+- `requests` library (`pip install requests`)
+
+Recommended environment variables:
+
+```bash
+export BASE_URL="http://localhost:8080"
+export CLIENT_ID="<client-id>"
+export CLIENT_SECRET="<client-secret>"
+```
+
 ```python
 import base64
+import os
 import requests
 
-BASE_URL = "http://localhost:8080"
-CLIENT_ID = "<client-id>"
-CLIENT_SECRET = "<client-secret>"
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
+CLIENT_ID = os.getenv("CLIENT_ID", "<client-id>")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET", "<client-secret>")
 
 
 def b64(value: str) -> str:
@@ -78,6 +94,13 @@ if __name__ == "__main__":
     create_secret(token)
     transit_encrypt_decrypt(token)
 ```
+
+## Common Mistakes
+
+- Passing raw plaintext instead of base64-encoded `value`/`plaintext`
+- Constructing decrypt `ciphertext` manually instead of using encrypt output
+- Forgetting `Bearer` prefix in `Authorization` header
+- Retrying transit create for an existing key name instead of handling `409` with rotate
 
 ## See also
 

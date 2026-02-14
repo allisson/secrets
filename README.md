@@ -38,7 +38,9 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
 - 🏗️ **Architecture concepts**: [docs/concepts/architecture.md](docs/concepts/architecture.md)
 - 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
+- 📘 **Glossary**: [docs/concepts/glossary.md](docs/concepts/glossary.md)
 - 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
+- 🚑 **Failure playbooks**: [docs/operations/failure-playbooks.md](docs/operations/failure-playbooks.md)
 - 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
 - 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
 - 🤝 **Docs contributing**: [docs/contributing.md](docs/contributing.md)
@@ -51,6 +53,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 📦 **Secrets API**: [docs/api/secrets.md](docs/api/secrets.md)
 - 🚄 **Transit API**: [docs/api/transit.md](docs/api/transit.md)
 - 📜 **Audit logs API**: [docs/api/audit-logs.md](docs/api/audit-logs.md)
+- 🧩 **API versioning policy**: [docs/api/versioning-policy.md](docs/api/versioning-policy.md)
 
 - **Examples**
 - 🧪 **Curl examples**: [docs/examples/curl.md](docs/examples/curl.md)
@@ -63,7 +66,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 ## ✨ What You Get
 
 - 🔐 Envelope encryption (`Master Key -> KEK -> DEK -> Secret Data`)
-- 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service (decrypt input uses `<version>:<base64-ciphertext>`; see [Transit API docs](docs/api/transit.md))
+- 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service (decrypt input uses `<version>:<base64-ciphertext>`; see [Transit API docs](docs/api/transit.md), [create vs rotate](docs/api/transit.md#create-vs-rotate), and [error matrix](docs/api/transit.md#endpoint-error-matrix))
 - 👤 Token-based authentication and policy-based authorization
 - 📦 Versioned secrets by path (`/v1/secrets/*path`)
 - 📜 Audit logs with request correlation (`request_id`) and filtering
@@ -75,7 +78,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - Token issuance: `POST /v1/token`
 - Clients: `GET/POST /v1/clients`, `GET/PUT/DELETE /v1/clients/:id`
 - Secrets: `POST/GET/DELETE /v1/secrets/*path`
-- Transit: `POST /v1/transit/keys`, `POST /v1/transit/keys/:name/rotate`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/transit/keys/:name/decrypt`, `DELETE /v1/transit/keys/:id`
+- Transit: `POST /v1/transit/keys`, `POST /v1/transit/keys/:name/rotate`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/transit/keys/:name/decrypt`, `DELETE /v1/transit/keys/:id` ([create vs rotate](docs/api/transit.md#create-vs-rotate), [error matrix](docs/api/transit.md#endpoint-error-matrix))
 - Audit logs: `GET /v1/audit-logs`
 
 ## 📄 License
