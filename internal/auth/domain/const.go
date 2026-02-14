@@ -1,3 +1,5 @@
+// Package domain defines authentication and authorization domain models.
+// Implements capability-based access control with clients, tokens, policies, and audit logging.
 package domain
 
 // Capability defines the types of operations that can be performed on resources.

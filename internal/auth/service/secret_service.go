@@ -1,3 +1,5 @@
+// Package service provides authentication-related services for secret generation and token management.
+// Implements secure random token generation and Argon2id password hashing for client credentials.
 package service
 
 import (

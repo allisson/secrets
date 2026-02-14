@@ -39,10 +39,16 @@ type TokenRepository interface {
 	// Get retrieves a token by ID. Returns ErrTokenNotFound if not found.
 	Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error)
 
+	// GetByTokenHash retrieves a token by its SHA-256 hash value.
+	// Returns ErrTokenNotFound if no token matches the hash.
 	GetByTokenHash(ctx context.Context, tokenHash string) (*authDomain.Token, error)
 }
 
+// AuditLogRepository defines persistence operations for audit logs.
+// Implementations must support transaction-aware operations via context propagation.
 type AuditLogRepository interface {
+	// Create stores a new audit log entry recording an authorization decision.
+	// Returns error if the audit log ID already exists or database operation fails.
 	Create(ctx context.Context, auditLog *authDomain.AuditLog) error
 
 	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
@@ -102,16 +108,31 @@ type ClientUseCase interface {
 	Delete(ctx context.Context, clientID uuid.UUID) error
 }
 
+// TokenUseCase defines business logic operations for token management.
+// Handles token issuance with client authentication and token-based authentication validation.
 type TokenUseCase interface {
+	// Issue generates a new authentication token after validating client credentials.
+	// Validates the client secret using Argon2id comparison and checks client is active.
+	// Returns ErrInvalidCredentials for invalid credentials or inactive clients to prevent
+	// enumeration attacks. Token expires based on system configuration (default 24 hours).
 	Issue(
 		ctx context.Context,
 		issueTokenInput *authDomain.IssueTokenInput,
 	) (*authDomain.IssueTokenOutput, error)
 
+	// Authenticate validates a token hash and returns the associated client. Validates token
+	// is not expired/revoked and client is active. Returns ErrInvalidCredentials for
+	// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
+	// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
 	Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
 }
 
+// AuditLogUseCase defines business logic operations for audit logging.
+// Records authorization decisions for compliance and security monitoring.
 type AuditLogUseCase interface {
+	// Create records an authorization decision in the audit log for compliance monitoring.
+	// Captures the request ID, client ID, capability, resource path, and optional metadata.
+	// All audit log entries are immutable once created.
 	Create(
 		ctx context.Context,
 		requestID uuid.UUID,

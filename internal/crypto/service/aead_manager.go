@@ -1,3 +1,5 @@
+// Package service provides cryptographic services for AEAD cipher management and key operations.
+// Implements envelope encryption with support for AES-256-GCM and ChaCha20-Poly1305 algorithms.
 package service
 
 import (
