@@ -115,3 +115,10 @@ Use this quick route before diving into detailed sections:
 4. Initial KEK exists
 5. Token issuance works
 6. Caller policy matches endpoint capability and path
+
+## See also
+
+- [Smoke test](smoke-test.md)
+- [Docker getting started](docker.md)
+- [Local development](local-development.md)
+- [Production operations](../operations/production.md)

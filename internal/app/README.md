@@ -344,3 +344,10 @@ Potential improvements for the container:
 3. **Metrics**: Add metrics for component initialization time
 4. **Configuration validation**: Validate configuration before initializing components
 5. **Graceful degradation**: Support optional dependencies that can fail gracefully
+
+## See also
+
+- [Documentation index](../../docs/README.md)
+- [Architecture concepts](../../docs/concepts/architecture.md)
+- [Local development](../../docs/getting-started/local-development.md)
+- [Testing guide](../../docs/development/testing.md)

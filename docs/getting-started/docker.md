@@ -122,3 +122,10 @@ curl -X POST http://localhost:8080/v1/secrets/app/prod/db-password \
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
 For a full end-to-end check, run `docs/getting-started/smoke-test.sh` (usage in `docs/getting-started/smoke-test.md`).
+
+## See also
+
+- [Local development](local-development.md)
+- [Smoke test](smoke-test.md)
+- [Troubleshooting](troubleshooting.md)
+- [Environment variables](../configuration/environment-variables.md)

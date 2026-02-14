@@ -63,3 +63,10 @@ DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disabl
 ```bash
 curl http://localhost:8080/health
 ```
+
+## See also
+
+- [Docker getting started](docker.md)
+- [Smoke test](smoke-test.md)
+- [Troubleshooting](troubleshooting.md)
+- [Testing guide](../development/testing.md)

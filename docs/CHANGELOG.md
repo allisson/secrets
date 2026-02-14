@@ -22,3 +22,11 @@
 - Added CI docs-only PR guard requiring `docs/CHANGELOG.md` updates
 - Added pull request template with documentation quality gate checklist
 - Added baseline OpenAPI spec (`docs/openapi.yaml`) and linked it from API docs
+- Added cross-linking across all docs pages via `See also` sections for faster navigation
+- Converted docs path references in `README.md` and `docs/README.md` into clickable Markdown links
+
+## See also
+
+- [Documentation index](README.md)
+- [Contributing guide](contributing.md)
+- [Testing guide](development/testing.md)

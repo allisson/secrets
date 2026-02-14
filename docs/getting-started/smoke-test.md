@@ -42,3 +42,10 @@ Optional variables:
 - `TRANSIT_KEY_NAME` (default: `smoke-test-key`)
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
+
+## See also
+
+- [Docker getting started](docker.md)
+- [Local development](local-development.md)
+- [Troubleshooting](troubleshooting.md)
+- [Curl examples](../examples/curl.md)

@@ -16,47 +16,47 @@ The default way to run Secrets is the published Docker image:
 docker pull allisson/secrets:latest
 ```
 
-Then follow the Docker setup guide in `docs/getting-started/docker.md`.
+Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/getting-started/docker.md).
 
 ⚠️ After rotating a master key or KEK, restart API server instances so they load the updated key material.
 
 ## 🧭 Choose Your Path
 
-1. 🐳 **Run with Docker image (recommended)**: `docs/getting-started/docker.md`
-2. 💻 **Run locally for development**: `docs/getting-started/local-development.md`
+1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
+2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
 ## 📚 Docs Map
 
 - **Start Here**
-- 🏁 **Docs index**: `docs/README.md`
-- 🚀 **Getting started (Docker)**: `docs/getting-started/docker.md`
-- 💻 **Getting started (local)**: `docs/getting-started/local-development.md`
-- 🧰 **Troubleshooting**: `docs/getting-started/troubleshooting.md`
-- ✅ **Smoke test script**: `docs/getting-started/smoke-test.md`
+- 🏁 **Docs index**: [docs/README.md](docs/README.md)
+- 🚀 **Getting started (Docker)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
+- 💻 **Getting started (local)**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
+- 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
+- ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 
 - **By Topic**
-- ⚙️ **Environment variables**: `docs/configuration/environment-variables.md`
-- 🏗️ **Architecture concepts**: `docs/concepts/architecture.md`
-- 🔒 **Security model**: `docs/concepts/security-model.md`
-- 🔑 **Key management operations**: `docs/operations/key-management.md`
-- 🏭 **Production deployment**: `docs/operations/production.md`
-- 🛠️ **Development and testing**: `docs/development/testing.md`
-- 🤝 **Docs contributing**: `docs/contributing.md`
-- 🗒️ **Docs changelog**: `docs/CHANGELOG.md`
+- ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
+- 🏗️ **Architecture concepts**: [docs/concepts/architecture.md](docs/concepts/architecture.md)
+- 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
+- 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
+- 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
+- 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
+- 🤝 **Docs contributing**: [docs/contributing.md](docs/contributing.md)
+- 🗒️ **Docs changelog**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 - **API Reference**
-- 🔐 **Auth API**: `docs/api/authentication.md`
-- 👤 **Clients API**: `docs/api/clients.md`
-- 📘 **Policy cookbook**: `docs/api/policies.md`
-- 📦 **Secrets API**: `docs/api/secrets.md`
-- 🚄 **Transit API**: `docs/api/transit.md`
-- 📜 **Audit logs API**: `docs/api/audit-logs.md`
+- 🔐 **Auth API**: [docs/api/authentication.md](docs/api/authentication.md)
+- 👤 **Clients API**: [docs/api/clients.md](docs/api/clients.md)
+- 📘 **Policy cookbook**: [docs/api/policies.md](docs/api/policies.md)
+- 📦 **Secrets API**: [docs/api/secrets.md](docs/api/secrets.md)
+- 🚄 **Transit API**: [docs/api/transit.md](docs/api/transit.md)
+- 📜 **Audit logs API**: [docs/api/audit-logs.md](docs/api/audit-logs.md)
 
 - **Examples**
-- 🧪 **Curl examples**: `docs/examples/curl.md`
-- 🐍 **Python examples**: `docs/examples/python.md`
-- 🟨 **JavaScript examples**: `docs/examples/javascript.md`
-- 🐹 **Go examples**: `docs/examples/go.md`
+- 🧪 **Curl examples**: [docs/examples/curl.md](docs/examples/curl.md)
+- 🐍 **Python examples**: [docs/examples/python.md](docs/examples/python.md)
+- 🟨 **JavaScript examples**: [docs/examples/javascript.md](docs/examples/javascript.md)
+- 🐹 **Go examples**: [docs/examples/go.md](docs/examples/go.md)
 
 All detailed guides include practical use cases and copy/paste-ready examples.
 
@@ -81,3 +81,10 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 ## 📄 License
 
 MIT. See `LICENSE`.
+
+## See also
+
+- [Documentation index](docs/README.md)
+- [Docker getting started](docs/getting-started/docker.md)
+- [API authentication](docs/api/authentication.md)
+- [Production operations](docs/operations/production.md)

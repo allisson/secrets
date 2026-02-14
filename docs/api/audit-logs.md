@@ -146,3 +146,10 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
 - `docs/examples/javascript.md`
 - `docs/examples/go.md`
 - `docs/api/response-shapes.md`
+
+## See also
+
+- [Authentication API](authentication.md)
+- [Clients API](clients.md)
+- [Policies cookbook](policies.md)
+- [Response shapes](response-shapes.md)

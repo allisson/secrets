@@ -144,3 +144,10 @@ Expected result: write returns `201 Created`; read returns `200 OK` with base64 
 - `docs/examples/javascript.md`
 - `docs/examples/go.md`
 - `docs/api/response-shapes.md`
+
+## See also
+
+- [Authentication API](authentication.md)
+- [Policies cookbook](policies.md)
+- [Response shapes](response-shapes.md)
+- [Curl examples](../examples/curl.md)

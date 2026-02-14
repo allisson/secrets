@@ -45,3 +45,10 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 2. Rotate KEK (and master key if needed)
 3. Re-issue clients/tokens and validate policy scope
 4. Review audit logs for lateral movement indicators
+
+## See also
+
+- [Architecture](architecture.md)
+- [Authentication API](../api/authentication.md)
+- [Policies cookbook](../api/policies.md)
+- [Key management operations](../operations/key-management.md)
