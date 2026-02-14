@@ -78,3 +78,10 @@ main().catch((error) => {
   process.exit(1);
 });
 ```
+
+## See also
+
+- [Authentication API](../api/authentication.md)
+- [Secrets API](../api/secrets.md)
+- [Transit API](../api/transit.md)
+- [Response shapes](../api/response-shapes.md)

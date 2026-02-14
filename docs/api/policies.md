@@ -195,3 +195,10 @@ Also verify path matching, for example `/v1/secrets/app/prod/*` if you want tigh
 2. Use separate clients per service/workload
 3. Avoid wildcard `*` except emergency administration
 4. Review policies on every deploy and rotation cycle
+
+## See also
+
+- [Authentication API](authentication.md)
+- [Clients API](clients.md)
+- [Secrets API](secrets.md)
+- [Transit API](transit.md)

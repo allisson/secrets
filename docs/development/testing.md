@@ -35,3 +35,10 @@ make test-db-down
 2. Run `make lint`
 3. Run targeted tests
 4. Run full `make test`
+
+## See also
+
+- [Local development](../getting-started/local-development.md)
+- [Smoke test](../getting-started/smoke-test.md)
+- [Troubleshooting](../getting-started/troubleshooting.md)
+- [Contributing guide](../contributing.md)

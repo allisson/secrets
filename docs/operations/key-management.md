@@ -82,3 +82,10 @@ Operational step:
 ## Related
 
 - 🏭 Production deployment: `docs/operations/production.md`
+
+## See also
+
+- [Production operations](production.md)
+- [Security model](../concepts/security-model.md)
+- [Transit API](../api/transit.md)
+- [Environment variables](../configuration/environment-variables.md)

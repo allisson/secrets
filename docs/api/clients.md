@@ -131,3 +131,10 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 - 🧩 Create one client per service
 - 🔒 Grant only required capabilities per path
 - 🔄 Rotate credentials by creating new clients and deactivating old ones
+
+## See also
+
+- [Authentication API](authentication.md)
+- [Policies cookbook](policies.md)
+- [Audit logs API](audit-logs.md)
+- [Response shapes](response-shapes.md)

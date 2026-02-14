@@ -69,3 +69,10 @@ This target runs markdown linting and offline markdown link validation.
 2. Add or update relevant examples if behavior/commands changed
 3. Append a concise entry in `docs/CHANGELOG.md` for significant docs changes
 4. Run `make docs-lint` before opening or merging PRs
+
+## See also
+
+- [Documentation index](README.md)
+- [Testing guide](development/testing.md)
+- [Changelog](CHANGELOG.md)
+- [Local development](getting-started/local-development.md)

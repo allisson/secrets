@@ -1053,3 +1053,10 @@ func (s *Server) SetupRouter(
 - `DELETE /v1/clients/:id` → `DeleteCapability` (remove client)
 
 **Reference:** `/internal/http/server.go` (SetupRouter method)
+
+## See also
+
+- [Repository README](README.md)
+- [Documentation index](docs/README.md)
+- [Testing guide](docs/development/testing.md)
+- [Contributing guide](docs/contributing.md)
