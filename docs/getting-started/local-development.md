@@ -58,7 +58,29 @@ DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disabl
 ./bin/app server
 ```
 
-## 7) Smoke test
+## 7) Create first client credentials
+
+In another terminal, create your first API client and policy set:
+
+```bash
+./bin/app create-client \
+  --name bootstrap-admin \
+  --active \
+  --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]' \
+  --format json
+```
+
+Save the returned `client_id` and one-time `secret` securely.
+
+## 8) Issue token
+
+```bash
+curl -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"<client-id>","client_secret":"<client-secret>"}'
+```
+
+## 9) Smoke test
 
 ```bash
 curl http://localhost:8080/health
@@ -70,3 +92,4 @@ curl http://localhost:8080/health
 - [Smoke test](smoke-test.md)
 - [Troubleshooting](troubleshooting.md)
 - [Testing guide](../development/testing.md)
+- [CLI commands reference](../cli/commands.md)

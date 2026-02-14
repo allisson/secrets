@@ -10,6 +10,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 💻 [getting-started/local-development.md](getting-started/local-development.md)
 - 🧰 [getting-started/troubleshooting.md](getting-started/troubleshooting.md)
 - ✅ [getting-started/smoke-test.md](getting-started/smoke-test.md)
+- 🧪 [cli/commands.md](cli/commands.md)
 
 ## 🛣️ First-Time Operator Path
 
@@ -51,6 +52,15 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🧱 [api/response-shapes.md](api/response-shapes.md)
 - 🧩 [api/versioning-policy.md](api/versioning-policy.md)
 - 📄 [openapi.yaml](openapi.yaml)
+
+OpenAPI scope note:
+
+- `openapi.yaml` is a baseline subset for common API flows in `v0.1.0`
+- Full endpoint behavior is documented in the endpoint pages under `docs/api/`
+
+## 🚀 Releases
+
+- 📦 [releases/v0.1.0.md](releases/v0.1.0.md)
 
 ## 🧠 ADRs
 
