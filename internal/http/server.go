@@ -187,6 +187,12 @@ func (s *Server) SetupRouter(
 	s.router = router
 }
 
+// GetHandler returns the http.Handler for testing purposes.
+// Returns nil if SetupRouter has not been called yet.
+func (s *Server) GetHandler() http.Handler {
+	return s.router
+}
+
 // Start starts the HTTP server.
 func (s *Server) Start(ctx context.Context) error {
 	// Router must be set up before starting
