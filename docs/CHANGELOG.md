@@ -2,6 +2,16 @@
 
 > Last updated: 2026-02-14
 
+## 2026-02-14 (docs v2 - v0.1.0 release prep)
+
+- Added first-client bootstrap flow to Docker and local development guides using `create-client`
+- Added CLI reference page with runtime, key management, and client management commands
+- Linked CLI docs and release notes from root README and docs index
+- Switched Docker release guide examples to pinned image tag `allisson/secrets:v0.1.0`
+- Added explicit OpenAPI coverage note: `docs/openapi.yaml` is baseline subset for common flows
+- Clarified API v1 compatibility expectations relative to pre-1.0 app releases
+- Added release notes page: `docs/releases/v0.1.0.md`
+
 ## 2026-02-14 (docs v1)
 
 - Split large root README into focused docs under `docs/`

@@ -11,6 +11,18 @@ This page defines compatibility expectations for HTTP API changes.
 - Existing endpoint paths and JSON field names are treated as stable unless explicitly deprecated
 - OpenAPI source of truth: `docs/openapi.yaml`
 
+## OpenAPI Coverage (v0.1.0)
+
+- `docs/openapi.yaml` is a baseline subset focused on high-traffic/common integration flows
+- Endpoint pages in `docs/api/*.md` define full public behavior for covered operations
+- Endpoints may exist in runtime before they are expanded in OpenAPI detail
+
+## App Version vs API Version
+
+- Application release `v0.1.0` is pre-1.0 software and may evolve quickly
+- API v1 path contract (`/v1/*`) remains the compatibility baseline for consumers
+- Breaking API behavior changes require explicit documentation and migration notes
+
 ## Breaking Changes
 
 Treat these as breaking:

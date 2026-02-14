@@ -6,6 +6,9 @@
 
 End-to-end shell workflow.
 
+Need first credentials? Create an API client with `app create-client` first.
+See [CLI commands reference](../cli/commands.md).
+
 ## Bootstrap
 
 Prerequisites:
