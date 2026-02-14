@@ -12,7 +12,6 @@ import (
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
-	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	"github.com/allisson/secrets/internal/transit/http/dto"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 	customValidation "github.com/allisson/secrets/internal/validation"
@@ -119,15 +118,8 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 		return
 	}
 
-	// Parse ciphertext format "version:base64-ciphertext"
-	encryptedBlob, err := transitDomain.NewEncryptedBlob(req.Ciphertext)
-	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
-		return
-	}
-
-	// Call use case with parsed ciphertext
-	decryptedBlob, err := h.transitKeyUseCase.Decrypt(c.Request.Context(), name, encryptedBlob.Ciphertext)
+	// Call use case with ciphertext string (format: "version:base64-ciphertext")
+	decryptedBlob, err := h.transitKeyUseCase.Decrypt(c.Request.Context(), name, req.Ciphertext)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return

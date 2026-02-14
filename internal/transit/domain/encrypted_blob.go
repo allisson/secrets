@@ -19,6 +19,7 @@ type EncryptedBlob struct {
 func NewEncryptedBlob(content string) (EncryptedBlob, error) {
 	// Split by ":" - expect exactly 2 parts: version:ciphertext
 	parts := strings.Split(content, ":")
+
 	if len(parts) != 2 {
 		return EncryptedBlob{}, fmt.Errorf(
 			"%w: expected format 'version:ciphertext', got %d parts",

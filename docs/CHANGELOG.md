@@ -24,6 +24,11 @@
 - Added baseline OpenAPI spec (`docs/openapi.yaml`) and linked it from API docs
 - Added cross-linking across all docs pages via `See also` sections for faster navigation
 - Converted docs path references in `README.md` and `docs/README.md` into clickable Markdown links
+- Clarified transit decrypt contract: callers must pass versioned ciphertext (`<version>:<base64-ciphertext>`) exactly as returned by encrypt
+- Documented transit decrypt validation behavior: malformed ciphertext now returns `422 Unprocessable Entity`
+- Added transit decrypt input contract examples (valid/invalid) and representative `422` payloads
+- Added OpenAPI decrypt request examples and explicit `401`/`403`/`404` responses
+- Added 422 troubleshooting matrix and transit round-trip verification/decode notes in examples
 
 ## See also
 

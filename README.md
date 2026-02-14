@@ -63,7 +63,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 ## ✨ What You Get
 
 - 🔐 Envelope encryption (`Master Key -> KEK -> DEK -> Secret Data`)
-- 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service
+- 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service (decrypt input uses `<version>:<base64-ciphertext>`; see [Transit API docs](docs/api/transit.md))
 - 👤 Token-based authentication and policy-based authorization
 - 📦 Versioned secrets by path (`/v1/secrets/*path`)
 - 📜 Audit logs with request correlation (`request_id`) and filtering

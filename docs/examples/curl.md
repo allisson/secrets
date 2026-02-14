@@ -32,6 +32,8 @@ curl http://localhost:8080/v1/secrets/app/prod/api-key \
 
 ## 4) Transit encrypt + decrypt
 
+For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`).
+
 ```bash
 curl -X POST http://localhost:8080/v1/transit/keys \
   -H "Authorization: Bearer $TOKEN" \
@@ -43,10 +45,14 @@ CIPHERTEXT=$(curl -s -X POST http://localhost:8080/v1/transit/keys/pii/encrypt \
   -H "Content-Type: application/json" \
   -d '{"plaintext":"am9obkBleGFtcGxlLmNvbQ=="}' | jq -r .ciphertext)
 
-curl -X POST http://localhost:8080/v1/transit/keys/pii/decrypt \
+PLAINTEXT_B64=$(curl -s -X POST http://localhost:8080/v1/transit/keys/pii/decrypt \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"ciphertext\":\"$CIPHERTEXT\"}"
+  -d "{\"ciphertext\":\"$CIPHERTEXT\"}" | jq -r .plaintext)
+
+test "$PLAINTEXT_B64" = "am9obkBleGFtcGxlLmNvbQ==" && echo "Transit round-trip verified"
+
+# Note: `plaintext` is base64. Decode it in your app/runtime before use.
 ```
 
 ## 5) Audit logs query

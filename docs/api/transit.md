@@ -90,6 +90,21 @@ curl -X POST http://localhost:8080/v1/transit/keys/payment-data/decrypt \
   -d '{"ciphertext":"1:ZW5jcnlwdGVkLi4u"}'
 ```
 
+For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`).
+
+### Decrypt Input Contract
+
+Valid `ciphertext` examples:
+
+- `1:ZW5jcnlwdGVkLWJ5dGVzLi4u`
+- `42:AAEC`
+
+Invalid `ciphertext` examples:
+
+- `ZW5jcnlwdGVkLWJ5dGVzLi4u` (missing version prefix and `:` separator)
+- `1:not-base64!!!` (ciphertext segment is not valid base64)
+- `abc:ZW5jcnlwdGVk` (version is not numeric)
+
 Example decrypt response (`200 OK`):
 
 ```json
@@ -104,7 +119,7 @@ Example decrypt response (`200 OK`):
 - `403 Forbidden`: missing capability (`write`, `rotate`, `encrypt`, `decrypt`, `delete`)
 - `404 Not Found`: key missing or soft deleted
 - `409 Conflict`: key already exists on create
-- `422 Unprocessable Entity`: malformed request payload
+- `422 Unprocessable Entity`: malformed request payload, invalid blob format, or invalid ciphertext base64
 
 ## Error Payload Examples
 
@@ -134,6 +149,32 @@ Representative error payloads (exact messages may vary):
 {
   "error": "validation_error",
   "message": "plaintext must be base64-encoded"
+}
+```
+
+Decrypt validation errors also return `422` when ciphertext is not in
+`<version>:<base64-ciphertext>` format or when ciphertext payload is not valid base64.
+
+Transit decrypt `422` examples (representative messages):
+
+```json
+{
+  "error": "validation_error",
+  "message": "ciphertext must be in format version:base64-ciphertext"
+}
+```
+
+```json
+{
+  "error": "validation_error",
+  "message": "ciphertext version must be numeric"
+}
+```
+
+```json
+{
+  "error": "validation_error",
+  "message": "ciphertext payload must be valid base64"
 }
 ```
 

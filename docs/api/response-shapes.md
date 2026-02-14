@@ -65,6 +65,9 @@ Transit decrypt:
 }
 ```
 
+Input contract note: transit decrypt expects `ciphertext` in format
+`<version>:<base64-ciphertext>`. See [Transit API](transit.md#decrypt-input-contract).
+
 Audit log list:
 
 ```json

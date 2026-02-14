@@ -218,7 +218,17 @@ paths:
               properties:
                 ciphertext:
                   type: string
+                  description: Versioned ciphertext in format "<version>:<base64-ciphertext>"
               required: [ciphertext]
+            examples:
+              validCiphertext:
+                summary: Versioned ciphertext from encrypt response
+                value:
+                  ciphertext: "1:ZW5jcnlwdGVkLWJ5dGVzLi4u"
+              invalidCiphertext:
+                summary: Invalid ciphertext format
+                value:
+                  ciphertext: "not-base64!!!"
       responses:
         "200":
           description: Decrypted
@@ -229,6 +239,18 @@ paths:
                 properties:
                   plaintext:
                     type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /v1/audit-logs:
     get:
       tags: [audit]

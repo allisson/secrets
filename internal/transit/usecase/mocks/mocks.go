@@ -550,7 +550,7 @@ func (_c *MockTransitKeyUseCase_Create_Call) RunAndReturn(run func(ctx context.C
 }
 
 // Decrypt provides a mock function for the type MockTransitKeyUseCase
-func (_mock *MockTransitKeyUseCase) Decrypt(ctx context.Context, name string, ciphertext []byte) (*domain0.EncryptedBlob, error) {
+func (_mock *MockTransitKeyUseCase) Decrypt(ctx context.Context, name string, ciphertext string) (*domain0.EncryptedBlob, error) {
 	ret := _mock.Called(ctx, name, ciphertext)
 
 	if len(ret) == 0 {
@@ -559,17 +559,17 @@ func (_mock *MockTransitKeyUseCase) Decrypt(ctx context.Context, name string, ci
 
 	var r0 *domain0.EncryptedBlob
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []byte) (*domain0.EncryptedBlob, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*domain0.EncryptedBlob, error)); ok {
 		return returnFunc(ctx, name, ciphertext)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []byte) *domain0.EncryptedBlob); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *domain0.EncryptedBlob); ok {
 		r0 = returnFunc(ctx, name, ciphertext)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain0.EncryptedBlob)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, []byte) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
 		r1 = returnFunc(ctx, name, ciphertext)
 	} else {
 		r1 = ret.Error(1)
@@ -585,12 +585,12 @@ type MockTransitKeyUseCase_Decrypt_Call struct {
 // Decrypt is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - ciphertext []byte
+//   - ciphertext string
 func (_e *MockTransitKeyUseCase_Expecter) Decrypt(ctx interface{}, name interface{}, ciphertext interface{}) *MockTransitKeyUseCase_Decrypt_Call {
 	return &MockTransitKeyUseCase_Decrypt_Call{Call: _e.mock.On("Decrypt", ctx, name, ciphertext)}
 }
 
-func (_c *MockTransitKeyUseCase_Decrypt_Call) Run(run func(ctx context.Context, name string, ciphertext []byte)) *MockTransitKeyUseCase_Decrypt_Call {
+func (_c *MockTransitKeyUseCase_Decrypt_Call) Run(run func(ctx context.Context, name string, ciphertext string)) *MockTransitKeyUseCase_Decrypt_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -600,9 +600,9 @@ func (_c *MockTransitKeyUseCase_Decrypt_Call) Run(run func(ctx context.Context, 
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 []byte
+		var arg2 string
 		if args[2] != nil {
-			arg2 = args[2].([]byte)
+			arg2 = args[2].(string)
 		}
 		run(
 			arg0,
@@ -618,7 +618,7 @@ func (_c *MockTransitKeyUseCase_Decrypt_Call) Return(encryptedBlob *domain0.Encr
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Decrypt_Call) RunAndReturn(run func(ctx context.Context, name string, ciphertext []byte) (*domain0.EncryptedBlob, error)) *MockTransitKeyUseCase_Decrypt_Call {
+func (_c *MockTransitKeyUseCase_Decrypt_Call) RunAndReturn(run func(ctx context.Context, name string, ciphertext string) (*domain0.EncryptedBlob, error)) *MockTransitKeyUseCase_Decrypt_Call {
 	_c.Call.Return(run)
 	return _c
 }

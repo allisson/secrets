@@ -30,8 +30,9 @@ type TransitKeyUseCase interface {
 	Delete(ctx context.Context, transitKeyID uuid.UUID) error
 	Encrypt(ctx context.Context, name string, plaintext []byte) (*transitDomain.EncryptedBlob, error)
 	// Decrypt decrypts ciphertext using the version specified in the encrypted blob.
+	// The ciphertext parameter should be in format "version:base64-ciphertext".
 	//
 	// Security Note: The returned EncryptedBlob contains plaintext data in the Plaintext field.
 	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
-	Decrypt(ctx context.Context, name string, ciphertext []byte) (*transitDomain.EncryptedBlob, error)
+	Decrypt(ctx context.Context, name string, ciphertext string) (*transitDomain.EncryptedBlob, error)
 }
