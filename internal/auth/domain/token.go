@@ -17,11 +17,15 @@ type Token struct {
 	CreatedAt time.Time
 }
 
+// IssueTokenInput contains client credentials for token issuance requests.
+// Used during authentication to verify client identity before generating tokens.
 type IssueTokenInput struct {
 	ClientID     uuid.UUID
 	ClientSecret string
 }
 
+// IssueTokenOutput contains the newly issued authentication token and expiration.
+// The PlainToken is only returned once and must be transmitted securely to the client.
 type IssueTokenOutput struct {
 	PlainToken string
 	ExpiresAt  time.Time

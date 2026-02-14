@@ -1,3 +1,5 @@
+// Package testutil provides testing utilities for database integration tests.
+// Includes helpers for setting up PostgreSQL and MySQL test databases with migrations.
 package testutil
 
 import (
@@ -114,6 +116,7 @@ func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 	require.NoError(t, err, "failed to enable foreign key checks")
 }
 
+// runPostgresMigrations applies all pending PostgreSQL migrations for the test database.
 func runPostgresMigrations(t *testing.T, db *sql.DB) {
 	t.Helper()
 
@@ -135,6 +138,7 @@ func runPostgresMigrations(t *testing.T, db *sql.DB) {
 	}
 }
 
+// runMySQLMigrations applies all pending MySQL migrations for the test database.
 func runMySQLMigrations(t *testing.T, db *sql.DB) {
 	t.Helper()
 
@@ -156,6 +160,8 @@ func runMySQLMigrations(t *testing.T, db *sql.DB) {
 	}
 }
 
+// getMigrationsPath resolves the absolute path to migration files for the specified database type.
+// Walks up the directory tree from current working directory to find the migrations folder.
 func getMigrationsPath(dbType string) string {
 	// Get the project root by walking up from the current directory
 	dir, err := os.Getwd()

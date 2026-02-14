@@ -1,3 +1,5 @@
+// Package domain defines core cryptographic domain models for envelope encryption.
+// Implements Master Key → KEK → DEK → Data hierarchy with AESGCM and ChaCha20 support.
 package domain
 
 import (
