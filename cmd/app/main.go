@@ -159,6 +159,38 @@ func main() {
 					)
 				},
 			},
+			{
+				Name:  "clean-audit-logs",
+				Usage: "Delete audit logs older than specified days",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:     "days",
+						Aliases:  []string{"d"},
+						Required: true,
+						Usage:    "Delete audit logs older than this many days",
+					},
+					&cli.BoolFlag{
+						Name:    "dry-run",
+						Aliases: []string{"n"},
+						Value:   false,
+						Usage:   "Show how many logs would be deleted without deleting",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"f"},
+						Value:   "text",
+						Usage:   "Output format: 'text' or 'json'",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunCleanAuditLogs(
+						ctx,
+						cmd.Int("days"),
+						cmd.Bool("dry-run"),
+						cmd.String("format"),
+					)
+				},
+			},
 		},
 	}
 

@@ -62,6 +62,23 @@ func (a *auditLogUseCase) List(
 	return auditLogs, nil
 }
 
+// DeleteOlderThan removes audit logs older than the specified number of days.
+// When dryRun is true, returns count without deletion. When false, executes DELETE
+// and returns affected rows. Calculates the cutoff timestamp as current UTC time
+// minus the given days. All time calculations use UTC.
+func (a *auditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error) {
+	// Calculate cutoff date in UTC
+	cutoffDate := time.Now().UTC().AddDate(0, 0, -days)
+
+	// Delete audit logs older than cutoff date (or count if dry-run)
+	count, err := a.auditLogRepo.DeleteOlderThan(ctx, cutoffDate, dryRun)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to delete old audit logs")
+	}
+
+	return count, nil
+}
+
 // NewAuditLogUseCase creates a new AuditLogUseCase with the provided dependencies.
 func NewAuditLogUseCase(auditLogRepo AuditLogRepository) AuditLogUseCase {
 	return &auditLogUseCase{

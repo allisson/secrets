@@ -41,6 +41,7 @@ Minimal reverse proxy checklist:
 - Use encrypted storage and restricted DB network access
 - Monitor connection pool metrics and error rates
 - Run migrations before rolling out new app versions
+- Define and execute audit log retention cleanup on a fixed cadence
 
 Backup/restore checklist:
 
@@ -48,6 +49,16 @@ Backup/restore checklist:
 2. Retention policy defined
 3. Restore drill tested in non-production
 4. Recovery time objective documented
+
+Audit log retention routine (recommended monthly):
+
+```bash
+# 1) Preview rows older than 90 days
+./bin/app clean-audit-logs --days 90 --dry-run --format json
+
+# 2) Execute deletion
+./bin/app clean-audit-logs --days 90 --format text
+```
 
 ## 4) Key Rotation Schedule
 

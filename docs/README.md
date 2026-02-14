@@ -55,12 +55,13 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.1.0`
+- `openapi.yaml` is a baseline subset for common API flows in `v0.2.0`
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.1.0.md](releases/v0.1.0.md)
+- 📦 [releases/v0.2.0.md](releases/v0.2.0.md)
+- 📦 [releases/v0.1.0.md](releases/v0.1.0.md) (historical)
 
 ## 🧠 ADRs
 

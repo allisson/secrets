@@ -78,6 +78,18 @@ Example response (`200 OK`):
 - 🌐 Spot unusual source IP changes per client
 - 🧭 Correlate a request with app logs via `request_id`
 
+## Retention and Cleanup
+
+- Audit log cleanup is an operator workflow via CLI, not an HTTP delete endpoint
+- Use `clean-audit-logs` to delete old records by retention days
+- Start with `--dry-run` to preview affected rows before deletion
+
+Example:
+
+```bash
+./bin/app clean-audit-logs --days 90 --dry-run --format json
+```
+
 ## Common Errors
 
 - `401 Unauthorized`: missing/invalid bearer token

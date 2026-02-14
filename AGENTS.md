@@ -473,6 +473,9 @@ func main() {
 - `app create-kek [--algorithm aes-gcm|chacha20-poly1305]` - Create initial KEK
 - `app rotate-kek [--algorithm aes-gcm|chacha20-poly1305]` - Rotate existing KEK
 
+**Audit Log Operations:**
+- `app clean-audit-logs --days <days> [--dry-run] [--format text|json]` - Delete old audit logs or preview count
+
 ### Command Testing
 
 When adding new commands:

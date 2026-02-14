@@ -90,6 +90,11 @@ func (m *mockAuditLogUseCase) List(
 	return args.Get(0).([]*authDomain.AuditLog), args.Error(1)
 }
 
+func (m *mockAuditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error) {
+	args := m.Called(ctx, days, dryRun)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // TestMain sets Gin to test mode for all tests in this package.
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
