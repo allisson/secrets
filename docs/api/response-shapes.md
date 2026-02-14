@@ -109,9 +109,20 @@ Common error categories:
 - `not_found`
 - `conflict`
 
+Representative conflict payload (for example duplicate transit key create):
+
+```json
+{
+  "error": "conflict",
+  "message": "transit key already exists"
+}
+```
+
 ## See also
 
 - [Authentication API](authentication.md)
 - [Clients API](clients.md)
 - [Secrets API](secrets.md)
 - [Transit API](transit.md)
+- [API compatibility policy](versioning-policy.md)
+- [Glossary](../concepts/glossary.md)

@@ -19,6 +19,7 @@ Use this quick route before diving into detailed sections:
 
 - [401 Unauthorized](#401-unauthorized)
 - [403 Forbidden](#403-forbidden)
+- [409 Conflict](#409-conflict)
 - [422 Unprocessable Entity](#422-unprocessable-entity)
 - [Database connection failure](#database-connection-failure)
 - [Migration failure](#migration-failure)
@@ -45,6 +46,23 @@ Use this quick route before diving into detailed sections:
   - verify capability mapping for endpoint (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`)
   - verify path pattern (`*`, exact path, or prefix with `/*`)
   - update client policy and retry
+
+## 409 Conflict
+
+- Symptom: request returns `409 Conflict`
+- Likely cause: resource already exists with unique key constraints
+
+Common 409 case:
+
+| Endpoint | Common cause | Fix |
+| --- | --- | --- |
+| `POST /v1/transit/keys` | transit key `name` already has initial `version=1` | use `POST /v1/transit/keys/:name/rotate` for a new version, or pick a new key name |
+
+- Fix:
+  - use create only for first-time key initialization
+  - use rotate for subsequent key versions
+  - migration note: if legacy automation retries create for existing names, update it to call rotate
+    after receiving `409 Conflict`
 
 ## 422 Unprocessable Entity
 

@@ -37,11 +37,23 @@ func (t *transitKeyUseCase) getKek(kekID uuid.UUID) (*cryptoDomain.Kek, error) {
 }
 
 // Create generates and persists a new transit key with version 1.
+// Returns ErrTransitKeyAlreadyExists if a transit key with the same name already exists.
 func (t *transitKeyUseCase) Create(
 	ctx context.Context,
 	name string,
 	alg cryptoDomain.Algorithm,
 ) (*transitDomain.TransitKey, error) {
+	// Check if transit key with version 1 already exists
+	existingKey, err := t.transitRepo.GetByNameAndVersion(ctx, name, 1)
+	if err != nil && !apperrors.Is(err, transitDomain.ErrTransitKeyNotFound) {
+		// Return unexpected database errors
+		return nil, err
+	}
+	if existingKey != nil {
+		// Transit key already exists with version 1
+		return nil, transitDomain.ErrTransitKeyAlreadyExists
+	}
+
 	// Get active KEK from chain
 	activeKek, err := t.getKek(t.kekChain.ActiveKekID())
 	if err != nil {

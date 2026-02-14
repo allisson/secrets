@@ -4,6 +4,20 @@
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
+## Bootstrap
+
+Prerequisites:
+
+- Go 1.25+
+
+Recommended environment variables:
+
+```bash
+export BASE_URL="http://localhost:8080"
+export CLIENT_ID="<client-id>"
+export CLIENT_SECRET="<client-secret>"
+```
+
 ```go
 package main
 
@@ -14,12 +28,16 @@ import (
     "fmt"
     "io"
     "net/http"
+    "os"
 )
 
-const baseURL = "http://localhost:8080"
+var baseURL = envOrDefault("BASE_URL", "http://localhost:8080")
 
 func main() {
-    token, err := issueToken("<client-id>", "<client-secret>")
+    token, err := issueToken(
+        envOrDefault("CLIENT_ID", "<client-id>"),
+        envOrDefault("CLIENT_SECRET", "<client-secret>"),
+    )
     if err != nil {
         panic(err)
     }
@@ -49,6 +67,14 @@ func main() {
     fmt.Println("decrypted value:", string(decoded))
 
     fmt.Println("Transit round-trip verified")
+}
+
+func envOrDefault(key, defaultValue string) string {
+    value := os.Getenv(key)
+    if value == "" {
+        return defaultValue
+    }
+    return value
 }
 
 func issueToken(clientID, clientSecret string) (string, error) {
@@ -163,6 +189,13 @@ func createTransitKey(token, keyName string) error {
     return nil
 }
 ```
+
+## Common Mistakes
+
+- Posting raw strings instead of base64-encoded fields for secrets/transit payloads
+- Generating decrypt `ciphertext` from local assumptions instead of encrypt response
+- Missing bearer token header on one request in a multi-step flow
+- Ignoring `409 Conflict` on transit create and not switching to rotate logic
 
 ## See also
 

@@ -162,6 +162,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransitKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Transit key already exists (same name with initial version)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: conflict
+                message: transit key already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /v1/transit/keys/{name}/encrypt:
     post:
       tags: [transit]

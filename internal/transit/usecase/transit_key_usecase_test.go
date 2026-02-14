@@ -81,6 +81,11 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedDek := createTestDek(kek.ID)
 
 		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(kek, cryptoDomain.AESGCM).
 			Return(*expectedDek, nil).
@@ -131,6 +136,11 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedDek.Algorithm = cryptoDomain.ChaCha20
 
 		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(kek, cryptoDomain.ChaCha20).
 			Return(*expectedDek, nil).
@@ -158,6 +168,40 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		assert.Equal(t, uint(1), transitKey.Version)
 	})
 
+	t.Run("Error_TransitKeyAlreadyExists", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		existingTransitKey := createTestTransitKey("test-key", 1, uuid.Must(uuid.NewV7()))
+
+		// Setup expectations - GetByNameAndVersion should return existing key
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(existingTransitKey, nil).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, transitKey)
+		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyAlreadyExists))
+		assert.True(t, apperrors.Is(err, apperrors.ErrConflict))
+	})
+
 	t.Run("Error_DekCreationFails", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
@@ -174,6 +218,11 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("dek creation failed")
 
 		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(kek, cryptoDomain.AESGCM).
 			Return(cryptoDomain.Dek{}, expectedError).
@@ -208,6 +257,11 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("database error")
 
 		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(kek, cryptoDomain.AESGCM).
 			Return(*expectedDek, nil).
@@ -247,6 +301,11 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("database error")
 
 		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(ctx, "test-key", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(kek, cryptoDomain.AESGCM).
 			Return(*expectedDek, nil).
@@ -369,6 +428,11 @@ func TestTransitKeyUseCase_Rotate(t *testing.T) {
 
 		mockTransitRepo.EXPECT().
 			GetByName(mock.Anything, "test-key").
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
+			Once()
+
+		mockTransitRepo.EXPECT().
+			GetByNameAndVersion(mock.Anything, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
 			Once()
 

@@ -22,11 +22,23 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - ⚙️ [configuration/environment-variables.md](configuration/environment-variables.md)
 - 🏗️ [concepts/architecture.md](concepts/architecture.md)
 - 🔒 [concepts/security-model.md](concepts/security-model.md)
+- 📘 [concepts/glossary.md](concepts/glossary.md)
 - 🔑 [operations/key-management.md](operations/key-management.md)
 - 🏭 [operations/production.md](operations/production.md)
+- 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
 - 🛠️ [development/testing.md](development/testing.md)
 - 🤝 [contributing.md](contributing.md)
 - 🗒️ [CHANGELOG.md](CHANGELOG.md)
+
+## 🧭 Docs Freshness SLA
+
+| Area | Primary owner | Review cadence |
+| --- | --- | --- |
+| Getting started | Maintainers | Monthly |
+| API reference | Maintainers + feature PR author | Every behavior change + monthly |
+| Operations runbooks | Maintainers + on-call | Monthly and after incidents |
+| Examples | Maintainers | Monthly and when API contract changes |
+| Concepts/architecture | Maintainers | Quarterly |
 
 ## 🌐 API Reference
 
@@ -37,7 +49,13 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🚄 [api/transit.md](api/transit.md)
 - 📜 [api/audit-logs.md](api/audit-logs.md)
 - 🧱 [api/response-shapes.md](api/response-shapes.md)
+- 🧩 [api/versioning-policy.md](api/versioning-policy.md)
 - 📄 [openapi.yaml](openapi.yaml)
+
+## 🧠 ADRs
+
+- 🧾 [adr/0001-envelope-encryption-model.md](adr/0001-envelope-encryption-model.md)
+- 🧾 [adr/0002-transit-versioned-ciphertext-contract.md](adr/0002-transit-versioned-ciphertext-contract.md)
 
 ## 🖥️ Supported Platforms
 

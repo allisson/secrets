@@ -6,18 +6,31 @@
 
 End-to-end shell workflow.
 
+## Bootstrap
+
+Prerequisites:
+
+- `curl`
+- `jq`
+
+```bash
+export BASE_URL="http://localhost:8080"
+export CLIENT_ID="<client-id>"
+export CLIENT_SECRET="<client-secret>"
+```
+
 ## 1) Get token
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:8080/v1/token \
+TOKEN=$(curl -s -X POST "$BASE_URL/v1/token" \
   -H "Content-Type: application/json" \
-  -d '{"client_id":"<client-id>","client_secret":"<client-secret>"}' | jq -r .token)
+  -d "{\"client_id\":\"$CLIENT_ID\",\"client_secret\":\"$CLIENT_SECRET\"}" | jq -r .token)
 ```
 
 ## 2) Write secret
 
 ```bash
-curl -X POST http://localhost:8080/v1/secrets/app/prod/api-key \
+curl -X POST "$BASE_URL/v1/secrets/app/prod/api-key" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"value":"YXBpLWtleS12YWx1ZQ=="}'
@@ -26,7 +39,7 @@ curl -X POST http://localhost:8080/v1/secrets/app/prod/api-key \
 ## 3) Read secret
 
 ```bash
-curl http://localhost:8080/v1/secrets/app/prod/api-key \
+curl "$BASE_URL/v1/secrets/app/prod/api-key" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -35,17 +48,17 @@ curl http://localhost:8080/v1/secrets/app/prod/api-key \
 For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`).
 
 ```bash
-curl -X POST http://localhost:8080/v1/transit/keys \
+curl -X POST "$BASE_URL/v1/transit/keys" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"pii","algorithm":"aes-gcm"}'
 
-CIPHERTEXT=$(curl -s -X POST http://localhost:8080/v1/transit/keys/pii/encrypt \
+CIPHERTEXT=$(curl -s -X POST "$BASE_URL/v1/transit/keys/pii/encrypt" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"plaintext":"am9obkBleGFtcGxlLmNvbQ=="}' | jq -r .ciphertext)
 
-PLAINTEXT_B64=$(curl -s -X POST http://localhost:8080/v1/transit/keys/pii/decrypt \
+PLAINTEXT_B64=$(curl -s -X POST "$BASE_URL/v1/transit/keys/pii/decrypt" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"ciphertext\":\"$CIPHERTEXT\"}" | jq -r .plaintext)
@@ -55,12 +68,44 @@ test "$PLAINTEXT_B64" = "am9obkBleGFtcGxlLmNvbQ==" && echo "Transit round-trip v
 # Note: `plaintext` is base64. Decode it in your app/runtime before use.
 ```
 
+### Transit Create Fallback (201 vs 409)
+
+Use this pattern in automation: create once, rotate when key already exists.
+
+```bash
+CREATE_STATUS=$(curl -s -o /tmp/transit-create.json -w "%{http_code}" -X POST "$BASE_URL/v1/transit/keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"pii","algorithm":"aes-gcm"}')
+
+if [ "$CREATE_STATUS" = "201" ]; then
+  echo "Transit key created"
+elif [ "$CREATE_STATUS" = "409" ]; then
+  echo "Transit key already exists, rotating"
+  curl -s -X POST "$BASE_URL/v1/transit/keys/pii/rotate" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"algorithm":"aes-gcm"}' >/tmp/transit-rotate.json
+else
+  echo "Unexpected create status: $CREATE_STATUS"
+  cat /tmp/transit-create.json
+  exit 1
+fi
+```
+
 ## 5) Audit logs query
 
 ```bash
-curl "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
+curl "$BASE_URL/v1/audit-logs?limit=50&offset=0" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+## Common Mistakes
+
+- Sending raw plaintext instead of base64 in `value`/`plaintext`
+- Building your own decrypt `ciphertext` instead of reusing encrypt response exactly
+- Missing `Bearer` prefix in `Authorization` header
+- Using create repeatedly for same transit key name instead of rotate after `409`
 
 ## See also
 

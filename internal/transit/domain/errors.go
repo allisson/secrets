@@ -21,4 +21,7 @@ var (
 
 	// ErrTransitKeyNotFound indicates the transit key was not found.
 	ErrTransitKeyNotFound = errors.Wrap(errors.ErrNotFound, "transit key not found")
+
+	// ErrTransitKeyAlreadyExists indicates a transit key with the same name and version already exists.
+	ErrTransitKeyAlreadyExists = errors.Wrap(errors.ErrConflict, "transit key already exists")
 )

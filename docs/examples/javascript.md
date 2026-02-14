@@ -4,10 +4,25 @@
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
+## Bootstrap
+
+Prerequisites:
+
+- Node.js 20+
+- runtime with global `fetch` support
+
+Recommended environment variables:
+
+```bash
+export BASE_URL="http://localhost:8080"
+export CLIENT_ID="<client-id>"
+export CLIENT_SECRET="<client-secret>"
+```
+
 ```javascript
-const BASE_URL = "http://localhost:8080";
-const CLIENT_ID = "<client-id>";
-const CLIENT_SECRET = "<client-secret>";
+const BASE_URL = process.env.BASE_URL || "http://localhost:8080";
+const CLIENT_ID = process.env.CLIENT_ID || "<client-id>";
+const CLIENT_SECRET = process.env.CLIENT_SECRET || "<client-secret>";
 
 const toBase64 = (value) => Buffer.from(value, "utf8").toString("base64");
 
@@ -85,6 +100,13 @@ main().catch((error) => {
   process.exit(1);
 });
 ```
+
+## Common Mistakes
+
+- Sending UTF-8 plaintext directly instead of base64 in transit/secrets payloads
+- Reformatting `ciphertext` for decrypt instead of passing encrypt response as-is
+- Missing `Authorization: Bearer <token>` header on protected endpoints
+- Reusing transit create for existing keys without fallback to rotate on `409`
 
 ## See also
 
