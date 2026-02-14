@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks docs-lint
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -69,6 +69,12 @@ mocks: ## Regenerate mock implementations
 	@echo "Regenerating mocks..."
 	@mockery
 	@echo "Mocks regenerated"
+
+docs-lint: ## Run markdown lint and offline link checks
+	@echo "Running markdownlint-cli2..."
+	@docker run --rm -v "$(PWD):/workdir" -w /workdir davidanson/markdownlint-cli2:v0.18.1 README.md "docs/**/*.md" ".github/pull_request_template.md"
+	@echo "Running lychee offline link checks..."
+	@docker run --rm -v "$(PWD):/input" lycheeverse/lychee:latest --offline --include-fragments --no-progress "/input/README.md" "/input/docs/**/*.md" "/input/.github/pull_request_template.md"
 
 # Database migrations
 migrate-up: ## Run database migrations up
