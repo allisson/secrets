@@ -20,6 +20,7 @@ import (
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
+	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
@@ -40,6 +41,10 @@ type Container struct {
 
 	// Managers
 	txManager database.TxManager
+
+	// Metrics
+	metricsProvider *metrics.Provider
+	businessMetrics metrics.BusinessMetrics
 
 	// Services
 	aeadManager   cryptoService.AEADManager
@@ -82,6 +87,8 @@ type Container struct {
 	dbInit                   sync.Once
 	masterKeyChainInit       sync.Once
 	txManagerInit            sync.Once
+	metricsProviderInit      sync.Once
+	businessMetricsInit      sync.Once
 	aeadManagerInit          sync.Once
 	keyManagerInit           sync.Once
 	secretServiceInit        sync.Once
@@ -183,6 +190,42 @@ func (c *Container) TxManager() (database.TxManager, error) {
 		return nil, storedErr
 	}
 	return c.txManager, nil
+}
+
+// MetricsProvider returns the metrics provider for Prometheus export.
+func (c *Container) MetricsProvider() (*metrics.Provider, error) {
+	var err error
+	c.metricsProviderInit.Do(func() {
+		c.metricsProvider, err = c.initMetricsProvider()
+		if err != nil {
+			c.initErrors["metricsProvider"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["metricsProvider"]; exists {
+		return nil, storedErr
+	}
+	return c.metricsProvider, nil
+}
+
+// BusinessMetrics returns the business metrics recorder.
+func (c *Container) BusinessMetrics() (metrics.BusinessMetrics, error) {
+	var err error
+	c.businessMetricsInit.Do(func() {
+		c.businessMetrics, err = c.initBusinessMetrics()
+		if err != nil {
+			c.initErrors["businessMetrics"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["businessMetrics"]; exists {
+		return nil, storedErr
+	}
+	return c.businessMetrics, nil
 }
 
 // AEADManager returns the AEAD manager service.
@@ -519,6 +562,13 @@ func (c *Container) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	// Shutdown metrics provider if initialized
+	if c.metricsProvider != nil {
+		if err := c.metricsProvider.Shutdown(ctx); err != nil {
+			shutdownErrors = append(shutdownErrors, fmt.Errorf("metrics provider shutdown: %w", err))
+		}
+	}
+
 	// Close master key chain if initialized
 	if c.masterKeyChain != nil {
 		c.masterKeyChain.Close()
@@ -595,6 +645,40 @@ func (c *Container) initTxManager() (database.TxManager, error) {
 	return database.NewTxManager(db), nil
 }
 
+// initMetricsProvider creates the metrics provider if metrics are enabled.
+func (c *Container) initMetricsProvider() (*metrics.Provider, error) {
+	if !c.config.MetricsEnabled {
+		return nil, nil
+	}
+
+	provider, err := metrics.NewProvider(c.config.MetricsNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create metrics provider: %w", err)
+	}
+	return provider, nil
+}
+
+// initBusinessMetrics creates the business metrics recorder if metrics are enabled.
+func (c *Container) initBusinessMetrics() (metrics.BusinessMetrics, error) {
+	if !c.config.MetricsEnabled {
+		return metrics.NewNoOpBusinessMetrics(), nil
+	}
+
+	provider, err := c.MetricsProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
+	}
+	if provider == nil {
+		return metrics.NewNoOpBusinessMetrics(), nil
+	}
+
+	businessMetrics, err := metrics.NewBusinessMetrics(provider.MeterProvider(), c.config.MetricsNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create business metrics: %w", err)
+	}
+	return businessMetrics, nil
+}
+
 // initHTTPServer creates the HTTP server with all its dependencies.
 func (c *Container) initHTTPServer() (*http.Server, error) {
 	logger := c.Logger()
@@ -648,6 +732,12 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
 	}
 
+	// Get metrics provider (may be nil if metrics are disabled)
+	metricsProvider, err := c.MetricsProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
+	}
+
 	// Setup router with dependencies
 	server.SetupRouter(
 		clientHandler,
@@ -659,6 +749,8 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		tokenUseCase,
 		tokenService,
 		auditLogUseCase,
+		metricsProvider,
+		c.config.MetricsNamespace,
 	)
 
 	return server, nil
@@ -745,7 +837,18 @@ func (c *Container) initClientUseCase() (authUseCase.ClientUseCase, error) {
 
 	secretService := c.SecretService()
 
-	return authUseCase.NewClientUseCase(txManager, clientRepository, secretService), nil
+	baseUseCase := authUseCase.NewClientUseCase(txManager, clientRepository, secretService)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for client use case: %w", err)
+		}
+		return authUseCase.NewClientUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
 }
 
 // initTokenService creates the token service for authentication.
@@ -802,13 +905,24 @@ func (c *Container) initTokenUseCase() (authUseCase.TokenUseCase, error) {
 	secretService := c.SecretService()
 	tokenService := c.TokenService()
 
-	return authUseCase.NewTokenUseCase(
+	baseUseCase := authUseCase.NewTokenUseCase(
 		c.config,
 		clientRepository,
 		tokenRepository,
 		secretService,
 		tokenService,
-	), nil
+	)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for token use case: %w", err)
+		}
+		return authUseCase.NewTokenUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
 }
 
 // initAuditLogUseCase creates the audit log use case with all its dependencies.
@@ -818,7 +932,18 @@ func (c *Container) initAuditLogUseCase() (authUseCase.AuditLogUseCase, error) {
 		return nil, fmt.Errorf("failed to get audit log repository for audit log use case: %w", err)
 	}
 
-	return authUseCase.NewAuditLogUseCase(auditLogRepository), nil
+	baseUseCase := authUseCase.NewAuditLogUseCase(auditLogRepository)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for audit log use case: %w", err)
+		}
+		return authUseCase.NewAuditLogUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
 }
 
 // initClientHandler creates the client HTTP handler with all its dependencies.
@@ -921,7 +1046,7 @@ func (c *Container) initSecretUseCase() (secretsUseCase.SecretUseCase, error) {
 	aeadManager := c.AEADManager()
 	keyManager := c.KeyManager()
 
-	return secretsUseCase.NewSecretUseCase(
+	baseUseCase := secretsUseCase.NewSecretUseCase(
 		txManager,
 		dekRepository,
 		secretRepository,
@@ -929,7 +1054,18 @@ func (c *Container) initSecretUseCase() (secretsUseCase.SecretUseCase, error) {
 		aeadManager,
 		keyManager,
 		cryptoDomain.AESGCM,
-	), nil
+	)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for secret use case: %w", err)
+		}
+		return secretsUseCase.NewSecretUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
 }
 
 // initSecretHandler creates the secret HTTP handler with all its dependencies.
@@ -1119,14 +1255,25 @@ func (c *Container) initTransitKeyUseCase() (transitUseCase.TransitKeyUseCase, e
 	keyManager := c.KeyManager()
 	aeadManager := c.AEADManager()
 
-	return transitUseCase.NewTransitKeyUseCase(
+	baseUseCase := transitUseCase.NewTransitKeyUseCase(
 		txManager,
 		transitKeyRepository,
 		dekRepository,
 		keyManager,
 		aeadManager,
 		kekChain,
-	), nil
+	)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for transit key use case: %w", err)
+		}
+		return transitUseCase.NewTransitKeyUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
 }
 
 // initTransitKeyHandler creates the transit key HTTP handler with all its dependencies.

@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 
 Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
@@ -25,6 +25,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🔒 [concepts/security-model.md](concepts/security-model.md)
 - 📘 [concepts/glossary.md](concepts/glossary.md)
 - 🔑 [operations/key-management.md](operations/key-management.md)
+- 📊 [operations/monitoring.md](operations/monitoring.md)
 - 🏭 [operations/production.md](operations/production.md)
 - 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
 - 🛠️ [development/testing.md](development/testing.md)
@@ -55,12 +56,13 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.2.0`
+- `openapi.yaml` is a baseline subset for common API flows in `v0.3.0`
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.2.0.md](releases/v0.2.0.md)
+- 📦 [releases/v0.3.0.md](releases/v0.3.0.md)
+- 📦 [releases/v0.2.0.md](releases/v0.2.0.md) (historical)
 - 📦 [releases/v0.1.0.md](releases/v0.1.0.md) (historical)
 
 ## 🧠 ADRs

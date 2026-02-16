@@ -13,7 +13,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.2.0
+docker pull allisson/secrets:v0.3.0
 ```
 
 Use pinned tags for reproducible setups. `latest` is also available for fast iteration.
@@ -27,6 +27,13 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
+## 🆕 What's New in v0.3.0
+
+- 📊 OpenTelemetry metrics with Prometheus-compatible export at `GET /metrics`
+- ⚙️ Runtime metrics controls via `METRICS_ENABLED` and `METRICS_NAMESPACE`
+- 📈 HTTP and business-operation metrics for auth, secrets, and transit flows
+- 📘 New monitoring operations guide: [docs/operations/monitoring.md](docs/operations/monitoring.md)
+
 ## 📚 Docs Map
 
 - **Start Here**
@@ -36,7 +43,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.2.0 release notes**: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md)
+- 🚀 **v0.3.0 release notes**: [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md)
 
 - **By Topic**
 - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
@@ -44,6 +51,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
 - 📘 **Glossary**: [docs/concepts/glossary.md](docs/concepts/glossary.md)
 - 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
+- 📊 **Monitoring and metrics**: [docs/operations/monitoring.md](docs/operations/monitoring.md)
 - 🚑 **Failure playbooks**: [docs/operations/failure-playbooks.md](docs/operations/failure-playbooks.md)
 - 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
 - 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
@@ -74,6 +82,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - 👤 Token-based authentication and policy-based authorization
 - 📦 Versioned secrets by path (`/v1/secrets/*path`)
 - 📜 Audit logs with request correlation (`request_id`) and filtering
+- 📊 OpenTelemetry metrics with Prometheus-compatible `/metrics` export
 
 ## 🌐 API Overview
 
@@ -84,6 +93,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - Secrets: `POST/GET/DELETE /v1/secrets/*path`
 - Transit: `POST /v1/transit/keys`, `POST /v1/transit/keys/:name/rotate`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/transit/keys/:name/decrypt`, `DELETE /v1/transit/keys/:id` ([create vs rotate](docs/api/transit.md#create-vs-rotate), [error matrix](docs/api/transit.md#endpoint-error-matrix))
 - Audit logs: `GET /v1/audit-logs`
+- Metrics: `GET /metrics` (available when `METRICS_ENABLED=true`)
 
 ## 📄 License
 

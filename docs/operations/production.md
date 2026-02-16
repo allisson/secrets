@@ -1,6 +1,6 @@
 # 🏭 Production Deployment Guide
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 
 This guide covers baseline production hardening and operations for Secrets.
 
@@ -97,6 +97,14 @@ Multi-node:
 - Alert on repeated denied authorization attempts from same client/IP
 - Track API latency and error rates by endpoint
 - Correlate request failures using `request_id`
+- Scrape and alert on `secrets_http_requests_total`, `secrets_http_request_duration_seconds`, and `secrets_operations_total`
+
+Secure `/metrics` in production:
+
+1. Keep `/metrics` reachable only from internal monitoring networks
+2. Restrict source IP ranges at load balancer or reverse proxy
+3. If needed, add proxy-level auth in front of `/metrics`
+4. Do not expose `/metrics` on public internet-facing routes
 
 SLO examples (starting point):
 
@@ -130,6 +138,7 @@ SLO examples (starting point):
 ## See also
 
 - [Key management operations](key-management.md)
+- [Monitoring](monitoring.md)
 - [Environment variables](../configuration/environment-variables.md)
 - [Security model](../concepts/security-model.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)

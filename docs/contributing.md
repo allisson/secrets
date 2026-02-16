@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 
 Use this guide when adding or editing project documentation.
 
@@ -65,6 +65,16 @@ This target runs markdown linting and offline markdown link validation.
 3. Security warnings are present where needed
 4. Terminology is consistent across files
 5. `docs/CHANGELOG.md` updated for significant documentation changes
+
+## Feature PR Docs Consistency Checklist
+
+For behavior changes, update all relevant docs in the same PR:
+
+1. Environment variables and defaults (`docs/configuration/environment-variables.md`)
+2. API overview and endpoint pages (`README.md`, `docs/api/*.md`)
+3. Operational runbooks (`docs/operations/*.md`)
+4. Release notes (`docs/releases/vX.Y.Z.md`) and `docs/CHANGELOG.md`
+5. Local and Docker examples (`docs/getting-started/*.md`, `docs/cli/commands.md`)
 
 ## Ownership and Review Cadence
 

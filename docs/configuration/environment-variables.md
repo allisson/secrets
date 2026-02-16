@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 
 Secrets is configured through environment variables.
 
@@ -21,6 +21,9 @@ MASTER_KEYS=default:BASE64_32_BYTE_KEY
 ACTIVE_MASTER_KEY_ID=default
 
 AUTH_TOKEN_EXPIRATION_SECONDS=86400
+
+METRICS_ENABLED=true
+METRICS_NAMESPACE=secrets
 ```
 
 ## Notes
@@ -29,6 +32,9 @@ AUTH_TOKEN_EXPIRATION_SECONDS=86400
 - 📏 Each master key must represent exactly 32 bytes (256 bits)
 - ⭐ `ACTIVE_MASTER_KEY_ID` selects which master key encrypts new KEKs
 - ⏱️ `AUTH_TOKEN_EXPIRATION_SECONDS` defaults to 24h behavior when set to `86400`
+- 📊 `METRICS_ENABLED` enables/disables OpenTelemetry metrics collection (default: `true`)
+- 🏷️ `METRICS_NAMESPACE` sets the prefix for all metric names (default: `secrets`)
+- 📉 When `METRICS_ENABLED=false`, HTTP metrics middleware and the `/metrics` route are disabled
 - 🔄 After changing `MASTER_KEYS` or `ACTIVE_MASTER_KEY_ID`, restart API servers to load new values
 
 ## Master key generation
@@ -45,6 +51,7 @@ docker run --rm allisson/secrets:latest create-master-key --id default
 
 ## See also
 
+- [Monitoring](../operations/monitoring.md)
 - [Docker getting started](../getting-started/docker.md)
 - [Local development](../getting-started/local-development.md)
 - [Production operations](../operations/production.md)

@@ -28,6 +28,10 @@ type Config struct {
 
 	// Auth
 	AuthTokenExpiration time.Duration
+
+	// Metrics
+	MetricsEnabled   bool
+	MetricsNamespace string
 }
 
 // Load loads configuration from environment variables and .env file.
@@ -55,6 +59,10 @@ func Load() *Config {
 
 		// Auth
 		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 86400, time.Second),
+
+		// Metrics
+		MetricsEnabled:   env.GetBool("METRICS_ENABLED", true),
+		MetricsNamespace: env.GetString("METRICS_NAMESPACE", "secrets"),
 	}
 }
 

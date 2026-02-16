@@ -1,6 +1,6 @@
 # 🧩 API Compatibility and Versioning Policy
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 > Applies to: API v1
 
 This page defines compatibility expectations for HTTP API changes.
@@ -11,7 +11,7 @@ This page defines compatibility expectations for HTTP API changes.
 - Existing endpoint paths and JSON field names are treated as stable unless explicitly deprecated
 - OpenAPI source of truth: `docs/openapi.yaml`
 
-## OpenAPI Coverage (v0.2.0)
+## OpenAPI Coverage (v0.3.0)
 
 - `docs/openapi.yaml` is a baseline subset focused on high-traffic/common integration flows
 - Endpoint pages in `docs/api/*.md` define full public behavior for covered operations
@@ -19,7 +19,7 @@ This page defines compatibility expectations for HTTP API changes.
 
 ## App Version vs API Version
 
-- Application release `v0.2.0` is pre-1.0 software and may evolve quickly
+- Application release `v0.3.0` is pre-1.0 software and may evolve quickly
 - API v1 path contract (`/v1/*`) remains the compatibility baseline for consumers
 - Breaking API behavior changes require explicit documentation and migration notes
 
@@ -47,6 +47,19 @@ Usually non-breaking:
 - adding new endpoints under `/v1/*`
 - clarifying documentation text and examples
 - adding additional error examples without changing behavior
+
+## Telemetry Change Examples
+
+Breaking telemetry examples:
+
+- renaming a published metric name (for example `secrets_http_requests_total`)
+- renaming/removing metric labels used by dashboards or alerts
+
+Non-breaking telemetry examples:
+
+- adding a new metric family
+- adding new label values for existing labels
+- adding new dashboard examples without changing metric contracts
 
 ## Deprecation Guidance
 

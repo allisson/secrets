@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -12,10 +12,10 @@ Local binary:
 ./bin/app <command> [flags]
 ```
 
-Docker image (v0.2.0):
+Docker image (v0.3.0):
 
 ```bash
-docker run --rm --env-file .env allisson/secrets:v0.2.0 <command> [flags]
+docker run --rm --env-file .env allisson/secrets:v0.3.0 <command> [flags]
 ```
 
 ## Core Runtime
@@ -24,16 +24,32 @@ docker run --rm --env-file .env allisson/secrets:v0.2.0 <command> [flags]
 
 Starts the HTTP API server.
 
+Local:
+
 ```bash
 ./bin/app server
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env -p 8080:8080 allisson/secrets:v0.3.0 server
 ```
 
 ### `migrate`
 
 Runs database migrations.
 
+Local:
+
 ```bash
 ./bin/app migrate
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 migrate
 ```
 
 ## Key Management
@@ -46,8 +62,16 @@ Flags:
 
 - `--id`, `-i`: master key ID
 
+Local:
+
 ```bash
 ./bin/app create-master-key --id default
+```
+
+Docker:
+
+```bash
+docker run --rm allisson/secrets:v0.3.0 create-master-key --id default
 ```
 
 ### `create-kek`
@@ -58,8 +82,16 @@ Flags:
 
 - `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
 
+Local:
+
 ```bash
 ./bin/app create-kek --algorithm aes-gcm
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 create-kek --algorithm aes-gcm
 ```
 
 ### `rotate-kek`
@@ -70,8 +102,16 @@ Flags:
 
 - `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
 
+Local:
+
 ```bash
 ./bin/app rotate-kek --algorithm aes-gcm
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 rotate-kek --algorithm aes-gcm
 ```
 
 After master key or KEK rotation, restart API server instances so they load updated key material.
@@ -155,8 +195,9 @@ Examples:
 ./bin/app clean-audit-logs --days 90 --format text
 
 # Docker form
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.2.0 \
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 \
   clean-audit-logs --days 90 --dry-run --format json
+
 ```
 
 Example text output:
