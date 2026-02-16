@@ -1,6 +1,24 @@
 # 🗒️ Documentation Changelog
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-16
+
+## 2026-02-16 (docs v5 - documentation quality improvements)
+
+- Added `What's New in v0.3.0` section to root `README.md`
+- Added Prometheus + Grafana quickstart and a metrics naming contract to `docs/operations/monitoring.md`
+- Added production hardening guidance for securing `/metrics` exposure
+- Added feature PR docs consistency checklist to `docs/contributing.md`
+- Added metrics troubleshooting matrix to `docs/getting-started/troubleshooting.md`
+- Added local and Docker command parity examples in `docs/cli/commands.md`
+- Added telemetry breaking vs non-breaking examples in `docs/api/versioning-policy.md`
+
+## 2026-02-16 (docs v4 - v0.3.0 release prep)
+
+- Added release notes page: `docs/releases/v0.3.0.md` and set it as the current release in docs indexes
+- Updated pinned Docker examples from `allisson/secrets:v0.2.0` to `allisson/secrets:v0.3.0`
+- Added monitoring links to root README and expanded API overview with `GET /metrics`
+- Aligned monitoring operations with implementation (`secret_create`, `secret_get_version`, `audit_log_delete`, `transit_key_rotate`)
+- Clarified metrics disable behavior (`METRICS_ENABLED=false` removes metrics middleware and `/metrics` route)
 
 ## 2026-02-14 (docs v3 - v0.2.0 release prep)
 

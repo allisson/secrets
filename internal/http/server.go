@@ -23,6 +23,7 @@ import (
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 )
@@ -63,6 +64,8 @@ func (s *Server) SetupRouter(
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
 	auditLogUseCase authUseCase.AuditLogUseCase,
+	metricsProvider *metrics.Provider,
+	metricsNamespace string,
 ) {
 	// Create Gin engine without default middleware
 	router := gin.New()
@@ -73,6 +76,16 @@ func (s *Server) SetupRouter(
 		return uuid.Must(uuid.NewV7()).String()
 	}))) // Request ID with UUIDv7
 	router.Use(CustomLoggerMiddleware(s.logger)) // Custom slog logger
+
+	// Add HTTP metrics middleware if metrics are enabled
+	if metricsProvider != nil {
+		router.Use(metrics.HTTPMetricsMiddleware(metricsProvider.MeterProvider(), metricsNamespace))
+	}
+
+	// Metrics endpoint (Prometheus scrape endpoint, no authentication required)
+	if metricsProvider != nil {
+		router.GET("/metrics", gin.WrapH(metricsProvider.Handler()))
+	}
 
 	// Health and readiness endpoints (outside API versioning)
 	router.GET("/health", s.healthHandler)

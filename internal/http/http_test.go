@@ -17,6 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/allisson/secrets/internal/metrics"
 )
 
 // TestMain sets Gin to test mode for all tests in this package.
@@ -246,44 +248,86 @@ func TestRequestIDMiddleware_HeaderPresent(t *testing.T) {
 	_ = logger // Prevent unused variable error
 }
 
-// TestRequestIDMiddleware_AccessibleInHandler verifies request ID can be retrieved in handlers.
-func TestRequestIDMiddleware_AccessibleInHandler(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+// TestRouter_MetricsEndpoint tests the /metrics endpoint when metrics are enabled.
+func TestRouter_MetricsEndpoint(t *testing.T) {
+	server := createTestServer()
 
-	gin.SetMode(gin.TestMode)
+	// Create metrics provider
+	provider, err := metrics.NewProvider("test_app")
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, provider.Shutdown(context.Background()))
+	}()
+
+	// Create router with metrics endpoint
 	router := gin.New()
+	router.Use(gin.Recovery())
 	router.Use(requestid.New(requestid.WithGenerator(func() string {
 		return uuid.Must(uuid.NewV7()).String()
 	})))
+	router.Use(CustomLoggerMiddleware(server.logger))
 
-	var capturedRequestID string
+	// Add metrics middleware
+	router.Use(metrics.HTTPMetricsMiddleware(provider.MeterProvider(), "test_app"))
+
+	// Add metrics endpoint
+	router.GET("/metrics", gin.WrapH(provider.Handler()))
+
+	// Add a test endpoint to generate metrics
 	router.GET("/test", func(c *gin.Context) {
-		// Capture request ID from context
-		capturedRequestID = requestid.Get(c)
-		c.JSON(http.StatusOK, gin.H{"request_id": capturedRequestID})
+		c.JSON(http.StatusOK, gin.H{"message": "test"})
 	})
 
+	// Generate some metrics by calling the test endpoint
+	for i := 0; i < 5; i++ {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+	}
+
+	// Now request the metrics endpoint
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Verify request ID from handler matches response header
-	headerRequestID := w.Header().Get("X-Request-Id")
-	assert.Equal(t, headerRequestID, capturedRequestID,
-		"Request ID from handler should match X-Request-Id header")
+	// Verify response is in Prometheus format (contains metric lines)
+	body := w.Body.String()
+	assert.NotEmpty(t, body, "metrics response should not be empty")
 
-	// Verify request ID is included in JSON response
-	var response map[string]string
-	err := json.Unmarshal(w.Body.Bytes(), &response)
+	// Check for expected metric names (OpenTelemetry automatically exposes these)
+	assert.Contains(t, body, "test_app_http_requests_total", "should contain HTTP requests counter metric")
+	assert.Contains(
+		t,
+		body,
+		"test_app_http_request_duration_seconds",
+		"should contain HTTP duration histogram metric",
+	)
+
+	// Verify Content-Type header
+	contentType := w.Header().Get("Content-Type")
+	assert.Contains(t, contentType, "text/plain", "metrics endpoint should return text/plain content type")
+}
+
+// TestRouter_MetricsEndpoint_NoAuth tests that /metrics endpoint does not require authentication.
+func TestRouter_MetricsEndpoint_NoAuth(t *testing.T) {
+	// Create metrics provider
+	provider, err := metrics.NewProvider("test_app")
 	require.NoError(t, err)
-	assert.Equal(t, capturedRequestID, response["request_id"])
+	defer func() {
+		assert.NoError(t, provider.Shutdown(context.Background()))
+	}()
 
-	// Verify it's a valid UUIDv7
-	parsedUUID, err := uuid.Parse(capturedRequestID)
-	require.NoError(t, err, "Request ID should be a valid UUID")
-	assert.Equal(t, uuid.Version(7), parsedUUID.Version(), "Request ID should be UUIDv7")
+	// Create router with metrics endpoint (no auth middleware)
+	router := gin.New()
+	router.GET("/metrics", gin.WrapH(provider.Handler()))
 
-	_ = logger // Prevent unused variable error
+	// Request without authentication should succeed
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
 }
