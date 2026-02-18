@@ -1,6 +1,6 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
 
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
 
@@ -115,7 +115,7 @@ Compatibility note:
 **Description:** Total number of business operations executed  
 **Labels:**
 
-- `domain` - Business domain (auth, secrets, transit)
+- `domain` - Business domain (auth, secrets, transit, tokenization)
 - `operation` - Operation name (e.g., client_create, secret_get, transit_encrypt)
 - `status` - Operation result (success, error)
 
@@ -133,7 +133,7 @@ secrets_operations_total{domain="transit",operation="transit_key_rotate",status=
 **Description:** Duration of business operations in seconds  
 **Labels:**
 
-- `domain` - Business domain (auth, secrets, transit)
+- `domain` - Business domain (auth, secrets, transit, tokenization)
 - `operation` - Operation name
 - `status` - Operation result (success, error)
 
@@ -155,8 +155,13 @@ secrets_operation_duration_seconds_count{domain="auth",operation="client_create"
 **Labels:**
 
 - `method` - HTTP method (GET, POST, PUT, DELETE)
-- `path` - Route pattern (e.g., /v1/secrets/*path)
+- `path` - Route pattern (e.g., `/v1/secrets/*path`, `/v1/tokenization/keys/:name/tokenize`)
 - `status_code` - HTTP status code (200, 404, 500, etc.)
+
+Route-template note:
+
+- OpenAPI pages use `{name}` parameter syntax
+- Runtime HTTP metrics typically expose Gin-style patterns like `:name` and wildcard `*path`
 
 **Example:**
 
@@ -221,6 +226,19 @@ secrets_http_request_duration_seconds_count{method="GET",path="/v1/secrets/*path
 | `transit_encrypt` | Encrypt data with transit key |
 | `transit_decrypt` | Decrypt data with transit key |
 
+### Tokenization Domain
+
+| Operation | Description |
+|-----------|-------------|
+| `tokenization_key_create` | Create new tokenization key |
+| `tokenization_key_rotate` | Rotate tokenization key to new version |
+| `tokenization_key_delete` | Delete tokenization key |
+| `tokenize` | Generate token for plaintext |
+| `detokenize` | Resolve token back to plaintext |
+| `validate` | Validate token lifecycle state |
+| `revoke` | Revoke token |
+| `cleanup_expired` | Delete expired tokens older than retention |
+
 ## Prometheus Configuration
 
 ### Scrape Configuration
@@ -261,6 +279,39 @@ rate(secrets_operations_total{status="error"}[5m]) / rate(secrets_operations_tot
 ```promql
 topk(5, rate(secrets_operation_duration_seconds_sum[5m]) / rate(secrets_operation_duration_seconds_count[5m]))
 ```
+
+### Tokenization-focused Queries
+
+**Detokenize error rate (5m):**
+
+```promql
+rate(secrets_operations_total{domain="tokenization",operation="detokenize",status="error"}[5m])
+/
+rate(secrets_operations_total{domain="tokenization",operation="detokenize"}[5m])
+```
+
+**Tokenization p95 latency (tokenize path):**
+
+```promql
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(secrets_http_request_duration_seconds_bucket{path="/v1/tokenization/keys/:name/tokenize"}[5m])
+  )
+)
+```
+
+**Expired-token cleanup throughput (rows per second):**
+
+```promql
+rate(secrets_operations_total{domain="tokenization",operation="cleanup_expired",status="success"}[15m])
+```
+
+### SLO Starters (Tokenization)
+
+- `POST /v1/tokenization/keys/:name/tokenize` latency: p95 < 300 ms
+- `POST /v1/tokenization/detokenize` latency: p95 < 400 ms
+- Tokenization server errors: < 0.2% across tokenization operations
 
 ## Grafana Dashboard
 

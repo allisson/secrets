@@ -1,6 +1,6 @@
 # 🔒 Security Model
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 Secrets is designed for practical defense-in-depth around secret storage and cryptographic operations.
 
@@ -19,6 +19,14 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - 🎯 **DEK compromise**: impact scoped to specific data/version boundaries
 - 🧪 **Credential abuse**: identify with audit log patterns (`allowed=false`, unusual source IPs)
 
+## 🎫 Tokenization security considerations
+
+- Metadata is not encrypted: do not place full PAN, credentials, or regulated payloads in token metadata.
+- Deterministic tokenization leaks equality patterns for identical plaintext under the same active key.
+- TTL expiration and revocation both invalidate token usage, but neither should replace endpoint authorization.
+- Detokenization is plaintext exposure: isolate clients with `decrypt` capability and avoid shared broad policies.
+- Expired tokens should be cleaned on cadence (`clean-expired-tokens`) to reduce stale sensitive mappings.
+
 ## 📜 Audit log integrity model
 
 - Audit entries are append-only at API level
@@ -32,6 +40,8 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - Apply least-privilege policies per client and path
 - Rotate KEKs and client credentials regularly
 - Alert on repeated denied authorization attempts
+- Separate `encrypt` and `decrypt` clients for tokenization and transit when possible
+- Prefer non-deterministic tokenization unless deterministic matching is an explicit requirement
 
 ## ⚠️ Known limitations
 
@@ -51,4 +61,6 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - [Architecture](architecture.md)
 - [Authentication API](../api/authentication.md)
 - [Policies cookbook](../api/policies.md)
+- [Capability matrix](../api/capability-matrix.md)
+- [Tokenization API](../api/tokenization.md)
 - [Key management operations](../operations/key-management.md)

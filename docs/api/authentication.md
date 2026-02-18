@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -116,5 +116,6 @@ Representative error payloads (exact messages may vary):
 
 - [Clients API](clients.md)
 - [Policies cookbook](policies.md)
+- [Capability matrix](capability-matrix.md)
 - [Audit logs API](audit-logs.md)
 - [Response shapes](response-shapes.md)

@@ -1,6 +1,6 @@
 # ✅ Smoke Test Script
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 Run a fast end-to-end validation of a running Secrets instance.
 
@@ -14,6 +14,8 @@ Script path: `docs/getting-started/smoke-test.sh`
 4. `GET /v1/secrets/*path`
 5. `POST /v1/transit/keys`
 6. `POST /v1/transit/keys/:name/encrypt` and `/decrypt`
+7. `POST /v1/tokenization/keys`
+8. `POST /v1/tokenization/keys/:name/tokenize` + `POST /v1/tokenization/detokenize` + `POST /v1/tokenization/validate` + `POST /v1/tokenization/revoke`
 
 For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`).
 
@@ -42,6 +44,7 @@ Optional variables:
 
 - `SECRET_PATH` (default: `/app/prod/smoke-test`)
 - `TRANSIT_KEY_NAME` (default: `smoke-test-key`)
+- `TOKENIZATION_KEY_NAME` (default: `smoke-test-tokenization-key`)
 
 Expected output includes `Smoke test completed successfully`.
 If transit decrypt fails with `422`, see [Troubleshooting](troubleshooting.md#422-unprocessable-entity).

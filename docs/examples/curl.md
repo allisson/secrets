@@ -1,6 +1,6 @@
 # 🧪 Curl Examples
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
@@ -103,12 +103,46 @@ curl "$BASE_URL/v1/audit-logs?limit=50&offset=0" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## 6) Tokenization quick flow
+
+```bash
+# Create a tokenization key
+curl -X POST "$BASE_URL/v1/tokenization/keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"payment-cards","format_type":"luhn-preserving","is_deterministic":true,"algorithm":"aes-gcm"}'
+
+# Tokenize a value
+TOKENIZED=$(curl -s -X POST "$BASE_URL/v1/tokenization/keys/payment-cards/tokenize" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"plaintext":"NDUzMjAxNTExMjgzMDM2Ng==","metadata":{"last_four":"0366"},"ttl":3600}' | jq -r .token)
+
+# Validate token
+curl -X POST "$BASE_URL/v1/tokenization/validate" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"token\":\"$TOKENIZED\"}"
+
+# Detokenize token
+curl -X POST "$BASE_URL/v1/tokenization/detokenize" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"token\":\"$TOKENIZED\"}"
+```
+
+Deterministic caveat:
+
+- When `is_deterministic=true`, tokenizing the same plaintext with the same active key can return the same token
+- Prefer non-deterministic mode unless you explicitly need equality matching
+
 ## Common Mistakes
 
 - Sending raw plaintext instead of base64 in `value`/`plaintext`
 - Building your own decrypt `ciphertext` instead of reusing encrypt response exactly
 - Missing `Bearer` prefix in `Authorization` header
 - Using create repeatedly for same transit key name instead of rotate after `409`
+- Sending token in URL path for tokenization lifecycle endpoints (the API expects token in JSON body)
 
 ## See also
 

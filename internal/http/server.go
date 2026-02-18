@@ -25,6 +25,7 @@ import (
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
+	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 )
 
@@ -61,6 +62,8 @@ func (s *Server) SetupRouter(
 	secretHandler *secretsHTTP.SecretHandler,
 	transitKeyHandler *transitHTTP.TransitKeyHandler,
 	cryptoHandler *transitHTTP.CryptoHandler,
+	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler,
+	tokenizationHandler *tokenizationHTTP.TokenizationHandler,
 	tokenUseCase authUseCase.TokenUseCase,
 	tokenService authService.TokenService,
 	auditLogUseCase authUseCase.AuditLogUseCase,
@@ -194,6 +197,56 @@ func (s *Server) SetupRouter(
 					cryptoHandler.DecryptHandler,
 				)
 			}
+		}
+
+		// Tokenization endpoints
+		tokenization := v1.Group("/tokenization")
+		tokenization.Use(authMiddleware) // All tokenization routes require authentication
+		{
+			keys := tokenization.Group("/keys")
+			{
+				// Create new tokenization key
+				keys.POST("",
+					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+					tokenizationKeyHandler.CreateHandler,
+				)
+
+				// Rotate tokenization key to new version
+				keys.POST("/:name/rotate",
+					authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
+					tokenizationKeyHandler.RotateHandler,
+				)
+
+				// Delete tokenization key
+				keys.DELETE("/:id",
+					authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+					tokenizationKeyHandler.DeleteHandler,
+				)
+
+				// Tokenize plaintext with tokenization key
+				keys.POST("/:name/tokenize",
+					authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+					tokenizationHandler.TokenizeHandler,
+				)
+			}
+
+			// Detokenize token to retrieve plaintext
+			tokenization.POST("/detokenize",
+				authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+				tokenizationHandler.DetokenizeHandler,
+			)
+
+			// Validate token existence and validity
+			tokenization.POST("/validate",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				tokenizationHandler.ValidateHandler,
+			)
+
+			// Revoke token to prevent further detokenization
+			tokenization.POST("/revoke",
+				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+				tokenizationHandler.RevokeHandler,
+			)
 		}
 	}
 

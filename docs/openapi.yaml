@@ -4,7 +4,9 @@ info:
   version: v1
   description: >-
     Baseline OpenAPI specification for Secrets API v1. This is intentionally concise
-    and focuses on high-traffic endpoints and common payloads.
+    and focuses on high-traffic endpoints and common payloads. OpenAPI path templates
+    use `{param}` syntax while runtime router/metrics labels may expose `:param` or
+    wildcard forms such as `*path`.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -13,6 +15,7 @@ tags:
   - name: clients
   - name: secrets
   - name: transit
+  - name: tokenization
   - name: audit
 paths:
   /health:
@@ -266,6 +269,222 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/keys:
+    post:
+      tags: [tokenization]
+      summary: Create tokenization key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenizationKeyCreateRequest"
+      responses:
+        "201":
+          description: Tokenization key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenizationKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Tokenization key already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/keys/{name}/rotate:
+    post:
+      tags: [tokenization]
+      summary: Rotate tokenization key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenizationKeyRotateRequest"
+      responses:
+        "201":
+          description: New tokenization key version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenizationKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tokenization key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/keys/{id}:
+    delete:
+      tags: [tokenization]
+      summary: Delete tokenization key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tokenization key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/keys/{name}/tokenize:
+    post:
+      tags: [tokenization]
+      summary: Tokenize plaintext
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenizeRequest"
+      responses:
+        "201":
+          description: Token created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenizeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tokenization key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/detokenize:
+    post:
+      tags: [tokenization]
+      summary: Detokenize token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetokenizeRequest"
+      responses:
+        "200":
+          description: Plaintext resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetokenizeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/validate:
+    post:
+      tags: [tokenization]
+      summary: Validate token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateTokenRequest"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /v1/tokenization/revoke:
+    post:
+      tags: [tokenization]
+      summary: Revoke token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RevokeTokenRequest"
+      responses:
+        "204":
+          description: Revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /v1/audit-logs:
     get:
       tags: [audit]
@@ -420,3 +639,110 @@ components:
         created_at:
           type: string
           format: date-time
+    TokenizationKeyCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        format_type:
+          type: string
+          enum: [uuid, numeric, luhn-preserving, alphanumeric]
+        is_deterministic:
+          type: boolean
+        algorithm:
+          type: string
+          enum: [aes-gcm, chacha20-poly1305]
+      required: [name, format_type, algorithm]
+    TokenizationKeyRotateRequest:
+      type: object
+      properties:
+        format_type:
+          type: string
+          enum: [uuid, numeric, luhn-preserving, alphanumeric]
+        is_deterministic:
+          type: boolean
+        algorithm:
+          type: string
+          enum: [aes-gcm, chacha20-poly1305]
+      required: [format_type, algorithm]
+    TokenizationKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        version:
+          type: integer
+        format_type:
+          type: string
+        is_deterministic:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required: [id, name, version, format_type, is_deterministic, created_at]
+    TokenizeRequest:
+      type: object
+      properties:
+        plaintext:
+          type: string
+          description: Base64-encoded plaintext
+        metadata:
+          type: object
+          additionalProperties: true
+        ttl:
+          type: integer
+          minimum: 1
+      required: [plaintext]
+    TokenizeResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+      required: [token, created_at]
+    DetokenizeRequest:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+    DetokenizeResponse:
+      type: object
+      properties:
+        plaintext:
+          type: string
+          description: Base64-encoded plaintext
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [plaintext]
+    ValidateTokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+    ValidateTokenResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+      required: [valid]
+    RevokeTokenRequest:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]

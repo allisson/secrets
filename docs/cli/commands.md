@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -12,10 +12,10 @@ Local binary:
 ./bin/app <command> [flags]
 ```
 
-Docker image (v0.3.0):
+Docker image (v0.4.0):
 
 ```bash
-docker run --rm --env-file .env allisson/secrets:v0.3.0 <command> [flags]
+docker run --rm --env-file .env allisson/secrets:v0.4.0 <command> [flags]
 ```
 
 ## Core Runtime
@@ -33,7 +33,7 @@ Local:
 Docker:
 
 ```bash
-docker run --rm --network secrets-net --env-file .env -p 8080:8080 allisson/secrets:v0.3.0 server
+docker run --rm --network secrets-net --env-file .env -p 8080:8080 allisson/secrets:v0.4.0 server
 ```
 
 ### `migrate`
@@ -49,7 +49,7 @@ Local:
 Docker:
 
 ```bash
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 migrate
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 migrate
 ```
 
 ## Key Management
@@ -71,7 +71,7 @@ Local:
 Docker:
 
 ```bash
-docker run --rm allisson/secrets:v0.3.0 create-master-key --id default
+docker run --rm allisson/secrets:v0.4.0 create-master-key --id default
 ```
 
 ### `create-kek`
@@ -91,7 +91,7 @@ Local:
 Docker:
 
 ```bash
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 create-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 create-kek --algorithm aes-gcm
 ```
 
 ### `rotate-kek`
@@ -111,10 +111,84 @@ Local:
 Docker:
 
 ```bash
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 rotate-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 rotate-kek --algorithm aes-gcm
 ```
 
 After master key or KEK rotation, restart API server instances so they load updated key material.
+
+## Tokenization
+
+### `create-tokenization-key`
+
+Creates a tokenization key with version `1`.
+
+Flags:
+
+- `--name`, `-n` (required): unique tokenization key name
+- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
+- `--deterministic`, `--det` (default `false`): generate deterministic tokens for identical plaintext
+- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
+
+Examples:
+
+```bash
+./bin/app create-tokenization-key \
+  --name payment-cards \
+  --format luhn-preserving \
+  --deterministic \
+  --algorithm aes-gcm
+
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 \
+  create-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm aes-gcm
+```
+
+### `rotate-tokenization-key`
+
+Creates a new version for an existing tokenization key.
+
+Flags:
+
+- `--name`, `-n` (required): tokenization key name to rotate
+- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
+- `--deterministic`, `--det` (default `false`)
+- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
+
+Examples:
+
+```bash
+./bin/app rotate-tokenization-key \
+  --name payment-cards \
+  --format luhn-preserving \
+  --deterministic \
+  --algorithm chacha20-poly1305
+
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 \
+  rotate-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm chacha20-poly1305
+```
+
+### `clean-expired-tokens`
+
+Deletes expired tokens older than a retention window.
+
+Flags:
+
+- `--days`, `-d` (required): delete tokens older than this many days
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion)
+./bin/app clean-expired-tokens --days 30 --dry-run --format json
+
+# Execute deletion
+./bin/app clean-expired-tokens --days 30 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 \
+  clean-expired-tokens --days 30 --dry-run --format json
+```
 
 ## Client Management
 
@@ -195,7 +269,7 @@ Examples:
 ./bin/app clean-audit-logs --days 90 --format text
 
 # Docker form
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.3.0 \
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.4.0 \
   clean-audit-logs --days 90 --dry-run --format json
 
 ```

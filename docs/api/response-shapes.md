@@ -1,6 +1,6 @@
 # 🧱 API Response Shapes
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Use these representative response schemas as a stable reference across endpoint docs.
@@ -65,6 +65,51 @@ Transit decrypt:
 }
 ```
 
+Tokenization key create:
+
+```json
+{
+  "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+  "name": "payment-cards",
+  "version": 1,
+  "format_type": "luhn-preserving",
+  "is_deterministic": true,
+  "created_at": "2026-02-18T10:30:00Z"
+}
+```
+
+Tokenize:
+
+```json
+{
+  "token": "4532015112830366",
+  "metadata": {
+    "last_four": "0366"
+  },
+  "created_at": "2026-02-18T10:35:00Z",
+  "expires_at": "2026-02-18T11:35:00Z"
+}
+```
+
+Detokenize:
+
+```json
+{
+  "plaintext": "NDUzMjAxNTExMjgzMDM2Ng==",
+  "metadata": {
+    "last_four": "0366"
+  }
+}
+```
+
+Token validate:
+
+```json
+{
+  "valid": true
+}
+```
+
 Input contract note: transit decrypt expects `ciphertext` in format
 `<version>:<base64-ciphertext>`. See [Transit API](transit.md#decrypt-input-contract).
 
@@ -124,5 +169,6 @@ Representative conflict payload (for example duplicate transit key create):
 - [Clients API](clients.md)
 - [Secrets API](secrets.md)
 - [Transit API](transit.md)
+- [Tokenization API](tokenization.md)
 - [API compatibility policy](versioning-policy.md)
 - [Glossary](../concepts/glossary.md)

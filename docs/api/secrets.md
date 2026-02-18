@@ -1,6 +1,6 @@
 # 📦 Secrets API
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Secrets are versioned by path and encrypted with envelope encryption.
@@ -157,6 +157,7 @@ Expected result: write returns `201 Created`; read returns `200 OK` with base64 
 
 - [Authentication API](authentication.md)
 - [Policies cookbook](policies.md)
+- [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)
 - [API compatibility policy](versioning-policy.md)
 - [Curl examples](../examples/curl.md)

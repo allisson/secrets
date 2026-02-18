@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
 
 Use this guide for common setup and runtime errors.
 
@@ -15,6 +15,7 @@ Use this quick route before diving into detailed sections:
 5. After rotating keys behavior is stale -> go to `Rotation completed but server still uses old key context`
 6. Startup fails with key config errors -> go to `Missing or Invalid Master Keys`
 7. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
+8. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
 
 ## 📑 Table of Contents
 
@@ -27,6 +28,7 @@ Use this quick route before diving into detailed sections:
 - [Missing or Invalid Master Keys](#missing-or-invalid-master-keys)
 - [Missing KEK](#missing-kek)
 - [Metrics Troubleshooting Matrix](#metrics-troubleshooting-matrix)
+- [Tokenization migration verification](#tokenization-migration-verification)
 - [Rotation completed but server still uses old key context](#rotation-completed-but-server-still-uses-old-key-context)
 - [Token issuance fails with valid-looking credentials](#token-issuance-fails-with-valid-looking-credentials)
 - [Quick diagnostics checklist](#quick-diagnostics-checklist)
@@ -130,6 +132,16 @@ Common 422 cases:
 | Metrics present but missing expected prefix | Unexpected namespace value | Confirm `METRICS_NAMESPACE` and update queries/dashboards |
 | Dashboards show empty values for paths | Query uses concrete URLs, not route patterns | Query by route pattern labels (for example `/v1/secrets/*path`) |
 | Prometheus memory growth or slow queries | High-cardinality query patterns | Aggregate by stable labels and avoid per-request dimensions |
+
+## Tokenization migration verification
+
+- Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.0`
+- Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
+- Fix:
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.4.0 migrate`)
+  - verify migration logs indicate `000002_add_tokenization` applied for your DB
+  - confirm initial KEK exists (`create-kek` if missing)
+  - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)
 
 ## Rotation completed but server still uses old key context
 

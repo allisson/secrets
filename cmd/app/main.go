@@ -77,6 +77,116 @@ func main() {
 				},
 			},
 			{
+				Name:  "create-tokenization-key",
+				Usage: "Create a new tokenization key for format-preserving tokens",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"n"},
+						Required: true,
+						Usage:    "Unique name for the tokenization key",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"fmt"},
+						Value:   "uuid",
+						Usage:   "Token format: uuid, numeric, luhn-preserving, or alphanumeric",
+					},
+					&cli.BoolFlag{
+						Name:    "deterministic",
+						Aliases: []string{"det"},
+						Value:   false,
+						Usage:   "Enable deterministic mode (same plaintext → same token)",
+					},
+					&cli.StringFlag{
+						Name:    "algorithm",
+						Aliases: []string{"alg"},
+						Value:   "aes-gcm",
+						Usage:   "Encryption algorithm to use (aes-gcm or chacha20-poly1305)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunCreateTokenizationKey(
+						ctx,
+						cmd.String("name"),
+						cmd.String("format"),
+						cmd.Bool("deterministic"),
+						cmd.String("algorithm"),
+					)
+				},
+			},
+			{
+				Name:  "rotate-tokenization-key",
+				Usage: "Rotate an existing tokenization key to a new version",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"n"},
+						Required: true,
+						Usage:    "Name of the tokenization key to rotate",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"fmt"},
+						Value:   "uuid",
+						Usage:   "Token format: uuid, numeric, luhn-preserving, or alphanumeric",
+					},
+					&cli.BoolFlag{
+						Name:    "deterministic",
+						Aliases: []string{"det"},
+						Value:   false,
+						Usage:   "Enable deterministic mode (same plaintext → same token)",
+					},
+					&cli.StringFlag{
+						Name:    "algorithm",
+						Aliases: []string{"alg"},
+						Value:   "aes-gcm",
+						Usage:   "Encryption algorithm to use (aes-gcm or chacha20-poly1305)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunRotateTokenizationKey(
+						ctx,
+						cmd.String("name"),
+						cmd.String("format"),
+						cmd.Bool("deterministic"),
+						cmd.String("algorithm"),
+					)
+				},
+			},
+			{
+				Name:  "clean-expired-tokens",
+				Usage: "Delete expired tokens older than specified days",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:     "days",
+						Aliases:  []string{"d"},
+						Required: true,
+						Usage:    "Delete expired tokens older than this many days",
+					},
+					&cli.BoolFlag{
+						Name:    "dry-run",
+						Aliases: []string{"n"},
+						Value:   false,
+						Usage:   "Show how many tokens would be deleted without deleting",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"f"},
+						Value:   "text",
+						Usage:   "Output format: 'text' or 'json'",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunCleanExpiredTokens(
+						ctx,
+						cmd.Int("days"),
+						cmd.Bool("dry-run"),
+						cmd.String("format"),
+					)
+				},
+			},
+			{
 				Name:  "create-client",
 				Usage: "Create a new authentication client with policies",
 				Flags: []cli.Flag{

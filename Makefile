@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks docs-lint docs-check-examples
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks docs-lint docs-check-examples docs-check-metadata
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -74,10 +74,15 @@ docs-check-examples: ## Validate JSON shapes used by docs examples
 	@echo "Running docs example shape checks..."
 	@python3 docs/tools/check_example_shapes.py
 
+docs-check-metadata: ## Validate docs metadata and API markers
+	@echo "Running docs metadata checks..."
+	@python3 docs/tools/check_docs_metadata.py
+
 docs-lint: ## Run markdown lint and offline link checks
 	@echo "Running markdownlint-cli2..."
 	@docker run --rm -v "$(PWD):/workdir" -w /workdir davidanson/markdownlint-cli2:v0.18.1 README.md "docs/**/*.md" ".github/pull_request_template.md"
 	@$(MAKE) docs-check-examples
+	@$(MAKE) docs-check-metadata
 	@echo "Running lychee offline link checks..."
 	@docker run --rm -v "$(PWD):/input" lycheeverse/lychee:latest --offline --include-fragments --no-progress "/input/README.md" "/input/docs/**/*.md" "/input/.github/pull_request_template.md"
 

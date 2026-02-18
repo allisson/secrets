@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -146,6 +146,7 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 
 - [Authentication API](authentication.md)
 - [Policies cookbook](policies.md)
+- [Capability matrix](capability-matrix.md)
 - [Audit logs API](audit-logs.md)
 - [Response shapes](response-shapes.md)
 - [API compatibility policy](versioning-policy.md)

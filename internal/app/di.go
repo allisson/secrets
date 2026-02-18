@@ -24,6 +24,9 @@ import (
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
+	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
+	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
+	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitRepository "github.com/allisson/secrets/internal/transit/repository"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
@@ -53,68 +56,82 @@ type Container struct {
 	tokenService  authService.TokenService
 
 	// Repositories
-	kekRepository        cryptoUseCase.KekRepository
-	dekRepository        secretsUseCase.DekRepository
-	secretRepository     secretsUseCase.SecretRepository
-	clientRepository     authUseCase.ClientRepository
-	tokenRepository      authUseCase.TokenRepository
-	auditLogRepository   authUseCase.AuditLogRepository
-	transitKeyRepository transitUseCase.TransitKeyRepository
-	transitDekRepository transitUseCase.DekRepository
+	kekRepository               cryptoUseCase.KekRepository
+	dekRepository               secretsUseCase.DekRepository
+	secretRepository            secretsUseCase.SecretRepository
+	clientRepository            authUseCase.ClientRepository
+	tokenRepository             authUseCase.TokenRepository
+	auditLogRepository          authUseCase.AuditLogRepository
+	transitKeyRepository        transitUseCase.TransitKeyRepository
+	transitDekRepository        transitUseCase.DekRepository
+	tokenizationKeyRepository   tokenizationUseCase.TokenizationKeyRepository
+	tokenizationTokenRepository tokenizationUseCase.TokenRepository
+	tokenizationDekRepository   tokenizationUseCase.DekRepository
 
 	// Use Cases
-	kekUseCase        cryptoUseCase.KekUseCase
-	secretUseCase     secretsUseCase.SecretUseCase
-	clientUseCase     authUseCase.ClientUseCase
-	tokenUseCase      authUseCase.TokenUseCase
-	auditLogUseCase   authUseCase.AuditLogUseCase
-	transitKeyUseCase transitUseCase.TransitKeyUseCase
+	kekUseCase             cryptoUseCase.KekUseCase
+	secretUseCase          secretsUseCase.SecretUseCase
+	clientUseCase          authUseCase.ClientUseCase
+	tokenUseCase           authUseCase.TokenUseCase
+	auditLogUseCase        authUseCase.AuditLogUseCase
+	transitKeyUseCase      transitUseCase.TransitKeyUseCase
+	tokenizationKeyUseCase tokenizationUseCase.TokenizationKeyUseCase
+	tokenizationUseCase    tokenizationUseCase.TokenizationUseCase
 
 	// HTTP Handlers
-	clientHandler     *authHTTP.ClientHandler
-	tokenHandler      *authHTTP.TokenHandler
-	auditLogHandler   *authHTTP.AuditLogHandler
-	secretHandler     *secretsHTTP.SecretHandler
-	transitKeyHandler *transitHTTP.TransitKeyHandler
-	cryptoHandler     *transitHTTP.CryptoHandler
+	clientHandler          *authHTTP.ClientHandler
+	tokenHandler           *authHTTP.TokenHandler
+	auditLogHandler        *authHTTP.AuditLogHandler
+	secretHandler          *secretsHTTP.SecretHandler
+	transitKeyHandler      *transitHTTP.TransitKeyHandler
+	cryptoHandler          *transitHTTP.CryptoHandler
+	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler
+	tokenizationHandler    *tokenizationHTTP.TokenizationHandler
 
 	// Servers and Workers
 	httpServer *http.Server
 
 	// Initialization flags and mutex for thread-safety
-	mu                       sync.Mutex
-	loggerInit               sync.Once
-	dbInit                   sync.Once
-	masterKeyChainInit       sync.Once
-	txManagerInit            sync.Once
-	metricsProviderInit      sync.Once
-	businessMetricsInit      sync.Once
-	aeadManagerInit          sync.Once
-	keyManagerInit           sync.Once
-	secretServiceInit        sync.Once
-	tokenServiceInit         sync.Once
-	kekRepositoryInit        sync.Once
-	dekRepositoryInit        sync.Once
-	secretRepositoryInit     sync.Once
-	clientRepositoryInit     sync.Once
-	tokenRepositoryInit      sync.Once
-	auditLogRepositoryInit   sync.Once
-	transitKeyRepositoryInit sync.Once
-	transitDekRepositoryInit sync.Once
-	kekUseCaseInit           sync.Once
-	secretUseCaseInit        sync.Once
-	clientUseCaseInit        sync.Once
-	tokenUseCaseInit         sync.Once
-	auditLogUseCaseInit      sync.Once
-	transitKeyUseCaseInit    sync.Once
-	clientHandlerInit        sync.Once
-	tokenHandlerInit         sync.Once
-	auditLogHandlerInit      sync.Once
-	secretHandlerInit        sync.Once
-	transitKeyHandlerInit    sync.Once
-	cryptoHandlerInit        sync.Once
-	httpServerInit           sync.Once
-	initErrors               map[string]error
+	mu                              sync.Mutex
+	loggerInit                      sync.Once
+	dbInit                          sync.Once
+	masterKeyChainInit              sync.Once
+	txManagerInit                   sync.Once
+	metricsProviderInit             sync.Once
+	businessMetricsInit             sync.Once
+	aeadManagerInit                 sync.Once
+	keyManagerInit                  sync.Once
+	secretServiceInit               sync.Once
+	tokenServiceInit                sync.Once
+	kekRepositoryInit               sync.Once
+	dekRepositoryInit               sync.Once
+	secretRepositoryInit            sync.Once
+	clientRepositoryInit            sync.Once
+	tokenRepositoryInit             sync.Once
+	auditLogRepositoryInit          sync.Once
+	transitKeyRepositoryInit        sync.Once
+	transitDekRepositoryInit        sync.Once
+	tokenizationKeyRepositoryInit   sync.Once
+	tokenizationTokenRepositoryInit sync.Once
+	tokenizationDekRepositoryInit   sync.Once
+	kekUseCaseInit                  sync.Once
+	secretUseCaseInit               sync.Once
+	clientUseCaseInit               sync.Once
+	tokenUseCaseInit                sync.Once
+	auditLogUseCaseInit             sync.Once
+	transitKeyUseCaseInit           sync.Once
+	tokenizationKeyUseCaseInit      sync.Once
+	tokenizationUseCaseInit         sync.Once
+	clientHandlerInit               sync.Once
+	tokenHandlerInit                sync.Once
+	auditLogHandlerInit             sync.Once
+	secretHandlerInit               sync.Once
+	transitKeyHandlerInit           sync.Once
+	cryptoHandlerInit               sync.Once
+	tokenizationKeyHandlerInit      sync.Once
+	tokenizationHandlerInit         sync.Once
+	httpServerInit                  sync.Once
+	initErrors                      map[string]error
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -720,6 +737,16 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get crypto handler: %w", err)
 	}
 
+	tokenizationKeyHandler, err := c.TokenizationKeyHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokenization key handler: %w", err)
+	}
+
+	tokenizationHandler, err := c.TokenizationHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokenization handler: %w", err)
+	}
+
 	tokenUseCase, err := c.TokenUseCase()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
@@ -746,6 +773,8 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 		secretHandler,
 		transitKeyHandler,
 		cryptoHandler,
+		tokenizationKeyHandler,
+		tokenizationHandler,
 		tokenUseCase,
 		tokenService,
 		auditLogUseCase,
@@ -1308,4 +1337,290 @@ func (c *Container) initCryptoHandler() (*transitHTTP.CryptoHandler, error) {
 	logger := c.Logger()
 
 	return transitHTTP.NewCryptoHandler(transitKeyUseCase, auditLogUseCase, logger), nil
+}
+
+// TokenizationKeyRepository returns the tokenization key repository.
+func (c *Container) TokenizationKeyRepository() (tokenizationUseCase.TokenizationKeyRepository, error) {
+	var err error
+	c.tokenizationKeyRepositoryInit.Do(func() {
+		c.tokenizationKeyRepository, err = c.initTokenizationKeyRepository()
+		if err != nil {
+			c.initErrors["tokenizationKeyRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationKeyRepository, c.initErrors["tokenizationKeyRepository"]
+}
+
+// TokenizationTokenRepository returns the tokenization token repository.
+func (c *Container) TokenizationTokenRepository() (tokenizationUseCase.TokenRepository, error) {
+	var err error
+	c.tokenizationTokenRepositoryInit.Do(func() {
+		c.tokenizationTokenRepository, err = c.initTokenizationTokenRepository()
+		if err != nil {
+			c.initErrors["tokenizationTokenRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationTokenRepository, c.initErrors["tokenizationTokenRepository"]
+}
+
+// TokenizationDekRepository returns the DEK repository for tokenization use case.
+func (c *Container) TokenizationDekRepository() (tokenizationUseCase.DekRepository, error) {
+	var err error
+	c.tokenizationDekRepositoryInit.Do(func() {
+		c.tokenizationDekRepository, err = c.initTokenizationDekRepository()
+		if err != nil {
+			c.initErrors["tokenizationDekRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationDekRepository, c.initErrors["tokenizationDekRepository"]
+}
+
+// TokenizationKeyUseCase returns the tokenization key use case.
+func (c *Container) TokenizationKeyUseCase() (tokenizationUseCase.TokenizationKeyUseCase, error) {
+	var err error
+	c.tokenizationKeyUseCaseInit.Do(func() {
+		c.tokenizationKeyUseCase, err = c.initTokenizationKeyUseCase()
+		if err != nil {
+			c.initErrors["tokenizationKeyUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationKeyUseCase, c.initErrors["tokenizationKeyUseCase"]
+}
+
+// TokenizationUseCase returns the tokenization use case.
+func (c *Container) TokenizationUseCase() (tokenizationUseCase.TokenizationUseCase, error) {
+	var err error
+	c.tokenizationUseCaseInit.Do(func() {
+		c.tokenizationUseCase, err = c.initTokenizationUseCase()
+		if err != nil {
+			c.initErrors["tokenizationUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationUseCase, c.initErrors["tokenizationUseCase"]
+}
+
+// TokenizationKeyHandler returns the tokenization key HTTP handler.
+func (c *Container) TokenizationKeyHandler() (*tokenizationHTTP.TokenizationKeyHandler, error) {
+	var err error
+	c.tokenizationKeyHandlerInit.Do(func() {
+		c.tokenizationKeyHandler, err = c.initTokenizationKeyHandler()
+		if err != nil {
+			c.initErrors["tokenizationKeyHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationKeyHandler, c.initErrors["tokenizationKeyHandler"]
+}
+
+// TokenizationHandler returns the tokenization HTTP handler.
+func (c *Container) TokenizationHandler() (*tokenizationHTTP.TokenizationHandler, error) {
+	var err error
+	c.tokenizationHandlerInit.Do(func() {
+		c.tokenizationHandler, err = c.initTokenizationHandler()
+		if err != nil {
+			c.initErrors["tokenizationHandler"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.tokenizationHandler, c.initErrors["tokenizationHandler"]
+}
+
+// initTokenizationKeyRepository creates the tokenization key repository.
+func (c *Container) initTokenizationKeyRepository() (tokenizationUseCase.TokenizationKeyRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for tokenization key repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return tokenizationRepository.NewPostgreSQLTokenizationKeyRepository(db), nil
+	case "mysql":
+		return tokenizationRepository.NewMySQLTokenizationKeyRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTokenizationTokenRepository creates the tokenization token repository.
+func (c *Container) initTokenizationTokenRepository() (tokenizationUseCase.TokenRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for tokenization token repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return tokenizationRepository.NewPostgreSQLTokenRepository(db), nil
+	case "mysql":
+		return tokenizationRepository.NewMySQLTokenRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTokenizationDekRepository creates the DEK repository for tokenization use case.
+func (c *Container) initTokenizationDekRepository() (tokenizationUseCase.DekRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for tokenization dek repository: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+	case "mysql":
+		return cryptoRepository.NewMySQLDekRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initTokenizationKeyUseCase creates the tokenization key use case.
+func (c *Container) initTokenizationKeyUseCase() (tokenizationUseCase.TokenizationKeyUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for tokenization key use case: %w", err)
+	}
+
+	tokenizationKeyRepository, err := c.TokenizationKeyRepository()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get tokenization key repository for tokenization key use case: %w",
+			err,
+		)
+	}
+
+	dekRepository, err := c.TokenizationDekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dek repository for tokenization key use case: %w", err)
+	}
+
+	keyManager := c.KeyManager()
+
+	kekChain, err := c.loadKekChain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kek chain for tokenization key use case: %w", err)
+	}
+
+	baseUseCase := tokenizationUseCase.NewTokenizationKeyUseCase(
+		txManager,
+		tokenizationKeyRepository,
+		dekRepository,
+		keyManager,
+		kekChain,
+	)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for tokenization key use case: %w", err)
+		}
+		return tokenizationUseCase.NewTokenizationKeyUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
+}
+
+// initTokenizationUseCase creates the tokenization use case.
+func (c *Container) initTokenizationUseCase() (tokenizationUseCase.TokenizationUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager for tokenization use case: %w", err)
+	}
+
+	tokenizationKeyRepository, err := c.TokenizationKeyRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokenization key repository for tokenization use case: %w", err)
+	}
+
+	tokenRepository, err := c.TokenizationTokenRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token repository for tokenization use case: %w", err)
+	}
+
+	dekRepository, err := c.TokenizationDekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get dek repository for tokenization use case: %w", err)
+	}
+
+	aeadManager := c.AEADManager()
+
+	keyManager := c.KeyManager()
+
+	hashService := tokenizationUseCase.NewSHA256HashService()
+
+	kekChain, err := c.loadKekChain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kek chain for tokenization use case: %w", err)
+	}
+
+	baseUseCase := tokenizationUseCase.NewTokenizationUseCase(
+		txManager,
+		tokenizationKeyRepository,
+		tokenRepository,
+		dekRepository,
+		aeadManager,
+		keyManager,
+		hashService,
+		kekChain,
+	)
+
+	// Wrap with metrics if enabled
+	if c.config.MetricsEnabled {
+		businessMetrics, err := c.BusinessMetrics()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for tokenization use case: %w", err)
+		}
+		return tokenizationUseCase.NewTokenizationUseCaseWithMetrics(baseUseCase, businessMetrics), nil
+	}
+
+	return baseUseCase, nil
+}
+
+// initTokenizationKeyHandler creates the tokenization key HTTP handler.
+func (c *Container) initTokenizationKeyHandler() (*tokenizationHTTP.TokenizationKeyHandler, error) {
+	tokenizationKeyUseCase, err := c.TokenizationKeyUseCase()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get tokenization key use case for tokenization key handler: %w",
+			err,
+		)
+	}
+
+	logger := c.Logger()
+
+	return tokenizationHTTP.NewTokenizationKeyHandler(tokenizationKeyUseCase, logger), nil
+}
+
+// initTokenizationHandler creates the tokenization HTTP handler.
+func (c *Container) initTokenizationHandler() (*tokenizationHTTP.TokenizationHandler, error) {
+	tokenizationUseCase, err := c.TokenizationUseCase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokenization use case for tokenization handler: %w", err)
+	}
+
+	logger := c.Logger()
+
+	return tokenizationHTTP.NewTokenizationHandler(tokenizationUseCase, logger), nil
 }

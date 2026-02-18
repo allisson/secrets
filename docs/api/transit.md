@@ -1,6 +1,6 @@
 # 🚄 Transit API
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Transit API encrypts/decrypts data without storing your application payload.
@@ -273,6 +273,7 @@ Expected result: key creation returns `201 Created`; encrypt returns `200 OK` wi
 
 - [Authentication API](authentication.md)
 - [Policies cookbook](policies.md)
+- [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)
 - [API compatibility policy](versioning-policy.md)
 - [Curl examples](../examples/curl.md)
