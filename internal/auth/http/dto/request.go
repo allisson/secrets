@@ -75,7 +75,7 @@ func validatePolicyDocument(value interface{}) error {
 // IssueTokenRequest contains the parameters for issuing an authentication token.
 type IssueTokenRequest struct {
 	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
+	ClientSecret string `json:"client_secret"` //nolint:gosec // API authentication field
 }
 
 // Validate checks if the issue token request is valid.

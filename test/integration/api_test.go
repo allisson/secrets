@@ -73,6 +73,7 @@ func (ctx *integrationTestContext) makeRequest(
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
+	//nolint:gosec // controlled test environment with localhost URLs
 	resp, err := client.Do(req)
 	require.NoError(t, err, "failed to perform request")
 

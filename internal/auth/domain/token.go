@@ -21,7 +21,7 @@ type Token struct {
 // Used during authentication to verify client identity before generating tokens.
 type IssueTokenInput struct {
 	ClientID     uuid.UUID
-	ClientSecret string
+	ClientSecret string //nolint:gosec // authentication credential field
 }
 
 // IssueTokenOutput contains the newly issued authentication token and expiration.

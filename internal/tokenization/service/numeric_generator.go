@@ -31,6 +31,7 @@ func (g *numericGenerator) Generate(length int) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to generate random digit: %w", err)
 		}
+		//nolint:gosec // n is bounded [0,9] by big.NewInt(10), safe conversion
 		digits[i] = byte('0' + n.Int64())
 	}
 

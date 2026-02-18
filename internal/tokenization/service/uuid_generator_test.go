@@ -38,6 +38,7 @@ func TestUUIDGenerator_Validate(t *testing.T) {
 		token       string
 		expectError bool
 	}{
+		//nolint:gosec // test UUID string
 		{
 			name:        "Valid_UUIDv4",
 			token:       "550e8400-e29b-41d4-a716-446655440000",
@@ -58,6 +59,7 @@ func TestUUIDGenerator_Validate(t *testing.T) {
 			token:       "",
 			expectError: true,
 		},
+		//nolint:gosec // test UUID string
 		{
 			name:        "Invalid_PartialUUID",
 			token:       "550e8400-e29b-41d4",

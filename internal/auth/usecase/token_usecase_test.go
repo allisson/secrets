@@ -505,6 +505,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
 		}
 
+		//nolint:gosec // test fixture data
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   "$argon2id$v=19$m=65536,t=3,p=4$test-hash", //nolint:gosec // test fixture
@@ -712,6 +713,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
 		}
 
+		//nolint:gosec // test fixture data
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   "$argon2id$v=19$m=65536,t=3,p=4$test-hash", //nolint:gosec // test fixture

@@ -102,6 +102,7 @@ func TestAlphanumericGenerator_Validate(t *testing.T) {
 			token:       "0123456789",
 			expectError: false,
 		},
+		//nolint:gosec // test token string
 		{
 			name:        "Valid_Mixed",
 			token:       "aB3dE5fG7h",

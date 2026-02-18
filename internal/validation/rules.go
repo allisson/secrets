@@ -3,6 +3,7 @@ package validation
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -43,7 +44,7 @@ func (p PasswordStrength) Validate(value interface{}) error {
 	if len(s) < p.MinLength {
 		return validation.NewError(
 			"validation_password_min_length",
-			"password must be at least "+string(rune(p.MinLength+48))+" characters",
+			"password must be at least "+strconv.Itoa(p.MinLength)+" characters",
 		)
 	}
 

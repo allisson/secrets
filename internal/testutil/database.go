@@ -19,8 +19,10 @@ import (
 )
 
 const (
+	//nolint:gosec // test database credentials
 	PostgresTestDSN = "postgres://testuser:testpassword@localhost:5433/testdb?sslmode=disable"
-	MySQLTestDSN    = "testuser:testpassword@tcp(localhost:3307)/testdb?parseTime=true&multiStatements=true"
+	//nolint:gosec // test database credentials
+	MySQLTestDSN = "testuser:testpassword@tcp(localhost:3307)/testdb?parseTime=true&multiStatements=true"
 )
 
 // SetupPostgresDB creates a new PostgreSQL database connection and runs migrations.

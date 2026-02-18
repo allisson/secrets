@@ -12,6 +12,7 @@ import (
 
 // TestNewContainer verifies that a new container can be created with a valid configuration.
 func TestNewContainer(t *testing.T) {
+	//nolint:gosec // test fixture data
 	cfg := &config.Config{
 		LogLevel:             "info",
 		DBDriver:             "postgres",
