@@ -1,6 +1,6 @@
 # 📘 Authorization Policy Cookbook
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Ready-to-use policy templates for common service roles.
@@ -15,6 +15,7 @@ Ready-to-use policy templates for common service roles.
 - [5) Audit log reader](#5-audit-log-reader)
 - [6) Break-glass admin (emergency)](#6-break-glass-admin-emergency)
 - [7) Key operator](#7-key-operator)
+- [8) Tokenization operator](#8-tokenization-operator)
 - [Policy mismatch example (wrong vs fixed)](#policy-mismatch-example-wrong-vs-fixed)
 - [Common policy mistakes](#common-policy-mistakes)
 - [Best practices](#best-practices)
@@ -37,6 +38,17 @@ Ready-to-use policy templates for common service roles.
 ```
 
 Capabilities: `read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`.
+
+Endpoint capability intent (quick map, condensed from [Capability matrix](capability-matrix.md)):
+
+| Endpoint family | Typical capability |
+| --- | --- |
+| `GET /v1/clients`, `GET /v1/audit-logs`, `POST /v1/tokenization/validate` | `read` |
+| `POST /v1/clients`, `PUT /v1/clients/:id`, `POST /v1/transit/keys`, `POST /v1/tokenization/keys` | `write` |
+| `DELETE /v1/clients/:id`, `DELETE /v1/transit/keys/:id`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/revoke` | `delete` |
+| `POST /v1/secrets/*path`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/tokenization/keys/:name/tokenize` | `encrypt` |
+| `GET /v1/secrets/*path`, `POST /v1/transit/keys/:name/decrypt`, `POST /v1/tokenization/detokenize` | `decrypt` |
+| `POST /v1/transit/keys/:name/rotate`, `POST /v1/tokenization/keys/:name/rotate` | `rotate` |
 
 ## 1) Read-only service
 
@@ -156,6 +168,41 @@ Use for teams responsible only for transit key lifecycle.
 
 Risk note: scope key names by environment when possible (for example `/v1/transit/keys/prod-*`).
 
+## 8) Tokenization operator
+
+Use for services that manage tokenization keys and token lifecycle operations.
+
+```json
+[
+  {
+    "path": "/v1/tokenization/keys",
+    "capabilities": ["write"]
+  },
+  {
+    "path": "/v1/tokenization/keys/*/rotate",
+    "capabilities": ["rotate"]
+  },
+  {
+    "path": "/v1/tokenization/keys/*/tokenize",
+    "capabilities": ["encrypt"]
+  },
+  {
+    "path": "/v1/tokenization/detokenize",
+    "capabilities": ["decrypt"]
+  },
+  {
+    "path": "/v1/tokenization/validate",
+    "capabilities": ["read"]
+  },
+  {
+    "path": "/v1/tokenization/revoke",
+    "capabilities": ["delete"]
+  }
+]
+```
+
+Risk note: avoid wildcard tokenization access for application clients that only need tokenize or detokenize.
+
 ## Policy mismatch example (wrong vs fixed)
 
 Wrong policy (insufficient capability for secret reads):
@@ -190,8 +237,10 @@ Also verify path matching, for example `/v1/secrets/app/prod/*` if you want tigh
 | --- | --- | --- |
 | `403` on `GET /v1/secrets/*path` | Used `read` instead of `decrypt` | Grant `decrypt` for the secret path |
 | `403` on transit rotate | Missing `rotate` capability | Add `rotate` on `/v1/transit/keys/*/rotate` |
+| `403` on tokenization detokenize | Used `read` instead of `decrypt` | Grant `decrypt` on `/v1/tokenization/detokenize` |
 | Service can access too much | Over-broad wildcard `*` path | Scope paths to service/environment prefixes |
 | Writes fail on secrets endpoint | Used `write` instead of `encrypt` | Grant `encrypt` for `POST /v1/secrets/*path` |
+| Tokenization lifecycle calls fail | Sent token in URL path policy scope only | Add explicit paths for `/v1/tokenization/detokenize`, `/v1/tokenization/validate`, and `/v1/tokenization/revoke` |
 | Audit query denied | Missing `read` on `/v1/audit-logs` | Add explicit audit read policy |
 
 ## Best practices
@@ -205,5 +254,6 @@ Also verify path matching, for example `/v1/secrets/app/prod/*` if you want tigh
 
 - [Authentication API](authentication.md)
 - [Clients API](clients.md)
+- [Capability matrix](capability-matrix.md)
 - [Secrets API](secrets.md)
 - [Transit API](transit.md)

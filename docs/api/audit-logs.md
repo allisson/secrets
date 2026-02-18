@@ -1,6 +1,6 @@
 # 📜 Audit Logs API
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 > Applies to: API v1
 
 Audit logs capture capability checks and access attempts for monitoring and compliance.
@@ -13,6 +13,10 @@ Audit logs capture capability checks and access attempts for monitoring and comp
 
 Authentication: required (Bearer token).
 Authorization: `read` capability for `/v1/audit-logs`.
+
+Capability reference:
+
+- Canonical mapping source: [Capability matrix](capability-matrix.md)
 
 ## Endpoint
 
@@ -170,6 +174,7 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
 - [Authentication API](authentication.md)
 - [Clients API](clients.md)
 - [Policies cookbook](policies.md)
+- [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)
 - [API compatibility policy](versioning-policy.md)
 - [Glossary](../concepts/glossary.md)

@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
 
 Use this guide when adding or editing project documentation.
 
@@ -45,6 +45,18 @@ Use this guide when adding or editing project documentation.
 - Include expected status/result where useful
 - Avoid placeholder values that look like real secrets
 
+Copy-safe examples policy:
+
+- Use clearly synthetic values (`<client-id>`, `tok_sample`, `example.com`)
+- Never include real keys, tokens, credentials, or production hostnames
+- For sensitive domains (payments/PII), prefer redacted fragments (for example `last_four`)
+
+## Metadata Source of Truth
+
+- `docs/metadata.json` is the canonical source for current release and API version labels
+- Keep `README.md`, `docs/README.md`, and API applies-to markers aligned with this file
+- Validate with `make docs-check-metadata`
+
 ## Local Docs Checks
 
 Run the same style/link checks locally before opening a PR:
@@ -52,11 +64,14 @@ Run the same style/link checks locally before opening a PR:
 ```bash
 make docs-lint
 make docs-check-examples
+make docs-check-metadata
 ```
 
 This target runs markdown linting and offline markdown link validation.
 
 `make docs-check-examples` validates representative JSON response shapes used in docs.
+
+`make docs-check-metadata` validates release/API metadata alignment across docs entry points.
 
 ## PR Checklist
 
@@ -70,11 +85,13 @@ This target runs markdown linting and offline markdown link validation.
 
 For behavior changes, update all relevant docs in the same PR:
 
-1. Environment variables and defaults (`docs/configuration/environment-variables.md`)
-2. API overview and endpoint pages (`README.md`, `docs/api/*.md`)
-3. Operational runbooks (`docs/operations/*.md`)
-4. Release notes (`docs/releases/vX.Y.Z.md`) and `docs/CHANGELOG.md`
-5. Local and Docker examples (`docs/getting-started/*.md`, `docs/cli/commands.md`)
+1. API endpoint page (`docs/api/<area>.md`) plus capability mapping references
+2. OpenAPI contract updates (`docs/openapi.yaml`) for new/changed request and response shapes
+3. Examples parity (`docs/examples/*.md`) for at least curl and one SDK/runtime path
+4. Monitoring/query updates (`docs/operations/monitoring.md`) when new operations/metrics are introduced
+5. Runbook updates (`docs/operations/*.md` or `docs/getting-started/troubleshooting.md`) for incident/upgrade impact
+6. Release notes and changelog (`docs/releases/vX.Y.Z.md`, `docs/CHANGELOG.md`)
+7. Entry-point navigation updates (`README.md`, `docs/README.md`) when docs scope expands
 
 ## Ownership and Review Cadence
 
@@ -86,9 +103,18 @@ For behavior changes, update all relevant docs in the same PR:
 ## Docs Release Process
 
 1. Update `Last updated` in every changed docs file
-2. Add or update relevant examples if behavior/commands changed
-3. Append a concise entry in `docs/CHANGELOG.md` for significant docs changes
-4. Run `make docs-lint` before opening or merging PRs
+2. Update `docs/metadata.json` when release/API labels change
+3. Add or update relevant examples if behavior/commands changed
+4. Append a concise entry in `docs/CHANGELOG.md` for significant docs changes
+5. Run `make docs-lint` before opening or merging PRs
+
+## Release PR Docs QA Guard
+
+CI includes an API/docs guard for pull requests:
+
+- If API-facing code changes (`internal/*/http/*.go`, `cmd/app/commands/*.go`, `migrations/*`),
+  PRs must include corresponding docs changes in at least one relevant docs area
+- This guard helps ensure API/runtime changes ship with docs, examples, and/or runbook updates
 
 ## See also
 

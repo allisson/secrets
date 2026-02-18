@@ -1,6 +1,6 @@
 # 🟨 JavaScript Examples
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
@@ -101,16 +101,64 @@ main().catch((error) => {
 });
 ```
 
+## Tokenization Quick Snippet
+
+```javascript
+async function tokenizationFlow(token) {
+  await fetch(`${BASE_URL}/v1/tokenization/keys`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      name: "js-tokenization",
+      format_type: "uuid",
+      is_deterministic: false,
+      algorithm: "aes-gcm",
+    }),
+  });
+
+  const tokenizeRes = await fetch(`${BASE_URL}/v1/tokenization/keys/js-tokenization/tokenize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ plaintext: toBase64("sensitive-value"), ttl: 600 }),
+  });
+  if (!tokenizeRes.ok) throw new Error(`tokenize failed: ${tokenizeRes.status}`);
+  const { token: tokenValue } = await tokenizeRes.json();
+
+  const detokenizeRes = await fetch(`${BASE_URL}/v1/tokenization/detokenize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ token: tokenValue }),
+  });
+  if (!detokenizeRes.ok) throw new Error(`detokenize failed: ${detokenizeRes.status}`);
+}
+```
+
+Deterministic caveat:
+
+- With `is_deterministic: true`, tokenizing the same plaintext with the same active key can produce the same token.
+- Prefer non-deterministic mode unless stable equality matching is required.
+
 ## Common Mistakes
 
 - Sending UTF-8 plaintext directly instead of base64 in transit/secrets payloads
 - Reformatting `ciphertext` for decrypt instead of passing encrypt response as-is
 - Missing `Authorization: Bearer <token>` header on protected endpoints
 - Reusing transit create for existing keys without fallback to rotate on `409`
+- Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
 
 ## See also
 
 - [Authentication API](../api/authentication.md)
 - [Secrets API](../api/secrets.md)
 - [Transit API](../api/transit.md)
+- [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)

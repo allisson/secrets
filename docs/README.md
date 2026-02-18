@@ -1,6 +1,8 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
+
+Metadata source for release/API labels: `docs/metadata.json`
 
 Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
@@ -28,6 +30,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 📊 [operations/monitoring.md](operations/monitoring.md)
 - 🏭 [operations/production.md](operations/production.md)
 - 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
+- 🧪 [operations/policy-smoke-tests.md](operations/policy-smoke-tests.md)
 - 🛠️ [development/testing.md](development/testing.md)
 - 🤝 [contributing.md](contributing.md)
 - 🗒️ [CHANGELOG.md](CHANGELOG.md)
@@ -47,8 +50,10 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🔐 [api/authentication.md](api/authentication.md)
 - 👤 [api/clients.md](api/clients.md)
 - 📘 [api/policies.md](api/policies.md)
+- 🗂️ [api/capability-matrix.md](api/capability-matrix.md)
 - 📦 [api/secrets.md](api/secrets.md)
 - 🚄 [api/transit.md](api/transit.md)
+- 🎫 [api/tokenization.md](api/tokenization.md)
 - 📜 [api/audit-logs.md](api/audit-logs.md)
 - 🧱 [api/response-shapes.md](api/response-shapes.md)
 - 🧩 [api/versioning-policy.md](api/versioning-policy.md)
@@ -56,12 +61,14 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.3.0`
+- `openapi.yaml` is a baseline subset for common API flows in `v0.4.0`
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
+- Tokenization endpoints are included in `openapi.yaml` for `v0.4.0`
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.3.0.md](releases/v0.3.0.md)
+- 📦 [releases/v0.4.0.md](releases/v0.4.0.md)
+- 📦 [releases/v0.3.0.md](releases/v0.3.0.md) (historical)
 - 📦 [releases/v0.2.0.md](releases/v0.2.0.md) (historical)
 - 📦 [releases/v0.1.0.md](releases/v0.1.0.md) (historical)
 

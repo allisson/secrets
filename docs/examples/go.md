@@ -1,6 +1,6 @@
 # 🐹 Go Examples
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
@@ -190,16 +190,48 @@ func createTransitKey(token, keyName string) error {
 }
 ```
 
+## Tokenization Quick Snippet
+
+```go
+func tokenizationFlow(token string) error {
+    _ = createTokenizationKey(token, "go-tokenization")
+
+    tokenValue, err := tokenize(token, "go-tokenization", "sensitive-value")
+    if err != nil {
+        return err
+    }
+
+    plaintextB64, err := detokenize(token, tokenValue)
+    if err != nil {
+        return err
+    }
+
+    expected := base64.StdEncoding.EncodeToString([]byte("sensitive-value"))
+    if plaintextB64 != expected {
+        return fmt.Errorf("tokenization round-trip verification failed")
+    }
+
+    return nil
+}
+```
+
+Deterministic caveat:
+
+- Keys configured as deterministic can emit the same token for the same plaintext under the same active key.
+- Use deterministic mode only when your workflow requires equality matching.
+
 ## Common Mistakes
 
 - Posting raw strings instead of base64-encoded fields for secrets/transit payloads
 - Generating decrypt `ciphertext` from local assumptions instead of encrypt response
 - Missing bearer token header on one request in a multi-step flow
 - Ignoring `409 Conflict` on transit create and not switching to rotate logic
+- Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
 
 ## See also
 
 - [Authentication API](../api/authentication.md)
 - [Secrets API](../api/secrets.md)
 - [Transit API](../api/transit.md)
+- [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)

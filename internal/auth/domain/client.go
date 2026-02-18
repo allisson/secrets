@@ -23,7 +23,7 @@ type PolicyDocument struct {
 // Clients are used to authenticate API requests and enforce access control.
 type Client struct {
 	ID        uuid.UUID        // Unique identifier (UUIDv7)
-	Secret    string           // Hashed client secret for authentication
+	Secret    string           //nolint:gosec // hashed client secret (not plaintext)
 	Name      string           // Human-readable client name
 	IsActive  bool             // Whether the client can authenticate
 	Policies  []PolicyDocument // Authorization policies for this client

@@ -147,6 +147,7 @@ func TestPostgreSQLTokenRepository_Create_MultipleTokens(t *testing.T) {
 	time.Sleep(time.Millisecond) // Ensure different timestamp for UUIDv7
 
 	// Create second token
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-2",
@@ -342,6 +343,7 @@ func TestPostgreSQLTokenRepository_Create_WithTransaction(t *testing.T) {
 
 	tokenRepo := NewPostgreSQLTokenRepository(db)
 
+	//nolint:gosec // test fixture data
 	token := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "tx-test-hash",
@@ -485,6 +487,7 @@ func TestPostgreSQLTokenRepository_Get_WithTransaction(t *testing.T) {
 
 	// Create another token inside transaction
 	time.Sleep(time.Millisecond)
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-2-tx",
@@ -659,6 +662,7 @@ func TestPostgreSQLTokenRepository_GetByTokenHash_WithTransaction(t *testing.T) 
 	tokenRepo := NewPostgreSQLTokenRepository(db)
 
 	// Create a token outside transaction
+	//nolint:gosec // test fixture data
 	token1 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-tx-1",
@@ -677,6 +681,7 @@ func TestPostgreSQLTokenRepository_GetByTokenHash_WithTransaction(t *testing.T) 
 
 	// Create another token inside transaction
 	time.Sleep(time.Millisecond)
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-tx-2",

@@ -1,6 +1,43 @@
 # 🗒️ Documentation Changelog
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
+
+## 2026-02-18 (docs v8 - docs QA and operations polish)
+
+- Added docs metadata source file `docs/metadata.json` and metadata consistency checker
+- Added `make docs-check-metadata` and integrated it into `make docs-lint`
+- Added CI docs metadata check and API/docs consistency guard for PRs
+- Added policy verification runbook: `docs/operations/policy-smoke-tests.md`
+- Added retention defaults table to production guide and linked policy smoke tests
+- Added tokenization lifecycle sequence diagram in architecture docs
+- Added copy-safe examples policy and release PR docs QA guard guidance in contributing docs
+
+## 2026-02-18 (docs v7 - final v0.4.0 hardening)
+
+- Added canonical capability reference page: `docs/api/capability-matrix.md`
+- Linked capability matrix from API endpoint docs, policy cookbook, and docs indexes
+- Expanded OpenAPI description and monitoring docs with route-template notes (`{name}` vs `:name`/`*path`)
+- Added tokenization deterministic-mode caveats in curl, Python, JavaScript, and Go examples
+- Expanded tokenization API guidance with metadata data-classification rules
+- Added rollback guidance for additive tokenization schema migration in `docs/releases/v0.4.0.md`
+- Added migration-focused troubleshooting for tokenization rollout and expanded smoke test coverage
+
+## 2026-02-18 (docs v6 - v0.4.0 release prep)
+
+- Added release notes page: `docs/releases/v0.4.0.md` and promoted it as current in docs indexes
+- Updated pinned Docker examples from `allisson/secrets:v0.3.0` to `allisson/secrets:v0.4.0`
+- Updated root `README.md` with `What's New in v0.4.0`, tokenization API overview, and release links
+- Added tokenization endpoints and corrected request/response contracts in `docs/api/tokenization.md`
+- Added tokenization CLI command docs in `docs/cli/commands.md`
+- Added tokenization monitoring operations and retention workflow updates in production docs
+- Added explicit OpenAPI-coverage gap notes for tokenization rollout docs
+- Added tokenization snippets to Python, JavaScript, and Go examples for cross-language parity
+- Added tokenization incident runbooks and policy mapping clarifications
+- Added `v0.4.0` upgrade checklist (migrate, verify, tokenization smoke checks, retention cleanup)
+- Expanded OpenAPI baseline with tokenization endpoint and schema coverage
+- Added canonical capability matrix reference and cross-linked API docs to reduce policy drift
+- Expanded smoke test script/docs with tokenization round-trip + revoke validation
+- Added tokenization migration verification troubleshooting section
 
 ## 2026-02-16 (docs v5 - documentation quality improvements)
 

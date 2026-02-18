@@ -39,3 +39,11 @@ packages:
       DekRepository: {}
       TransitKeyRepository: {}
       TransitKeyUseCase: {}
+  github.com/allisson/secrets/internal/tokenization/usecase:
+    interfaces:
+      DekRepository: {}
+      TokenizationKeyRepository: {}
+      TokenizationKeyUseCase: {}
+      TokenRepository: {}
+      TokenizationUseCase: {}
+      HashService: {}

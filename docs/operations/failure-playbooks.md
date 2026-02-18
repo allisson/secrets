@@ -1,6 +1,6 @@
 # 🚑 Failure Playbooks
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 Use this page for fast incident triage on common API failures.
 
@@ -43,6 +43,33 @@ Triage steps:
 3. Confirm encrypt/decrypt still work after rotation
 4. Update automation to avoid repeated create for existing names
 
+## 404/422 on Tokenization Detokenize
+
+Symptoms:
+
+- `POST /v1/tokenization/detokenize` returns `404 Not Found` or `422 Unprocessable Entity`
+
+Triage steps:
+
+1. Confirm token was produced by `POST /v1/tokenization/keys/:name/tokenize`
+2. Confirm request shape uses JSON body `{"token":"..."}` (not URL path token)
+3. Check if token is expired (`ttl`) or revoked
+4. Validate caller has `decrypt` capability on `/v1/tokenization/detokenize`
+5. If expired tokens accumulate, run cleanup routine (`clean-expired-tokens`)
+
+## 409 on Tokenization Key Create
+
+Symptoms:
+
+- `POST /v1/tokenization/keys` returns `409 Conflict`
+
+Triage steps:
+
+1. Treat conflict as "key already initialized"
+2. Call `POST /v1/tokenization/keys/:name/rotate` for a new active version
+3. Confirm tokenize/detokenize paths remain healthy after rotation
+4. Update automation to avoid repeated create for existing names
+
 ## Quick Commands
 
 ```bash
@@ -63,5 +90,7 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 
 - [Troubleshooting](../getting-started/troubleshooting.md)
 - [Policies cookbook](../api/policies.md)
+- [Policy smoke tests](policy-smoke-tests.md)
 - [Transit API](../api/transit.md)
+- [Tokenization API](../api/tokenization.md)
 - [Production operations](production.md)

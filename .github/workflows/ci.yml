@@ -53,6 +53,43 @@ jobs:
             exit 1
           fi
 
+      - name: API docs consistency guard (PRs)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+
+          CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
+          if [ -z "$CHANGED_FILES" ]; then
+            exit 0
+          fi
+
+          api_changed=false
+          docs_changed=false
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            case "$file" in
+              internal/*/http/*.go|cmd/app/commands/*.go|migrations/*/*.sql)
+                api_changed=true
+                ;;
+            esac
+
+            case "$file" in
+              docs/api/*|docs/openapi.yaml|docs/examples/*|docs/operations/*|docs/getting-started/*|docs/cli/commands.md|docs/releases/*|docs/CHANGELOG.md|docs/README.md|docs/metadata.json|README.md)
+                docs_changed=true
+                ;;
+            esac
+          done <<EOF
+          $CHANGED_FILES
+          EOF
+
+          if [ "$api_changed" = true ] && [ "$docs_changed" = false ]; then
+            echo "API/runtime changes detected but no related docs updates found"
+            echo "Update docs/api, openapi/examples/runbooks/release notes as needed"
+            exit 1
+          fi
+
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v20
         with:
@@ -64,6 +101,9 @@ jobs:
 
       - name: Example shape checks
         run: python3 docs/tools/check_example_shapes.py
+
+      - name: Docs metadata checks
+        run: python3 docs/tools/check_docs_metadata.py
 
       - name: Markdown link check (offline)
         uses: lycheeverse/lychee-action@v2

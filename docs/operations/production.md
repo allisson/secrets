@@ -1,6 +1,6 @@
 # 🏭 Production Deployment Guide
 
-> Last updated: 2026-02-16
+> Last updated: 2026-02-18
 
 This guide covers baseline production hardening and operations for Secrets.
 
@@ -11,8 +11,9 @@ This guide covers baseline production hardening and operations for Secrets.
 - [3) Database Operations](#3-database-operations)
 - [4) Key Rotation Schedule](#4-key-rotation-schedule)
 - [5) Observability and Monitoring](#5-observability-and-monitoring)
-- [6) Incident Response Checklist](#6-incident-response-checklist)
-- [7) Go-Live Checklist](#7-go-live-checklist)
+- [6) Retention Defaults](#6-retention-defaults)
+- [7) Incident Response Checklist](#7-incident-response-checklist)
+- [8) Go-Live Checklist](#8-go-live-checklist)
 
 ## 1) TLS and Reverse Proxy
 
@@ -42,6 +43,7 @@ Minimal reverse proxy checklist:
 - Monitor connection pool metrics and error rates
 - Run migrations before rolling out new app versions
 - Define and execute audit log retention cleanup on a fixed cadence
+- Define and execute expired token cleanup on a fixed cadence when tokenization is enabled
 
 Backup/restore checklist:
 
@@ -58,6 +60,16 @@ Audit log retention routine (recommended monthly):
 
 # 2) Execute deletion
 ./bin/app clean-audit-logs --days 90 --format text
+```
+
+Token retention routine (recommended monthly for tokenization workloads):
+
+```bash
+# 1) Preview expired tokens older than 30 days
+./bin/app clean-expired-tokens --days 30 --dry-run --format json
+
+# 2) Execute deletion
+./bin/app clean-expired-tokens --days 30 --format text
 ```
 
 ## 4) Key Rotation Schedule
@@ -114,7 +126,16 @@ SLO examples (starting point):
 - Secrets read/write latency (`GET/POST /v1/secrets/*`): p95 < 500 ms
 - Server error budget: 5xx < 0.1% of total requests
 
-## 6) Incident Response Checklist
+## 6) Retention Defaults
+
+| Dataset | Suggested retention | Cleanup command | Cadence |
+| --- | --- | --- | --- |
+| Audit logs | 90 days | `clean-audit-logs --days 90` | Monthly |
+| Expired tokens | 30 days | `clean-expired-tokens --days 30` | Monthly |
+
+Adjust retention to match your compliance and incident-response requirements.
+
+## 7) Incident Response Checklist
 
 1. Identify affected client/key/path scope
 2. Revoke/deactivate compromised clients
@@ -124,7 +145,7 @@ SLO examples (starting point):
 6. Review audit logs for lateral movement or unusual access
 7. Record timeline and remediation actions
 
-## 7) Go-Live Checklist
+## 8) Go-Live Checklist
 
 - [ ] HTTPS/TLS enabled and verified
 - [ ] DB backups and restore drill validated
@@ -139,6 +160,7 @@ SLO examples (starting point):
 
 - [Key management operations](key-management.md)
 - [Monitoring](monitoring.md)
+- [Policy smoke tests](policy-smoke-tests.md)
 - [Environment variables](../configuration/environment-variables.md)
 - [Security model](../concepts/security-model.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)

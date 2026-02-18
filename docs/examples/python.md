@@ -1,6 +1,6 @@
 # 🐍 Python Examples
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-18
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
@@ -95,16 +95,60 @@ if __name__ == "__main__":
     transit_encrypt_decrypt(token)
 ```
 
+## Tokenization Quick Snippet
+
+```python
+def tokenize_detokenize(token: str) -> None:
+    headers = {"Authorization": f"Bearer {token}"}
+
+    requests.post(
+        f"{BASE_URL}/v1/tokenization/keys",
+        headers=headers,
+        json={
+            "name": "python-tokenization",
+            "format_type": "uuid",
+            "is_deterministic": False,
+            "algorithm": "aes-gcm",
+        },
+        timeout=10,
+    )
+
+    tokenize = requests.post(
+        f"{BASE_URL}/v1/tokenization/keys/python-tokenization/tokenize",
+        headers=headers,
+        json={"plaintext": b64("sensitive-value"), "ttl": 600},
+        timeout=10,
+    )
+    tokenize.raise_for_status()
+    token_value = tokenize.json()["token"]
+
+    detokenize = requests.post(
+        f"{BASE_URL}/v1/tokenization/detokenize",
+        headers=headers,
+        json={"token": token_value},
+        timeout=10,
+    )
+    detokenize.raise_for_status()
+    assert detokenize.json()["plaintext"] == b64("sensitive-value")
+```
+
+Deterministic caveat:
+
+- If you create a key with `is_deterministic=True`, repeated tokenization of identical plaintext can return the same token.
+- Use deterministic mode only when equality matching is a functional requirement.
+
 ## Common Mistakes
 
 - Passing raw plaintext instead of base64-encoded `value`/`plaintext`
 - Constructing decrypt `ciphertext` manually instead of using encrypt output
 - Forgetting `Bearer` prefix in `Authorization` header
 - Retrying transit create for an existing key name instead of handling `409` with rotate
+- Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
 
 ## See also
 
 - [Authentication API](../api/authentication.md)
 - [Secrets API](../api/secrets.md)
 - [Transit API](../api/transit.md)
+- [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)

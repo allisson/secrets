@@ -11,7 +11,7 @@ import (
 // SECURITY: The secret is only returned once and must be saved securely.
 type CreateClientResponse struct {
 	ID     string `json:"id"`
-	Secret string `json:"secret"`
+	Secret string `json:"secret"` //nolint:gosec // returned once on creation
 }
 
 // ClientResponse represents a client in API responses (excludes secret).

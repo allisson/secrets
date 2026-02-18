@@ -132,6 +132,7 @@ func TestMySQLTokenRepository_Create_MultipleTokens(t *testing.T) {
 	tokenRepo := NewMySQLTokenRepository(db)
 
 	// Create first token
+	//nolint:gosec // test fixture data
 	token1 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-mysql-1",
@@ -147,6 +148,7 @@ func TestMySQLTokenRepository_Create_MultipleTokens(t *testing.T) {
 	time.Sleep(time.Millisecond) // Ensure different timestamp for UUIDv7
 
 	// Create second token
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-mysql-2",
@@ -243,6 +245,7 @@ func TestMySQLTokenRepository_Update_NonExistent(t *testing.T) {
 	tokenRepo := NewMySQLTokenRepository(db)
 
 	// Try to update a non-existent token
+	//nolint:gosec // test fixture data
 	token := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "hash-mysql",
@@ -342,6 +345,7 @@ func TestMySQLTokenRepository_Create_WithTransaction(t *testing.T) {
 
 	tokenRepo := NewMySQLTokenRepository(db)
 
+	//nolint:gosec // test fixture data
 	token := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "tx-test-hash-mysql",
@@ -481,6 +485,7 @@ func TestMySQLTokenRepository_Get_WithTransaction(t *testing.T) {
 	tokenRepo := NewMySQLTokenRepository(db)
 
 	// Create a token outside transaction
+	//nolint:gosec // test fixture data
 	token1 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-1-tx-mysql",
@@ -499,6 +504,7 @@ func TestMySQLTokenRepository_Get_WithTransaction(t *testing.T) {
 
 	// Create another token inside transaction
 	time.Sleep(time.Millisecond)
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-2-tx-mysql",
@@ -685,6 +691,7 @@ func TestMySQLTokenRepository_GetByTokenHash_WithTransaction(t *testing.T) {
 	tokenRepo := NewMySQLTokenRepository(db)
 
 	// Create a token outside transaction
+	//nolint:gosec // test fixture data
 	token1 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-tx-mysql-1",
@@ -703,6 +710,7 @@ func TestMySQLTokenRepository_GetByTokenHash_WithTransaction(t *testing.T) {
 
 	// Create another token inside transaction
 	time.Sleep(time.Millisecond)
+	//nolint:gosec // test fixture data
 	token2 := &authDomain.Token{
 		ID:        uuid.Must(uuid.NewV7()),
 		TokenHash: "token-hash-tx-mysql-2",
