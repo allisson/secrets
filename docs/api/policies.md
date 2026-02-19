@@ -11,6 +11,7 @@ Ready-to-use policy templates for common service roles.
 - [Path matching behavior](#path-matching-behavior)
 - [Route shape vs policy shape](#route-shape-vs-policy-shape)
 - [Policy review checklist before deploy](#policy-review-checklist-before-deploy)
+- [Persona policy templates](#persona-policy-templates)
 - [1) Read-only service](#1-read-only-service)
 - [2) CI writer](#2-ci-writer)
 - [3) Transit encrypt-only service](#3-transit-encrypt-only-service)
@@ -20,6 +21,7 @@ Ready-to-use policy templates for common service roles.
 - [7) Key operator](#7-key-operator)
 - [8) Tokenization operator](#8-tokenization-operator)
 - [Copy-safe split-role snippets](#copy-safe-split-role-snippets)
+- [Pre-deploy policy automation](#pre-deploy-policy-automation)
 - [Policy mismatch example (wrong vs fixed)](#policy-mismatch-example-wrong-vs-fixed)
 - [Common policy mistakes](#common-policy-mistakes)
 - [Best practices](#best-practices)
@@ -94,6 +96,26 @@ Endpoint capability intent (quick map, condensed from [Capability matrix](capabi
 | `POST /v1/secrets/*path`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/tokenization/keys/:name/tokenize` | `encrypt` |
 | `GET /v1/secrets/*path`, `POST /v1/transit/keys/:name/decrypt`, `POST /v1/tokenization/detokenize` | `decrypt` |
 | `POST /v1/transit/keys/:name/rotate`, `POST /v1/tokenization/keys/:name/rotate` | `rotate` |
+
+## Persona policy templates
+
+Use these as starter profiles for common operational personas.
+
+| Persona | Primary scope | Starter policy section |
+| --- | --- | --- |
+| Secrets reader | Read existing secrets only | [1) Read-only service](#1-read-only-service) |
+| Secrets writer | CI/CD publish path | [2) CI writer](#2-ci-writer) |
+| Transit encrypt worker | Encrypt-only workloads | [3) Transit encrypt-only service](#3-transit-encrypt-only-service) |
+| Transit decrypt worker | Controlled decrypt runtime | [4) Transit decrypt-only service](#4-transit-decrypt-only-service) |
+| Audit/compliance reader | Audit log retrieval | [5) Audit log reader](#5-audit-log-reader) |
+| Key operator | Transit/tokenization key lifecycle | [7) Key operator](#7-key-operator) + [8) Tokenization operator](#8-tokenization-operator) |
+| Break-glass admin | Emergency broad access | [6) Break-glass admin (emergency)](#6-break-glass-admin-emergency) |
+
+Persona composition tips:
+
+- Prefer one persona per client credential
+- Keep encrypt/decrypt split across separate clients where possible
+- Reserve wildcard `*` for short-lived emergency workflows only
 
 ## 1) Read-only service
 
@@ -285,6 +307,37 @@ Secrets write-only workload (`encrypt` only):
 ]
 ```
 
+## Pre-deploy policy automation
+
+Use this pre-deploy gate in CI to reject obvious policy mistakes before rollout.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+POLICY_JSON_PATH="${1:-policy.json}"
+
+# 1) Basic JSON validation
+jq empty "$POLICY_JSON_PATH"
+
+# 2) Reject unsupported wildcard forms in path segments
+if jq -e '.[] | select(.path | test("\*\*|\w-\*|\*\w"))' "$POLICY_JSON_PATH" >/dev/null; then
+  echo "unsupported wildcard pattern found in policy path"
+  exit 1
+fi
+
+# 3) Ensure capabilities are from allowed set
+ALLOWED='["read","write","delete","encrypt","decrypt","rotate"]'
+if jq -e --argjson allowed "$ALLOWED" '.[] | .capabilities[] | select(($allowed | index(.)) == null)' "$POLICY_JSON_PATH" >/dev/null; then
+  echo "unsupported capability found"
+  exit 1
+fi
+
+echo "policy static checks: PASS"
+```
+
+For runtime allow/deny assertions, run [Policy smoke tests](../operations/policy-smoke-tests.md).
+
 ## Policy mismatch example (wrong vs fixed)
 
 Wrong policy (insufficient capability for secret reads):
@@ -335,6 +388,7 @@ Also verify path matching, for example `/v1/secrets/app/prod/*` if you want tigh
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
 - [Clients API](clients.md)
 - [Capability matrix](capability-matrix.md)
 - [Secrets API](secrets.md)

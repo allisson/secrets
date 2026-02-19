@@ -150,9 +150,21 @@ Common error categories:
 
 - `unauthorized`
 - `forbidden`
+- `rate_limit_exceeded`
 - `validation_error`
 - `not_found`
 - `conflict`
+
+Representative rate-limit payload (`429 Too Many Requests`):
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Too many requests. Please retry after the specified delay."
+}
+```
+
+Rate-limit responses include a `Retry-After` header in seconds.
 
 Representative conflict payload (for example duplicate transit key create):
 
@@ -166,6 +178,8 @@ Representative conflict payload (for example duplicate transit key create):
 ## See also
 
 - [Authentication API](authentication.md)
+- [API rate limiting](rate-limiting.md)
+- [API error decision matrix](error-decision-matrix.md)
 - [Clients API](clients.md)
 - [Secrets API](secrets.md)
 - [Transit API](transit.md)

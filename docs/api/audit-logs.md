@@ -26,7 +26,7 @@ Capability reference:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
-| `GET /v1/audit-logs` | `200` | `401`, `403`, `422` |
+| `GET /v1/audit-logs` | `200` | `401`, `403`, `422`, `429` |
 
 Query parameters:
 
@@ -99,6 +99,7 @@ Example:
 - `401 Unauthorized`: missing/invalid bearer token
 - `403 Forbidden`: caller lacks `read` capability for `/v1/audit-logs`
 - `422 Unprocessable Entity`: invalid query values (offset/limit/timestamps)
+- `429 Too Many Requests`: per-client rate limit exceeded
 
 ## Error Payload Examples
 
@@ -172,6 +173,8 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Clients API](clients.md)
 - [Policies cookbook](policies.md)
 - [Route shape vs policy shape](policies.md#route-shape-vs-policy-shape)

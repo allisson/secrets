@@ -61,6 +61,7 @@ For complete matcher semantics and unsupported forms, see [Policies cookbook](po
 ## See also
 
 - [Policies cookbook](policies.md)
+- [API error decision matrix](error-decision-matrix.md)
 - [Authentication API](authentication.md)
 - [Clients API](clients.md)
 - [Secrets API](secrets.md)

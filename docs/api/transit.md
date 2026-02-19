@@ -50,11 +50,11 @@ Wildcard matcher semantics reference:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
-| `POST /v1/transit/keys` | `201` | `401`, `403`, `409`, `422` |
-| `POST /v1/transit/keys/:name/rotate` | `200` | `401`, `403`, `404`, `422` |
-| `POST /v1/transit/keys/:name/encrypt` | `200` | `401`, `403`, `404`, `422` |
-| `POST /v1/transit/keys/:name/decrypt` | `200` | `401`, `403`, `404`, `422` |
-| `DELETE /v1/transit/keys/:id` | `204` | `401`, `403`, `404`, `422` |
+| `POST /v1/transit/keys` | `201` | `401`, `403`, `409`, `422`, `429` |
+| `POST /v1/transit/keys/:name/rotate` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/transit/keys/:name/encrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/transit/keys/:name/decrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `DELETE /v1/transit/keys/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
 
 ## Create Transit Key
 
@@ -164,16 +164,17 @@ Example decrypt response (`200 OK`):
 - `404 Not Found`: key missing or soft deleted
 - `409 Conflict`: key already exists on create
 - `422 Unprocessable Entity`: malformed request payload, invalid blob format, or invalid ciphertext base64
+- `429 Too Many Requests`: per-client rate limit exceeded
 
 ## Endpoint Error Matrix
 
-| Endpoint | 401 | 403 | 404 | 409 | 422 |
-| --- | --- | --- | --- | --- | --- |
-| `POST /v1/transit/keys` | missing/invalid token | missing `write` capability | - | key name already initialized (`version=1`) | invalid create payload |
-| `POST /v1/transit/keys/:name/rotate` | missing/invalid token | missing `rotate` capability | key name not found | - | invalid rotate payload |
-| `POST /v1/transit/keys/:name/encrypt` | missing/invalid token | missing `encrypt` capability | key name not found | - | `plaintext` missing/invalid base64 |
-| `POST /v1/transit/keys/:name/decrypt` | missing/invalid token | missing `decrypt` capability | key/version not found | - | malformed `<version>:<base64-ciphertext>` |
-| `DELETE /v1/transit/keys/:id` | missing/invalid token | missing `delete` capability | key ID not found | - | invalid UUID |
+| Endpoint | 401 | 403 | 404 | 409 | 422 | 429 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `POST /v1/transit/keys` | missing/invalid token | missing `write` capability | - | key name already initialized (`version=1`) | invalid create payload | per-client rate limit exceeded |
+| `POST /v1/transit/keys/:name/rotate` | missing/invalid token | missing `rotate` capability | key name not found | - | invalid rotate payload | per-client rate limit exceeded |
+| `POST /v1/transit/keys/:name/encrypt` | missing/invalid token | missing `encrypt` capability | key name not found | - | `plaintext` missing/invalid base64 | per-client rate limit exceeded |
+| `POST /v1/transit/keys/:name/decrypt` | missing/invalid token | missing `decrypt` capability | key/version not found | - | malformed `<version>:<base64-ciphertext>` | per-client rate limit exceeded |
+| `DELETE /v1/transit/keys/:id` | missing/invalid token | missing `delete` capability | key ID not found | - | invalid UUID | per-client rate limit exceeded |
 
 ## Error Payload Examples
 
@@ -276,6 +277,8 @@ Expected result: key creation returns `201 Created`; encrypt returns `200 OK` wi
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Policies cookbook](policies.md)
 - [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)

@@ -144,5 +144,7 @@ CI includes an API/docs guard for pull requests:
 
 - [Documentation index](README.md)
 - [Testing guide](development/testing.md)
+- [Docs release checklist](development/docs-release-checklist.md)
+- [Docs architecture map](development/docs-architecture-map.md)
 - [Changelog](CHANGELOG.md)
 - [Local development](getting-started/local-development.md)

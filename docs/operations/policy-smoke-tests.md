@@ -161,6 +161,13 @@ Expected:
 - Assert expected status pairs (allow vs deny)
 - Run after policy deployment but before traffic cutover
 
+Pre-deploy automation pattern:
+
+1. Run static policy lint checks (JSON shape, wildcard rules, capability allow-list)
+2. Deploy policy to staging
+3. Run allow/deny smoke assertions from this page
+4. Block production rollout on first mismatch
+
 Optional strict CI mode:
 
 ```bash
@@ -185,6 +192,24 @@ GitHub Actions example:
   run: |
     set -euo pipefail
     # Run commands from this page and fail on first mismatch.
+```
+
+Scripted wrapper example:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[1/3] issuing allow/deny tokens"
+# insert token issuance block from this page
+
+echo "[2/3] running allow/deny assertions"
+# insert capability checks from this page
+
+echo "[3/3] verifying denied audit events"
+# insert audit verification block from this page
+
+echo "policy smoke suite: PASS"
 ```
 
 ## See also

@@ -68,6 +68,11 @@ Expected result: token request returns `201 Created`, authenticated clients requ
 - `403 Forbidden`: inactive client
 - `422 Unprocessable Entity`: malformed request
 
+Rate limiting note:
+
+- `POST /v1/token` is not rate-limited by application middleware
+- Protected endpoints called with issued tokens can return `429 Too Many Requests`
+
 ## Error Payload Examples
 
 Representative error payloads (exact messages may vary):
@@ -117,6 +122,8 @@ Representative error payloads (exact messages may vary):
 ## See also
 
 - [Clients API](clients.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Policies cookbook](policies.md)
 - [Capability matrix](capability-matrix.md)
 - [Audit logs API](audit-logs.md)

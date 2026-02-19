@@ -14,7 +14,7 @@ with optional deterministic behavior and token lifecycle management.
 
 OpenAPI coverage note:
 
-- Tokenization endpoint coverage is included in `docs/openapi.yaml` for `v0.4.1`
+- Tokenization endpoint coverage is included in `docs/openapi.yaml` for `v0.5.0`
 - This page remains the most detailed contract reference with examples and operational guidance
 
 All endpoints require `Authorization: Bearer <token>`.
@@ -50,13 +50,13 @@ Capability mapping:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
-| `POST /v1/tokenization/keys` | `201` | `401`, `403`, `409`, `422` |
-| `POST /v1/tokenization/keys/:name/rotate` | `201` | `401`, `403`, `404`, `422` |
-| `DELETE /v1/tokenization/keys/:id` | `204` | `401`, `403`, `404`, `422` |
-| `POST /v1/tokenization/keys/:name/tokenize` | `201` | `401`, `403`, `404`, `422` |
-| `POST /v1/tokenization/detokenize` | `200` | `401`, `403`, `404`, `422` |
-| `POST /v1/tokenization/validate` | `200` | `401`, `403`, `422` |
-| `POST /v1/tokenization/revoke` | `204` | `401`, `403`, `404`, `422` |
+| `POST /v1/tokenization/keys` | `201` | `401`, `403`, `409`, `422`, `429` |
+| `POST /v1/tokenization/keys/:name/rotate` | `201` | `401`, `403`, `404`, `422`, `429` |
+| `DELETE /v1/tokenization/keys/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/tokenization/keys/:name/tokenize` | `201` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/tokenization/detokenize` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/tokenization/validate` | `200` | `401`, `403`, `422`, `429` |
+| `POST /v1/tokenization/revoke` | `204` | `401`, `403`, `404`, `422`, `429` |
 
 ## Create Tokenization Key
 
@@ -274,6 +274,8 @@ If data must remain confidential at rest, keep it in encrypted plaintext payload
 ## See also
 
 - [Authentication](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Policies](policies.md)
 - [Capability matrix](capability-matrix.md)
 - [CLI Commands](../cli/commands.md)

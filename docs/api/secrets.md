@@ -23,9 +23,9 @@ All endpoints require Bearer authentication.
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
-| `POST /v1/secrets/*path` | `201` | `401`, `403`, `422` |
-| `GET /v1/secrets/*path` | `200` | `401`, `403`, `404` |
-| `DELETE /v1/secrets/*path` | `204` | `401`, `403`, `404` |
+| `POST /v1/secrets/*path` | `201` | `401`, `403`, `422`, `429` |
+| `GET /v1/secrets/*path` | `200` | `401`, `403`, `404`, `429` |
+| `DELETE /v1/secrets/*path` | `204` | `401`, `403`, `404`, `429` |
 
 ## Create or Update Secret
 
@@ -85,6 +85,7 @@ Delete returns `204 No Content`.
 - `403 Forbidden`: caller lacks required capability for the path
 - `404 Not Found`: secret path not found (or soft-deleted in current context)
 - `422 Unprocessable Entity`: invalid request body
+- `429 Too Many Requests`: per-client rate limit exceeded
 
 ## Error Payload Examples
 
@@ -160,6 +161,8 @@ Wildcard matcher semantics reference:
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Policies cookbook](policies.md)
 - [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)

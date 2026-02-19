@@ -12,10 +12,12 @@ Use this quick route before diving into detailed sections:
 2. Token endpoint (`POST /v1/token`) returns `401`/`403` -> go to `401 Unauthorized` or `Token issuance fails with valid-looking credentials`
 3. API requests return `403` with valid token -> go to `403 Forbidden` (policy/capability mismatch)
 4. API requests return `422` -> go to `422 Unprocessable Entity` (payload/query format)
-5. After rotating keys behavior is stale -> go to `Rotation completed but server still uses old key context`
-6. Startup fails with key config errors -> go to `Missing or Invalid Master Keys`
-7. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
-8. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
+5. API requests return `429` -> go to `429 Too Many Requests` (rate limiting)
+6. Browser calls fail before API handler -> go to `CORS and preflight failures`
+7. After rotating keys behavior is stale -> go to `Rotation completed but server still uses old key context`
+8. Startup fails with key config errors -> go to `Missing or Invalid Master Keys`
+9. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
+10. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
 
 ## 📑 Table of Contents
 
@@ -23,6 +25,9 @@ Use this quick route before diving into detailed sections:
 - [403 Forbidden](#403-forbidden)
 - [409 Conflict](#409-conflict)
 - [422 Unprocessable Entity](#422-unprocessable-entity)
+- [429 Too Many Requests](#429-too-many-requests)
+- [CORS and preflight failures](#cors-and-preflight-failures)
+- [CORS smoke checks (copy/paste)](#cors-smoke-checks-copypaste)
 - [Database connection failure](#database-connection-failure)
 - [Migration failure](#migration-failure)
 - [Missing or Invalid Master Keys](#missing-or-invalid-master-keys)
@@ -99,6 +104,72 @@ Common 422 cases:
   - for transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`)
   - validate `offset`, `limit`, and RFC3339 timestamps on audit endpoints
 
+## 429 Too Many Requests
+
+- Symptom: authenticated requests return `429`
+- Likely cause: per-client rate limit exceeded
+- Fix:
+  - check `Retry-After` response header and back off before retrying
+  - implement exponential backoff with jitter in client retry logic
+  - reduce request burst/concurrency from caller
+  - tune `RATE_LIMIT_REQUESTS_PER_SEC` and `RATE_LIMIT_BURST` if traffic is legitimate
+
+Quick note:
+
+- Rate limiting applies to authenticated API groups (`/v1/clients`, `/v1/secrets`, `/v1/transit`, `/v1/tokenization`, `/v1/audit-logs`)
+- Rate limiting does not apply to `/health`, `/ready`, `/metrics`, and token issuance (`POST /v1/token`)
+
+## CORS and preflight failures
+
+- Symptom: browser requests fail on preflight (`OPTIONS`) or show CORS errors in console
+- Likely cause: CORS disabled (default) or origin not listed in `CORS_ALLOW_ORIGINS`
+- Fix:
+  - keep `CORS_ENABLED=false` for server-to-server usage
+  - if browser access is required, set `CORS_ENABLED=true`
+  - configure explicit origins in `CORS_ALLOW_ORIGINS` (comma-separated, no wildcard in production)
+  - confirm request origin exactly matches configured origin (scheme/host/port)
+
+Quick checks:
+
+- If token call succeeds from backend but browser fails before handler, this is usually CORS, not auth policy
+- `403 Forbidden` indicates authorization policy denial; CORS failures usually happen at browser layer
+
+### CORS behavior matrix
+
+| Browser scenario | Expected result | Common misconfiguration |
+| --- | --- | --- |
+| `CORS_ENABLED=false`, same-origin app | Works (no cross-origin checks) | N/A |
+| `CORS_ENABLED=false`, cross-origin app | Browser blocks request | Expecting browser access without enabling CORS |
+| `CORS_ENABLED=true`, origin listed | Preflight and request succeed | Wrong scheme/port in origin list |
+| `CORS_ENABLED=true`, origin missing | Browser blocks request | Origin not included in `CORS_ALLOW_ORIGINS` |
+| `CORS_ENABLED=true`, wildcard in production | Works but insecure | Overly broad origin trust |
+
+## CORS smoke checks (copy/paste)
+
+Preflight request check:
+
+```bash
+curl -i -X OPTIONS http://localhost:8080/v1/clients \
+  -H "Origin: https://app.example.com" \
+  -H "Access-Control-Request-Method: GET" \
+  -H "Access-Control-Request-Headers: Authorization,Content-Type"
+```
+
+Expected when CORS is enabled and origin is allowed:
+
+- `204`/`200` preflight response
+- `Access-Control-Allow-Origin: https://app.example.com`
+- `Access-Control-Allow-Methods` includes requested method
+
+Simple cross-origin request header check:
+
+```bash
+curl -i http://localhost:8080/health \
+  -H "Origin: https://app.example.com"
+```
+
+If CORS is disabled or origin is not allowed, browser requests can fail even if raw curl succeeds.
+
 ## Database connection failure
 
 - Symptom: app fails at startup or migration with DB connection errors
@@ -149,7 +220,7 @@ Common 422 cases:
 - Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.4.1 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.5.0 migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)

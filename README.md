@@ -13,7 +13,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.4.1
+docker pull allisson/secrets:v0.5.0
 ```
 
 Use pinned tags for reproducible setups. `latest` is also available for fast iteration.
@@ -29,12 +29,15 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.4.1
+## 🆕 What's New in v0.5.0
 
-- 🐛 Fixed policy path matching for authorization with mid-path wildcards (for example `/v1/transit/keys/*/rotate`)
-- ✅ Added stronger policy-matching coverage for wildcard edge cases and common role templates
-- 📘 Added bugfix release notes: [docs/releases/v0.4.1.md](docs/releases/v0.4.1.md)
-- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.4.1`
+- 🛡️ Added per-client rate limiting for authenticated API endpoints
+- 🌐 Added configurable CORS support (disabled by default)
+- ⏱️ Changed default token expiration from 24h to 4h for stronger security
+- 🔐 Added comprehensive security hardening guide: [docs/operations/security-hardening.md](docs/operations/security-hardening.md)
+- 📘 Added release notes: [docs/releases/v0.5.0.md](docs/releases/v0.5.0.md)
+- ⬆️ Added upgrade guide: [docs/releases/v0.5.0-upgrade.md](docs/releases/v0.5.0-upgrade.md)
+- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.5.0`
 
 ## 📚 Docs Map
 
@@ -45,7 +48,9 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.4.1 release notes**: [docs/releases/v0.4.1.md](docs/releases/v0.4.1.md)
+- 🚀 **v0.5.0 release notes**: [docs/releases/v0.5.0.md](docs/releases/v0.5.0.md)
+- ⬆️ **v0.5.0 upgrade guide**: [docs/releases/v0.5.0-upgrade.md](docs/releases/v0.5.0-upgrade.md)
+- 🔁 **Release compatibility matrix**: [docs/releases/compatibility-matrix.md](docs/releases/compatibility-matrix.md)
 
 - **By Topic**
 - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
@@ -53,18 +58,28 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
 - 📘 **Glossary**: [docs/concepts/glossary.md](docs/concepts/glossary.md)
 - 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
+- 🔐 **Security hardening**: [docs/operations/security-hardening.md](docs/operations/security-hardening.md)
 - 📊 **Monitoring and metrics**: [docs/operations/monitoring.md](docs/operations/monitoring.md)
+- 🧯 **Operator drills**: [docs/operations/operator-drills.md](docs/operations/operator-drills.md)
+- 🚀 **Production rollout golden path**: [docs/operations/production-rollout.md](docs/operations/production-rollout.md)
 - 🚑 **Failure playbooks**: [docs/operations/failure-playbooks.md](docs/operations/failure-playbooks.md)
 - 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
 - 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
+- 🗺️ **Docs architecture map**: [docs/development/docs-architecture-map.md](docs/development/docs-architecture-map.md)
 - 🤝 **Docs contributing**: [docs/contributing.md](docs/contributing.md)
 - 🗒️ **Docs changelog**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
+
+Release note location:
+
+- Project release notes are in [CHANGELOG.md](CHANGELOG.md)
+- Documentation process/history notes are in [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 - **API Reference**
 - 🔐 **Auth API**: [docs/api/authentication.md](docs/api/authentication.md)
 - 👤 **Clients API**: [docs/api/clients.md](docs/api/clients.md)
 - 📘 **Policy cookbook**: [docs/api/policies.md](docs/api/policies.md)
 - 🗂️ **Capability matrix**: [docs/api/capability-matrix.md](docs/api/capability-matrix.md)
+- 🚨 **Error decision matrix**: [docs/api/error-decision-matrix.md](docs/api/error-decision-matrix.md)
 - 📦 **Secrets API**: [docs/api/secrets.md](docs/api/secrets.md)
 - 🚄 **Transit API**: [docs/api/transit.md](docs/api/transit.md)
 - 🎫 **Tokenization API**: [docs/api/tokenization.md](docs/api/tokenization.md)

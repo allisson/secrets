@@ -2,6 +2,40 @@
 
 > Last updated: 2026-02-19
 
+## 2026-02-19 (docs v10 - v0.5.0 security hardening release prep)
+
+- Added comprehensive security hardening guide: `docs/operations/security-hardening.md`
+- Updated docs metadata source (`docs/metadata.json`) to `current_release: v0.5.0`
+- Added release notes page: `docs/releases/v0.5.0.md` and promoted it as current in docs indexes
+- Updated environment variables documentation with rate limiting and CORS configuration
+- Added security warnings for database SSL/TLS requirements (production vs development)
+- Added migration note for token expiration default change (24h → 4h)
+- Updated `.env.example` with new configuration options and security warnings
+- Added security warnings to Docker and local development getting-started guides
+- Updated production deployment guide with security hardening reference
+- Updated security model with comprehensive production recommendations
+- Added security hardening link to root README and docs indexes
+- Updated current-release references from v0.4.1 to v0.5.0 while preserving historical links
+- Added upgrade guide: `docs/releases/v0.5.0-upgrade.md`
+- Added API rate limiting reference: `docs/api/rate-limiting.md`
+- Updated API endpoint docs with `429` behavior and rate-limiting cross-links
+- Expanded troubleshooting with `429` and CORS/preflight diagnostics
+- Added retry/backoff examples for `429` handling in curl, Python, JavaScript, and Go example docs
+- Added rate-limiting production presets in environment variables documentation
+- Added docs release checklist: `docs/development/docs-release-checklist.md`
+- Added OpenAPI validation step in CI workflow
+- Added production rollout golden path runbook: `docs/operations/production-rollout.md`
+- Added API error decision matrix: `docs/api/error-decision-matrix.md`
+- Added release compatibility matrix: `docs/releases/compatibility-matrix.md`
+- Added persona-oriented policy templates and references in `docs/api/policies.md`
+- Expanded monitoring guide with rate-limit Prometheus queries and alert examples
+- Added CORS smoke checks (copy/paste) to troubleshooting guide
+- Added quarterly operator drills runbook: `docs/operations/operator-drills.md`
+- Added dashboard artifact templates under `docs/operations/dashboards/`
+- Added docs architecture map: `docs/development/docs-architecture-map.md`
+- Added release docs CI guard: `docs/tools/check_release_docs_links.py` + workflow integration
+- Expanded policy smoke tests with pre-deploy automation wrapper pattern
+
 ## 2026-02-19 (docs v9 - v0.4.1 bugfix release prep)
 
 - Added release notes page: `docs/releases/v0.4.1.md` and promoted it as current in docs indexes

@@ -33,11 +33,11 @@ Capability mapping:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
-| `POST /v1/clients` | `201` | `401`, `403`, `409`, `422` |
-| `GET /v1/clients` | `200` | `401`, `403`, `422` |
-| `GET /v1/clients/:id` | `200` | `401`, `403`, `404`, `422` |
-| `PUT /v1/clients/:id` | `200` | `401`, `403`, `404`, `409`, `422` |
-| `DELETE /v1/clients/:id` | `204` | `401`, `403`, `404`, `422` |
+| `POST /v1/clients` | `201` | `401`, `403`, `409`, `422`, `429` |
+| `GET /v1/clients` | `200` | `401`, `403`, `422`, `429` |
+| `GET /v1/clients/:id` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `PUT /v1/clients/:id` | `200` | `401`, `403`, `404`, `409`, `422`, `429` |
+| `DELETE /v1/clients/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
 
 ## Create Client
 
@@ -75,6 +75,7 @@ Example success status: `200 OK`.
 - `404 Not Found`: client ID not found
 - `409 Conflict`: unique constraint conflicts
 - `422 Unprocessable Entity`: invalid request/query payload
+- `429 Too Many Requests`: per-client rate limit exceeded
 
 ## Error Payload Examples
 
@@ -146,6 +147,8 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
+- [API rate limiting](rate-limiting.md)
 - [Policies cookbook](policies.md)
 - [Capability matrix](capability-matrix.md)
 - [Audit logs API](audit-logs.md)

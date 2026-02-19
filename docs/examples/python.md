@@ -22,6 +22,8 @@ export CLIENT_SECRET="<client-secret>"
 ```python
 import base64
 import os
+import random
+import time
 import requests
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
@@ -41,6 +43,19 @@ def issue_token() -> str:
     )
     response.raise_for_status()
     return response.json()["token"]
+
+
+def post_with_retry(url: str, headers: dict[str, str], payload: dict, timeout: int = 10) -> requests.Response:
+    for attempt in range(5):
+        response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        if response.status_code != 429:
+            return response
+
+        retry_after = int(response.headers.get("Retry-After", "1"))
+        jitter = random.uniform(0.0, 0.5)
+        time.sleep(retry_after + jitter)
+
+    return response
 
 
 def create_secret(token: str) -> None:
@@ -137,6 +152,10 @@ Deterministic caveat:
 - If you create a key with `is_deterministic=True`, repeated tokenization of identical plaintext can return the same token.
 - Use deterministic mode only when equality matching is a functional requirement.
 
+Rate-limit note:
+
+- For protected endpoints, prefer retry logic that honors `Retry-After` on `429` (see `post_with_retry` helper above)
+
 ## Common Mistakes
 
 - Passing raw plaintext instead of base64-encoded `value`/`plaintext`
@@ -144,6 +163,7 @@ Deterministic caveat:
 - Forgetting `Bearer` prefix in `Authorization` header
 - Retrying transit create for an existing key name instead of handling `409` with rotate
 - Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
+- Retrying immediately after `429` without backoff/jitter
 
 ## See also
 
@@ -152,3 +172,4 @@ Deterministic caveat:
 - [Transit API](../api/transit.md)
 - [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)
+- [API rate limiting](../api/rate-limiting.md)

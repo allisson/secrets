@@ -90,6 +90,14 @@ jobs:
             exit 1
           fi
 
+      - name: Release docs link guard (PRs)
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.sha }}
+        run: python3 docs/tools/check_release_docs_links.py
+
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v20
         with:
@@ -103,7 +111,22 @@ jobs:
         run: python3 docs/tools/check_example_shapes.py
 
       - name: Docs metadata checks
-        run: python3 docs/tools/check_docs_metadata.py
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            export DOCS_CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
+          else
+            export DOCS_CHANGED_FILES=""
+          fi
+
+          python3 docs/tools/check_docs_metadata.py
+
+      - name: OpenAPI validation
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --no-cache-dir openapi-spec-validator==0.7.1
+          python3 -m openapi_spec_validator docs/openapi.yaml
 
       - name: Markdown link check (offline)
         uses: lycheeverse/lychee-action@v2

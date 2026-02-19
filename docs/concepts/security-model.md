@@ -35,13 +35,21 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 
 ## ✅ Production recommendations
 
-- Use HTTPS/TLS everywhere
-- Store master keys in KMS/HSM/secure secret manager
+- Use HTTPS/TLS everywhere (run behind reverse proxy with TLS termination)
+- Store master keys in KMS/HSM/secure secret manager (never in source control)
 - Apply least-privilege policies per client and path
 - Rotate KEKs and client credentials regularly
 - Alert on repeated denied authorization attempts
 - Separate `encrypt` and `decrypt` clients for tokenization and transit when possible
 - Prefer non-deterministic tokenization unless deterministic matching is an explicit requirement
+- Enable rate limiting to protect against abuse and denial-of-service attacks
+- Use short token expiration times appropriate for your threat model (default: 4 hours)
+- Enable database SSL/TLS in production (`sslmode=require` or `sslmode=verify-full`)
+- Restrict network access to `/metrics` endpoint
+- Forward audit logs to SIEM/log aggregation for long-term retention
+- Disable CORS unless browser-based access is explicitly required
+
+For comprehensive production security guidance, see [Security Hardening Guide](../operations/security-hardening.md).
 
 ## ⚠️ Known limitations
 
@@ -58,6 +66,8 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 
 ## See also
 
+- [Security hardening guide](../operations/security-hardening.md)
+- [Production deployment](../operations/production.md)
 - [Architecture](architecture.md)
 - [Authentication API](../api/authentication.md)
 - [Policies cookbook](../api/policies.md)

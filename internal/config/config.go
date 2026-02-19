@@ -29,6 +29,15 @@ type Config struct {
 	// Auth
 	AuthTokenExpiration time.Duration
 
+	// Rate Limiting
+	RateLimitEnabled        bool
+	RateLimitRequestsPerSec float64
+	RateLimitBurst          int
+
+	// CORS
+	CORSEnabled      bool
+	CORSAllowOrigins string
+
 	// Metrics
 	MetricsEnabled   bool
 	MetricsNamespace string
@@ -58,7 +67,16 @@ func Load() *Config {
 		LogLevel: env.GetString("LOG_LEVEL", "info"),
 
 		// Auth
-		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 86400, time.Second),
+		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 14400, time.Second),
+
+		// Rate Limiting
+		RateLimitEnabled:        env.GetBool("RATE_LIMIT_ENABLED", true),
+		RateLimitRequestsPerSec: env.GetFloat64("RATE_LIMIT_REQUESTS_PER_SEC", 10.0),
+		RateLimitBurst:          env.GetInt("RATE_LIMIT_BURST", 20),
+
+		// CORS
+		CORSEnabled:      env.GetBool("CORS_ENABLED", false),
+		CORSAllowOrigins: env.GetString("CORS_ALLOW_ORIGINS", ""),
 
 		// Metrics
 		MetricsEnabled:   env.GetBool("METRICS_ENABLED", true),
