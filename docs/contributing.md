@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Use this guide when adding or editing project documentation.
 
@@ -17,6 +17,13 @@ Use this guide when adding or editing project documentation.
 - Keep headings in Title Case
 - Use emojis for scanability, but keep usage moderate
 - Keep list items concise and without trailing periods
+
+Documentation style baseline:
+
+- Prefer short sections with clear headings over long uninterrupted blocks
+- Prefer plain bullet lists and tables over heavily emphasized text blocks
+- Keep cross-links clickable (Markdown links) rather than inline code path references
+- Keep operational steps copy/paste-ready and include expected status/result when useful
 
 ## Technical Accuracy
 
@@ -73,6 +80,15 @@ This target runs markdown linting and offline markdown link validation.
 
 `make docs-check-metadata` validates release/API metadata alignment across docs entry points.
 
+Optional strict freshness check for changed files:
+
+```bash
+DOCS_CHANGED_FILES="docs/api/clients.md docs/api/policies.md" make docs-check-metadata
+```
+
+When `DOCS_CHANGED_FILES` is set, changed docs pages must refresh `Last updated` to
+`docs/metadata.json:last_docs_refresh` (excluding `docs/adr/*` and `docs/releases/*`).
+
 ## PR Checklist
 
 1. Links are valid and relative paths resolve
@@ -80,6 +96,14 @@ This target runs markdown linting and offline markdown link validation.
 3. Security warnings are present where needed
 4. Terminology is consistent across files
 5. `docs/CHANGELOG.md` updated for significant documentation changes
+
+## Docs QA Checklist
+
+1. Capability and endpoint mappings are consistent across `docs/api/*.md`
+2. Route-shape (`404`) and policy-shape (`403`) behavior is validated for authorization changes
+3. Release links and current release references match `docs/metadata.json`
+4. `Last updated` markers are refreshed in changed docs pages
+5. `make docs-lint` passes locally
 
 ## Feature PR Docs Consistency Checklist
 

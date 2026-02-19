@@ -1,6 +1,6 @@
 # 🧪 Policy Smoke Tests
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Use this page to quickly validate authorization behavior after policy changes.
 
@@ -74,6 +74,53 @@ test "$ALLOW_STATUS" = "200"
 test "$DENY_STATUS" = "403"
 ```
 
+Transit rotate check (mid-path wildcard, `rotate` required):
+
+```bash
+ALLOW_STATUS=$(curl -s -o /tmp/allow-rotate.json -w "%{http_code}" -X POST \
+  "$BASE_URL/v1/transit/keys/payment/rotate" \
+  -H "Authorization: Bearer $ALLOW_TOKEN")
+
+DENY_STATUS=$(curl -s -o /tmp/deny-rotate.json -w "%{http_code}" -X POST \
+  "$BASE_URL/v1/transit/keys/payment/rotate" \
+  -H "Authorization: Bearer $DENY_TOKEN")
+
+echo "allowed status=$ALLOW_STATUS denied status=$DENY_STATUS"
+test "$ALLOW_STATUS" = "200"
+test "$DENY_STATUS" = "403"
+```
+
+Tip: this check validates policies like `/v1/transit/keys/*/rotate` and catches wildcard path drift.
+
+Malformed path shape check (extra segment should not match rotate route):
+
+```bash
+BAD_SHAPE_STATUS=$(curl -s -o /tmp/bad-shape-rotate.json -w "%{http_code}" -X POST \
+  "$BASE_URL/v1/transit/keys/payment/extra/rotate" \
+  -H "Authorization: Bearer $ALLOW_TOKEN")
+
+echo "bad shape status=$BAD_SHAPE_STATUS"
+test "$BAD_SHAPE_STATUS" = "404"
+```
+
+Tip: this validates caller path shape expectations; use the allow/deny rotate checks above to validate
+capability enforcement.
+See [Route shape vs policy shape](../api/policies.md#route-shape-vs-policy-shape) for triage guidance.
+
+Secrets malformed path-shape check (missing wildcard subpath should not match):
+
+```bash
+BAD_SECRET_SHAPE_STATUS=$(curl -s -o /tmp/bad-shape-secret.json -w "%{http_code}" \
+  "$BASE_URL/v1/secrets" \
+  -H "Authorization: Bearer $ALLOW_TOKEN")
+
+echo "bad secret shape status=$BAD_SECRET_SHAPE_STATUS"
+test "$BAD_SECRET_SHAPE_STATUS" = "404"
+```
+
+Tip: use this check to ensure policy path logic is not confused with route-template shape.
+See [Route shape vs policy shape](../api/policies.md#route-shape-vs-policy-shape) for details.
+
 Tokenization detokenize check (`decrypt` required):
 
 ```bash
@@ -113,6 +160,32 @@ Expected:
 - Keep smoke checks idempotent
 - Assert expected status pairs (allow vs deny)
 - Run after policy deployment but before traffic cutover
+
+Optional strict CI mode:
+
+```bash
+set -euo pipefail
+
+# Run the checks in this document and fail fast on first mismatch
+# (each `test` command exits non-zero on failure)
+
+echo "policy smoke checks: PASS"
+```
+
+GitHub Actions example:
+
+```yaml
+- name: Policy smoke checks
+  env:
+    BASE_URL: ${{ vars.SECRETS_BASE_URL }}
+    ALLOW_CLIENT_ID: ${{ secrets.POLICY_ALLOW_CLIENT_ID }}
+    ALLOW_CLIENT_SECRET: ${{ secrets.POLICY_ALLOW_CLIENT_SECRET }}
+    DENY_CLIENT_ID: ${{ secrets.POLICY_DENY_CLIENT_ID }}
+    DENY_CLIENT_SECRET: ${{ secrets.POLICY_DENY_CLIENT_SECRET }}
+  run: |
+    set -euo pipefail
+    # Run commands from this page and fail on first mismatch.
+```
 
 ## See also
 

@@ -1,6 +1,6 @@
 # 🏭 Production Deployment Guide
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 This guide covers baseline production hardening and operations for Secrets.
 
@@ -159,8 +159,10 @@ Adjust retention to match your compliance and incident-response requirements.
 ## See also
 
 - [Key management operations](key-management.md)
+- [Operator runbook index](runbook-index.md)
 - [Monitoring](monitoring.md)
 - [Policy smoke tests](policy-smoke-tests.md)
+- [v0.4.1 release notes](../releases/v0.4.1.md)
 - [Environment variables](../configuration/environment-variables.md)
 - [Security model](../concepts/security-model.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)

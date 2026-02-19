@@ -1,6 +1,6 @@
 # 🔒 Security Model
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Secrets is designed for practical defense-in-depth around secret storage and cryptographic operations.
 

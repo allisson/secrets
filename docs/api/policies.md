@@ -1,6 +1,6 @@
 # 📘 Authorization Policy Cookbook
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Ready-to-use policy templates for common service roles.
@@ -8,6 +8,9 @@ Ready-to-use policy templates for common service roles.
 ## 📑 Table of Contents
 
 - [Policy structure](#policy-structure)
+- [Path matching behavior](#path-matching-behavior)
+- [Route shape vs policy shape](#route-shape-vs-policy-shape)
+- [Policy review checklist before deploy](#policy-review-checklist-before-deploy)
 - [1) Read-only service](#1-read-only-service)
 - [2) CI writer](#2-ci-writer)
 - [3) Transit encrypt-only service](#3-transit-encrypt-only-service)
@@ -16,6 +19,7 @@ Ready-to-use policy templates for common service roles.
 - [6) Break-glass admin (emergency)](#6-break-glass-admin-emergency)
 - [7) Key operator](#7-key-operator)
 - [8) Tokenization operator](#8-tokenization-operator)
+- [Copy-safe split-role snippets](#copy-safe-split-role-snippets)
 - [Policy mismatch example (wrong vs fixed)](#policy-mismatch-example-wrong-vs-fixed)
 - [Common policy mistakes](#common-policy-mistakes)
 - [Best practices](#best-practices)
@@ -31,13 +35,54 @@ Ready-to-use policy templates for common service roles.
 ```json
 [
   {
-    "path": "/v1/secrets/*",
+    "path": "/v1/audit-logs",
     "capabilities": ["read"]
   }
 ]
 ```
 
 Capabilities: `read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`.
+
+## Path matching behavior
+
+Policies are evaluated with case-sensitive matching rules:
+
+- Exact path: no wildcard means full exact match (`/v1/audit-logs` matches only `/v1/audit-logs`)
+- Full wildcard: `*` matches any request path
+- Trailing wildcard: `prefix/*` matches paths starting with `prefix/` (greedy for deeper paths)
+- Mid-path wildcard: `*` inside a path matches exactly one segment
+
+Examples:
+
+- `/v1/secrets/*` matches `/v1/secrets/app`, `/v1/secrets/app/db`, and `/v1/secrets/app/db/password`
+- `/v1/transit/keys/*/rotate` matches `/v1/transit/keys/payment/rotate`
+- `/v1/transit/keys/*/rotate` does not match `/v1/transit/keys/rotate` (missing segment)
+- `/v1/transit/keys/*/rotate` does not match `/v1/transit/keys/payment/extra/rotate` (extra segment)
+- `/v1/*/keys/*/rotate` matches `/v1/transit/keys/payment/rotate`
+
+Unsupported patterns (not shell globs):
+
+- Partial-segment wildcard like `/v1/transit/keys/prod-*`
+- Suffix/prefix wildcard inside one segment like `*prod` or `prod*`
+- Mixed-segment glob forms like `/v1/**/rotate`
+
+## Route shape vs policy shape
+
+- Route shape is validated by the HTTP router first (`404` on non-existent endpoint patterns).
+- Policy shape is evaluated after route resolution (`403` when capability/path policy denies access).
+- Example: `POST /v1/transit/keys/payment/extra/rotate` is a route-shape mismatch (`404`) before policy checks.
+- Example: `POST /v1/transit/keys/payment/rotate` can still return `403` if caller lacks `rotate` on
+  `/v1/transit/keys/*/rotate`.
+
+Use [Policy smoke tests](../operations/policy-smoke-tests.md) to validate both route shape and policy behavior.
+
+## Policy review checklist before deploy
+
+1. Confirm endpoint capability intent for each path (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`).
+2. Confirm wildcard type is intentional (exact, full `*`, trailing `/*`, or mid-path segment `*`).
+3. Reject unsupported patterns (`prod-*`, `*prod`, `prod*`, `**`) before policy rollout.
+4. Run route-shape and allow/deny smoke checks from [Policy smoke tests](../operations/policy-smoke-tests.md).
+5. Review denied audit events after rollout and verify mismatches are expected.
 
 Endpoint capability intent (quick map, condensed from [Capability matrix](capability-matrix.md)):
 
@@ -166,7 +211,9 @@ Use for teams responsible only for transit key lifecycle.
 ]
 ```
 
-Risk note: scope key names by environment when possible (for example `/v1/transit/keys/prod-*`).
+Risk note: scope key names by environment with supported matchers. Use explicit key-name paths or
+segment wildcards (for example `/v1/transit/keys/*/rotate`), not partial-segment wildcards like
+`prod-*`.
 
 ## 8) Tokenization operator
 
@@ -202,6 +249,41 @@ Use for services that manage tokenization keys and token lifecycle operations.
 ```
 
 Risk note: avoid wildcard tokenization access for application clients that only need tokenize or detokenize.
+
+## Copy-safe split-role snippets
+
+Transit rotate-only operator:
+
+```json
+[
+  {
+    "path": "/v1/transit/keys/*/rotate",
+    "capabilities": ["rotate"]
+  }
+]
+```
+
+Secrets read-only workload (`decrypt` only):
+
+```json
+[
+  {
+    "path": "/v1/secrets/*",
+    "capabilities": ["decrypt"]
+  }
+]
+```
+
+Secrets write-only workload (`encrypt` only):
+
+```json
+[
+  {
+    "path": "/v1/secrets/*",
+    "capabilities": ["encrypt"]
+  }
+]
+```
 
 ## Policy mismatch example (wrong vs fixed)
 

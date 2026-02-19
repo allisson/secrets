@@ -1,6 +1,6 @@
 # 🗂️ Capability Matrix
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 This page is the canonical capability-to-endpoint reference used by API docs and policy templates.
@@ -41,6 +41,17 @@ This page is the canonical capability-to-endpoint reference used by API docs and
 | `POST /v1/tokenization/revoke` | `delete` |
 
 ## Policy Authoring Notes
+
+Policy matcher quick reference:
+
+| Pattern type | Example | Matching behavior |
+| --- | --- | --- |
+| Exact | `/v1/audit-logs` | Only that exact path |
+| Full wildcard | `*` | Any request path |
+| Trailing wildcard | `/v1/secrets/*` | Prefix + nested paths |
+| Mid-path wildcard | `/v1/transit/keys/*/rotate` | `*` matches one segment |
+
+For complete matcher semantics and unsupported forms, see [Policies cookbook](policies.md#path-matching-behavior).
 
 - Use path scope as narrowly as possible (service + environment prefixes).
 - Avoid wildcard `*` except temporary break-glass workflows.

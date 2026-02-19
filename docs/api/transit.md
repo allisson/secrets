@@ -1,6 +1,6 @@
 # 🚄 Transit API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Transit API encrypts/decrypts data without storing your application payload.
@@ -41,6 +41,10 @@ Capability mapping:
 - `DELETE /v1/transit/keys/:id` -> `delete`
 - `POST /v1/transit/keys/:name/encrypt` -> `encrypt`
 - `POST /v1/transit/keys/:name/decrypt` -> `decrypt`
+
+Wildcard matcher semantics reference:
+
+- [Policies cookbook / Path matching behavior](policies.md#path-matching-behavior)
 
 ## Status Code Quick Reference
 

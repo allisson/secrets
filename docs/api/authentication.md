@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -111,6 +111,8 @@ Representative error payloads (exact messages may vary):
 
 - `Bearer` prefix is case-insensitive (`bearer`, `Bearer`, `BEARER`)
 - Tokens are time-limited and should be renewed before expiration
+- For wildcard path matcher semantics used by authorization, see
+  [Policies cookbook / Path matching behavior](policies.md#path-matching-behavior)
 
 ## See also
 
