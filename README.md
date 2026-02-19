@@ -13,7 +13,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.4.0
+docker pull allisson/secrets:v0.4.1
 ```
 
 Use pinned tags for reproducible setups. `latest` is also available for fast iteration.
@@ -29,13 +29,12 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.4.0
+## 🆕 What's New in v0.4.1
 
-- 🎫 Tokenization API for format-preserving token workflows (`/v1/tokenization/*`)
-- 🧰 New tokenization CLI commands: `create-tokenization-key`, `rotate-tokenization-key`, `clean-expired-tokens`
-- 🗄️ Tokenization persistence migrations for PostgreSQL and MySQL (`000002_add_tokenization`)
-- 📈 Tokenization business-operation metrics added to observability
-- 📘 New release notes: [docs/releases/v0.4.0.md](docs/releases/v0.4.0.md)
+- 🐛 Fixed policy path matching for authorization with mid-path wildcards (for example `/v1/transit/keys/*/rotate`)
+- ✅ Added stronger policy-matching coverage for wildcard edge cases and common role templates
+- 📘 Added bugfix release notes: [docs/releases/v0.4.1.md](docs/releases/v0.4.1.md)
+- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.4.1`
 
 ## 📚 Docs Map
 
@@ -46,7 +45,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.4.0 release notes**: [docs/releases/v0.4.0.md](docs/releases/v0.4.0.md)
+- 🚀 **v0.4.1 release notes**: [docs/releases/v0.4.1.md](docs/releases/v0.4.1.md)
 
 - **By Topic**
 - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)

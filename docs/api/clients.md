@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -49,7 +49,7 @@ curl -X POST http://localhost:8080/v1/clients \
     "name": "payments-api",
     "is_active": true,
     "policies": [
-      {"path":"/v1/secrets/*","capabilities":["read"]},
+      {"path":"/v1/secrets/*","capabilities":["decrypt"]},
       {"path":"/v1/transit/keys/payment/encrypt","capabilities":["encrypt"]}
     ]
   }'
@@ -117,7 +117,7 @@ curl -s -X POST http://localhost:8080/v1/clients \
   -d '{
     "name": "quickflow-client",
     "is_active": true,
-    "policies": [{"path":"/v1/secrets/*","capabilities":["read"]}]
+    "policies": [{"path":"/v1/secrets/*","capabilities":["decrypt"]}]
   }'
 
 # 2) List clients
@@ -129,12 +129,13 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 
 ## Related
 
-- 📘 Policy cookbook: `docs/api/policies.md`
-- 🧪 Curl examples: `docs/examples/curl.md`
-- 🐍 Python examples: `docs/examples/python.md`
-- 🟨 JavaScript examples: `docs/examples/javascript.md`
-- 🐹 Go examples: `docs/examples/go.md`
-- 🧱 Response shapes: `docs/api/response-shapes.md`
+- 📘 [Policy cookbook](policies.md)
+- 🧭 [Wildcard matcher semantics](policies.md#path-matching-behavior)
+- 🧪 [Curl examples](../examples/curl.md)
+- 🐍 [Python examples](../examples/python.md)
+- 🟨 [JavaScript examples](../examples/javascript.md)
+- 🐹 [Go examples](../examples/go.md)
+- 🧱 [Response shapes](response-shapes.md)
 
 ## Use Cases
 

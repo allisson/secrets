@@ -30,14 +30,73 @@ type Client struct {
 	CreatedAt time.Time
 }
 
+// matchPath checks if the request path matches the policy path pattern.
+// Supports three types of wildcards:
+//  1. Full wildcard: "*" matches any path
+//  2. Trailing wildcard: "prefix/*" matches any path starting with "prefix/" (greedy)
+//  3. Mid-path wildcard: "/v1/keys/*/rotate" matches paths with * as single segment
+//
+// Examples:
+//   - "*" matches any path
+//   - "/v1/secrets/*" matches "/v1/secrets/app/db" and "/v1/secrets/app/db/password"
+//   - "/v1/keys/*/rotate" matches "/v1/keys/payment/rotate" but NOT "/v1/keys/rotate"
+//   - "/v1/*/keys/*/rotate" matches "/v1/transit/keys/payment/rotate"
+func matchPath(policyPath, requestPath string) bool {
+	// Special case: full wildcard matches everything
+	if policyPath == "*" {
+		return true
+	}
+
+	// No wildcard: exact match required
+	if !strings.Contains(policyPath, "*") {
+		return policyPath == requestPath
+	}
+
+	// Trailing wildcard (/*): prefix match (greedy - matches remaining path)
+	if strings.HasSuffix(policyPath, "/*") {
+		prefix := strings.TrimSuffix(policyPath, "/*")
+		return strings.HasPrefix(requestPath, prefix+"/")
+	}
+
+	// Mid-path wildcards: segment-by-segment matching
+	// Each * matches exactly one segment
+	policyParts := strings.Split(policyPath, "/")
+	requestParts := strings.Split(requestPath, "/")
+
+	// Must have same number of segments for mid-path wildcards
+	if len(policyParts) != len(requestParts) {
+		return false
+	}
+
+	// Compare each segment
+	for i := 0; i < len(policyParts); i++ {
+		if policyParts[i] == "*" {
+			// Wildcard matches any single segment
+			continue
+		}
+		if policyParts[i] != requestParts[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 // IsAllowed checks if the client's policies permit the given capability on the specified path.
-// Uses case-sensitive prefix matching with wildcard support. Returns true if any policy
+// Uses case-sensitive path matching with wildcard support. Returns true if any policy
 // matches the path and includes the capability.
 //
 // Wildcard patterns:
 //   - "*" matches everything (admin mode)
-//   - "secret/*" matches any path starting with "secret/"
-//   - "secret" matches exactly "secret"
+//   - "secret/*" matches any path starting with "secret/" (trailing wildcard - greedy)
+//   - "/v1/keys/*/rotate" matches "/v1/keys/payment/rotate" (single-segment wildcard)
+//   - "/v1/*/keys/*/rotate" matches "/v1/transit/keys/payment/rotate" (multiple wildcards)
+//
+// Path matching rules:
+//   - Exact match: "secret" matches only "secret"
+//   - Trailing wildcard: "secret/*" matches "secret/app", "secret/app/db", etc.
+//   - Mid-path wildcard: "/v1/keys/*/rotate" matches exactly 4 segments with 3rd being any value
+//   - Case-sensitive: "Secret" does NOT match "secret"
 func (c *Client) IsAllowed(path string, capability Capability) bool {
 	// Edge case: empty path or capability
 	if path == "" || capability == "" {
@@ -46,24 +105,8 @@ func (c *Client) IsAllowed(path string, capability Capability) bool {
 
 	// Iterate through all policies
 	for _, policy := range c.Policies {
-		var pathMatches bool
-
-		// Check path matching based on pattern type
-		switch {
-		case policy.Path == "*":
-			// Wildcard matches everything
-			pathMatches = true
-		case strings.HasSuffix(policy.Path, "/*"):
-			// Prefix matching: strip "/*" and check if path starts with "prefix/"
-			prefix := strings.TrimSuffix(policy.Path, "/*")
-			pathMatches = strings.HasPrefix(path, prefix+"/")
-		default:
-			// Exact match
-			pathMatches = policy.Path == path
-		}
-
-		// If path matches, check if capability is in the list
-		if pathMatches {
+		// Check if path matches using wildcard support
+		if matchPath(policy.Path, path) {
 			if slices.Contains(policy.Capabilities, capability) {
 				return true
 			}

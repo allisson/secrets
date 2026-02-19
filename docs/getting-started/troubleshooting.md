@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Use this guide for common setup and runtime errors.
 
@@ -31,6 +31,7 @@ Use this quick route before diving into detailed sections:
 - [Tokenization migration verification](#tokenization-migration-verification)
 - [Rotation completed but server still uses old key context](#rotation-completed-but-server-still-uses-old-key-context)
 - [Token issuance fails with valid-looking credentials](#token-issuance-fails-with-valid-looking-credentials)
+- [Policy matcher FAQ](#policy-matcher-faq)
 - [Quick diagnostics checklist](#quick-diagnostics-checklist)
 
 ## 401 Unauthorized
@@ -48,8 +49,18 @@ Use this quick route before diving into detailed sections:
 - Likely cause: policy does not grant required capability on requested path
 - Fix:
   - verify capability mapping for endpoint (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`)
-  - verify path pattern (`*`, exact path, or prefix with `/*`)
+  - verify path pattern (`*`, exact path, trailing wildcard `/*`, or mid-path wildcard like `/v1/transit/keys/*/rotate`)
+  - avoid unsupported wildcard patterns (partial-segment `prod-*`, suffix/prefix `*prod`/`prod*`, and `**`)
+  - validate concrete matcher examples:
+    - `/v1/transit/keys/*/rotate` matches `/v1/transit/keys/payment/rotate`
+    - `/v1/transit/keys/*/rotate` does not match `/v1/transit/keys/payment/extra/rotate`
   - update client policy and retry
+
+Common false positives (`403` vs `404`):
+
+- `404 Not Found` usually means route shape mismatch (endpoint path does not exist).
+- `403 Forbidden` usually means route exists but caller policy/capability denies access.
+- Validate route shape first, then evaluate policy matcher and capability mapping.
 
 ## 409 Conflict
 
@@ -135,10 +146,10 @@ Common 422 cases:
 
 ## Tokenization migration verification
 
-- Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.0`
+- Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.4.0 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.4.1 migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)
@@ -160,6 +171,21 @@ Common 422 cases:
   - recreate client and securely store the returned one-time secret
   - verify `is_active` is true
 
+## Policy matcher FAQ
+
+Q: Why does `/v1/transit/keys/*/rotate` not match `/v1/transit/keys/payment/extra/rotate`?
+
+- A: Mid-path `*` matches exactly one segment; the extra segment changes route and policy shape.
+
+Q: Why does `prod-*` not work in policy paths?
+
+- A: Partial-segment wildcards are unsupported. Use exact paths, full `*`, trailing `/*`, or mid-path segment `*`.
+
+Q: Why is wildcard `*` risky for normal service clients?
+
+- A: `*` matches every path and can unintentionally grant broad admin-like access. Reserve it for controlled
+  break-glass workflows.
+
 ## Quick diagnostics checklist
 
 1. `curl http://localhost:8080/health` returns `{"status":"healthy"}`
@@ -174,4 +200,5 @@ Common 422 cases:
 - [Smoke test](smoke-test.md)
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
+- [Operator runbook index](../operations/runbook-index.md)
 - [Production operations](../operations/production.md)

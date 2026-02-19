@@ -1,6 +1,6 @@
 # 🎫 Tokenization API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 The Tokenization API provides format-preserving token generation for sensitive values,
@@ -14,7 +14,7 @@ with optional deterministic behavior and token lifecycle management.
 
 OpenAPI coverage note:
 
-- Tokenization endpoint coverage is included in `docs/openapi.yaml` for `v0.4.0`
+- Tokenization endpoint coverage is included in `docs/openapi.yaml` for `v0.4.1`
 - This page remains the most detailed contract reference with examples and operational guidance
 
 All endpoints require `Authorization: Bearer <token>`.

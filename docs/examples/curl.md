@@ -1,6 +1,6 @@
 # 🧪 Curl Examples
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 

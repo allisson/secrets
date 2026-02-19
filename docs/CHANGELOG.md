@@ -1,6 +1,32 @@
 # 🗒️ Documentation Changelog
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
+
+## 2026-02-19 (docs v9 - v0.4.1 bugfix release prep)
+
+- Added release notes page: `docs/releases/v0.4.1.md` and promoted it as current in docs indexes
+- Updated docs metadata source (`docs/metadata.json`) to `current_release: v0.4.1`
+- Updated pinned Docker examples from `allisson/secrets:v0.4.0` to `allisson/secrets:v0.4.1`
+- Documented policy path-matching behavior with mid-path wildcard support in `docs/api/policies.md`
+- Updated troubleshooting and failure playbooks to include exact, trailing wildcard, and mid-path wildcard matching
+- Corrected Clients API policy examples to use `decrypt` for `/v1/secrets/*` reads
+- Added transit rotate smoke-test step for `/v1/transit/keys/*/rotate` wildcard validation
+- Added malformed rotate path-shape smoke check and explicit unsupported wildcard pattern notes
+- Added policy matcher quick-reference table to `docs/api/capability-matrix.md`
+- Linked `v0.4.1` release notes from production and smoke-test operator guides
+- Added route-shape vs policy-shape guidance and cross-links between policies and smoke tests
+- Added copy-safe split-role policy snippets for transit rotate-only and secrets read/write separation
+- Added operator quick checklist to `docs/releases/v0.4.1.md` and policy matcher FAQ in troubleshooting
+- Added pre-deploy policy review checklist to `docs/api/policies.md`
+- Added `v0.4.1` documentation migration map with direct section links for operators
+- Added strict CI mode snippet for policy smoke checks and 403-vs-404 false-positive guidance
+- Added canonical wildcard matcher semantics links in auth, clients, secrets, and transit API docs
+- Converted Clients API related references to clickable links for navigation consistency
+- Added policy triage cross-links in Audit Logs API and refreshed stale page update stamps
+- Added docs metadata guard to require `> Last updated: YYYY-MM-DD` marker on all docs pages
+- Added optional strict metadata freshness check via `DOCS_CHANGED_FILES` for changed docs pages
+- Added Docs QA checklist and style baseline guidance to `docs/contributing.md`
+- Added unified operator runbook hub: `docs/operations/runbook-index.md` and linked it from docs indexes
 
 ## 2026-02-18 (docs v8 - docs QA and operations polish)
 

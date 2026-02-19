@@ -1,6 +1,6 @@
 # ✅ Smoke Test Script
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Run a fast end-to-end validation of a running Secrets instance.
 
@@ -56,4 +56,5 @@ If transit decrypt fails with `422`, see [Troubleshooting](troubleshooting.md#42
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
 - [Troubleshooting](troubleshooting.md)
+- [v0.4.1 release notes](../releases/v0.4.1.md)
 - [Curl examples](../examples/curl.md)

@@ -1,6 +1,6 @@
 # 📜 Audit Logs API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Audit logs capture capability checks and access attempts for monitoring and compliance.
@@ -174,6 +174,8 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
 - [Authentication API](authentication.md)
 - [Clients API](clients.md)
 - [Policies cookbook](policies.md)
+- [Route shape vs policy shape](policies.md#route-shape-vs-policy-shape)
+- [Policy review checklist before deploy](policies.md#policy-review-checklist-before-deploy)
 - [Capability matrix](capability-matrix.md)
 - [Response shapes](response-shapes.md)
 - [API compatibility policy](versioning-policy.md)

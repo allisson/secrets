@@ -1,6 +1,6 @@
 # 🚑 Failure Playbooks
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Use this page for fast incident triage on common API failures.
 
@@ -26,7 +26,7 @@ Symptoms:
 Triage steps:
 
 1. Identify failing endpoint path and required capability
-2. Confirm client policy path matching (`*`, exact, `/*` prefix)
+2. Confirm client policy path matching (`*`, exact, trailing `/*`, and mid-path `*` segment rules)
 3. Validate capability mapping for endpoint (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`)
 4. Re-issue token after policy update
 

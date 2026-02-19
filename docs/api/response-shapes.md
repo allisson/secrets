@@ -1,6 +1,6 @@
 # 🧱 API Response Shapes
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Use these representative response schemas as a stable reference across endpoint docs.

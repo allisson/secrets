@@ -1,6 +1,6 @@
 # 📦 Secrets API
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 > Applies to: API v1
 
 Secrets are versioned by path and encrypted with envelope encryption.
@@ -144,6 +144,10 @@ Expected result: write returns `201 Created`; read returns `200 OK` with base64 
 - `POST /v1/secrets/*path` -> `encrypt`
 - `GET /v1/secrets/*path` -> `decrypt`
 - `DELETE /v1/secrets/*path` -> `delete`
+
+Wildcard matcher semantics reference:
+
+- [Policies cookbook / Path matching behavior](policies.md#path-matching-behavior)
 
 ## Related Examples
 

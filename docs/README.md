@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-19
 
 Metadata source for release/API labels: `docs/metadata.json`
 
@@ -19,6 +19,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 1. Start with Docker guide: [getting-started/docker.md](getting-started/docker.md)
 2. Validate end-to-end setup: [getting-started/smoke-test.md](getting-started/smoke-test.md)
 3. Apply production hardening checklist: [operations/production.md](operations/production.md)
+4. Use runbook hub for rollout and incidents: [operations/runbook-index.md](operations/runbook-index.md)
 
 ## 📖 Documentation by Topic
 
@@ -31,6 +32,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🏭 [operations/production.md](operations/production.md)
 - 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
 - 🧪 [operations/policy-smoke-tests.md](operations/policy-smoke-tests.md)
+- 🧭 [operations/runbook-index.md](operations/runbook-index.md)
 - 🛠️ [development/testing.md](development/testing.md)
 - 🤝 [contributing.md](contributing.md)
 - 🗒️ [CHANGELOG.md](CHANGELOG.md)
@@ -61,13 +63,14 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.4.0`
+- `openapi.yaml` is a baseline subset for common API flows in `v0.4.1`
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
-- Tokenization endpoints are included in `openapi.yaml` for `v0.4.0`
+- Tokenization endpoints are included in `openapi.yaml` for `v0.4.1`
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.4.0.md](releases/v0.4.0.md)
+- 📦 [releases/v0.4.1.md](releases/v0.4.1.md)
+- 📦 [releases/v0.4.0.md](releases/v0.4.0.md) (historical)
 - 📦 [releases/v0.3.0.md](releases/v0.3.0.md) (historical)
 - 📦 [releases/v0.2.0.md](releases/v0.2.0.md) (historical)
 - 📦 [releases/v0.1.0.md](releases/v0.1.0.md) (historical)
