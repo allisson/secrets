@@ -41,6 +41,10 @@ type Config struct {
 	// Metrics
 	MetricsEnabled   bool
 	MetricsNamespace string
+
+	// KMS configuration
+	KMSProvider string
+	KMSKeyURI   string
 }
 
 // Load loads configuration from environment variables and .env file.
@@ -81,6 +85,10 @@ func Load() *Config {
 		// Metrics
 		MetricsEnabled:   env.GetBool("METRICS_ENABLED", true),
 		MetricsNamespace: env.GetString("METRICS_NAMESPACE", "secrets"),
+
+		// KMS configuration
+		KMSProvider: env.GetString("KMS_PROVIDER", ""),
+		KMSKeyURI:   env.GetString("KMS_KEY_URI", ""),
 	}
 }
 

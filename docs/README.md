@@ -29,6 +29,8 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🔒 [concepts/security-model.md](concepts/security-model.md)
 - 📘 [concepts/glossary.md](concepts/glossary.md)
 - 🔑 [operations/key-management.md](operations/key-management.md)
+- ☁️ [operations/kms-setup.md](operations/kms-setup.md)
+- ✅ [operations/kms-migration-checklist.md](operations/kms-migration-checklist.md)
 - 🚀 [operations/production-rollout.md](operations/production-rollout.md)
 - 📊 [operations/monitoring.md](operations/monitoring.md)
 - 🧯 [operations/operator-drills.md](operations/operator-drills.md)
@@ -76,8 +78,10 @@ OpenAPI scope note:
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.5.1.md](releases/v0.5.1.md)
-- ⬆️ [releases/v0.5.1-upgrade.md](releases/v0.5.1-upgrade.md)
+- 📦 [releases/v0.6.0.md](releases/v0.6.0.md)
+- ⬆️ [releases/v0.6.0-upgrade.md](releases/v0.6.0-upgrade.md)
+- 📦 [releases/v0.5.1.md](releases/v0.5.1.md) (historical)
+- ⬆️ [releases/v0.5.1-upgrade.md](releases/v0.5.1-upgrade.md) (historical)
 - 📦 [releases/v0.5.0.md](releases/v0.5.0.md) (historical)
 - ⬆️ [releases/v0.5.0-upgrade.md](releases/v0.5.0-upgrade.md) (historical)
 - 🔁 [releases/compatibility-matrix.md](releases/compatibility-matrix.md)

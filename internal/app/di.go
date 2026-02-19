@@ -52,6 +52,7 @@ type Container struct {
 	// Services
 	aeadManager   cryptoService.AEADManager
 	keyManager    cryptoService.KeyManager
+	kmsService    cryptoService.KMSService
 	secretService authService.SecretService
 	tokenService  authService.TokenService
 
@@ -101,6 +102,7 @@ type Container struct {
 	businessMetricsInit             sync.Once
 	aeadManagerInit                 sync.Once
 	keyManagerInit                  sync.Once
+	kmsServiceInit                  sync.Once
 	secretServiceInit               sync.Once
 	tokenServiceInit                sync.Once
 	kekRepositoryInit               sync.Once
@@ -259,6 +261,14 @@ func (c *Container) KeyManager() cryptoService.KeyManager {
 		c.keyManager = c.initKeyManager()
 	})
 	return c.keyManager
+}
+
+// KMSService returns the KMS service.
+func (c *Container) KMSService() cryptoService.KMSService {
+	c.kmsServiceInit.Do(func() {
+		c.kmsService = c.initKMSService()
+	})
+	return c.kmsService
 }
 
 // KekRepository returns the KEK repository.
@@ -646,7 +656,17 @@ func (c *Container) initDB() (*sql.DB, error) {
 
 // initMasterKeyChain loads the master key chain from environment variables.
 func (c *Container) initMasterKeyChain() (*cryptoDomain.MasterKeyChain, error) {
-	masterKeyChain, err := cryptoDomain.LoadMasterKeyChainFromEnv()
+	// Get KMS service and logger
+	kmsService := c.KMSService()
+	logger := c.Logger()
+
+	// Load master key chain with KMS support and fail-fast validation
+	masterKeyChain, err := cryptoDomain.LoadMasterKeyChain(
+		context.Background(),
+		c.config,
+		kmsService,
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load master key chain: %w", err)
 	}
@@ -795,6 +815,11 @@ func (c *Container) initAEADManager() cryptoService.AEADManager {
 func (c *Container) initKeyManager() cryptoService.KeyManager {
 	aeadManager := c.AEADManager()
 	return cryptoService.NewKeyManager(aeadManager)
+}
+
+// initKMSService creates the KMS service for encrypting/decrypting master keys.
+func (c *Container) initKMSService() cryptoService.KMSService {
+	return cryptoService.NewKMSService()
 }
 
 // initKekRepository creates the KEK repository based on the database driver.
