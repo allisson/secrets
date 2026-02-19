@@ -37,8 +37,15 @@ func (m *MasterKeyChain) Get(id string) (*MasterKey, bool) {
 	return nil, false
 }
 
-// Close securely clears all master keys from memory and resets the keychain.
+// Close securely zeros all master keys from memory, clears the chain, and resets the active ID.
 func (m *MasterKeyChain) Close() {
+	// Zero all master keys before clearing the chain
+	m.keys.Range(func(key, value interface{}) bool {
+		if masterKey, ok := value.(*MasterKey); ok {
+			Zero(masterKey.Key)
+		}
+		return true
+	})
 	m.activeID = ""
 	m.keys.Clear()
 }
@@ -82,7 +89,13 @@ func LoadMasterKeyChainFromEnv() (*MasterKeyChain, error) {
 				len(key),
 			)
 		}
-		mkc.keys.Store(id, &MasterKey{ID: id, Key: key})
+		// Make a copy of the key data before storing to prevent premature zeroing.
+		// The original 'key' slice will be zeroed for security, but the keychain
+		// needs its own copy to remain functional.
+		keyCopy := make([]byte, len(key))
+		copy(keyCopy, key)
+		mkc.keys.Store(id, &MasterKey{ID: id, Key: keyCopy})
+		// Zero the original decoded key to prevent memory dumps
 		Zero(key)
 	}
 

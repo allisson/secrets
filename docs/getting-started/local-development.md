@@ -6,13 +6,15 @@ Use this path if you want to modify the source code and run from your workstatio
 
 **⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security-hardening.md) and [Production Deployment Guide](../operations/production.md).
 
-## v0.5.0 Security Defaults
+## Current Security Defaults
 
-- `AUTH_TOKEN_EXPIRATION_SECONDS` default is now `14400` (4 hours)
+- `AUTH_TOKEN_EXPIRATION_SECONDS` default is `14400` (4 hours)
 - `RATE_LIMIT_ENABLED` default is `true` (per authenticated client)
 - `CORS_ENABLED` default is `false`
 
-If upgrading from `v0.4.x`, review [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md).
+These defaults were introduced in `v0.5.0` and remain unchanged in `v0.5.1`.
+
+If upgrading from `v0.5.0`, review [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md).
 
 ## Prerequisites
 

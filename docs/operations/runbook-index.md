@@ -6,8 +6,8 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 ## Release and Rollout
 
-- [v0.5.0 release notes](../releases/v0.5.0.md)
-- [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md)
+- [v0.5.1 release notes](../releases/v0.5.1.md)
+- [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Production rollout golden path](production-rollout.md)
 - [Production deployment guide](production.md)

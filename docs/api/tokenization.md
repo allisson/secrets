@@ -14,7 +14,7 @@ with optional deterministic behavior and token lifecycle management.
 
 OpenAPI coverage note:
 
-- Tokenization endpoint coverage is included in `docs/openapi.yaml` for `v0.5.0`
+- Tokenization endpoint coverage is included in `docs/openapi.yaml` for the current release
 - This page remains the most detailed contract reference with examples and operational guidance
 
 All endpoints require `Authorization: Bearer <token>`.

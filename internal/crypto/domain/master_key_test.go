@@ -71,6 +71,44 @@ func TestMasterKeyChain_Close(t *testing.T) {
 	assert.False(t, found2)
 }
 
+func TestMasterKeyChain_CloseZerosKeys(t *testing.T) {
+	// Verify that Close() zeros all keys before clearing the chain
+	key1Data := make([]byte, 32)
+	key2Data := make([]byte, 32)
+
+	// Fill with non-zero data
+	for i := range key1Data {
+		key1Data[i] = byte(i)
+		key2Data[i] = byte(i + 100)
+	}
+
+	mkc := &MasterKeyChain{activeID: "key1"}
+	mk1 := &MasterKey{ID: "key1", Key: key1Data}
+	mk2 := &MasterKey{ID: "key2", Key: key2Data}
+
+	mkc.keys.Store("key1", mk1)
+	mkc.keys.Store("key2", mk2)
+
+	// Verify keys contain data before Close
+	assert.NotEqual(t, make([]byte, 32), mk1.Key, "key1 should have data before Close()")
+	assert.NotEqual(t, make([]byte, 32), mk2.Key, "key2 should have data before Close()")
+
+	// Close should zero the keys
+	mkc.Close()
+
+	// Verify keys are zeroed
+	expectedZero := make([]byte, 32)
+	assert.Equal(t, expectedZero, mk1.Key, "key1 should be zeroed after Close()")
+	assert.Equal(t, expectedZero, mk2.Key, "key2 should be zeroed after Close()")
+
+	// Verify chain is cleared
+	assert.Equal(t, "", mkc.activeID)
+	_, found1 := mkc.Get("key1")
+	_, found2 := mkc.Get("key2")
+	assert.False(t, found1)
+	assert.False(t, found2)
+}
+
 func TestLoadMasterKeyChainFromEnv(t *testing.T) {
 	// Generate valid 32-byte keys encoded in base64
 	key1 := base64.StdEncoding.EncodeToString(make([]byte, 32))
@@ -231,11 +269,8 @@ func TestLoadMasterKeyChainFromEnv(t *testing.T) {
 	}
 }
 
-func TestLoadMasterKeyChainFromEnv_KeysAreZeroed(t *testing.T) {
-	// This test verifies that the key material in memory is zeroed after loading
-	// Note: Due to the implementation calling zero(key) after storing,
-	// the keys in the keychain are actually zeroed out (which appears to be a bug,
-	// but we test the actual behavior here)
+func TestLoadMasterKeyChainFromEnv_KeysAreUsable(t *testing.T) {
+	// Verify that loaded master keys contain valid key material and are usable
 	key1Data := []byte("12345678901234567890123456789012")
 	key1 := base64.StdEncoding.EncodeToString(key1Data)
 
@@ -247,6 +282,7 @@ func TestLoadMasterKeyChainFromEnv_KeysAreZeroed(t *testing.T) {
 	mkc, err := LoadMasterKeyChainFromEnv()
 	assert.NoError(t, err)
 	assert.NotNil(t, mkc)
+	defer mkc.Close()
 
 	// Get the key from the keychain
 	mk, found := mkc.Get("key1")
@@ -254,12 +290,18 @@ func TestLoadMasterKeyChainFromEnv_KeysAreZeroed(t *testing.T) {
 	assert.NotNil(t, mk)
 	assert.Len(t, mk.Key, 32)
 
-	// Due to zero(key) being called after storing the slice reference,
-	// the key data is actually zeroed out
-	expectedZeroed := make([]byte, 32)
-	assert.Equal(t, expectedZeroed, mk.Key)
+	// Keys should contain the actual key material, not zeros
+	assert.Equal(t, key1Data, mk.Key, "Master key should contain actual key data")
 
-	mkc.Close()
+	// Verify key is not all zeros
+	allZeros := true
+	for _, b := range mk.Key {
+		if b != 0 {
+			allZeros = false
+			break
+		}
+	}
+	assert.False(t, allZeros, "Master key should not be zeroed after loading")
 }
 
 func TestLoadMasterKeyChainFromEnv_CloseOnError(t *testing.T) {

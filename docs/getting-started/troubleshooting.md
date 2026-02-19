@@ -18,6 +18,7 @@ Use this quick route before diving into detailed sections:
 8. Startup fails with key config errors -> go to `Missing or Invalid Master Keys`
 9. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
 10. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
+11. Master key loads but key-dependent crypto fails -> go to `Master key load regression triage (v0.5.1)`
 
 ## 📑 Table of Contents
 
@@ -31,6 +32,7 @@ Use this quick route before diving into detailed sections:
 - [Database connection failure](#database-connection-failure)
 - [Migration failure](#migration-failure)
 - [Missing or Invalid Master Keys](#missing-or-invalid-master-keys)
+- [Master key load regression triage (v0.5.1)](#master-key-load-regression-triage-v051)
 - [Missing KEK](#missing-kek)
 - [Metrics Troubleshooting Matrix](#metrics-troubleshooting-matrix)
 - [Tokenization migration verification](#tokenization-migration-verification)
@@ -197,6 +199,22 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
   - decoded key must be exactly 32 bytes
   - ensure `ACTIVE_MASTER_KEY_ID` exists in `MASTER_KEYS`
 
+## Master key load regression triage (v0.5.1)
+
+- Symptom: startup succeeds, but key-dependent operations fail unexpectedly after a recent rollout
+- Likely cause: running a pre-`v0.5.1` build where decoded master key buffers could be zeroed too early
+- Mixed-version rollout symptom: some requests pass while others fail if old and new images are serving traffic together
+- Version fingerprint checks:
+  - local binary: `./bin/app --version`
+  - pinned image check: `docker run --rm allisson/secrets:v0.5.1 --version`
+  - running containers: `docker ps --format 'table {{.Names}}\t{{.Image}}'`
+- Fix:
+  - upgrade to `v0.5.1` or newer
+  - restart API instances after deploy
+  - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
+  - review [v0.5.1 release notes](../releases/v0.5.1.md) and
+    [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md)
+
 ## Missing KEK
 
 - Symptom: secret write/transit operations fail after migration
@@ -220,7 +238,7 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
 - Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.5.0 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.5.1 migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)

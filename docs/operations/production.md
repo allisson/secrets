@@ -164,7 +164,7 @@ Adjust retention to match your compliance and incident-response requirements.
 - Follow [Production rollout golden path](production-rollout.md) for step-by-step deployment,
   verification gates, and rollback triggers
 - Use [Release compatibility matrix](../releases/compatibility-matrix.md) before planning upgrades
-- Keep [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md) attached to rollout change tickets
+- Keep [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md) attached to rollout change tickets
 
 ## See also
 
@@ -175,8 +175,8 @@ Adjust retention to match your compliance and incident-response requirements.
 - [Monitoring](monitoring.md)
 - [Operator drills (quarterly)](operator-drills.md)
 - [Policy smoke tests](policy-smoke-tests.md)
-- [v0.5.0 release notes](../releases/v0.5.0.md)
-- [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md)
+- [v0.5.1 release notes](../releases/v0.5.1.md)
+- [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Environment variables](../configuration/environment-variables.md)
 - [Security model](../concepts/security-model.md)

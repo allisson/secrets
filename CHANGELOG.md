@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-02-19
+
+### Fixed
+- Fixed master key loading from `MASTER_KEYS` so decoded key material remains usable after secure buffer zeroing
+- Fixed `MasterKeyChain.Close()` to zero all in-memory master keys before clearing chain state
+
+### Security
+- Hardened master key memory lifecycle by zeroing temporary decode buffers and keychain-resident keys on teardown
+- Added regression tests for key usability-after-load and key zeroing-on-close behavior
+
+### Documentation
+- Added `docs/releases/v0.5.1.md` release notes and `docs/releases/v0.5.1-upgrade.md` upgrade guide
+- Updated current release references and pinned examples to `v0.5.1`
+
 ## [0.5.0] - 2026-02-19
 
 ### Added
