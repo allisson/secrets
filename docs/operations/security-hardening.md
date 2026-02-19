@@ -25,6 +25,7 @@ Secrets **must** run behind a reverse proxy that handles TLS termination. The ap
 ### Reverse Proxy Configuration
 
 **Supported reverse proxies:**
+
 - Nginx
 - Envoy
 - Traefik
@@ -79,6 +80,7 @@ server {
 ```
 
 **TLS certificate management:**
+
 - Use automated certificate renewal (Let's Encrypt, cert-manager, ACM)
 - Monitor certificate expiration (alert at 30 days remaining)
 - Use strong private key protection (file permissions, HSM, KMS)
@@ -195,6 +197,7 @@ The `/metrics` endpoint exposes operational metrics that may contain sensitive i
 **Security measures:**
 
 1. **Network restriction (recommended):**
+
    ```nginx
    # Nginx: Restrict /metrics to internal monitoring network
    location /metrics {
@@ -206,6 +209,7 @@ The `/metrics` endpoint exposes operational metrics that may contain sensitive i
    ```
 
 2. **Authentication (alternative):**
+
    ```nginx
    # Nginx: Require basic auth for /metrics
    location /metrics {
@@ -216,6 +220,7 @@ The `/metrics` endpoint exposes operational metrics that may contain sensitive i
    ```
 
 3. **Disable metrics (if unused):**
+
    ```dotenv
    METRICS_ENABLED=false
    ```
@@ -238,7 +243,7 @@ The `/metrics` endpoint exposes operational metrics that may contain sensitive i
 
 Rate limiting protects against abuse, brute force attacks, and denial of service.
 
-### Configuration
+### CORS Configuration
 
 ```dotenv
 # Enable rate limiting (default: true)
@@ -269,6 +274,7 @@ RATE_LIMIT_BURST=20
 ### Excluded Endpoints
 
 Rate limiting does **not** apply to:
+
 - `/health` - Health checks
 - `/ready` - Readiness probes
 - `/metrics` - Metrics collection
@@ -277,12 +283,14 @@ Rate limiting does **not** apply to:
 ### Tuning Guidance
 
 **If you observe legitimate 429 responses:**
+
 1. Review client request patterns in audit logs
 2. Identify if requests can be batched or optimized
 3. Increase `RATE_LIMIT_REQUESTS_PER_SEC` if sustained higher rates are justified
 4. Increase `RATE_LIMIT_BURST` if traffic is bursty but averages within limits
 
 **For defense-in-depth:**
+
 - Combine application rate limiting with reverse proxy rate limiting
 - Use reverse proxy for IP-based rate limiting
 - Use application rate limiting for client-based rate limiting
@@ -294,6 +302,7 @@ Secrets is designed as a server-to-server API. CORS is **disabled by default** a
 ### When to Enable CORS
 
 Enable CORS **only** if you need browser-based access to the API:
+
 - Single-page applications (SPA) accessing Secrets directly
 - Web-based admin interfaces
 - Browser extensions
@@ -340,7 +349,7 @@ AUTH_TOKEN_EXPIRATION_SECONDS=3600  # 1 hour for browser-based access
 
 ### Token Expiration
 
-**Default token expiration: 4 hours (14400 seconds)**
+#### Default token expiration: 4 hours (14400 seconds)
 
 ```dotenv
 # Default (recommended for most deployments)
@@ -414,6 +423,7 @@ Master keys are the root of trust in the envelope encryption hierarchy. Protect 
 ### Storage Requirements
 
 **Never:**
+
 - Commit master keys to source control
 - Include master keys in container images
 - Store master keys in application configuration files
@@ -421,6 +431,7 @@ Master keys are the root of trust in the envelope encryption hierarchy. Protect 
 - Log master keys in plaintext
 
 **Always:**
+
 - Use environment variables for runtime injection
 - Store master keys in secrets management systems
 - Use distinct master keys per environment
@@ -440,11 +451,13 @@ Master keys are the root of trust in the envelope encryption hierarchy. Protect 
 ### Master Key Rotation
 
 1. **Generate new master key:**
+
    ```bash
    ./bin/app create-master-key --id master-key-2026-02
    ```
 
 2. **Add new key to master key chain:**
+
    ```dotenv
    MASTER_KEYS=master-key-2026-01:OLD_BASE64_KEY,master-key-2026-02:NEW_BASE64_KEY
    ACTIVE_MASTER_KEY_ID=master-key-2026-02
@@ -456,17 +469,20 @@ Master keys are the root of trust in the envelope encryption hierarchy. Protect 
    - Confirm new KEKs use new master key ID
 
 4. **Rotate KEKs encrypted with old master key:**
+
    ```bash
    ./bin/app rotate-kek --algorithm aes-gcm
    ```
 
 5. **Remove old master key after migration period:**
+
    ```dotenv
    MASTER_KEYS=master-key-2026-02:NEW_BASE64_KEY
    ACTIVE_MASTER_KEY_ID=master-key-2026-02
    ```
 
 **Recommended rotation schedule:**
+
 - Routine rotation: Annually or per organizational policy
 - Immediate rotation: Upon suspected compromise
 - Audit rotation: Quarterly review of master key usage
@@ -484,6 +500,7 @@ MASTER_KEYS=default:A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6==
 ```
 
 **Key properties:**
+
 - Exactly 32 bytes (256 bits) of cryptographically secure random data
 - Base64-encoded for safe environment variable storage
 - Generated using `crypto/rand` (CSPRNG)
@@ -495,6 +512,7 @@ MASTER_KEYS=default:A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6==
 Audit logs record all API operations for security analysis and compliance.
 
 **Coverage:**
+
 - All authenticated requests (success and failure)
 - Client identity and request path
 - Timestamp, method, status code, duration
@@ -502,7 +520,7 @@ Audit logs record all API operations for security analysis and compliance.
 
 ### Audit Log Retention
 
-**Recommended retention: 90 days**
+#### Recommended retention: 90 days
 
 ```bash
 # Monthly cleanup routine
@@ -515,6 +533,7 @@ Audit logs record all API operations for security analysis and compliance.
 ```
 
 Adjust retention based on:
+
 - Compliance requirements (SOC 2, PCI-DSS, HIPAA)
 - Incident response window
 - Storage capacity
@@ -601,12 +620,14 @@ groups:
 ### Log Forwarding
 
 **Forward logs to SIEM/log aggregation:**
+
 - Splunk, Elasticsearch, Datadog, CloudWatch Logs
 - Centralize logs from all application instances
 - Correlate with network and infrastructure logs
 - Enable long-term retention for compliance
 
 **Structured logging:**
+
 - Logs are JSON-formatted with consistent fields
 - Request ID (`request_id`) for distributed tracing
 - Client ID for cross-referencing with audit logs
