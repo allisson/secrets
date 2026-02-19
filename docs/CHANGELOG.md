@@ -2,6 +2,19 @@
 
 > Last updated: 2026-02-19
 
+## 2026-02-19 (docs v12 - v0.6.0 release prep)
+
+- Added release notes page: `docs/releases/v0.6.0.md`
+- Added upgrade guide: `docs/releases/v0.6.0-upgrade.md`
+- Updated docs metadata source (`docs/metadata.json`) to `current_release: v0.6.0`
+- Updated root README and docs index to promote `v0.6.0` release links
+- Updated operator runbook and production rollout references to `v0.6.0`
+- Updated compatibility matrix with `v0.5.1 -> v0.6.0` upgrade path
+- Updated pinned Docker image examples from `allisson/secrets:v0.5.1` to `allisson/secrets:v0.6.0`
+- Updated CLI command docs for KMS mode flags and new `rotate-master-key` command
+- Updated environment variable docs for `KMS_PROVIDER` and `KMS_KEY_URI` configuration
+- Updated key management and troubleshooting guides with KMS rotation and failure-mode guidance
+
 ## 2026-02-19 (docs v11 - v0.5.1 patch release prep)
 
 - Added release notes page: `docs/releases/v0.5.1.md`

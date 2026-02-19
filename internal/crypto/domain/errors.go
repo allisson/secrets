@@ -40,4 +40,22 @@ var (
 
 	// ErrKekNotFound indicates a KEK with the specified ID was not found.
 	ErrKekNotFound = errors.Wrap(errors.ErrNotFound, "kek not found")
+
+	// ErrKMSProviderNotSet indicates the KMS_PROVIDER environment variable is set but KMS_KEY_URI is not.
+	ErrKMSProviderNotSet = errors.Wrap(
+		errors.ErrInvalidInput,
+		"KMS_PROVIDER is set but KMS_KEY_URI is not configured",
+	)
+
+	// ErrKMSKeyURINotSet indicates the KMS_KEY_URI environment variable is set but KMS_PROVIDER is not.
+	ErrKMSKeyURINotSet = errors.Wrap(
+		errors.ErrInvalidInput,
+		"KMS_KEY_URI is set but KMS_PROVIDER is not configured",
+	)
+
+	// ErrKMSDecryptionFailed indicates KMS decryption of master keys failed.
+	ErrKMSDecryptionFailed = errors.Wrap(errors.ErrInvalidInput, "KMS decryption failed")
+
+	// ErrKMSOpenKeeperFailed indicates opening KMS keeper failed.
+	ErrKMSOpenKeeperFailed = errors.Wrap(errors.ErrInvalidInput, "failed to open KMS keeper")
 )

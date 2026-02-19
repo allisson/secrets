@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-19
 
 This guide covers master keys and KEK lifecycle operations.
 
@@ -10,13 +10,27 @@ Generate:
 
 ```bash
 ./bin/app create-master-key --id prod-2026-01
+
+# KMS mode (recommended for production)
+./bin/app create-master-key --id prod-2026-01 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 Docker image equivalent:
 
 ```bash
-docker run --rm allisson/secrets:latest create-master-key --id prod-2026-01
+docker run --rm allisson/secrets:v0.6.0 create-master-key --id prod-2026-01
 ```
+
+Rotate master key:
+
+```bash
+./bin/app rotate-master-key --id prod-2026-08
+```
+
+`rotate-master-key` reads current `MASTER_KEYS`, appends a new key, and sets
+`ACTIVE_MASTER_KEY_ID` to the new key. It does not remove old keys automatically.
 
 Set output in environment:
 
@@ -75,9 +89,33 @@ Operational step:
 
 1. Validate backups and operational readiness
 2. Rotate master key (if planned)
-3. Rotate KEK
-4. Verify secret read/write and transit encrypt/decrypt
-5. Review audit logs for anomalies
+3. Restart API instances to load the updated master key chain
+4. Rotate KEK
+5. Verify secret read/write and transit encrypt/decrypt
+6. Remove old master key from `MASTER_KEYS` after KEK rotation completes
+7. Review audit logs for anomalies
+
+## Copy/Paste Rotation Runbook
+
+Use this sequence for master key rotation with minimal operator drift:
+
+```bash
+# 1) Generate next master key entry
+./bin/app rotate-master-key --id prod-2026-08
+
+# 2) Update MASTER_KEYS / ACTIVE_MASTER_KEY_ID from command output
+# 3) Restart API instances (rolling)
+
+# 4) Rotate KEK to re-wrap with active master key
+./bin/app rotate-kek --algorithm aes-gcm
+
+# 5) Validate key-dependent paths
+curl -sS http://localhost:8080/health
+curl -sS http://localhost:8080/ready
+
+# 6) Remove old master key from MASTER_KEYS
+# 7) Restart API instances again
+```
 
 ## Transit Create/Rotate Automation
 
@@ -104,3 +142,4 @@ create key -> 409 Conflict: rotate key
 - [Security model](../concepts/security-model.md)
 - [Transit API](../api/transit.md)
 - [Environment variables](../configuration/environment-variables.md)
+- [KMS setup guide](kms-setup.md)

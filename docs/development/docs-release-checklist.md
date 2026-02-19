@@ -40,6 +40,13 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
   - `docs/README.md`
   - `docs/operations/runbook-index.md`
 
+### Docker tag consistency rule
+
+- Use pinned image tags (`allisson/secrets:vX.Y.Z`) in release guides, rollout runbooks, and copy/paste commands
+  intended for reproducible operations.
+- Use `allisson/secrets:latest` only in explicitly marked fast-iteration/dev-only examples.
+- In one document, avoid mixing pinned and `latest` tags unless the distinction is explicitly explained.
+
 ## 6) Validation before merge
 
 Run:

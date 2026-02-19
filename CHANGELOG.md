@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-19
+
+### Added
+- Added KMS-backed master key support with `KMS_PROVIDER` and `KMS_KEY_URI`
+- Added `rotate-master-key` CLI command for staged master key rotation
+- Added `create-master-key` KMS flags: `--kms-provider` and `--kms-key-uri`
+- Added gocloud-based KMS service support for `localsecrets`, Google Cloud KMS, AWS KMS, Azure Key Vault, and HashiCorp Vault
+
+### Changed
+- Master key loading now auto-detects KMS mode vs legacy mode and validates KMS configuration consistency at startup
+
+### Security
+- Added encrypted-at-rest master key workflow through external KMS providers
+- Added startup validation and error paths for incomplete KMS configuration and decryption failures
+
+### Documentation
+- Added `docs/releases/v0.6.0.md` release notes and `docs/releases/v0.6.0-upgrade.md` upgrade guide
+- Added KMS operations guide: `docs/operations/kms-setup.md`
+- Updated CLI and environment variable docs for KMS configuration and master key rotation workflows
+
 ## [0.5.1] - 2026-02-19
 
 ### Fixed

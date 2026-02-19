@@ -4,8 +4,8 @@
 
 This is the default way to run Secrets.
 
-For release reproducibility, this guide uses the pinned image tag `allisson/secrets:v0.5.1`.
-You can use `allisson/secrets:latest` for fast iteration.
+For release reproducibility, this guide uses the pinned image tag `allisson/secrets:v0.6.0`.
+For dev-only fast iteration, you can use `allisson/secrets:latest`.
 
 **⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security-hardening.md) and [Production Deployment Guide](../operations/production.md).
 
@@ -15,16 +15,16 @@ You can use `allisson/secrets:latest` for fast iteration.
 - `RATE_LIMIT_ENABLED` default is `true` (per authenticated client)
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` and remain unchanged in `v0.5.1`.
+These defaults were introduced in `v0.5.0` and remain unchanged in `v0.6.0`.
 
-If upgrading from `v0.5.0`, review [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md).
+If upgrading from `v0.5.1`, review [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md).
 
 ## ⚡ Quickstart Copy Block
 
 Use this minimal flow when you just want to get a working instance quickly:
 
 ```bash
-docker pull allisson/secrets:v0.5.1
+docker pull allisson/secrets:v0.6.0
 docker network create secrets-net || true
 
 docker run -d --name secrets-postgres --network secrets-net \
@@ -33,19 +33,19 @@ docker run -d --name secrets-postgres --network secrets-net \
   -e POSTGRES_DB=mydb \
   postgres:16-alpine
 
-docker run --rm allisson/secrets:v0.5.1 create-master-key --id default
+docker run --rm allisson/secrets:v0.6.0 create-master-key --id default
 # copy generated MASTER_KEYS and ACTIVE_MASTER_KEY_ID into .env
 
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 migrate
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 create-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 migrate
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 create-kek --algorithm aes-gcm
 docker run --rm --name secrets-api --network secrets-net --env-file .env -p 8080:8080 \
-  allisson/secrets:v0.5.1 server
+  allisson/secrets:v0.6.0 server
 ```
 
 ## 1) Pull the image
 
 ```bash
-docker pull allisson/secrets:v0.5.1
+docker pull allisson/secrets:v0.6.0
 ```
 
 ## 2) Start PostgreSQL
@@ -63,7 +63,7 @@ docker run -d --name secrets-postgres --network secrets-net \
 ## 3) Generate a master key
 
 ```bash
-docker run --rm allisson/secrets:v0.5.1 create-master-key --id default
+docker run --rm allisson/secrets:v0.6.0 create-master-key --id default
 ```
 
 Copy the generated values into a local `.env` file.
@@ -95,15 +95,15 @@ EOF
 ## 5) Run migrations and bootstrap KEK
 
 ```bash
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 migrate
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 create-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 migrate
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 create-kek --algorithm aes-gcm
 ```
 
 ## 6) Start the API server
 
 ```bash
 docker run --rm --name secrets-api --network secrets-net --env-file .env -p 8080:8080 \
-  allisson/secrets:v0.5.1 server
+  allisson/secrets:v0.6.0 server
 ```
 
 ## 7) Verify
@@ -123,7 +123,7 @@ Expected:
 Use the CLI command to create your first API client and policy set:
 
 ```bash
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 create-client \
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 create-client \
   --name bootstrap-admin \
   --active \
   --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]' \

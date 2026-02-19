@@ -12,9 +12,9 @@ Use this path if you want to modify the source code and run from your workstatio
 - `RATE_LIMIT_ENABLED` default is `true` (per authenticated client)
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` and remain unchanged in `v0.5.1`.
+These defaults were introduced in `v0.5.0` and remain unchanged in `v0.6.0`.
 
-If upgrading from `v0.5.0`, review [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md).
+If upgrading from `v0.5.1`, review [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md).
 
 ## Prerequisites
 
@@ -43,6 +43,12 @@ cp .env.example .env
 ```
 
 Paste generated `MASTER_KEYS` and `ACTIVE_MASTER_KEY_ID` into `.env`.
+
+For production-oriented local parity testing, use KMS mode:
+
+```bash
+./bin/app create-master-key --id default --kms-provider=localsecrets --kms-key-uri="base64key://<base64-32-byte-key>"
+```
 
 ## 4) Start PostgreSQL
 

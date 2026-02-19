@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,12 +22,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gocloud.dev/secrets"
+	_ "gocloud.dev/secrets/localsecrets"
 
 	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authDTO "github.com/allisson/secrets/internal/auth/http/dto"
 	"github.com/allisson/secrets/internal/config"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	secretsDTO "github.com/allisson/secrets/internal/secrets/http/dto"
 	"github.com/allisson/secrets/internal/testutil"
 	tokenizationDTO "github.com/allisson/secrets/internal/tokenization/http/dto"
@@ -43,6 +47,7 @@ type integrationTestContext struct {
 	rootSecret     string
 	masterKeyChain *cryptoDomain.MasterKeyChain
 	dbDriver       string
+	kmsKeyURI      string
 }
 
 // makeRequest performs an HTTP request and returns the response and body.
@@ -115,6 +120,180 @@ func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.Maste
 	}
 
 	return chain
+}
+
+// generateLocalSecretsKMSKey creates a random 32-byte key and returns a base64key:// URI for testing.
+func generateLocalSecretsKMSKey(t *testing.T) string {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err, "failed to generate KMS key")
+	return "base64key://" + base64.URLEncoding.EncodeToString(key)
+}
+
+// createMasterKeyChainWithKMS creates a master key chain with KMS-encrypted master keys.
+func createMasterKeyChainWithKMS(
+	ctx context.Context,
+	t *testing.T,
+	masterKey *cryptoDomain.MasterKey,
+	kmsKeyURI string,
+) *cryptoDomain.MasterKeyChain {
+	t.Helper()
+
+	// Open KMS keeper
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	require.NoError(t, err, "failed to open KMS keeper")
+	defer func() {
+		assert.NoError(t, keeperInterface.Close())
+	}()
+
+	// Type assert to get Encrypt method
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	require.True(t, ok, "keeper should be *secrets.Keeper")
+
+	// Encrypt master key with KMS
+	ciphertext, err := keeper.Encrypt(ctx, masterKey.Key)
+	require.NoError(t, err, "failed to encrypt master key with KMS")
+
+	// Encode ciphertext to base64
+	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
+
+	// Set environment variables
+	err = os.Setenv("MASTER_KEYS", fmt.Sprintf("%s:%s", masterKey.ID, encodedCiphertext))
+	require.NoError(t, err, "failed to set MASTER_KEYS env")
+
+	err = os.Setenv("ACTIVE_MASTER_KEY_ID", masterKey.ID)
+	require.NoError(t, err, "failed to set ACTIVE_MASTER_KEY_ID env")
+
+	err = os.Setenv("KMS_PROVIDER", "localsecrets")
+	require.NoError(t, err, "failed to set KMS_PROVIDER env")
+
+	err = os.Setenv("KMS_KEY_URI", kmsKeyURI)
+	require.NoError(t, err, "failed to set KMS_KEY_URI env")
+
+	// Load master key chain using KMS
+	cfg := &config.Config{
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
+	require.NoError(t, err, "failed to load master key chain from KMS")
+
+	return chain
+}
+
+// setupIntegrationTestWithKMS initializes all components for integration testing with KMS-encrypted master keys.
+func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTestContext {
+	t.Helper()
+
+	// Set Gin to test mode
+	gin.SetMode(gin.TestMode)
+
+	// Setup database
+	var db *sql.DB
+	var dsn string
+	if dbDriver == "postgres" {
+		db = testutil.SetupPostgresDB(t)
+		dsn = testutil.PostgresTestDSN
+	} else {
+		db = testutil.SetupMySQLDB(t)
+		dsn = testutil.MySQLTestDSN
+	}
+
+	// Generate KMS key URI and ephemeral master key
+	kmsKeyURI := generateLocalSecretsKMSKey(t)
+	masterKey := generateMasterKey()
+	masterKeyChain := createMasterKeyChainWithKMS(context.Background(), t, masterKey, kmsKeyURI)
+
+	// Create configuration with KMS settings
+	cfg := &config.Config{
+		DBDriver:             dbDriver,
+		DBConnectionString:   dsn,
+		DBMaxOpenConnections: 10,
+		DBMaxIdleConnections: 5,
+		DBConnMaxLifetime:    time.Hour,
+		ServerHost:           "localhost",
+		ServerPort:           8080,
+		LogLevel:             "error",
+		AuthTokenExpiration:  time.Hour,
+		KMSProvider:          "localsecrets",
+		KMSKeyURI:            kmsKeyURI,
+	}
+
+	// Create DI container
+	container := app.NewContainer(cfg)
+
+	// Initialize KEK
+	kekUseCase, err := container.KekUseCase()
+	require.NoError(t, err, "failed to get kek use case")
+
+	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
+	require.NoError(t, err, "failed to create initial KEK")
+
+	// Create root client with all capabilities
+	clientUseCase, err := container.ClientUseCase()
+	require.NoError(t, err, "failed to get client use case")
+
+	rootClientInput := &authDomain.CreateClientInput{
+		Name:     "Root Integration Test Client (KMS)",
+		IsActive: true,
+		Policies: []authDomain.PolicyDocument{
+			{
+				Path: "*",
+				Capabilities: []authDomain.Capability{
+					authDomain.ReadCapability,
+					authDomain.WriteCapability,
+					authDomain.DeleteCapability,
+					authDomain.EncryptCapability,
+					authDomain.DecryptCapability,
+					authDomain.RotateCapability,
+				},
+			},
+		},
+	}
+
+	rootClientOutput, err := clientUseCase.Create(context.Background(), rootClientInput)
+	require.NoError(t, err, "failed to create root client")
+
+	rootClient, err := clientUseCase.Get(context.Background(), rootClientOutput.ID)
+	require.NoError(t, err, "failed to get root client")
+
+	// Issue token for root client
+	tokenUseCase, err := container.TokenUseCase()
+	require.NoError(t, err, "failed to get token use case")
+
+	issueTokenInput := &authDomain.IssueTokenInput{
+		ClientID:     rootClientOutput.ID,
+		ClientSecret: rootClientOutput.PlainSecret,
+	}
+
+	tokenOutput, err := tokenUseCase.Issue(context.Background(), issueTokenInput)
+	require.NoError(t, err, "failed to issue token")
+
+	// Setup HTTP server
+	httpSrv, err := container.HTTPServer()
+	require.NoError(t, err, "failed to get HTTP server")
+
+	handler := httpSrv.GetHandler()
+	require.NotNil(t, handler, "handler should not be nil after SetupRouter")
+
+	testServer := httptest.NewServer(handler)
+
+	t.Logf("Integration test setup complete for %s with KMS (client_id=%s)", dbDriver, rootClient.ID)
+
+	return &integrationTestContext{
+		container:      container,
+		db:             db,
+		server:         testServer,
+		rootClient:     rootClient,
+		rootToken:      tokenOutput.PlainToken,
+		rootSecret:     rootClientOutput.PlainSecret,
+		masterKeyChain: masterKeyChain,
+		dbDriver:       dbDriver,
+		kmsKeyURI:      kmsKeyURI,
+	}
 }
 
 // setupIntegrationTest initializes all components for integration testing.
@@ -258,6 +437,12 @@ func teardownIntegrationTest(t *testing.T, ctx *integrationTestContext) {
 	}
 	if err := os.Unsetenv("ACTIVE_MASTER_KEY_ID"); err != nil {
 		t.Logf("Warning: failed to unset ACTIVE_MASTER_KEY_ID: %v", err)
+	}
+	if err := os.Unsetenv("KMS_PROVIDER"); err != nil {
+		t.Logf("Warning: failed to unset KMS_PROVIDER: %v", err)
+	}
+	if err := os.Unsetenv("KMS_KEY_URI"); err != nil {
+		t.Logf("Warning: failed to unset KMS_KEY_URI: %v", err)
 	}
 
 	t.Logf("Integration test teardown complete for %s", ctx.dbDriver)
@@ -1278,6 +1463,247 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 			})
 
 			t.Logf("All 12 tokenization endpoint tests passed for %s", tc.dbDriver)
+		})
+	}
+}
+
+// TestIntegration_KMS_CompleteFlow tests KMS master key encryption and lifecycle management.
+// Validates KMS-encrypted master key loading, KEK operations, secret encryption/decryption,
+// and master key rotation with backward compatibility across both database engines.
+func TestIntegration_KMS_CompleteFlow(t *testing.T) {
+	// Skip if short mode (integration tests can be slow)
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	testCases := []struct {
+		name     string
+		dbDriver string
+	}{
+		{"PostgreSQL", "postgres"},
+		{"MySQL", "mysql"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup with KMS
+			ctx := setupIntegrationTestWithKMS(t, tc.dbDriver)
+			defer teardownIntegrationTest(t, ctx)
+
+			var (
+				//nolint:gosec // test data path, not credentials
+				secretPath       = "/kms-test/password"
+				secretPathStored = "kms-test/password"
+				plaintextValue   = []byte("kms-protected-secret-value")
+				plaintextBase64  = base64.StdEncoding.EncodeToString(plaintextValue)
+			)
+
+			// [1/7] Verify KMS master key loaded
+			t.Run("01_VerifyKMSMasterKeyLoaded", func(t *testing.T) {
+				// Verify master key chain is not nil
+				assert.NotNil(t, ctx.masterKeyChain)
+
+				// Verify active master key exists
+				activeKey, exists := ctx.masterKeyChain.Get(ctx.masterKeyChain.ActiveMasterKeyID())
+				assert.True(t, exists, "active master key should exist")
+				assert.NotNil(t, activeKey, "active master key should not be nil")
+				assert.Equal(t, "test-key-1", activeKey.ID)
+
+				t.Logf("KMS master key loaded: id=%s", activeKey.ID)
+			})
+
+			// [2/7] Verify KEK created with KMS master key
+			t.Run("02_VerifyKEKCreated", func(t *testing.T) {
+				// KEK was created during setup - verify it exists in database
+				// This validates KMS-decrypted master key successfully encrypted KEK
+
+				kekUseCase, err := ctx.container.KekUseCase()
+				require.NoError(t, err)
+
+				kekChain, err := kekUseCase.Unwrap(context.Background(), ctx.masterKeyChain)
+				require.NoError(t, err)
+				require.NotNil(t, kekChain, "KEK chain should not be nil")
+
+				// Verify at least one KEK exists
+				activeKek, exists := kekChain.Get(kekChain.ActiveKekID())
+				assert.True(t, exists, "active KEK should exist")
+				assert.NotNil(t, activeKek, "active KEK should not be nil")
+
+				t.Logf("KEK created with KMS-protected master key: version=%d", activeKek.Version)
+			})
+
+			// [3/7] Create secret (encrypt with KMS-protected KEK)
+			t.Run("03_CreateSecret", func(t *testing.T) {
+				requestBody := secretsDTO.CreateOrUpdateSecretRequest{
+					Value: plaintextBase64,
+				}
+
+				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/secrets"+secretPath, requestBody, true)
+				assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var response secretsDTO.SecretResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.NotEmpty(t, response.ID)
+				assert.Equal(t, secretPathStored, response.Path)
+				assert.Equal(t, uint(1), response.Version)
+
+				t.Logf("Secret encrypted through KMS chain: path=%s", secretPath)
+			})
+
+			// [4/7] Read secret (decrypt with KMS-protected KEK)
+			t.Run("04_ReadSecret", func(t *testing.T) {
+				resp, body := ctx.makeRequest(t, http.MethodGet, "/v1/secrets"+secretPath, nil, true)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response secretsDTO.SecretResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Equal(t, secretPathStored, response.Path)
+				assert.Equal(t, uint(1), response.Version)
+				assert.Equal(t, plaintextBase64, response.Value)
+
+				// Verify decryption worked correctly
+				decoded, err := base64.StdEncoding.DecodeString(response.Value)
+				require.NoError(t, err)
+				assert.Equal(t, plaintextValue, decoded)
+
+				t.Logf("Secret decrypted through KMS chain: verified")
+			})
+
+			// [5/7] Rotate master key with KMS
+			t.Run("05_RotateMasterKeyWithKMS", func(t *testing.T) {
+				// Generate new master key
+				newMasterKey := &cryptoDomain.MasterKey{
+					ID:  "test-key-2",
+					Key: make([]byte, 32),
+				}
+				_, err := rand.Read(newMasterKey.Key)
+				require.NoError(t, err)
+
+				// Encrypt new master key with KMS
+				kmsService := cryptoService.NewKMSService()
+				keeperInterface, err := kmsService.OpenKeeper(context.Background(), ctx.kmsKeyURI)
+				require.NoError(t, err)
+				defer func() {
+					assert.NoError(t, keeperInterface.Close())
+				}()
+
+				keeper, ok := keeperInterface.(*secrets.Keeper)
+				require.True(t, ok)
+
+				newCiphertext, err := keeper.Encrypt(context.Background(), newMasterKey.Key)
+				require.NoError(t, err)
+				newEncodedCiphertext := base64.StdEncoding.EncodeToString(newCiphertext)
+
+				// Get old master key ciphertext from environment
+				oldMasterKeys := os.Getenv("MASTER_KEYS")
+
+				// Update MASTER_KEYS with both old and new (comma-separated)
+				dualKeys := fmt.Sprintf("%s,%s:%s", oldMasterKeys, newMasterKey.ID, newEncodedCiphertext)
+				err = os.Setenv("MASTER_KEYS", dualKeys)
+				require.NoError(t, err)
+
+				err = os.Setenv("ACTIVE_MASTER_KEY_ID", newMasterKey.ID)
+				require.NoError(t, err)
+
+				// Reload master key chain with both keys
+				cfg := &config.Config{
+					KMSProvider: "localsecrets",
+					KMSKeyURI:   ctx.kmsKeyURI,
+				}
+				logger := slog.New(
+					slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}),
+				)
+
+				// Close old chain before loading new one
+				ctx.masterKeyChain.Close()
+
+				newChain, err := cryptoDomain.LoadMasterKeyChain(
+					context.Background(),
+					cfg,
+					kmsService,
+					logger,
+				)
+				require.NoError(t, err)
+				ctx.masterKeyChain = newChain
+
+				// Verify both keys loaded
+				oldKey, oldExists := ctx.masterKeyChain.Get("test-key-1")
+				assert.True(t, oldExists, "old master key should still exist")
+				assert.NotNil(t, oldKey)
+
+				activeKey, activeExists := ctx.masterKeyChain.Get("test-key-2")
+				assert.True(t, activeExists, "new master key should exist")
+				assert.NotNil(t, activeKey)
+				assert.Equal(t, "test-key-2", ctx.masterKeyChain.ActiveMasterKeyID())
+
+				t.Logf("Master key rotated: old=%s, new=%s (active)", "test-key-1", "test-key-2")
+			})
+
+			// [6/7] Verify dual master key support (backward compatibility)
+			t.Run("06_VerifyBackwardCompatibility", func(t *testing.T) {
+				// Read old secret encrypted with old master key
+				resp, body := ctx.makeRequest(t, http.MethodGet, "/v1/secrets"+secretPath, nil, true)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response secretsDTO.SecretResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Equal(t, plaintextBase64, response.Value)
+
+				// Verify old secret still decrypts correctly
+				decoded, err := base64.StdEncoding.DecodeString(response.Value)
+				require.NoError(t, err)
+				assert.Equal(t, plaintextValue, decoded)
+
+				t.Logf("Old secret decrypts after rotation: backward compatibility verified")
+			})
+
+			// [7/7] Create secret after rotation (uses new master key)
+			t.Run("07_CreateSecretAfterRotation", func(t *testing.T) {
+				//nolint:gosec // test data paths, not credentials
+				newSecretPath := "/kms-test/new-secret"
+				//nolint:gosec // test data paths, not credentials
+				newSecretPathStored := "kms-test/new-secret"
+				newPlaintext := []byte("secret-created-after-rotation")
+				newPlaintextBase64 := base64.StdEncoding.EncodeToString(newPlaintext)
+
+				requestBody := secretsDTO.CreateOrUpdateSecretRequest{
+					Value: newPlaintextBase64,
+				}
+
+				resp, body := ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/secrets"+newSecretPath,
+					requestBody,
+					true,
+				)
+				assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var createResponse secretsDTO.SecretResponse
+				err := json.Unmarshal(body, &createResponse)
+				require.NoError(t, err)
+				assert.Equal(t, newSecretPathStored, createResponse.Path)
+
+				// Read back and verify
+				resp, body = ctx.makeRequest(t, http.MethodGet, "/v1/secrets"+newSecretPath, nil, true)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var readResponse secretsDTO.SecretResponse
+				err = json.Unmarshal(body, &readResponse)
+				require.NoError(t, err)
+				assert.Equal(t, newPlaintextBase64, readResponse.Value)
+
+				decoded, err := base64.StdEncoding.DecodeString(readResponse.Value)
+				require.NoError(t, err)
+				assert.Equal(t, newPlaintext, decoded)
+
+				t.Logf("New secret created with rotated master key: verified")
+			})
+
+			t.Logf("All 7 KMS endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

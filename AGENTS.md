@@ -1057,6 +1057,181 @@ func (s *Server) SetupRouter(
 
 **Reference:** `/internal/http/server.go` (SetupRouter method)
 
+## KMS Service Implementation
+
+The project supports KMS (Key Management Service) integration for encrypting master keys at rest using external providers. KMS functionality follows interface segregation principles with the domain layer defining minimal interfaces and the service layer providing concrete implementations.
+
+### Interface Segregation Pattern
+
+**Domain Layer** (`internal/crypto/domain/master_key.go`):
+```go
+// Minimal interfaces defined by domain - no external dependencies
+type KMSService interface {
+    OpenKeeper(ctx context.Context, keyURI string) (KMSKeeper, error)
+}
+
+type KMSKeeper interface {
+    Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error)
+    Close() error
+}
+```
+
+**Service Layer** (`internal/crypto/service/kms_service.go`):
+- Implements `KMSService` using `gocloud.dev/secrets`
+- Imports all KMS provider drivers (gcpkms, awskms, azurekeyvault, hashivault, localsecrets)
+- Returns `*secrets.Keeper` which naturally implements `KMSKeeper` (duck typing)
+
+**Type Compatibility:**
+- `*secrets.Keeper` from gocloud.dev implements both `Decrypt()` and `Close()` methods
+- No wrapper types needed - direct type assertion works in implementation code
+
+**Reference:** `/internal/crypto/service/kms_service.go` and `/internal/crypto/domain/master_key.go:114-128`
+
+### Testing with localsecrets Provider
+
+**Always use `localsecrets` provider for tests** - no external dependencies or credentials required.
+
+**Generate test KMS key:**
+```go
+func generateLocalSecretsKMSKey(t *testing.T) string {
+    t.Helper()
+    key := make([]byte, 32)
+    _, err := rand.Read(key)
+    require.NoError(t, err)
+    return "base64key://" + base64.URLEncoding.EncodeToString(key)
+}
+```
+
+**Type assertion for Encrypt method** (not part of domain interface):
+```go
+keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+require.NoError(t, err)
+
+// Type assert to access Encrypt method for tests
+keeper, ok := keeperInterface.(*secrets.Keeper)
+require.True(t, ok, "keeper should be *secrets.Keeper")
+
+ciphertext, err := keeper.Encrypt(ctx, plaintext)
+```
+
+**Mock implementations must return copies** to avoid issues when ciphertext is zeroed:
+```go
+// BAD - returns slice of input (will be zeroed)
+func (m *MockKMSKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+    return ciphertext, nil
+}
+
+// GOOD - returns a copy
+func (m *MockKMSKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+    result := make([]byte, len(ciphertext))
+    copy(result, ciphertext)
+    return result, nil
+}
+```
+
+**Reference:** `/internal/crypto/service/kms_service_test.go` and `/test/integration/api_test.go` (KMS helpers)
+
+### Error Handling for Close() Calls
+
+**All `Close()` calls MUST check errors** (enforced by golangci-lint errcheck).
+
+**Production code pattern** (with logging):
+```go
+defer func() {
+    if closeErr := keeper.Close(); closeErr != nil {
+        logger.Error("failed to close KMS keeper", slog.Any("error", closeErr))
+    }
+}()
+```
+
+**Test code pattern** (with assertions):
+```go
+defer func() {
+    assert.NoError(t, keeper.Close())
+}()
+```
+
+**CLI code pattern** (with user-facing message):
+```go
+defer func() {
+    if closeErr := keeperInterface.Close(); closeErr != nil {
+        fmt.Printf("Warning: failed to close KMS keeper: %v\n", closeErr)
+    }
+}()
+```
+
+**Reference:** `/internal/crypto/domain/master_key.go:213-217` and `/cmd/app/commands/master_key.go:58-62`
+
+### Memory Safety and Performance
+
+**Startup-only decryption:**
+- KMS operations happen only at application startup
+- Master keys decrypted into memory once via `LoadMasterKeyChain()`
+- No per-operation KMS calls (performance optimization)
+
+**Memory cleanup:**
+- Master key zeroing handled by existing `MasterKeyChain.Close()`
+- KEK chain similarly zeroed via `KekChain.Close()`
+- No additional cleanup needed for KMS-decrypted keys
+
+**Ownership transfer:**
+- Decrypted key data ownership transfers to `MasterKeyChain`
+- Original slices can be safely reused by KMS keeper
+- Domain layer makes defensive copies when needed
+
+**Reference:** `/internal/crypto/domain/master_key.go:183-285` (loadMasterKeyChainFromKMS)
+
+### URI Masking for Security
+
+**Use `maskKeyURI()` to redact sensitive URI components in logs:**
+
+```go
+maskedURI := maskKeyURI(cfg.KMSKeyURI)
+logger.Info("opening KMS keeper",
+    slog.String("kms_provider", cfg.KMSProvider),
+    slog.String("kms_key_uri", maskedURI),
+)
+```
+
+**Masking examples:**
+- `gcpkms://projects/my-project/...` → `gcpkms://projects/***/...`
+- `awskms://key-id-123?region=us-east-1` → `awskms://***?region=us-east-1`
+- `azurekeyvault://vault.azure.net/keys/mykey` → `azurekeyvault://***`
+- `base64key://c2VjcmV0a2V5` → `base64key://***`
+
+**Purpose:**
+- Prevents sensitive key identifiers from appearing in logs
+- Preserves provider type and structure for debugging
+- Retains query parameters (e.g., region) that are not sensitive
+
+**Reference:** `/internal/crypto/domain/master_key.go:130-181` (maskKeyURI function)
+
+### Auto-Detection Mode
+
+**KMS vs Legacy mode determined by environment variables:**
+
+```go
+// KMS mode: both KMS_PROVIDER and KMS_KEY_URI must be set
+if cfg.KMSProvider != "" && cfg.KMSKeyURI != "" {
+    return loadMasterKeyChainFromKMS(ctx, cfg, kmsService, logger)
+}
+
+// Legacy mode: neither should be set
+if cfg.KMSProvider == "" && cfg.KMSKeyURI == "" {
+    return LoadMasterKeyChainFromEnv()
+}
+
+// Error: inconsistent configuration
+return ErrKMSProviderNotSet or ErrKMSKeyURINotSet
+```
+
+**Validation:**
+- Fail fast on inconsistent configuration (one set, one empty)
+- Clear error messages indicating which variable is missing
+- No silent fallbacks - explicit mode selection
+
+**Reference:** `/internal/crypto/domain/master_key.go:287-315` (LoadMasterKeyChain)
+
 ## See also
 
 - [Repository README](README.md)

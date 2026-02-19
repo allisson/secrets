@@ -13,10 +13,10 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.5.1
+docker pull allisson/secrets:v0.6.0
 ```
 
-Use pinned tags for reproducible setups. `latest` is also available for fast iteration.
+Use pinned tags for reproducible setups. `latest` is available for dev-only fast iteration.
 
 Docs release/API metadata source: `docs/metadata.json`.
 
@@ -29,20 +29,21 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.5.1
+## 🆕 What's New in v0.6.0
 
-- 🛠️ Fixed master key loading to preserve usable key material while zeroing temporary decoded buffers
-- 🧹 Hardened keychain teardown to zero in-memory master keys before clearing chain state
-- 🔒 Expanded regression coverage for master key memory lifecycle and close behavior
-- 📘 Added release notes: [docs/releases/v0.5.1.md](docs/releases/v0.5.1.md)
-- ⬆️ Added upgrade guide: [docs/releases/v0.5.1-upgrade.md](docs/releases/v0.5.1-upgrade.md)
-- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.5.1`
+- ☁️ Added KMS integration for master key encryption at rest (`KMS_PROVIDER`, `KMS_KEY_URI`)
+- 🔁 Added `rotate-master-key` CLI command for safer master key lifecycle operations
+- 🧭 Added provider-specific KMS setup and migration runbook documentation
+- ✅ Added KMS migration checklist: [docs/operations/kms-migration-checklist.md](docs/operations/kms-migration-checklist.md)
+- 📘 Added release notes: [docs/releases/v0.6.0.md](docs/releases/v0.6.0.md)
+- ⬆️ Added upgrade guide: [docs/releases/v0.6.0-upgrade.md](docs/releases/v0.6.0-upgrade.md)
+- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.6.0`
 
 Release history quick links:
 
-- Current: [v0.5.1 release notes](docs/releases/v0.5.1.md)
-- Previous: [v0.5.0 release notes](docs/releases/v0.5.0.md)
-- Previous upgrade guide: [v0.5.0 upgrade guide](docs/releases/v0.5.0-upgrade.md)
+- Current: [v0.6.0 release notes](docs/releases/v0.6.0.md)
+- Previous: [v0.5.1 release notes](docs/releases/v0.5.1.md)
+- Previous upgrade guide: [v0.5.1 upgrade guide](docs/releases/v0.5.1-upgrade.md)
 
 ## 📚 Docs Map
 
@@ -53,26 +54,28 @@ Release history quick links:
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.5.1 release notes**: [docs/releases/v0.5.1.md](docs/releases/v0.5.1.md)
-- ⬆️ **v0.5.1 upgrade guide**: [docs/releases/v0.5.1-upgrade.md](docs/releases/v0.5.1-upgrade.md)
+- 🚀 **v0.6.0 release notes**: [docs/releases/v0.6.0.md](docs/releases/v0.6.0.md)
+- ⬆️ **v0.6.0 upgrade guide**: [docs/releases/v0.6.0-upgrade.md](docs/releases/v0.6.0-upgrade.md)
 - 🔁 **Release compatibility matrix**: [docs/releases/compatibility-matrix.md](docs/releases/compatibility-matrix.md)
 
 - **By Topic**
-- ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
-- 🏗️ **Architecture concepts**: [docs/concepts/architecture.md](docs/concepts/architecture.md)
-- 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
-- 📘 **Glossary**: [docs/concepts/glossary.md](docs/concepts/glossary.md)
-- 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
-- 🔐 **Security hardening**: [docs/operations/security-hardening.md](docs/operations/security-hardening.md)
-- 📊 **Monitoring and metrics**: [docs/operations/monitoring.md](docs/operations/monitoring.md)
-- 🧯 **Operator drills**: [docs/operations/operator-drills.md](docs/operations/operator-drills.md)
-- 🚀 **Production rollout golden path**: [docs/operations/production-rollout.md](docs/operations/production-rollout.md)
-- 🚑 **Failure playbooks**: [docs/operations/failure-playbooks.md](docs/operations/failure-playbooks.md)
-- 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
-- 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
-- 🗺️ **Docs architecture map**: [docs/development/docs-architecture-map.md](docs/development/docs-architecture-map.md)
-- 🤝 **Docs contributing**: [docs/contributing.md](docs/contributing.md)
-- 🗒️ **Docs changelog**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
+  - ⚙️ **Environment variables**: [docs/configuration/environment-variables.md](docs/configuration/environment-variables.md)
+  - 🏗️ **Architecture concepts**: [docs/concepts/architecture.md](docs/concepts/architecture.md)
+  - 🔒 **Security model**: [docs/concepts/security-model.md](docs/concepts/security-model.md)
+  - 📘 **Glossary**: [docs/concepts/glossary.md](docs/concepts/glossary.md)
+  - 🔑 **Key management operations**: [docs/operations/key-management.md](docs/operations/key-management.md)
+  - ☁️ **KMS setup guide**: [docs/operations/kms-setup.md](docs/operations/kms-setup.md)
+  - ✅ **KMS migration checklist**: [docs/operations/kms-migration-checklist.md](docs/operations/kms-migration-checklist.md)
+  - 🔐 **Security hardening**: [docs/operations/security-hardening.md](docs/operations/security-hardening.md)
+  - 📊 **Monitoring and metrics**: [docs/operations/monitoring.md](docs/operations/monitoring.md)
+  - 🧯 **Operator drills**: [docs/operations/operator-drills.md](docs/operations/operator-drills.md)
+  - 🚀 **Production rollout golden path**: [docs/operations/production-rollout.md](docs/operations/production-rollout.md)
+  - 🚑 **Failure playbooks**: [docs/operations/failure-playbooks.md](docs/operations/failure-playbooks.md)
+  - 🏭 **Production deployment**: [docs/operations/production.md](docs/operations/production.md)
+  - 🛠️ **Development and testing**: [docs/development/testing.md](docs/development/testing.md)
+  - 🗺️ **Docs architecture map**: [docs/development/docs-architecture-map.md](docs/development/docs-architecture-map.md)
+  - 🤝 **Docs contributing**: [docs/contributing.md](docs/contributing.md)
+  - 🗒️ **Docs changelog**: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 
 Release note location:
 
@@ -102,6 +105,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 ## ✨ What You Get
 
 - 🔐 Envelope encryption (`Master Key -> KEK -> DEK -> Secret Data`)
+- 🔑 **KMS Integration** for master key encryption at rest (supports Google Cloud KMS, AWS KMS, Azure Key Vault, HashiCorp Vault, and local secrets for testing)
 - 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service (decrypt input uses `<version>:<base64-ciphertext>`; see [Transit API docs](docs/api/transit.md), [create vs rotate](docs/api/transit.md#create-vs-rotate), and [error matrix](docs/api/transit.md#endpoint-error-matrix))
 - 🎫 Tokenization API (`/v1/tokenization/*`) for token generation, detokenization, validation, and revocation
 - 👤 Token-based authentication and policy-based authorization

@@ -15,10 +15,10 @@ Use this quick route before diving into detailed sections:
 5. API requests return `429` -> go to `429 Too Many Requests` (rate limiting)
 6. Browser calls fail before API handler -> go to `CORS and preflight failures`
 7. After rotating keys behavior is stale -> go to `Rotation completed but server still uses old key context`
-8. Startup fails with key config errors -> go to `Missing or Invalid Master Keys`
+8. Startup fails with key config errors -> go to `Missing or Invalid Master Keys` and `KMS configuration mismatch`
 9. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
 10. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
-11. Master key loads but key-dependent crypto fails -> go to `Master key load regression triage (v0.5.1)`
+11. Master key loads but key-dependent crypto fails after mixed-version rollout -> go to `Master key load regression triage (historical v0.5.1 fix)`
 
 ## 📑 Table of Contents
 
@@ -32,7 +32,10 @@ Use this quick route before diving into detailed sections:
 - [Database connection failure](#database-connection-failure)
 - [Migration failure](#migration-failure)
 - [Missing or Invalid Master Keys](#missing-or-invalid-master-keys)
-- [Master key load regression triage (v0.5.1)](#master-key-load-regression-triage-v051)
+- [KMS configuration mismatch](#kms-configuration-mismatch)
+- [Mode mismatch diagnostics](#mode-mismatch-diagnostics)
+- [KMS authentication or decryption failures](#kms-authentication-or-decryption-failures)
+- [Master key load regression triage (historical v0.5.1 fix)](#master-key-load-regression-triage-historical-v051-fix)
 - [Missing KEK](#missing-kek)
 - [Metrics Troubleshooting Matrix](#metrics-troubleshooting-matrix)
 - [Tokenization migration verification](#tokenization-migration-verification)
@@ -199,17 +202,67 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
   - decoded key must be exactly 32 bytes
   - ensure `ACTIVE_MASTER_KEY_ID` exists in `MASTER_KEYS`
 
-## Master key load regression triage (v0.5.1)
+## KMS configuration mismatch
+
+- Symptom: startup fails with errors indicating `KMS_PROVIDER` or `KMS_KEY_URI` is missing
+- Likely cause: only one KMS variable is set
+- Fix:
+  - KMS mode requires both `KMS_PROVIDER` and `KMS_KEY_URI`
+  - legacy mode requires both values unset/empty
+  - verify `.env` and deployment secret injection order
+
+## Mode mismatch diagnostics
+
+Use these quick checks when startup errors suggest key mode mismatch:
+
+```bash
+# 1) Check selected mode variables
+env | grep -E '^(KMS_PROVIDER|KMS_KEY_URI|ACTIVE_MASTER_KEY_ID|MASTER_KEYS)='
+
+# 2) Confirm MASTER_KEYS entry shape
+# Legacy mode entries usually look like id:<base64-32-byte-key>
+# KMS mode entries should be ciphertext values produced by your KMS provider
+
+# 3) Check startup logs for mode and key load behavior
+docker logs <secrets-container-name> 2>&1 | grep -E 'KMS mode enabled|master key decrypted via KMS|master key chain loaded'
+```
+
+Expected patterns:
+
+- Legacy mode:
+  - no `KMS mode enabled` log line
+  - master key chain loads from local config
+- KMS mode:
+  - `KMS mode enabled provider=<provider>`
+  - `master key decrypted via KMS key_id=<id>` for each configured key
+
+## KMS authentication or decryption failures
+
+- Symptom: startup fails while opening KMS keeper or decrypting master keys
+- Likely cause: invalid KMS credentials, wrong key URI, missing decrypt permissions, or corrupted ciphertext
+- Fix:
+  - verify provider credentials are available in runtime environment
+  - verify `KMS_KEY_URI` points to the key used to encrypt `MASTER_KEYS`
+  - confirm KMS IAM/policy includes decrypt permissions
+  - rotate/regenerate master key entries if ciphertext was truncated or malformed
+  - use provider setup checks in [KMS setup guide](../operations/kms-setup.md)
+
+## Master key load regression triage (historical v0.5.1 fix)
+
+Historical note:
+
+- This section is retained for mixed-version or rollback investigations involving pre-`v0.5.1` builds.
+- For current rollouts, prioritize KMS mode diagnostics and the `v0.6.0` upgrade path.
 
 - Symptom: startup succeeds, but key-dependent operations fail unexpectedly after a recent rollout
 - Likely cause: running a pre-`v0.5.1` build where decoded master key buffers could be zeroed too early
 - Mixed-version rollout symptom: some requests pass while others fail if old and new images are serving traffic together
 - Version fingerprint checks:
   - local binary: `./bin/app --version`
-  - pinned image check: `docker run --rm allisson/secrets:v0.5.1 --version`
+  - pinned image check: `docker run --rm allisson/secrets:v0.6.0 --version`
   - running containers: `docker ps --format 'table {{.Names}}\t{{.Image}}'`
 - Fix:
-  - upgrade to `v0.5.1` or newer
+  - upgrade all instances to `v0.6.0` (or at minimum `v0.5.1+`)
   - restart API instances after deploy
   - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
   - review [v0.5.1 release notes](../releases/v0.5.1.md) and
@@ -238,7 +291,7 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
 - Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.5.1 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.6.0 migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)

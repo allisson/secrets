@@ -41,9 +41,38 @@ func main() {
 						Value:   "",
 						Usage:   "Master key ID (e.g., prod-master-key-2025)",
 					},
+					&cli.StringFlag{
+						Name:  "kms-provider",
+						Value: "",
+						Usage: "KMS provider (localsecrets, gcpkms, awskms, azurekeyvault, hashivault)",
+					},
+					&cli.StringFlag{
+						Name:  "kms-key-uri",
+						Value: "",
+						Usage: "KMS key URI (e.g., base64key://, gcpkms://projects/.../cryptoKeys/...)",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return commands.RunCreateMasterKey(cmd.String("id"))
+					return commands.RunCreateMasterKey(
+						cmd.String("id"),
+						cmd.String("kms-provider"),
+						cmd.String("kms-key-uri"),
+					)
+				},
+			},
+			{
+				Name:  "rotate-master-key",
+				Usage: "Rotate the Master Key by generating a new key and combining with existing keys",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "id",
+						Aliases: []string{"i"},
+						Value:   "",
+						Usage:   "New master key ID (e.g., prod-master-key-2026)",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunRotateMasterKey(ctx, cmd.String("id"))
 				},
 			},
 			{

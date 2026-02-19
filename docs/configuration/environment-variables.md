@@ -20,6 +20,8 @@ SERVER_PORT=8080
 LOG_LEVEL=info
 
 # Master key configuration
+KMS_PROVIDER=
+KMS_KEY_URI=
 MASTER_KEYS=default:BASE64_32_BYTE_KEY
 ACTIVE_MASTER_KEY_ID=default
 
@@ -104,7 +106,12 @@ Logging level. Supported values: `debug`, `info`, `warn`, `error` (default: `inf
 
 ### MASTER_KEYS
 
-Comma-separated list of master keys in format `id1:base64key1,id2:base64key2`.
+Comma-separated list of master keys in format `id1:value1,id2:value2`.
+
+Value format depends on mode:
+
+- Legacy mode: plaintext base64-encoded 32-byte keys
+- KMS mode: base64-encoded KMS ciphertext for each 32-byte master key
 
 - 📏 Each master key must represent exactly 32 bytes (256 bits)
 - 🔐 Store in secrets manager, never commit to source control
@@ -122,6 +129,50 @@ ID of the master key to use for encrypting new KEKs (default: `default`).
 
 - ⭐ Must match one of the IDs in `MASTER_KEYS`
 - 🔄 After changing `ACTIVE_MASTER_KEY_ID`, restart API servers to load new value
+
+### KMS_PROVIDER
+
+Optional KMS provider for master key decryption at startup.
+
+Supported values:
+
+- `localsecrets`
+- `gcpkms`
+- `awskms`
+- `azurekeyvault`
+- `hashivault`
+
+### KMS_KEY_URI
+
+KMS key URI for the selected `KMS_PROVIDER`.
+
+Examples:
+
+- `base64key://<base64-32-byte-key>`
+- `gcpkms://projects/<project>/locations/<location>/keyRings/<ring>/cryptoKeys/<key>`
+- `awskms:///<key-id-or-alias>`
+- `azurekeyvault://<vault-name>.vault.azure.net/keys/<key-name>`
+- `hashivault:///<transit-key-path>`
+
+### Master key mode selection
+
+- KMS mode: set both `KMS_PROVIDER` and `KMS_KEY_URI`
+- Legacy mode: leave both unset/empty
+- Invalid configuration: setting only one of the two variables fails startup
+
+For provider setup and migration workflow, see [KMS setup guide](../operations/kms-setup.md).
+
+### KMS preflight checklist
+
+Run this checklist before rolling to production:
+
+1. `KMS_PROVIDER` and `KMS_KEY_URI` are both set (or both unset for legacy mode)
+2. `MASTER_KEYS` entries match the selected mode:
+   - KMS mode: all entries are KMS ciphertext
+   - Legacy mode: all entries are plaintext base64 32-byte keys
+3. `ACTIVE_MASTER_KEY_ID` exists in `MASTER_KEYS`
+4. Runtime credentials for provider are present and valid
+5. Startup logs show successful key loading before traffic cutover
 
 ## Authentication configuration
 
@@ -220,12 +271,20 @@ Prefix for all metric names (default: `secrets`).
 
 ```bash
 ./bin/app create-master-key --id default
+
+# KMS mode (recommended for production)
+./bin/app create-master-key --id default \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
+
+# Rotate master key (combines with existing MASTER_KEYS)
+./bin/app rotate-master-key --id master-key-2026-08
 ```
 
 Or with Docker image:
 
 ```bash
-docker run --rm allisson/secrets:latest create-master-key --id default
+docker run --rm allisson/secrets:v0.6.0 create-master-key --id default
 ```
 
 ## See also
