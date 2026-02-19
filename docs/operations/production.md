@@ -4,6 +4,8 @@
 
 This guide covers baseline production hardening and operations for Secrets.
 
+**For comprehensive security hardening, see [Security Hardening Guide](security-hardening.md).**
+
 ## 📑 Table of Contents
 
 - [1) TLS and Reverse Proxy](#1-tls-and-reverse-proxy)
@@ -14,6 +16,7 @@ This guide covers baseline production hardening and operations for Secrets.
 - [6) Retention Defaults](#6-retention-defaults)
 - [7) Incident Response Checklist](#7-incident-response-checklist)
 - [8) Go-Live Checklist](#8-go-live-checklist)
+- [9) Golden Path Rollout (Recommended)](#9-golden-path-rollout-recommended)
 
 ## 1) TLS and Reverse Proxy
 
@@ -156,13 +159,25 @@ Adjust retention to match your compliance and incident-response requirements.
 - [ ] Monitoring alerts configured
 - [ ] Incident response owner and process documented
 
+## 9) Golden Path Rollout (Recommended)
+
+- Follow [Production rollout golden path](production-rollout.md) for step-by-step deployment,
+  verification gates, and rollback triggers
+- Use [Release compatibility matrix](../releases/compatibility-matrix.md) before planning upgrades
+- Keep [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md) attached to rollout change tickets
+
 ## See also
 
+- [Security hardening guide](security-hardening.md)
 - [Key management operations](key-management.md)
+- [Production rollout golden path](production-rollout.md)
 - [Operator runbook index](runbook-index.md)
 - [Monitoring](monitoring.md)
+- [Operator drills (quarterly)](operator-drills.md)
 - [Policy smoke tests](policy-smoke-tests.md)
-- [v0.4.1 release notes](../releases/v0.4.1.md)
+- [v0.5.0 release notes](../releases/v0.5.0.md)
+- [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md)
+- [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Environment variables](../configuration/environment-variables.md)
 - [Security model](../concepts/security-model.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)

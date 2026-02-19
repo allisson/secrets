@@ -26,6 +26,29 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET || "<client-secret>";
 
 const toBase64 = (value) => Buffer.from(value, "utf8").toString("base64");
 
+async function postWithRetry(path, token, body, maxAttempts = 5) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (response.status !== 429) {
+      return response;
+    }
+
+    const retryAfter = Number(response.headers.get("Retry-After") || "1");
+    const jitterMs = Math.floor(Math.random() * 500);
+    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000 + jitterMs));
+  }
+
+  throw new Error("request failed after retry budget");
+}
+
 async function issueToken() {
   const response = await fetch(`${BASE_URL}/v1/token`, {
     method: "POST",
@@ -147,6 +170,10 @@ Deterministic caveat:
 - With `is_deterministic: true`, tokenizing the same plaintext with the same active key can produce the same token.
 - Prefer non-deterministic mode unless stable equality matching is required.
 
+Rate-limit note:
+
+- For protected endpoints, honor `Retry-After` on `429` with exponential/backoff + jitter
+
 ## Common Mistakes
 
 - Sending UTF-8 plaintext directly instead of base64 in transit/secrets payloads
@@ -154,6 +181,7 @@ Deterministic caveat:
 - Missing `Authorization: Bearer <token>` header on protected endpoints
 - Reusing transit create for existing keys without fallback to rotate on `409`
 - Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
+- Retrying immediately after `429` without delay/jitter
 
 ## See also
 
@@ -162,3 +190,4 @@ Deterministic caveat:
 - [Transit API](../api/transit.md)
 - [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)
+- [API rate limiting](../api/rate-limiting.md)

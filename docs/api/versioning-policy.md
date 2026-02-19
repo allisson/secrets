@@ -11,16 +11,17 @@ This page defines compatibility expectations for HTTP API changes.
 - Existing endpoint paths and JSON field names are treated as stable unless explicitly deprecated
 - OpenAPI source of truth: `docs/openapi.yaml`
 
-## OpenAPI Coverage (v0.4.1)
+## OpenAPI Coverage (v0.5.0)
 
 - `docs/openapi.yaml` is a baseline subset focused on high-traffic/common integration flows
-- `docs/openapi.yaml` includes tokenization endpoint coverage in `v0.4.1`
+- `docs/openapi.yaml` includes tokenization endpoint coverage in `v0.5.0`
+- `docs/openapi.yaml` includes `429 Too Many Requests` response modeling for protected routes
 - Endpoint pages in `docs/api/*.md` define full public behavior for covered operations
 - Endpoints may exist in runtime before they are expanded in OpenAPI detail
 
 ## App Version vs API Version
 
-- Application release `v0.4.1` is pre-1.0 software and may evolve quickly
+- Application release `v0.5.0` is pre-1.0 software and may evolve quickly
 - API v1 path contract (`/v1/*`) remains the compatibility baseline for consumers
 - Breaking API behavior changes require explicit documentation and migration notes
 
@@ -71,6 +72,7 @@ Non-breaking telemetry examples:
 ## See also
 
 - [Authentication API](authentication.md)
+- [API error decision matrix](error-decision-matrix.md)
 - [Response shapes](response-shapes.md)
 - [Contributing guide](../contributing.md)
 - [Documentation changelog](../CHANGELOG.md)

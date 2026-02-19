@@ -23,6 +23,7 @@ import (
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
@@ -56,6 +57,7 @@ func NewServer(
 // SetupRouter configures the Gin router with all routes and middleware.
 // This method is called during server initialization with all required dependencies.
 func (s *Server) SetupRouter(
+	cfg *config.Config,
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
 	auditLogHandler *authHTTP.AuditLogHandler,
@@ -75,6 +77,16 @@ func (s *Server) SetupRouter(
 
 	// Apply custom middleware
 	router.Use(gin.Recovery()) // Gin's panic recovery
+
+	// Add CORS middleware if enabled
+	if corsMiddleware := createCORSMiddleware(
+		cfg.CORSEnabled,
+		cfg.CORSAllowOrigins,
+		s.logger,
+	); corsMiddleware != nil {
+		router.Use(corsMiddleware)
+	}
+
 	router.Use(requestid.New(requestid.WithGenerator(func() string {
 		return uuid.Must(uuid.NewV7()).String()
 	}))) // Request ID with UUIDv7
@@ -101,6 +113,16 @@ func (s *Server) SetupRouter(
 		s.logger,
 	)
 
+	// Create rate limit middleware (applied to authenticated routes only)
+	var rateLimitMiddleware gin.HandlerFunc
+	if cfg.RateLimitEnabled {
+		rateLimitMiddleware = authHTTP.RateLimitMiddleware(
+			cfg.RateLimitRequestsPerSec,
+			cfg.RateLimitBurst,
+			s.logger,
+		)
+	}
+
 	// API v1 routes
 	v1 := router.Group("/v1")
 	{
@@ -110,6 +132,9 @@ func (s *Server) SetupRouter(
 		// Client management endpoints
 		clients := v1.Group("/clients")
 		clients.Use(authMiddleware) // All client routes require authentication
+		if rateLimitMiddleware != nil {
+			clients.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
+		}
 		{
 			clients.POST("",
 				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
@@ -136,6 +161,9 @@ func (s *Server) SetupRouter(
 		// Audit log endpoints
 		auditLogs := v1.Group("/audit-logs")
 		auditLogs.Use(authMiddleware) // All audit log routes require authentication
+		if rateLimitMiddleware != nil {
+			auditLogs.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
+		}
 		{
 			auditLogs.GET("",
 				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
@@ -146,6 +174,9 @@ func (s *Server) SetupRouter(
 		// Secret management endpoints
 		secrets := v1.Group("/secrets")
 		secrets.Use(authMiddleware) // All secret routes require authentication
+		if rateLimitMiddleware != nil {
+			secrets.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
+		}
 		{
 			secrets.POST("/*path",
 				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
@@ -164,6 +195,9 @@ func (s *Server) SetupRouter(
 		// Transit encryption endpoints
 		transit := v1.Group("/transit")
 		transit.Use(authMiddleware) // All transit routes require authentication
+		if rateLimitMiddleware != nil {
+			transit.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
+		}
 		{
 			keys := transit.Group("/keys")
 			{
@@ -202,6 +236,9 @@ func (s *Server) SetupRouter(
 		// Tokenization endpoints
 		tokenization := v1.Group("/tokenization")
 		tokenization.Use(authMiddleware) // All tokenization routes require authentication
+		if rateLimitMiddleware != nil {
+			tokenization.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
+		}
 		{
 			keys := tokenization.Group("/keys")
 			{

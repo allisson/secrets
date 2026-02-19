@@ -27,8 +27,11 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "math/rand"
     "net/http"
     "os"
+    "strconv"
+    "time"
 )
 
 var baseURL = envOrDefault("BASE_URL", "http://localhost:8080")
@@ -107,7 +110,7 @@ func createSecret(token, path, value string) error {
     req.Header.Set("Content-Type", "application/json")
     req.Header.Set("Authorization", "Bearer "+token)
 
-    resp, err := http.DefaultClient.Do(req)
+    resp, err := doWithRetry(req)
     if err != nil {
         return err
     }
@@ -118,6 +121,42 @@ func createSecret(token, path, value string) error {
         return fmt.Errorf("create secret status=%d body=%s", resp.StatusCode, string(raw))
     }
     return nil
+}
+
+func doWithRetry(req *http.Request) (*http.Response, error) {
+    client := http.DefaultClient
+
+    for attempt := 0; attempt < 5; attempt++ {
+        cloned := req.Clone(req.Context())
+        if req.GetBody != nil {
+            body, err := req.GetBody()
+            if err != nil {
+                return nil, err
+            }
+            cloned.Body = body
+        }
+
+        resp, err := client.Do(cloned)
+        if err != nil {
+            return nil, err
+        }
+
+        if resp.StatusCode != http.StatusTooManyRequests {
+            return resp, nil
+        }
+
+        retryAfter := 1
+        if value := resp.Header.Get("Retry-After"); value != "" {
+            if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+                retryAfter = parsed
+            }
+        }
+        _ = resp.Body.Close()
+        jitter := time.Duration(rand.Intn(500)) * time.Millisecond
+        time.Sleep(time.Duration(retryAfter)*time.Second + jitter)
+    }
+
+    return nil, fmt.Errorf("request failed after retry budget")
 }
 
 func transitEncrypt(token, keyName, plaintext string) (string, error) {
@@ -220,6 +259,10 @@ Deterministic caveat:
 - Keys configured as deterministic can emit the same token for the same plaintext under the same active key.
 - Use deterministic mode only when your workflow requires equality matching.
 
+Rate-limit note:
+
+- For protected endpoints, retry `429` with `Retry-After` plus jittered backoff
+
 ## Common Mistakes
 
 - Posting raw strings instead of base64-encoded fields for secrets/transit payloads
@@ -227,6 +270,7 @@ Deterministic caveat:
 - Missing bearer token header on one request in a multi-step flow
 - Ignoring `409 Conflict` on transit create and not switching to rotate logic
 - Sending tokenization token in URL path instead of JSON body for `detokenize`, `validate`, and `revoke`
+- Retrying immediately after `429` without honoring `Retry-After`
 
 ## See also
 
@@ -235,3 +279,4 @@ Deterministic caveat:
 - [Transit API](../api/transit.md)
 - [Tokenization API](../api/tokenization.md)
 - [Response shapes](../api/response-shapes.md)
+- [API rate limiting](../api/rate-limiting.md)

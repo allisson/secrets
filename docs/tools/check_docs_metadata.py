@@ -22,6 +22,14 @@ def main() -> None:
     require_contains(Path("README.md"), current_release)
     require_contains(Path("docs/README.md"), current_release)
 
+    # Ensure current release docs links are present in key navigation pages.
+    current_release_note = f"docs/releases/{current_release}.md"
+    require_contains(Path("README.md"), current_release_note)
+    require_contains(Path("docs/README.md"), f"releases/{current_release}.md")
+    require_contains(
+        Path("docs/operations/runbook-index.md"), f"../releases/{current_release}.md"
+    )
+
     openapi = Path("docs/openapi.yaml").read_text(encoding="utf-8")
     if f"version: {api_version}" not in openapi:
         raise ValueError(

@@ -6,7 +6,10 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 ## Release and Rollout
 
-- [v0.4.1 release notes](../releases/v0.4.1.md)
+- [v0.5.0 release notes](../releases/v0.5.0.md)
+- [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md)
+- [Release compatibility matrix](../releases/compatibility-matrix.md)
+- [Production rollout golden path](production-rollout.md)
 - [Production deployment guide](production.md)
 
 ## Authorization Policy Validation
@@ -20,12 +23,14 @@ Use this page as the single entry point for rollout, validation, and incident ru
 ## API and Access Verification
 
 - [Capability matrix](../api/capability-matrix.md)
+- [API error decision matrix](../api/error-decision-matrix.md)
 - [Authentication API](../api/authentication.md)
 - [Audit logs API](../api/audit-logs.md)
 
 ## Incident and Recovery
 
 - [Failure playbooks](failure-playbooks.md)
+- [Operator drills (quarterly)](operator-drills.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)
 - [Key management operations](key-management.md)
 

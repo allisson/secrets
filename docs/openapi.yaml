@@ -72,6 +72,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [clients]
       summary: Create client
@@ -101,6 +103,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/secrets/{path}:
     parameters:
       - name: path
@@ -126,6 +130,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SecretWriteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     get:
       tags: [secrets]
       summary: Read latest secret
@@ -138,6 +150,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SecretReadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     delete:
       tags: [secrets]
       summary: Delete latest secret version
@@ -146,6 +170,18 @@ paths:
       responses:
         "204":
           description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Secret not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys:
     post:
       tags: [transit]
@@ -180,6 +216,8 @@ paths:
                 message: transit key already exists
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys/{name}/encrypt:
     post:
       tags: [transit]
@@ -215,6 +253,20 @@ paths:
                     type: string
                   version:
                     type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys/{name}/decrypt:
     post:
       tags: [transit]
@@ -269,6 +321,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/keys:
     post:
       tags: [tokenization]
@@ -300,6 +354,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/keys/{name}/rotate:
     post:
       tags: [tokenization]
@@ -337,6 +393,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/keys/{id}:
     delete:
       tags: [tokenization]
@@ -365,6 +423,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/keys/{name}/tokenize:
     post:
       tags: [tokenization]
@@ -402,6 +462,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/detokenize:
     post:
       tags: [tokenization]
@@ -433,6 +495,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/validate:
     post:
       tags: [tokenization]
@@ -458,6 +522,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/revoke:
     post:
       tags: [tokenization]
@@ -485,6 +551,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/audit-logs:
     get:
       tags: [audit]
@@ -513,6 +581,14 @@ paths:
                     items:
                       type: object
                       additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 components:
   securitySchemes:
     bearerAuth:
@@ -538,6 +614,21 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying the request
+          schema:
+            type: string
+            example: "1"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: rate_limit_exceeded
+            message: Too many requests. Please retry after the specified delay.
   schemas:
     ErrorResponse:
       type: object

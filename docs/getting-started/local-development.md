@@ -1,8 +1,18 @@
 # 💻 Run Locally (Development)
 
-> Last updated: 2026-02-14
+> Last updated: 2026-02-19
 
 Use this path if you want to modify the source code and run from your workstation.
+
+**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security-hardening.md) and [Production Deployment Guide](../operations/production.md).
+
+## v0.5.0 Security Defaults
+
+- `AUTH_TOKEN_EXPIRATION_SECONDS` default is now `14400` (4 hours)
+- `RATE_LIMIT_ENABLED` default is `true` (per authenticated client)
+- `CORS_ENABLED` default is `false`
+
+If upgrading from `v0.4.x`, review [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md).
 
 ## Prerequisites
 

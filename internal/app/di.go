@@ -767,6 +767,7 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 
 	// Setup router with dependencies
 	server.SetupRouter(
+		c.config,
 		clientHandler,
 		tokenHandler,
 		auditLogHandler,

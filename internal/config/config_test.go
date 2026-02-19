@@ -31,7 +31,14 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 5, cfg.DBMaxIdleConnections)
 				assert.Equal(t, 5*time.Minute, cfg.DBConnMaxLifetime)
 				assert.Equal(t, "info", cfg.LogLevel)
-				assert.Equal(t, 86400*time.Second, cfg.AuthTokenExpiration)
+				assert.Equal(t, 14400*time.Second, cfg.AuthTokenExpiration)
+				assert.Equal(t, true, cfg.RateLimitEnabled)
+				assert.Equal(t, 10.0, cfg.RateLimitRequestsPerSec)
+				assert.Equal(t, 20, cfg.RateLimitBurst)
+				assert.Equal(t, false, cfg.CORSEnabled)
+				assert.Equal(t, "", cfg.CORSAllowOrigins)
+				assert.Equal(t, true, cfg.MetricsEnabled)
+				assert.Equal(t, "secrets", cfg.MetricsNamespace)
 			},
 		},
 		{
@@ -78,6 +85,41 @@ func TestLoad(t *testing.T) {
 			},
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, "debug", cfg.LogLevel)
+			},
+		},
+		{
+			name: "load custom rate limit configuration",
+			envVars: map[string]string{
+				"RATE_LIMIT_ENABLED":          "false",
+				"RATE_LIMIT_REQUESTS_PER_SEC": "5.0",
+				"RATE_LIMIT_BURST":            "10",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, false, cfg.RateLimitEnabled)
+				assert.Equal(t, 5.0, cfg.RateLimitRequestsPerSec)
+				assert.Equal(t, 10, cfg.RateLimitBurst)
+			},
+		},
+		{
+			name: "load custom CORS configuration",
+			envVars: map[string]string{
+				"CORS_ENABLED":       "true",
+				"CORS_ALLOW_ORIGINS": "https://example.com,https://app.example.com",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, true, cfg.CORSEnabled)
+				assert.Equal(t, "https://example.com,https://app.example.com", cfg.CORSAllowOrigins)
+			},
+		},
+		{
+			name: "load custom metrics configuration",
+			envVars: map[string]string{
+				"METRICS_ENABLED":   "false",
+				"METRICS_NAMESPACE": "custom",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, false, cfg.MetricsEnabled)
+				assert.Equal(t, "custom", cfg.MetricsNamespace)
 			},
 		},
 	}

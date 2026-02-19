@@ -30,6 +30,46 @@ TOKEN=$(curl -s -X POST "$BASE_URL/v1/token" \
   -d "{\"client_id\":\"$CLIENT_ID\",\"client_secret\":\"$CLIENT_SECRET\"}" | jq -r .token)
 ```
 
+## 1.1) Optional retry wrapper for `429`
+
+```bash
+request_with_retry() {
+  local method="$1"
+  local url="$2"
+  local body="${3:-}"
+  local attempt=0
+
+  while [ "$attempt" -lt 5 ]; do
+    attempt=$((attempt + 1))
+    local headers_file
+    headers_file=$(mktemp)
+
+    local status
+    if [ -n "$body" ]; then
+      status=$(curl -s -o /tmp/resp.json -D "$headers_file" -w "%{http_code}" -X "$method" "$url" \
+        -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body")
+    else
+      status=$(curl -s -o /tmp/resp.json -D "$headers_file" -w "%{http_code}" -X "$method" "$url" \
+        -H "Authorization: Bearer $TOKEN")
+    fi
+
+    if [ "$status" != "429" ]; then
+      rm -f "$headers_file"
+      cat /tmp/resp.json
+      return 0
+    fi
+
+    local retry_after
+    retry_after=$(awk 'tolower($1)=="retry-after:" {print $2}' "$headers_file" | tr -d '\r')
+    rm -f "$headers_file"
+    sleep "${retry_after:-1}"
+  done
+
+  echo "request failed after retries" >&2
+  return 1
+}
+```
+
 ## 2) Write secret
 
 ```bash
@@ -143,6 +183,7 @@ Deterministic caveat:
 - Missing `Bearer` prefix in `Authorization` header
 - Using create repeatedly for same transit key name instead of rotate after `409`
 - Sending token in URL path for tokenization lifecycle endpoints (the API expects token in JSON body)
+- Ignoring `429` and retrying immediately instead of honoring `Retry-After`
 
 ## See also
 
@@ -150,3 +191,4 @@ Deterministic caveat:
 - [Secrets API](../api/secrets.md)
 - [Transit API](../api/transit.md)
 - [Clients API](../api/clients.md)
+- [API rate limiting](../api/rate-limiting.md)

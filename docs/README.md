@@ -18,8 +18,9 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 1. Start with Docker guide: [getting-started/docker.md](getting-started/docker.md)
 2. Validate end-to-end setup: [getting-started/smoke-test.md](getting-started/smoke-test.md)
-3. Apply production hardening checklist: [operations/production.md](operations/production.md)
-4. Use runbook hub for rollout and incidents: [operations/runbook-index.md](operations/runbook-index.md)
+3. Follow rollout runbook: [operations/production-rollout.md](operations/production-rollout.md)
+4. Apply production hardening checklist: [operations/production.md](operations/production.md)
+5. Use runbook hub for rollout and incidents: [operations/runbook-index.md](operations/runbook-index.md)
 
 ## 📖 Documentation by Topic
 
@@ -28,12 +29,16 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🔒 [concepts/security-model.md](concepts/security-model.md)
 - 📘 [concepts/glossary.md](concepts/glossary.md)
 - 🔑 [operations/key-management.md](operations/key-management.md)
+- 🚀 [operations/production-rollout.md](operations/production-rollout.md)
 - 📊 [operations/monitoring.md](operations/monitoring.md)
+- 🧯 [operations/operator-drills.md](operations/operator-drills.md)
 - 🏭 [operations/production.md](operations/production.md)
 - 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
 - 🧪 [operations/policy-smoke-tests.md](operations/policy-smoke-tests.md)
 - 🧭 [operations/runbook-index.md](operations/runbook-index.md)
 - 🛠️ [development/testing.md](development/testing.md)
+- 🧾 [development/docs-release-checklist.md](development/docs-release-checklist.md)
+- 🗺️ [development/docs-architecture-map.md](development/docs-architecture-map.md)
 - 🤝 [contributing.md](contributing.md)
 - 🗒️ [CHANGELOG.md](CHANGELOG.md)
 
@@ -53,23 +58,28 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 👤 [api/clients.md](api/clients.md)
 - 📘 [api/policies.md](api/policies.md)
 - 🗂️ [api/capability-matrix.md](api/capability-matrix.md)
+- 🚨 [api/error-decision-matrix.md](api/error-decision-matrix.md)
 - 📦 [api/secrets.md](api/secrets.md)
 - 🚄 [api/transit.md](api/transit.md)
 - 🎫 [api/tokenization.md](api/tokenization.md)
 - 📜 [api/audit-logs.md](api/audit-logs.md)
+- 🚦 [api/rate-limiting.md](api/rate-limiting.md)
 - 🧱 [api/response-shapes.md](api/response-shapes.md)
 - 🧩 [api/versioning-policy.md](api/versioning-policy.md)
 - 📄 [openapi.yaml](openapi.yaml)
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.4.1`
+- `openapi.yaml` is a baseline subset for common API flows in `v0.5.0`
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
-- Tokenization endpoints are included in `openapi.yaml` for `v0.4.1`
+- Tokenization endpoints are included in `openapi.yaml` for `v0.5.0`
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.4.1.md](releases/v0.4.1.md)
+- 📦 [releases/v0.5.0.md](releases/v0.5.0.md)
+- ⬆️ [releases/v0.5.0-upgrade.md](releases/v0.5.0-upgrade.md)
+- 🔁 [releases/compatibility-matrix.md](releases/compatibility-matrix.md)
+- 📦 [releases/v0.4.1.md](releases/v0.4.1.md) (historical)
 - 📦 [releases/v0.4.0.md](releases/v0.4.0.md) (historical)
 - 📦 [releases/v0.3.0.md](releases/v0.3.0.md) (historical)
 - 📦 [releases/v0.2.0.md](releases/v0.2.0.md) (historical)

@@ -280,6 +280,34 @@ rate(secrets_operations_total{status="error"}[5m]) / rate(secrets_operations_tot
 topk(5, rate(secrets_operation_duration_seconds_sum[5m]) / rate(secrets_operation_duration_seconds_count[5m]))
 ```
 
+### Rate Limiting Observability Queries
+
+**429 rate by route (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{status_code="429"}[5m])) by (path)
+```
+
+**429 ratio by route (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{status_code="429"}[5m])) by (path)
+/
+sum(rate(secrets_http_requests_total[5m])) by (path)
+```
+
+**Denied authorization rate (`403`) by route (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{status_code="403"}[5m])) by (path)
+```
+
+Rate-limit interpretation notes:
+
+- Stable low-volume `429` can be normal under bursty workloads
+- Rising `429` with rising latency usually indicates saturation or mis-tuned clients
+- Tune `RATE_LIMIT_REQUESTS_PER_SEC` and `RATE_LIMIT_BURST` only after retry behavior is verified
+
 ### Tokenization-focused Queries
 
 **Detokenize error rate (5m):**
@@ -315,6 +343,12 @@ rate(secrets_operations_total{domain="tokenization",operation="cleanup_expired",
 
 ## Grafana Dashboard
 
+Starter dashboard artifacts:
+
+- [Dashboard artifacts index](dashboards/README.md)
+- [Secrets overview dashboard JSON](dashboards/secrets-overview.json)
+- [Secrets rate-limiting dashboard JSON](dashboards/secrets-rate-limiting.json)
+
 ### Recommended Panels
 
 1. **Request Rate** - Line graph showing HTTP requests/sec
@@ -332,6 +366,22 @@ sum(rate(secrets_http_requests_total[5m])) by (method, path)
 ## Alerting
 
 ### Recommended Alerts
+
+### Ownership and Escalation Guidance
+
+| Alert class | Default severity | Primary owner | Escalate if unresolved |
+| --- | --- | --- | --- |
+| API availability / 5xx surge | `critical` | Platform/on-call | 10 minutes |
+| Token issuance failures | `critical` | Platform + IAM owner | 10 minutes |
+| Sustained `429` ratio | `warning` | Service owner + platform | 30 minutes |
+| Elevated `403` denied rate | `warning` | Security + service owner | 30 minutes |
+| Metrics scrape failures | `warning` | Observability owner | 30 minutes |
+
+Suggested escalation policy:
+
+1. Page primary owner immediately for `critical`
+2. Notify secondary owner if not acknowledged in 5 minutes
+3. Escalate to incident commander when SLA/SLO at risk
 
 #### High Error Rate
 
@@ -357,6 +407,37 @@ sum(rate(secrets_http_requests_total[5m])) by (method, path)
   annotations:
     summary: "High request latency"
     description: "95th percentile latency is {{ $value }}s"
+```
+
+#### Excessive 429 Ratio
+
+```yaml
+- alert: ExcessiveRateLimit429Ratio
+  expr: |
+    (
+      sum(rate(secrets_http_requests_total{status_code="429"}[10m]))
+      /
+      sum(rate(secrets_http_requests_total[10m]))
+    ) > 0.05
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High 429 ratio detected"
+    description: "More than 5% of requests are being throttled"
+```
+
+#### 429 Burst On Critical Routes
+
+```yaml
+- alert: RateLimitBurstCriticalRoute
+  expr: sum(rate(secrets_http_requests_total{status_code="429",path=~"/v1/secrets/.*|/v1/transit/.*"}[5m])) > 2
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Sustained 429 on secrets/transit routes"
+    description: "Critical crypto routes are being throttled above threshold"
 ```
 
 ## Disabling Metrics
@@ -405,6 +486,8 @@ When disabled:
 ## See Also
 
 - [Production Deployment](production.md)
+- [Operator drills](operator-drills.md)
 - [Failure Playbooks](failure-playbooks.md)
+- [API rate limiting](../api/rate-limiting.md)
 - [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
 - [Prometheus Documentation](https://prometheus.io/docs/)
