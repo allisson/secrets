@@ -70,14 +70,16 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in `v0.5.0`
+- `openapi.yaml` is a baseline subset for common API flows in the current release (`docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
-- Tokenization endpoints are included in `openapi.yaml` for `v0.5.0`
+- Tokenization endpoints are included in `openapi.yaml` for the current release
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.5.0.md](releases/v0.5.0.md)
-- ⬆️ [releases/v0.5.0-upgrade.md](releases/v0.5.0-upgrade.md)
+- 📦 [releases/v0.5.1.md](releases/v0.5.1.md)
+- ⬆️ [releases/v0.5.1-upgrade.md](releases/v0.5.1-upgrade.md)
+- 📦 [releases/v0.5.0.md](releases/v0.5.0.md) (historical)
+- ⬆️ [releases/v0.5.0-upgrade.md](releases/v0.5.0-upgrade.md) (historical)
 - 🔁 [releases/compatibility-matrix.md](releases/compatibility-matrix.md)
 - 📦 [releases/v0.4.1.md](releases/v0.4.1.md) (historical)
 - 📦 [releases/v0.4.0.md](releases/v0.4.0.md) (historical)

@@ -6,7 +6,7 @@ Use this runbook for a standard production rollout with verification and rollbac
 
 ## Scope
 
-- Deploy target: Secrets `v0.5.0`
+- Deploy target: Secrets `v0.5.1`
 - Database schema changes: run migrations before traffic cutover
 - Crypto bootstrap: ensure initial KEK exists for write/encrypt flows
 
@@ -23,17 +23,17 @@ Use this runbook for a standard production rollout with verification and rollbac
 
 ```bash
 # 1) Pull target release
-docker pull allisson/secrets:v0.5.0
+docker pull allisson/secrets:v0.5.1
 
 # 2) Run migrations
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.0 migrate
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 migrate
 
 # 3) Bootstrap KEK only for first-time environment setup
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.0 create-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.5.1 create-kek --algorithm aes-gcm
 
 # 4) Start API
 docker run --rm --name secrets-api --network secrets-net --env-file .env -p 8080:8080 \
-  allisson/secrets:v0.5.0 server
+  allisson/secrets:v0.5.1 server
 ```
 
 ## Verification Gates
@@ -81,7 +81,7 @@ Gate C (policy and observability):
 ## See also
 
 - [Production deployment guide](production.md)
-- [v0.5.0 release notes](../releases/v0.5.0.md)
-- [v0.5.0 upgrade guide](../releases/v0.5.0-upgrade.md)
+- [v0.5.1 release notes](../releases/v0.5.1.md)
+- [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Smoke test guide](../getting-started/smoke-test.md)

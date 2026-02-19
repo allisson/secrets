@@ -2,6 +2,24 @@
 
 > Last updated: 2026-02-19
 
+## 2026-02-19 (docs v11 - v0.5.1 patch release prep)
+
+- Added release notes page: `docs/releases/v0.5.1.md`
+- Added upgrade guide: `docs/releases/v0.5.1-upgrade.md`
+- Updated docs metadata source (`docs/metadata.json`) to `current_release: v0.5.1`
+- Updated root README and docs index to promote `v0.5.1` release links
+- Updated operator runbook index and production runbooks to reference `v0.5.1`
+- Updated compatibility matrix with `v0.5.0 -> v0.5.1` patch upgrade path
+- Added direct `v0.4.x -> v0.5.1` compatibility path for skip-upgrade operators
+- Updated pinned Docker image examples from `allisson/secrets:v0.5.0` to `allisson/secrets:v0.5.1`
+- Updated API docs release labels to `v0.5.1` where current-release references are shown
+- Reduced patch-version churn in OpenAPI coverage notes by using current-release wording
+- Added v0.5.1-specific master-key regression triage note to troubleshooting
+- Added copy/paste quick verification commands to `docs/releases/v0.5.1-upgrade.md`
+- Added patch-release safety note to `docs/releases/v0.5.1.md`
+- Added release history quick links in root `README.md`
+- Added runtime version fingerprint checks for mixed deployment triage
+
 ## 2026-02-19 (docs v10 - v0.5.0 security hardening release prep)
 
 - Added comprehensive security hardening guide: `docs/operations/security-hardening.md`
