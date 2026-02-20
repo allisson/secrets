@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This guide covers master keys and KEK lifecycle operations.
 
@@ -20,7 +20,7 @@ Generate:
 Docker image equivalent:
 
 ```bash
-docker run --rm allisson/secrets:v0.6.0 create-master-key --id prod-2026-01
+docker run --rm allisson/secrets:v0.7.0 create-master-key --id prod-2026-01
 ```
 
 Rotate master key:

@@ -1,6 +1,6 @@
 # 🗺️ Docs Architecture Map
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This page defines canonical vs supporting docs to reduce duplication and drift.
 
@@ -32,6 +32,19 @@ This page defines canonical vs supporting docs to reduce duplication and drift.
 2. Propagate essential deltas to supporting docs
 3. Update `docs/CHANGELOG.md` for significant docs updates
 4. Run docs checks before merge
+
+Recommended local validation:
+
+- `make docs-lint`
+- `make docs-check-metadata`
+- `make docs-check-release-tags`
+
+## CI/Tooling Guards
+
+- `docs/tools/check_docs_metadata.py`: release/API metadata and `Last updated` consistency
+- `docs/tools/check_release_docs_links.py`: release docs link integrity in PRs
+- `docs/tools/check_example_shapes.py`: JSON example structure sanity checks
+- `docs/tools/check_release_image_tags.py`: pinned current-release Docker tag consistency
 
 ## Drift Signals
 

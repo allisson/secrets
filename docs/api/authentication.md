@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -67,11 +67,38 @@ Expected result: token request returns `201 Created`, authenticated clients requ
 - `401 Unauthorized`: invalid credentials
 - `403 Forbidden`: inactive client
 - `422 Unprocessable Entity`: malformed request
+- `429 Too Many Requests`: token issuance throttled by IP-based token endpoint limits
 
 Rate limiting note:
 
-- `POST /v1/token` is not rate-limited by application middleware
-- Protected endpoints called with issued tokens can return `429 Too Many Requests`
+- `POST /v1/token` is rate-limited per client IP when `RATE_LIMIT_TOKEN_ENABLED=true`
+- Protected endpoints called with issued tokens are rate-limited per authenticated client
+
+## Token `429` Handling Quick Check
+
+Inspect headers and status:
+
+```bash
+curl -i -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"<client-id>","client_secret":"<client-secret>"}'
+```
+
+Expected when throttled:
+
+- HTTP status `429 Too Many Requests`
+- `Retry-After` response header (seconds)
+
+Minimal retry-after extraction example:
+
+```bash
+RETRY_AFTER="$(curl -s -D - -o /dev/null -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"<client-id>","client_secret":"<client-secret>"}' \
+  | awk -F': ' 'tolower($1)=="retry-after" {print $2}' | tr -d '\r')"
+
+echo "Retry after: ${RETRY_AFTER}s"
+```
 
 ## Error Payload Examples
 

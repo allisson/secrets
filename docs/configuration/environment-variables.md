@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Secrets is configured through environment variables.
 
@@ -28,10 +28,15 @@ ACTIVE_MASTER_KEY_ID=default
 # Authentication configuration
 AUTH_TOKEN_EXPIRATION_SECONDS=14400
 
-# Rate limiting configuration
+# Rate limiting configuration (authenticated endpoints)
 RATE_LIMIT_ENABLED=true
 RATE_LIMIT_REQUESTS_PER_SEC=10.0
 RATE_LIMIT_BURST=20
+
+# Token endpoint rate limiting (IP-based, unauthenticated)
+RATE_LIMIT_TOKEN_ENABLED=true
+RATE_LIMIT_TOKEN_REQUESTS_PER_SEC=5.0
+RATE_LIMIT_TOKEN_BURST=10
 
 # CORS configuration
 CORS_ENABLED=false
@@ -224,6 +229,33 @@ Allows clients to temporarily exceed `RATE_LIMIT_REQUESTS_PER_SEC` up to the bur
 
 Tune based on observed `429` rates and client retry behavior.
 
+### RATE_LIMIT_TOKEN_ENABLED
+
+Enable per-IP rate limiting on token issuance endpoint `POST /v1/token` (default: `true`).
+
+Use this protection to reduce credential stuffing and brute-force traffic on unauthenticated token
+requests.
+
+### RATE_LIMIT_TOKEN_REQUESTS_PER_SEC
+
+Maximum token issuance requests per second per client IP (default: `5.0`).
+
+### RATE_LIMIT_TOKEN_BURST
+
+Burst capacity for token issuance per IP (default: `10`).
+
+Allows short request spikes while preserving stricter controls for the unauthenticated token endpoint.
+
+### Token endpoint presets (starting points)
+
+| Profile | RATE_LIMIT_TOKEN_REQUESTS_PER_SEC | RATE_LIMIT_TOKEN_BURST | Typical use case |
+| --- | --- | --- | --- |
+| Strict (default) | `5.0` | `10` | Internet-facing token issuance |
+| Shared-egress | `10.0` | `20` | Enterprise NAT/proxy callers |
+| Internal trusted | `20.0` | `40` | Internal service mesh token broker |
+
+Tune based on `POST /v1/token` `429` rates, NAT/proxy sharing patterns, and retry behavior.
+
 ## CORS configuration
 
 ### CORS_ENABLED
@@ -284,7 +316,7 @@ Prefix for all metric names (default: `secrets`).
 Or with Docker image:
 
 ```bash
-docker run --rm allisson/secrets:v0.6.0 create-master-key --id default
+docker run --rm allisson/secrets:v0.7.0 create-master-key --id default
 ```
 
 ## See also

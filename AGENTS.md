@@ -694,6 +694,119 @@ v1 := router.Group("/api/v1")
 v1.Use(authMiddleware)
 ```
 
+### Rate Limiting Middleware
+
+The project implements two types of rate limiting middleware to protect against abuse:
+
+#### 1. Client-Based Rate Limiting (Authenticated Endpoints)
+
+**File:** `/internal/auth/http/rate_limit_middleware.go`
+
+**Purpose:** Protects authenticated endpoints from abuse by limiting requests per authenticated client.
+
+**Usage:**
+```go
+// Create middleware with configuration
+rateLimitMiddleware := authHTTP.RateLimitMiddleware(
+    cfg.RateLimitRequestsPerSec,  // e.g., 10.0 requests/second
+    cfg.RateLimitBurst,            // e.g., 20 burst capacity
+    logger,
+)
+
+// Apply to authenticated route groups
+clients := v1.Group("/clients")
+clients.Use(authMiddleware)        // Must come first
+clients.Use(rateLimitMiddleware)   // Rate limit per client
+```
+
+**Key Features:**
+- **Requires authentication:** Must be used after `AuthenticationMiddleware`
+- **Per-client limits:** Each authenticated client (by client ID) gets independent rate limiter
+- **Token bucket algorithm:** Uses `golang.org/x/time/rate` for smooth rate limiting
+- **Automatic cleanup:** Removes stale limiters after 1 hour of inactivity
+- **Configurable:** Controlled by `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS_PER_SEC`, `RATE_LIMIT_BURST`
+
+**Response:**
+- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
+- Error response: `{"error": "rate_limit_exceeded", "message": "Too many requests. Please retry after the specified delay."}`
+
+#### 2. IP-Based Rate Limiting (Unauthenticated Endpoints)
+
+**File:** `/internal/auth/http/token_rate_limit_middleware.go`
+
+**Purpose:** Protects unauthenticated endpoints (e.g., token issuance) from credential stuffing and brute force attacks.
+
+**Usage:**
+```go
+// Create middleware with configuration
+tokenRateLimitMiddleware := authHTTP.TokenRateLimitMiddleware(
+    cfg.RateLimitTokenRequestsPerSec,  // e.g., 5.0 requests/second
+    cfg.RateLimitTokenBurst,            // e.g., 10 burst capacity
+    logger,
+)
+
+// Apply to unauthenticated endpoints
+if tokenRateLimitMiddleware != nil {
+    v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
+}
+```
+
+**Key Features:**
+- **No authentication required:** Works on unauthenticated endpoints
+- **Per-IP limits:** Each IP address gets independent rate limiter
+- **Automatic IP detection:** Uses `c.ClientIP()` which handles:
+  - `X-Forwarded-For` header (takes first IP)
+  - `X-Real-IP` header
+  - Direct connection remote address
+- **Token bucket algorithm:** Uses `golang.org/x/time/rate` for smooth rate limiting
+- **Automatic cleanup:** Removes stale limiters after 1 hour of inactivity
+- **Configurable:** Controlled by `RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`
+
+**Response:**
+- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
+- Error response: `{"error": "rate_limit_exceeded", "message": "Too many token requests from this IP. Please retry after the specified delay."}`
+
+**Security Considerations:**
+
+*Strengths:*
+- Protects against credential stuffing and brute force attacks
+- Stricter default limits (5 req/sec, burst 10) than authenticated endpoints
+- No overhead on authenticated endpoints
+
+*Limitations & Mitigations:*
+- **Shared IPs (NAT, corporate proxies):** May affect legitimate users behind same IP
+  - Mitigation: Reasonable burst capacity (10 requests) handles legitimate retries
+  - Mitigation: Can be disabled via `RATE_LIMIT_TOKEN_ENABLED=false` if needed
+- **IP Spoofing via X-Forwarded-For:** Attacker could rotate IPs in header
+  - Mitigation: Configure Gin's trusted proxy settings in production
+  - Mitigation: Deploy behind proper reverse proxy/load balancer
+
+**Configuration Example (.env):**
+```bash
+# Authenticated endpoint rate limiting (per client)
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS_PER_SEC=10.0
+RATE_LIMIT_BURST=20
+
+# Token endpoint rate limiting (per IP, unauthenticated)
+RATE_LIMIT_TOKEN_ENABLED=true
+RATE_LIMIT_TOKEN_REQUESTS_PER_SEC=5.0
+RATE_LIMIT_TOKEN_BURST=10
+```
+
+**Testing:**
+Both middleware implementations include comprehensive test coverage:
+- Requests within limit allowed
+- Requests exceeding limit blocked with 429
+- Retry-After header present
+- Independent limits per client/IP
+- Burst capacity handling
+- Automatic cleanup of stale entries
+
+**Reference:**
+- Client-based: `/internal/auth/http/rate_limit_middleware.go` and `rate_limit_middleware_test.go`
+- IP-based: `/internal/auth/http/token_rate_limit_middleware.go` and `token_rate_limit_middleware_test.go`
+
 ## Authentication & Authorization HTTP Layer
 
 ### HTTP Handler Organization Pattern

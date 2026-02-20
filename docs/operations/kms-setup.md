@@ -1,6 +1,6 @@
 # KMS Setup Guide
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode provides an additional security layer by ensuring master keys are never stored in plaintext.
 
@@ -514,7 +514,7 @@ Docker Compose example:
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.6.0
+    image: allisson/secrets:v0.7.0
     env_file:
       - .env
     environment:
@@ -536,7 +536,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: allisson/secrets:v0.6.0
+          image: allisson/secrets:v0.7.0
           env:
             - name: KMS_PROVIDER
               value: gcpkms

@@ -1,12 +1,12 @@
 # ✅ KMS Migration Checklist
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this checklist for migrating from legacy plaintext master keys to KMS mode.
 
 ## 1) Precheck
 
-- [ ] Confirm target release is `v0.6.0` or newer
+- [ ] Confirm target release is `v0.7.0` or newer
 - [ ] Back up current environment configuration
 - [ ] Confirm rollback owner and change window
 - [ ] Confirm KMS provider credentials are available in runtime
@@ -46,7 +46,7 @@ Reference: [Key management operations](key-management.md)
 - [ ] If rollback needed, revert app version first
 - [ ] Re-validate health and smoke checks after rollback
 
-Reference: [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md#rollback-notes)
+Reference: [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md#rollback-notes)
 
 ## See also
 

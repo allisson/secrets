@@ -13,7 +13,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 The default way to run Secrets is the published Docker image:
 
 ```bash
-docker pull allisson/secrets:v0.6.0
+docker pull allisson/secrets:v0.7.0
 ```
 
 Use pinned tags for reproducible setups. `latest` is available for dev-only fast iteration.
@@ -29,21 +29,20 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.6.0
+## 🆕 What's New in v0.7.0
 
-- ☁️ Added KMS integration for master key encryption at rest (`KMS_PROVIDER`, `KMS_KEY_URI`)
-- 🔁 Added `rotate-master-key` CLI command for safer master key lifecycle operations
-- 🧭 Added provider-specific KMS setup and migration runbook documentation
-- ✅ Added KMS migration checklist: [docs/operations/kms-migration-checklist.md](docs/operations/kms-migration-checklist.md)
-- 📘 Added release notes: [docs/releases/v0.6.0.md](docs/releases/v0.6.0.md)
-- ⬆️ Added upgrade guide: [docs/releases/v0.6.0-upgrade.md](docs/releases/v0.6.0-upgrade.md)
-- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.6.0`
+- 🛡️ Added IP-based rate limiting for unauthenticated token issuance (`POST /v1/token`)
+- ⚙️ Added token endpoint configuration: `RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`
+- 🚦 Added token endpoint `429` + `Retry-After` behavior for burst/abuse control
+- 📘 Added release notes: [docs/releases/v0.7.0.md](docs/releases/v0.7.0.md)
+- ⬆️ Added upgrade guide: [docs/releases/v0.7.0-upgrade.md](docs/releases/v0.7.0-upgrade.md)
+- 📦 Updated pinned Docker docs/examples to `allisson/secrets:v0.7.0`
 
 Release history quick links:
 
-- Current: [v0.6.0 release notes](docs/releases/v0.6.0.md)
-- Previous: [v0.5.1 release notes](docs/releases/v0.5.1.md)
-- Previous upgrade guide: [v0.5.1 upgrade guide](docs/releases/v0.5.1-upgrade.md)
+- Current: [v0.7.0 release notes](docs/releases/v0.7.0.md)
+- Previous: [v0.6.0 release notes](docs/releases/v0.6.0.md)
+- Previous upgrade guide: [v0.6.0 upgrade guide](docs/releases/v0.6.0-upgrade.md)
 
 ## 📚 Docs Map
 
@@ -54,8 +53,8 @@ Release history quick links:
 - 🧰 **Troubleshooting**: [docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli/commands.md](docs/cli/commands.md)
-- 🚀 **v0.6.0 release notes**: [docs/releases/v0.6.0.md](docs/releases/v0.6.0.md)
-- ⬆️ **v0.6.0 upgrade guide**: [docs/releases/v0.6.0-upgrade.md](docs/releases/v0.6.0-upgrade.md)
+- 🚀 **v0.7.0 release notes**: [docs/releases/v0.7.0.md](docs/releases/v0.7.0.md)
+- ⬆️ **v0.7.0 upgrade guide**: [docs/releases/v0.7.0-upgrade.md](docs/releases/v0.7.0-upgrade.md)
 - 🔁 **Release compatibility matrix**: [docs/releases/compatibility-matrix.md](docs/releases/compatibility-matrix.md)
 
 - **By Topic**

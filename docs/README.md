@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Metadata source for release/API labels: `docs/metadata.json`
 
@@ -10,6 +10,8 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 - 🐳 [getting-started/docker.md](getting-started/docker.md) (recommended)
 - 💻 [getting-started/local-development.md](getting-started/local-development.md)
+- 🧭 [getting-started/day-0-operator.md](getting-started/day-0-operator.md)
+- 💻 [getting-started/day-0-developer.md](getting-started/day-0-developer.md)
 - 🧰 [getting-started/troubleshooting.md](getting-started/troubleshooting.md)
 - ✅ [getting-started/smoke-test.md](getting-started/smoke-test.md)
 - 🧪 [cli/commands.md](cli/commands.md)
@@ -22,6 +24,12 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 4. Apply production hardening checklist: [operations/production.md](operations/production.md)
 5. Use runbook hub for rollout and incidents: [operations/runbook-index.md](operations/runbook-index.md)
 
+## 👥 Persona Paths
+
+- 👷 [personas/operator.md](personas/operator.md)
+- 👨‍💻 [personas/developer.md](personas/developer.md)
+- 🛡️ [personas/security.md](personas/security.md)
+
 ## 📖 Documentation by Topic
 
 - ⚙️ [configuration/environment-variables.md](configuration/environment-variables.md)
@@ -32,15 +40,25 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - ☁️ [operations/kms-setup.md](operations/kms-setup.md)
 - ✅ [operations/kms-migration-checklist.md](operations/kms-migration-checklist.md)
 - 🚀 [operations/production-rollout.md](operations/production-rollout.md)
+- ⚡ [operations/operator-quick-card.md](operations/operator-quick-card.md)
+- 🌲 [operations/incident-decision-tree.md](operations/incident-decision-tree.md)
+- ⏱️ [operations/first-15-minutes.md](operations/first-15-minutes.md)
 - 📊 [operations/monitoring.md](operations/monitoring.md)
 - 🧯 [operations/operator-drills.md](operations/operator-drills.md)
 - 🏭 [operations/production.md](operations/production.md)
+- 🌐 [operations/trusted-proxy-reference.md](operations/trusted-proxy-reference.md)
+- ⚠️ [operations/known-limitations.md](operations/known-limitations.md)
 - 🚑 [operations/failure-playbooks.md](operations/failure-playbooks.md)
 - 🧪 [operations/policy-smoke-tests.md](operations/policy-smoke-tests.md)
 - 🧭 [operations/runbook-index.md](operations/runbook-index.md)
 - 🛠️ [development/testing.md](development/testing.md)
 - 🧾 [development/docs-release-checklist.md](development/docs-release-checklist.md)
 - 🗺️ [development/docs-architecture-map.md](development/docs-architecture-map.md)
+- 📈 [development/docs-quality-kpis.md](development/docs-quality-kpis.md)
+- 🔁 [development/postmortem-doc-loop.md](development/postmortem-doc-loop.md)
+- 🗂️ [development/docs-master-backlog.md](development/docs-master-backlog.md)
+- 🛣️ [development/docs-phase-3-roadmap.md](development/docs-phase-3-roadmap.md)
+- 🧭 [development/docs-phase-4-roadmap.md](development/docs-phase-4-roadmap.md)
 - 🤝 [contributing.md](contributing.md)
 - 🗒️ [CHANGELOG.md](CHANGELOG.md)
 
@@ -70,6 +88,14 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🧩 [api/versioning-policy.md](api/versioning-policy.md)
 - 📄 [openapi.yaml](openapi.yaml)
 
+## 🔎 Search Aliases
+
+- `401 403 429 decision tree` -> [operations/incident-decision-tree.md](operations/incident-decision-tree.md)
+- `first 15 minutes incident` -> [operations/first-15-minutes.md](operations/first-15-minutes.md)
+- `trusted proxy retry-after token 429` -> [operations/trusted-proxy-reference.md](operations/trusted-proxy-reference.md)
+- `known limitations` -> [operations/known-limitations.md](operations/known-limitations.md)
+- `versioned examples` -> [examples/versioned-by-release.md](examples/versioned-by-release.md)
+
 OpenAPI scope note:
 
 - `openapi.yaml` is a baseline subset for common API flows in the current release (`docs/metadata.json`)
@@ -78,8 +104,10 @@ OpenAPI scope note:
 
 ## 🚀 Releases
 
-- 📦 [releases/v0.6.0.md](releases/v0.6.0.md)
-- ⬆️ [releases/v0.6.0-upgrade.md](releases/v0.6.0-upgrade.md)
+- 📦 [releases/v0.7.0.md](releases/v0.7.0.md)
+- ⬆️ [releases/v0.7.0-upgrade.md](releases/v0.7.0-upgrade.md)
+- 📦 [releases/v0.6.0.md](releases/v0.6.0.md) (historical)
+- ⬆️ [releases/v0.6.0-upgrade.md](releases/v0.6.0-upgrade.md) (historical)
 - 📦 [releases/v0.5.1.md](releases/v0.5.1.md) (historical)
 - ⬆️ [releases/v0.5.1-upgrade.md](releases/v0.5.1-upgrade.md) (historical)
 - 📦 [releases/v0.5.0.md](releases/v0.5.0.md) (historical)
@@ -105,6 +133,7 @@ OpenAPI scope note:
 
 ## 💡 Practical Examples
 
+- 🧭 [examples/versioned-by-release.md](examples/versioned-by-release.md)
 - 🧪 [examples/curl.md](examples/curl.md)
 - 🐍 [examples/python.md](examples/python.md)
 - 🟨 [examples/javascript.md](examples/javascript.md)

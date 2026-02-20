@@ -1,6 +1,6 @@
 # 🔒 Security Hardening Guide
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This guide covers comprehensive security hardening for production deployments of Secrets. These measures are essential for protecting sensitive data and maintaining operational security.
 
@@ -243,7 +243,7 @@ The `/metrics` endpoint exposes operational metrics that may contain sensitive i
 
 Rate limiting protects against abuse, brute force attacks, and denial of service.
 
-### CORS Configuration
+### Authenticated Endpoint Configuration
 
 ```dotenv
 # Enable rate limiting (default: true)
@@ -273,12 +273,39 @@ RATE_LIMIT_BURST=20
 
 ### Excluded Endpoints
 
-Rate limiting does **not** apply to:
+Authenticated per-client rate limiting does **not** apply to:
 
 - `/health` - Health checks
 - `/ready` - Readiness probes
 - `/metrics` - Metrics collection
-- `/v1/token` - Token issuance (pre-authentication)
+
+### Token Endpoint Configuration (IP-based)
+
+```dotenv
+# Enable token endpoint rate limiting (default: true)
+RATE_LIMIT_TOKEN_ENABLED=true
+
+# Requests per second per IP for POST /v1/token (default: 5.0)
+RATE_LIMIT_TOKEN_REQUESTS_PER_SEC=5.0
+
+# Burst capacity per IP (default: 10)
+RATE_LIMIT_TOKEN_BURST=10
+```
+
+### Token Endpoint Notes
+
+- **Scope:** Per-client-IP for unauthenticated `POST /v1/token`
+- **Purpose:** Mitigate credential stuffing and brute-force token issuance attempts
+- **Response:** HTTP `429` with `Retry-After` when exceeded
+- **Operational caveat:** Shared NAT/proxy egress can require tuning `RATE_LIMIT_TOKEN_*`
+
+### Trusted Proxy and IP Forwarding Safety
+
+- Configure trusted proxies explicitly in production; do not trust arbitrary forwarded headers
+- Ensure your edge proxy/load balancer sets client IP headers consistently
+- If trusted proxy settings are incorrect, all token requests can appear from one IP and trigger false `429`
+- If headers are over-trusted, attackers can spoof forwarded IPs to evade per-IP controls
+- Use [Trusted proxy reference](trusted-proxy-reference.md) for validation workflow and platform notes
 
 ### Tuning Guidance
 

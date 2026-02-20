@@ -1,13 +1,16 @@
 # 🧭 Operator Runbook Index
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this page as the single entry point for rollout, validation, and incident runbooks.
 
 ## Release and Rollout
 
-- [v0.6.0 release notes](../releases/v0.6.0.md)
-- [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md)
+- [Operator quick card](operator-quick-card.md)
+- [v0.7.0 release notes](../releases/v0.7.0.md)
+- [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md)
+- [v0.6.0 release notes](../releases/v0.6.0.md) (historical)
+- [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md) (historical)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Production rollout golden path](production-rollout.md)
 - [Production deployment guide](production.md)
@@ -31,14 +34,18 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 ## Incident and Recovery
 
+- [Incident decision tree](incident-decision-tree.md)
+- [First 15 Minutes Playbook](first-15-minutes.md)
 - [Failure playbooks](failure-playbooks.md)
 - [Operator drills (quarterly)](operator-drills.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)
 - [Key management operations](key-management.md)
+- [Known limitations](known-limitations.md)
 
 ## Observability and Health
 
 - [Monitoring](monitoring.md)
+- [Trusted proxy reference](trusted-proxy-reference.md)
 - [Smoke test guide](../getting-started/smoke-test.md)
 
 ## Suggested Operator Flow

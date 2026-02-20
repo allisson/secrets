@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-02-20
+
+### Added
+- Added IP-based rate limiting middleware for unauthenticated `POST /v1/token`
+- Added token endpoint rate-limit configuration via `RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, and `RATE_LIMIT_TOKEN_BURST`
+
+### Changed
+- Token issuance endpoint can now return `429 Too Many Requests` with `Retry-After` when per-IP limits are exceeded
+
+### Security
+- Hardened token issuance path against credential stuffing and brute-force request bursts
+
+### Documentation
+- Added `docs/releases/v0.7.0.md` release notes and `docs/releases/v0.7.0-upgrade.md` upgrade guide
+- Updated docs for token endpoint throttling behavior, configuration, and troubleshooting guidance
+
 ## [0.6.0] - 2026-02-19
 
 ### Added

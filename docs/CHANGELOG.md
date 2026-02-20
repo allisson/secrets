@@ -1,6 +1,39 @@
 # 🗒️ Documentation Changelog
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
+
+## 2026-02-20 (docs v13 - v0.7.0 release prep)
+
+- Added release notes page: `docs/releases/v0.7.0.md`
+- Added upgrade guide: `docs/releases/v0.7.0-upgrade.md`
+- Updated docs metadata source (`docs/metadata.json`) to `current_release: v0.7.0`
+- Updated root README and docs index to promote `v0.7.0` release links
+- Updated compatibility matrix with `v0.6.0 -> v0.7.0` upgrade path
+- Updated API docs to document token endpoint rate limiting and `POST /v1/token` `429` behavior
+- Updated environment variable docs for `RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, and `RATE_LIMIT_TOKEN_BURST`
+- Updated troubleshooting and security hardening docs with token endpoint throttling guidance
+- Updated pinned Docker image examples from `allisson/secrets:v0.6.0` to `allisson/secrets:v0.7.0`
+- Added token endpoint throttling runbook section to production deployment guide
+- Added token-endpoint-specific `429` response example and optional smoke test verification flow
+- Expanded monitoring queries and alert starters for `/v1/token` throttling signals
+- Added docs CI guard for current-release pinned image tag consistency
+- Added operator quick card runbook (`docs/operations/operator-quick-card.md`) for rollout/incident triage
+- Added trusted proxy reference guide (`docs/operations/trusted-proxy-reference.md`) for source-IP safety checks
+- Added release note and upgrade guide templates (`docs/releases/_template.md`, `docs/releases/_upgrade-template.md`)
+- Added auth docs retry handling snippets for token endpoint `429` and `Retry-After`
+- Added docs architecture map updates for CI docs guards and local validation workflow
+- Added Phase 3 planning roadmap (`docs/development/docs-phase-3-roadmap.md`)
+- Expanded Phase 3 roadmap with prioritized backlog (`S/M/L`), dependencies, and execution order
+- Added Phase 4 micro-roadmap (`docs/development/docs-phase-4-roadmap.md`) with 3 PR plan and CI guard proposals
+- Added incident decision tree and first-15-minutes incident playbook runbooks
+- Added known limitations page for rate limiting, proxy trust, and KMS startup tradeoffs
+- Added versioned examples index by release (`docs/examples/versioned-by-release.md`)
+- Added day-0 onboarding walkthroughs for operator and developer personas
+- Added persona landing pages (`docs/personas/operator.md`, `docs/personas/developer.md`, `docs/personas/security.md`)
+- Added docs KPI page and postmortem-to-doc feedback loop guidance
+- Added consolidated docs master backlog (`docs/development/docs-master-backlog.md`)
+- Added search alias shortcuts in docs index for faster incident/runbook discovery
+- Added command verification markers to key rollout/troubleshooting/smoke docs
 
 ## 2026-02-19 (docs v12 - v0.6.0 release prep)
 
