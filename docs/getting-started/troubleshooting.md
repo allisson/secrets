@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this guide for common setup and runtime errors.
 
@@ -9,7 +9,7 @@ Use this guide for common setup and runtime errors.
 Use this quick route before diving into detailed sections:
 
 1. `curl http://localhost:8080/health` fails -> go to `Database connection failure` and `Migration failure`
-2. Token endpoint (`POST /v1/token`) returns `401`/`403` -> go to `401 Unauthorized` or `Token issuance fails with valid-looking credentials`
+2. Token endpoint (`POST /v1/token`) returns `401`/`403`/`429` -> go to `401 Unauthorized`, `429 Too Many Requests`, or `Token issuance fails with valid-looking credentials`
 3. API requests return `403` with valid token -> go to `403 Forbidden` (policy/capability mismatch)
 4. API requests return `422` -> go to `422 Unprocessable Entity` (payload/query format)
 5. API requests return `429` -> go to `429 Too Many Requests` (rate limiting)
@@ -112,17 +112,26 @@ Common 422 cases:
 ## 429 Too Many Requests
 
 - Symptom: authenticated requests return `429`
-- Likely cause: per-client rate limit exceeded
+- Likely cause: per-client rate limit exceeded on authenticated endpoints, or per-IP token endpoint rate limit exceeded on `POST /v1/token`
 - Fix:
   - check `Retry-After` response header and back off before retrying
   - implement exponential backoff with jitter in client retry logic
   - reduce request burst/concurrency from caller
   - tune `RATE_LIMIT_REQUESTS_PER_SEC` and `RATE_LIMIT_BURST` if traffic is legitimate
+  - for `POST /v1/token`, tune `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC` and `RATE_LIMIT_TOKEN_BURST` if callers share NAT/proxy egress
+
+Trusted proxy checks for token endpoint (`POST /v1/token`):
+
+- If many callers suddenly look like one IP, verify proxy forwarding and trusted proxy settings
+- If `X-Forwarded-For` is accepted from untrusted sources, IP spoofing can bypass intended per-IP controls
+- Compare application logs (`client_ip`) with edge proxy logs to confirm real source-IP propagation
+- Use [Trusted proxy reference](../operations/trusted-proxy-reference.md) for a platform checklist
 
 Quick note:
 
-- Rate limiting applies to authenticated API groups (`/v1/clients`, `/v1/secrets`, `/v1/transit`, `/v1/tokenization`, `/v1/audit-logs`)
-- Rate limiting does not apply to `/health`, `/ready`, `/metrics`, and token issuance (`POST /v1/token`)
+- Authenticated rate limiting applies to `/v1/clients`, `/v1/secrets`, `/v1/transit`, `/v1/tokenization`, and `/v1/audit-logs`
+- IP-based rate limiting applies to token issuance (`POST /v1/token`)
+- Rate limiting does not apply to `/health`, `/ready`, and `/metrics`
 
 ## CORS and preflight failures
 
@@ -215,6 +224,8 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
 
 Use these quick checks when startup errors suggest key mode mismatch:
 
+> Command status: verified on 2026-02-20
+
 ```bash
 # 1) Check selected mode variables
 env | grep -E '^(KMS_PROVIDER|KMS_KEY_URI|ACTIVE_MASTER_KEY_ID|MASTER_KEYS)='
@@ -252,17 +263,17 @@ Expected patterns:
 Historical note:
 
 - This section is retained for mixed-version or rollback investigations involving pre-`v0.5.1` builds.
-- For current rollouts, prioritize KMS mode diagnostics and the `v0.6.0` upgrade path.
+- For current rollouts, prioritize KMS mode diagnostics and the `v0.7.0` upgrade path.
 
 - Symptom: startup succeeds, but key-dependent operations fail unexpectedly after a recent rollout
 - Likely cause: running a pre-`v0.5.1` build where decoded master key buffers could be zeroed too early
 - Mixed-version rollout symptom: some requests pass while others fail if old and new images are serving traffic together
 - Version fingerprint checks:
   - local binary: `./bin/app --version`
-  - pinned image check: `docker run --rm allisson/secrets:v0.6.0 --version`
+  - pinned image check: `docker run --rm allisson/secrets:v0.7.0 --version`
   - running containers: `docker ps --format 'table {{.Names}}\t{{.Image}}'`
 - Fix:
-  - upgrade all instances to `v0.6.0` (or at minimum `v0.5.1+`)
+  - upgrade all instances to `v0.7.0` (or at minimum `v0.5.1+`)
   - restart API instances after deploy
   - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
   - review [v0.5.1 release notes](../releases/v0.5.1.md) and
@@ -291,7 +302,7 @@ Historical note:
 - Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.6.0 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.7.0 migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)
@@ -344,3 +355,4 @@ Q: Why is wildcard `*` risky for normal service clients?
 - [Local development](local-development.md)
 - [Operator runbook index](../operations/runbook-index.md)
 - [Production operations](../operations/production.md)
+- [Trusted proxy reference](../operations/trusted-proxy-reference.md)

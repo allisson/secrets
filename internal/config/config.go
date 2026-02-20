@@ -29,10 +29,15 @@ type Config struct {
 	// Auth
 	AuthTokenExpiration time.Duration
 
-	// Rate Limiting
+	// Rate Limiting (authenticated endpoints)
 	RateLimitEnabled        bool
 	RateLimitRequestsPerSec float64
 	RateLimitBurst          int
+
+	// Rate Limiting for Token Endpoint (IP-based, unauthenticated)
+	RateLimitTokenEnabled        bool
+	RateLimitTokenRequestsPerSec float64
+	RateLimitTokenBurst          int
 
 	// CORS
 	CORSEnabled      bool
@@ -73,10 +78,15 @@ func Load() *Config {
 		// Auth
 		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 14400, time.Second),
 
-		// Rate Limiting
+		// Rate Limiting (authenticated endpoints)
 		RateLimitEnabled:        env.GetBool("RATE_LIMIT_ENABLED", true),
 		RateLimitRequestsPerSec: env.GetFloat64("RATE_LIMIT_REQUESTS_PER_SEC", 10.0),
 		RateLimitBurst:          env.GetInt("RATE_LIMIT_BURST", 20),
+
+		// Rate Limiting for Token Endpoint (IP-based, unauthenticated)
+		RateLimitTokenEnabled:        env.GetBool("RATE_LIMIT_TOKEN_ENABLED", true),
+		RateLimitTokenRequestsPerSec: env.GetFloat64("RATE_LIMIT_TOKEN_REQUESTS_PER_SEC", 5.0),
+		RateLimitTokenBurst:          env.GetInt("RATE_LIMIT_TOKEN_BURST", 10),
 
 		// CORS
 		CORSEnabled:      env.GetBool("CORS_ENABLED", false),

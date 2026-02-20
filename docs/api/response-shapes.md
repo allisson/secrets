@@ -1,6 +1,6 @@
 # 🧱 API Response Shapes
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 > Applies to: API v1
 
 Use these representative response schemas as a stable reference across endpoint docs.
@@ -165,6 +165,18 @@ Representative rate-limit payload (`429 Too Many Requests`):
 ```
 
 Rate-limit responses include a `Retry-After` header in seconds.
+
+For `POST /v1/token`, the `message` text may be token-endpoint specific while keeping the same
+error key and `429` contract.
+
+Representative token endpoint payload (`POST /v1/token`, `429 Too Many Requests`):
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "message": "Too many token requests from this IP. Please retry after the specified delay."
+}
+```
 
 Representative conflict payload (for example duplicate transit key create):
 

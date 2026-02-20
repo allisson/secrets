@@ -122,6 +122,9 @@ jobs:
 
           python3 docs/tools/check_docs_metadata.py
 
+      - name: Docs release image tag checks
+        run: python3 docs/tools/check_release_image_tags.py
+
       - name: OpenAPI validation
         run: |
           set -euo pipefail

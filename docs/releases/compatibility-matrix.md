@@ -1,6 +1,6 @@
 # 🔁 Release Compatibility Matrix
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this page to understand upgrade impact between recent releases.
 
@@ -8,6 +8,7 @@ Use this page to understand upgrade impact between recent releases.
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.6.0 -> v0.7.0` | No new mandatory migration | Added IP-based token endpoint rate limiting (`RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`), token endpoint may return `429` with `Retry-After` | Add and tune `RATE_LIMIT_TOKEN_*`, validate token issuance under normal and burst load, review trusted proxy/IP behavior |
 | `v0.5.1 -> v0.6.0` | No new mandatory migration | Added KMS-based master key support (`KMS_PROVIDER`, `KMS_KEY_URI`), new `rotate-master-key` CLI workflow | Decide KMS vs legacy mode, validate startup key loading, run key-dependent smoke checks |
 | `v0.5.0 -> v0.5.1` | No new mandatory migration | Master key memory handling bugfix and teardown zeroing hardening | Deploy `v0.5.1` and verify key-dependent flows (token, secrets, transit) |
 | `v0.4.x -> v0.5.1` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default); includes `v0.5.1` master key memory handling hardening | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required, then run key-dependent smoke checks |
@@ -15,6 +16,13 @@ Use this page to understand upgrade impact between recent releases.
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.7.0`:
+
+1. `GET /health` and `GET /ready` pass
+2. `POST /v1/token` issues tokens at normal traffic levels
+3. Controlled token burst returns `429` with `Retry-After`
+4. Secrets and transit round-trip flows succeed
 
 For `v0.6.0`:
 
@@ -44,6 +52,8 @@ For `v0.5.0`:
 
 ## See also
 
+- [v0.7.0 release notes](v0.7.0.md)
+- [v0.7.0 upgrade guide](v0.7.0-upgrade.md)
 - [v0.6.0 release notes](v0.6.0.md)
 - [v0.6.0 upgrade guide](v0.6.0-upgrade.md)
 - [v0.5.1 release notes](v0.5.1.md)

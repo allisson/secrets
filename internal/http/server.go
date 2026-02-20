@@ -123,11 +123,25 @@ func (s *Server) SetupRouter(
 		)
 	}
 
+	// Create token rate limit middleware (IP-based, for unauthenticated token endpoint)
+	var tokenRateLimitMiddleware gin.HandlerFunc
+	if cfg.RateLimitTokenEnabled {
+		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
+			cfg.RateLimitTokenRequestsPerSec,
+			cfg.RateLimitTokenBurst,
+			s.logger,
+		)
+	}
+
 	// API v1 routes
 	v1 := router.Group("/v1")
 	{
-		// Token issuance endpoint (no authentication required)
-		v1.POST("/token", tokenHandler.IssueTokenHandler)
+		// Token issuance endpoint (no authentication required, IP-based rate limiting)
+		if tokenRateLimitMiddleware != nil {
+			v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
+		} else {
+			v1.POST("/token", tokenHandler.IssueTokenHandler)
+		}
 
 		// Client management endpoints
 		clients := v1.Group("/clients")

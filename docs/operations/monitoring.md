@@ -1,6 +1,6 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
 
@@ -302,11 +302,41 @@ sum(rate(secrets_http_requests_total[5m])) by (path)
 sum(rate(secrets_http_requests_total{status_code="403"}[5m])) by (path)
 ```
 
+**Token endpoint `429` ratio (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{path="/v1/token",status_code="429"}[5m]))
+/
+sum(rate(secrets_http_requests_total{path="/v1/token"}[5m]))
+```
+
+**Token endpoint request rate by status (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{path="/v1/token"}[5m])) by (status_code)
+```
+
+**Token issuance success ratio (5m):**
+
+```promql
+sum(rate(secrets_http_requests_total{path="/v1/token",status_code="201"}[5m]))
+/
+sum(rate(secrets_http_requests_total{path="/v1/token"}[5m]))
+```
+
 Rate-limit interpretation notes:
 
 - Stable low-volume `429` can be normal under bursty workloads
 - Rising `429` with rising latency usually indicates saturation or mis-tuned clients
 - Tune `RATE_LIMIT_REQUESTS_PER_SEC` and `RATE_LIMIT_BURST` only after retry behavior is verified
+- For token issuance spikes, tune `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC` and `RATE_LIMIT_TOKEN_BURST`
+
+Token endpoint alert starters:
+
+| Signal | Warning | Critical | Interpretation |
+| --- | --- | --- | --- |
+| `/v1/token` `429` ratio (5m) | `> 0.05` for 10m | `> 0.20` for 10m | Shared egress saturation, attack traffic, or strict limits |
+| `/v1/token` success ratio (5m) | `< 0.95` for 10m | `< 0.80` for 10m | Legitimate token issuance degradation |
 
 ### Tokenization-focused Queries
 
@@ -438,6 +468,42 @@ Suggested escalation policy:
   annotations:
     summary: "Sustained 429 on secrets/transit routes"
     description: "Critical crypto routes are being throttled above threshold"
+```
+
+#### Token Endpoint 429 Ratio (Warning)
+
+```yaml
+- alert: TokenEndpoint429RatioWarning
+  expr: |
+    (
+      sum(rate(secrets_http_requests_total{path="/v1/token",status_code="429"}[10m]))
+      /
+      sum(rate(secrets_http_requests_total{path="/v1/token"}[10m]))
+    ) > 0.05
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Token endpoint throttling elevated"
+    description: "More than 5% of /v1/token requests are returning 429"
+```
+
+#### Token Endpoint 429 Ratio (Critical)
+
+```yaml
+- alert: TokenEndpoint429RatioCritical
+  expr: |
+    (
+      sum(rate(secrets_http_requests_total{path="/v1/token",status_code="429"}[10m]))
+      /
+      sum(rate(secrets_http_requests_total{path="/v1/token"}[10m]))
+    ) > 0.20
+  for: 10m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Token endpoint throttling critical"
+    description: "More than 20% of /v1/token requests are returning 429"
 ```
 
 ## Disabling Metrics

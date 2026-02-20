@@ -1,6 +1,6 @@
 # 🚑 Failure Playbooks
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this page for fast incident triage on common API failures.
 
@@ -88,6 +88,8 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 
 ## See also
 
+- [Incident decision tree](incident-decision-tree.md)
+- [First 15 Minutes Playbook](first-15-minutes.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)
 - [Policies cookbook](../api/policies.md)
 - [Policy smoke tests](policy-smoke-tests.md)

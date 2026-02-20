@@ -1,6 +1,6 @@
 # 🏭 Production Deployment Guide
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 This guide covers baseline production hardening and operations for Secrets.
 
@@ -17,6 +17,7 @@ This guide covers baseline production hardening and operations for Secrets.
 - [7) Incident Response Checklist](#7-incident-response-checklist)
 - [8) Go-Live Checklist](#8-go-live-checklist)
 - [9) Golden Path Rollout (Recommended)](#9-golden-path-rollout-recommended)
+- [10) Token Endpoint Throttling Runbook](#10-token-endpoint-throttling-runbook)
 
 ## 1) TLS and Reverse Proxy
 
@@ -58,6 +59,8 @@ Backup/restore checklist:
 
 Audit log retention routine (recommended monthly):
 
+> Command status: verified on 2026-02-20
+
 ```bash
 # 1) Preview rows older than 90 days
 ./bin/app clean-audit-logs --days 90 --dry-run --format json
@@ -67,6 +70,8 @@ Audit log retention routine (recommended monthly):
 ```
 
 Token retention routine (recommended monthly for tokenization workloads):
+
+> Command status: verified on 2026-02-20
 
 ```bash
 # 1) Preview expired tokens older than 30 days
@@ -165,7 +170,41 @@ Adjust retention to match your compliance and incident-response requirements.
 - Follow [Production rollout golden path](production-rollout.md) for step-by-step deployment,
   verification gates, and rollback triggers
 - Use [Release compatibility matrix](../releases/compatibility-matrix.md) before planning upgrades
-- Keep [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md) attached to rollout change tickets
+- Keep [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md) attached to rollout change tickets
+
+## 10) Token Endpoint Throttling Runbook
+
+Use this when `POST /v1/token` shows sustained `429 Too Many Requests`.
+
+Triage steps:
+
+1. Confirm symptom and blast radius:
+   - verify `429` responses include `Retry-After`
+   - verify issue is concentrated on `/v1/token` or system-wide
+2. Identify caller pattern:
+   - check `429` by route and token endpoint ratio in [Monitoring](monitoring.md)
+   - confirm whether affected clients share NAT/proxy egress IPs
+3. Validate real client-IP handling:
+   - ensure reverse proxy forwards client IP headers correctly
+   - ensure trusted proxy settings prevent spoofed forwarded headers
+4. Apply temporary tuning window (if legitimate traffic):
+   - increase `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC` and `RATE_LIMIT_TOKEN_BURST`
+   - roll changes with standard deployment controls
+5. Verify recovery:
+   - token issuance success ratio normalizes
+   - no collateral increase in error rates for protected routes
+
+Trusted proxy guidance:
+
+- Validate forwarded-header trust and source-IP propagation using
+  [Trusted proxy reference](trusted-proxy-reference.md)
+
+Rollback of temporary tuning:
+
+1. Revert `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC` and `RATE_LIMIT_TOKEN_BURST` to baseline values
+2. Roll configuration update
+3. Re-check `/v1/token` `429` ratio and token issuance success ratio
+4. Keep incident notes with final thresholds for future baseline reviews
 
 ## See also
 
@@ -174,10 +213,11 @@ Adjust retention to match your compliance and incident-response requirements.
 - [Production rollout golden path](production-rollout.md)
 - [Operator runbook index](runbook-index.md)
 - [Monitoring](monitoring.md)
+- [Trusted proxy reference](trusted-proxy-reference.md)
 - [Operator drills (quarterly)](operator-drills.md)
 - [Policy smoke tests](policy-smoke-tests.md)
-- [v0.6.0 release notes](../releases/v0.6.0.md)
-- [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md)
+- [v0.7.0 release notes](../releases/v0.7.0.md)
+- [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md)
 - [KMS migration checklist](kms-migration-checklist.md)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Environment variables](../configuration/environment-variables.md)

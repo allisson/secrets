@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this guide when adding or editing project documentation.
 
@@ -123,6 +123,15 @@ For behavior changes, update all relevant docs in the same PR:
 - Every functional change PR should include corresponding docs updates when behavior changes
 - Perform a monthly docs review for stale examples, outdated commands, and dead links
 - During releases, verify `Last updated` metadata and append entries to `docs/CHANGELOG.md`
+
+Incident feedback policy:
+
+- For Sev incidents, apply the [Postmortem to docs feedback loop](development/postmortem-doc-loop.md)
+- Incident remediations should either update docs or record explicit no-doc-change rationale
+
+Quality KPIs:
+
+- Track baseline docs quality via [Docs quality KPIs](development/docs-quality-kpis.md)
 
 ## Docs Release Process
 

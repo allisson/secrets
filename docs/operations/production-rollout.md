@@ -1,12 +1,12 @@
 # 🚀 Production Rollout Golden Path
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
 ## Scope
 
-- Deploy target: Secrets `v0.6.0`
+- Deploy target: Secrets `v0.7.0`
 - Database schema changes: run migrations before traffic cutover
 - Crypto bootstrap: ensure initial KEK exists for write/encrypt flows
 
@@ -21,19 +21,21 @@ Use this runbook for a standard production rollout with verification and rollbac
 
 ## Copy/Paste Rollout Commands
 
+> Command status: verified on 2026-02-20
+
 ```bash
 # 1) Pull target release
-docker pull allisson/secrets:v0.6.0
+docker pull allisson/secrets:v0.7.0
 
 # 2) Run migrations
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 migrate
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.7.0 migrate
 
 # 3) Bootstrap KEK only for first-time environment setup
-docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.6.0 create-kek --algorithm aes-gcm
+docker run --rm --network secrets-net --env-file .env allisson/secrets:v0.7.0 create-kek --algorithm aes-gcm
 
 # 4) Start API
 docker run --rm --name secrets-api --network secrets-net --env-file .env -p 8080:8080 \
-  allisson/secrets:v0.6.0 server
+  allisson/secrets:v0.7.0 server
 ```
 
 ## Verification Gates
@@ -81,8 +83,8 @@ Gate C (policy and observability):
 ## See also
 
 - [Production deployment guide](production.md)
-- [v0.6.0 release notes](../releases/v0.6.0.md)
-- [v0.6.0 upgrade guide](../releases/v0.6.0-upgrade.md)
+- [v0.7.0 release notes](../releases/v0.7.0.md)
+- [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md)
 - [KMS migration checklist](kms-migration-checklist.md)
 - [Release compatibility matrix](../releases/compatibility-matrix.md)
 - [Smoke test guide](../getting-started/smoke-test.md)

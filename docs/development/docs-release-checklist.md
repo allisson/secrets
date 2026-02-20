@@ -1,6 +1,6 @@
 # 🧾 Docs Release Checklist
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navigable.
 
@@ -15,6 +15,9 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 
 - Add release notes: `docs/releases/vX.Y.Z.md`
 - Add upgrade guide when behavior/defaults change: `docs/releases/vX.Y.Z-upgrade.md`
+- Start from templates:
+  - `docs/releases/_template.md`
+  - `docs/releases/_upgrade-template.md`
 - Update release compatibility matrix: `docs/releases/compatibility-matrix.md`
 - Promote new release links in docs indexes and operator runbooks
 
@@ -46,6 +49,7 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
   intended for reproducible operations.
 - Use `allisson/secrets:latest` only in explicitly marked fast-iteration/dev-only examples.
 - In one document, avoid mixing pinned and `latest` tags unless the distinction is explicitly explained.
+- Ensure current-release pinned tag consistency guard passes (`docs/tools/check_release_image_tags.py`).
 
 ## 6) Validation before merge
 
@@ -55,6 +59,7 @@ Run:
 make docs-lint
 make docs-check-examples
 make docs-check-metadata
+make docs-check-release-tags
 ```
 
 CI should also validate:
