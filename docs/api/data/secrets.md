@@ -1,6 +1,6 @@
 # 📦 Secrets API
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 > Applies to: API v1
 
 Secrets are versioned by path and encrypted with envelope encryption.

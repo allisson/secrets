@@ -1,6 +1,6 @@
 # 🎫 Tokenization API
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 > Applies to: API v1
 
 The Tokenization API provides format-preserving token generation for sensitive values,

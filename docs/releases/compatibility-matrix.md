@@ -4,6 +4,12 @@
 
 Use this page to understand upgrade impact between recent releases.
 
+## Coverage Policy
+
+This matrix covers **recent releases only** (typically last 5-6 versions) to focus on relevant upgrade paths. Historical releases remain documented in [RELEASES.md](RELEASES.md) but are excluded here to avoid clutter.
+
+If you need upgrade guidance for older versions, consult the full release history in [RELEASES.md](RELEASES.md) or reach out via GitHub issues.
+
 ## Matrix
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |

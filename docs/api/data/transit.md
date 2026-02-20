@@ -1,6 +1,6 @@
 # 🚄 Transit API
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 > Applies to: API v1
 
 Transit API encrypts/decrypts data without storing your application payload.

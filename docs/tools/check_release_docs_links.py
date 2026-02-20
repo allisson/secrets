@@ -8,6 +8,7 @@ This script checks:
 3. Navigation files link to RELEASES.md
 """
 
+import json
 import os
 import re
 import subprocess
@@ -39,15 +40,25 @@ def extract_version_headers(content: str) -> list[str]:
     return pattern.findall(content)
 
 
-def get_releases_diff(base_sha: str, head_sha: str) -> list[str]:
-    """Return list of new version entries added to RELEASES.md."""
+def get_releases_diff(base_sha: str, head_sha: str) -> tuple[list[str], bool]:
+    """Return list of new version entries and whether this is a consolidation.
+
+    Returns:
+        tuple: (list of versions to validate, is_consolidation flag)
+
+    During consolidation migrations (when RELEASES.md is newly created with many
+    versions), only the current release from metadata.json is validated to avoid
+    requiring historical versions in the compatibility matrix.
+    """
     try:
         # Get old version of RELEASES.md
         old_content = run(["git", "show", f"{base_sha}:docs/releases/RELEASES.md"])
         old_versions = set(extract_version_headers(old_content))
+        is_consolidation = False
     except subprocess.CalledProcessError:
-        # File might not exist in base (first time)
+        # File might not exist in base (first time / consolidation)
         old_versions = set()
+        is_consolidation = True
 
     # Get new version of RELEASES.md
     new_content = RELEASES_FILE.read_text(encoding="utf-8")
@@ -55,7 +66,22 @@ def get_releases_diff(base_sha: str, head_sha: str) -> list[str]:
 
     # Find newly added versions
     added = new_versions - old_versions
-    return sorted(added)
+
+    # If this looks like a consolidation (many versions added at once),
+    # only validate the current release from metadata
+    if is_consolidation and len(added) > 3:
+        metadata_path = Path("docs/metadata.json")
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            current = metadata.get("current_release", "").lstrip("v")
+            if current in added:
+                # Only validate current release during consolidation
+                return [current], True
+        # Fallback: if current_release not found, validate all
+        return sorted(added), True
+
+    # Normal case: validate all new releases
+    return sorted(added), False
 
 
 def require_contains(path: Path, needle: str) -> None:
@@ -99,12 +125,17 @@ def main() -> None:
         return
 
     # Get new releases added
-    new_versions = get_releases_diff(base_sha, head_sha)
+    new_versions, is_consolidation = get_releases_diff(base_sha, head_sha)
     if not new_versions:
         print("release docs guard passed (no new release entries detected)")
         return
 
-    print(f"Detected new release(s): {', '.join(new_versions)}")
+    if is_consolidation:
+        print(
+            f"Detected consolidation migration, validating current release only: {', '.join(new_versions)}"
+        )
+    else:
+        print(f"Detected new release(s): {', '.join(new_versions)}")
 
     # Validate each new release
     for version in new_versions:

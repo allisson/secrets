@@ -1,6 +1,6 @@
 # 🧪 Policy Smoke Tests
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Use this page to quickly validate authorization behavior after policy changes.
 
