@@ -38,7 +38,7 @@ def main() -> None:
             "docs/openapi.yaml version does not match docs/metadata.json api_version"
         )
 
-    api_pages = sorted(Path("docs/api").glob("*.md"))
+    api_pages = sorted(Path("docs/api").rglob("*.md"))
     missing = []
     marker = f"> Applies to: API {api_version}"
     for page in api_pages:

@@ -76,7 +76,7 @@ def validate_release_in_consolidated(version: str) -> None:
     # Ensure main navigation points to RELEASES.md
     require_contains(Path("docs/README.md"), "releases/RELEASES.md")
     require_contains(
-        Path("docs/operations/runbook-index.md"), "../releases/RELEASES.md"
+        Path("docs/operations/runbooks/README.md"), "../../releases/RELEASES.md"
     )
 
 

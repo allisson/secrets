@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Docs changelog guard (docs-only PRs)
+      - name: Changelog guard (docs-only PRs)
         if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
@@ -33,10 +33,12 @@ jobs:
           while IFS= read -r file; do
             [ -z "$file" ] && continue
 
-            if [ "$file" = "docs/CHANGELOG.md" ]; then
+            # Check if root CHANGELOG.md was updated
+            if [ "$file" = "CHANGELOG.md" ]; then
               changelog_updated=true
             fi
 
+            # Determine if this PR is docs-only
             case "$file" in
               docs/*|README.md)
                 ;;
@@ -49,7 +51,7 @@ jobs:
           EOF
 
           if [ "$docs_only" = true ] && [ "$changelog_updated" = false ]; then
-            echo "docs-only PRs must update docs/CHANGELOG.md"
+            echo "Documentation-only PRs must update CHANGELOG.md"
             exit 1
           fi
 
@@ -57,6 +59,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
+          # Requires Bash 4.0+ for ** glob patterns (GitHub Actions uses Bash 5.2.21)
 
           CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
           if [ -z "$CHANGED_FILES" ]; then
@@ -69,14 +72,28 @@ jobs:
           while IFS= read -r file; do
             [ -z "$file" ] && continue
 
+            # API/runtime implementation changes
             case "$file" in
               internal/*/http/*.go|cmd/app/commands/*.go|migrations/*/*.sql)
                 api_changed=true
                 ;;
             esac
 
+            # Documentation files that should be updated when API changes
+            # Note: docs/api/*.md matches root files, docs/api/**/*.md matches subdirectories
             case "$file" in
-              docs/api/*|docs/openapi.yaml|docs/examples/*|docs/operations/*|docs/getting-started/*|docs/cli/commands.md|docs/releases/*|docs/CHANGELOG.md|docs/README.md|docs/metadata.json|README.md)
+              docs/api/*.md|docs/api/**/*.md|\
+              docs/openapi.yaml|\
+              docs/examples/*.md|\
+              docs/operations/*.md|docs/operations/**/*.md|\
+              docs/getting-started/*.md|\
+              docs/cli-commands.md|\
+              docs/releases/*.md|\
+              docs/configuration.md|\
+              docs/README.md|\
+              docs/metadata.json|\
+              CHANGELOG.md|\
+              README.md)
                 docs_changed=true
                 ;;
             esac
@@ -86,7 +103,7 @@ jobs:
 
           if [ "$api_changed" = true ] && [ "$docs_changed" = false ]; then
             echo "API/runtime changes detected but no related docs updates found"
-            echo "Update docs/api, openapi/examples/runbooks/release notes as needed"
+            echo "Update docs/api/*/, openapi.yaml, examples/, operations/*/, or release notes/changelog as needed"
             exit 1
           fi
 
