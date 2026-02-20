@@ -15,7 +15,7 @@ func main() {
 	cmd := &cli.Command{
 		Name:    "app",
 		Usage:   "Go project template application",
-		Version: "1.0.0",
+		Version: "0.8.0",
 		Commands: []*cli.Command{
 			{
 				Name:  "server",

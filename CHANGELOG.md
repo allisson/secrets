@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Added `docs/releases/v0.6.0.md` release notes and `docs/releases/v0.6.0-upgrade.md` upgrade guide
-- Added KMS operations guide: `docs/operations/kms-setup.md`
+- Added KMS operations guide: `docs/operations/kms/setup.md`
 - Updated CLI and environment variable docs for KMS configuration and master key rotation workflows
 
 ## [0.5.1] - 2026-02-19
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Per-client rate limiting for authenticated endpoints (default: 10 req/sec, burst 20)
 - Configurable CORS support (disabled by default)
-- Comprehensive security hardening documentation (`docs/operations/security-hardening.md`)
+- Comprehensive security hardening documentation (`docs/operations/security/hardening.md`)
 - Rate limiting configuration via `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS_PER_SEC`, `RATE_LIMIT_BURST`
 - CORS configuration via `CORS_ENABLED`, `CORS_ALLOW_ORIGINS`
 
@@ -78,7 +78,7 @@ If you rely on the previous default token expiration of 24 hours, explicitly set
 Ensure your client applications handle token refresh before expiration. The shorter default expiration improves security but may require updating client-side token refresh logic if you were relying on the previous 24-hour default.
 
 **Database SSL/TLS:**
-If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in production, this is insecure. Update your `DB_CONNECTION_STRING` to use `sslmode=require` or `sslmode=verify-full` (PostgreSQL) or `tls=true` or `tls=custom` (MySQL). See `docs/operations/security-hardening.md` for guidance.
+If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in production, this is insecure. Update your `DB_CONNECTION_STRING` to use `sslmode=require` or `sslmode=verify-full` (PostgreSQL) or `tls=true` or `tls=custom` (MySQL). See `docs/operations/security/hardening.md` for guidance.
 
 ### Security
 - Added database SSL/TLS configuration warnings in documentation
@@ -87,7 +87,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Added metrics endpoint protection recommendations
 
 ### Documentation
-- Added `docs/operations/security-hardening.md` with comprehensive security guidance
+- Added `docs/operations/security/hardening.md` with comprehensive security guidance
 - Updated `docs/configuration/environment-variables.md` with new variables and security warnings
 - Updated `.env.example` with security warnings for development-only configurations
 - Updated `docs/getting-started/docker.md` and `docs/getting-started/local-development.md` with security warnings
@@ -133,7 +133,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Cryptographic operation metrics (secret operations, transit operations, audit log operations)
 
 ### Documentation
-- Added `docs/operations/monitoring.md` with Prometheus and Grafana quickstart
+- Added `docs/operations/observability/monitoring.md` with Prometheus and Grafana quickstart
 - Added metrics naming contract and endpoint documentation
 - Added production hardening guidance for securing `/metrics` endpoint
 

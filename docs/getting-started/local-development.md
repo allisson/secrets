@@ -4,7 +4,7 @@
 
 Use this path if you want to modify the source code and run from your workstation.
 
-**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security-hardening.md) and [Production Deployment Guide](../operations/production.md).
+**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security/hardening.md) and [Production Deployment Guide](../operations/deployment/production.md).
 
 ## Current Security Defaults
 
@@ -13,9 +13,9 @@ Use this path if you want to modify the source code and run from your workstatio
 - `RATE_LIMIT_TOKEN_ENABLED` default is `true` (per IP on `POST /v1/token`)
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` and now include token-endpoint rate limiting in `v0.7.0`.
+These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (current: v0.8.0).
 
-If upgrading from `v0.6.0`, review [v0.7.0 upgrade guide](../releases/v0.7.0-upgrade.md).
+If upgrading from `v0.6.0`, review [v0.7.0 upgrade guide](../releases/RELEASES.md#070---2026-02-20).
 
 ## Prerequisites
 
@@ -110,5 +110,5 @@ curl http://localhost:8080/health
 - [Docker getting started](docker.md)
 - [Smoke test](smoke-test.md)
 - [Troubleshooting](troubleshooting.md)
-- [Testing guide](../development/testing.md)
-- [CLI commands reference](../cli/commands.md)
+- [Development and testing](../contributing.md#development-and-testing)
+- [CLI commands reference](../cli-commands.md)

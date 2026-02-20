@@ -83,5 +83,5 @@ Expected result under throttling:
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
 - [Troubleshooting](troubleshooting.md)
-- [v0.7.0 release notes](../releases/v0.7.0.md)
+- [Release notes](../releases/RELEASES.md)
 - [Curl examples](../examples/curl.md)

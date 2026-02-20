@@ -350,4 +350,4 @@ Potential improvements for the container:
 - [Documentation index](../../docs/README.md)
 - [Architecture concepts](../../docs/concepts/architecture.md)
 - [Local development](../../docs/getting-started/local-development.md)
-- [Testing guide](../../docs/development/testing.md)
+- [Development and testing](../../docs/contributing.md#development-and-testing)

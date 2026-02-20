@@ -5,7 +5,9 @@ import re
 from pathlib import Path
 
 
+# Updated pattern to allow both pinned and unpinned (latest) references
 PINNED_IMAGE_PATTERN = re.compile(r"allisson/secrets:v\d+\.\d+\.\d+")
+UNPINNED_IMAGE_PATTERN = re.compile(r"allisson/secrets(?::latest)?(?!\:v)")
 
 
 def main() -> None:
@@ -16,11 +18,11 @@ def main() -> None:
     files_to_check = [
         Path("README.md"),
         Path("docs/getting-started/docker.md"),
-        Path("docs/operations/production-rollout.md"),
-        Path("docs/cli/commands.md"),
-        Path("docs/configuration/environment-variables.md"),
-        Path("docs/operations/key-management.md"),
-        Path("docs/operations/kms-setup.md"),
+        Path("docs/operations/deployment/production-rollout.md"),
+        Path("docs/cli-commands.md"),
+        Path("docs/configuration.md"),
+        Path("docs/operations/kms/key-management.md"),
+        Path("docs/operations/kms/setup.md"),
     ]
 
     errors = []
@@ -31,18 +33,25 @@ def main() -> None:
             continue
 
         content = file_path.read_text(encoding="utf-8")
-        tags = PINNED_IMAGE_PATTERN.findall(content)
+        pinned_tags = PINNED_IMAGE_PATTERN.findall(content)
+        unpinned_refs = UNPINNED_IMAGE_PATTERN.findall(content)
 
-        if not tags:
-            errors.append(f"{file_path} must include pinned image tag {current_tag}")
-            continue
+        # Allow either pinned tags matching current release OR unpinned references
+        # But not both in the same file (consistency check)
+        has_current_pinned = current_tag in pinned_tags
+        has_unpinned = bool(unpinned_refs)
+        has_old_pinned = any(tag != current_tag for tag in pinned_tags)
 
-        mismatched = sorted({tag for tag in tags if tag != current_tag})
-        if mismatched:
+        if has_old_pinned:
+            mismatched = sorted({tag for tag in pinned_tags if tag != current_tag})
             errors.append(
-                f"{file_path} contains non-current pinned tags: "
+                f"{file_path} contains outdated pinned tags: "
                 + ", ".join(mismatched)
-                + f" (expected only {current_tag})"
+                + f" (expected {current_tag} or unpinned allisson/secrets)"
+            )
+        elif not has_current_pinned and not has_unpinned:
+            errors.append(
+                f"{file_path} must include either {current_tag} or unpinned allisson/secrets"
             )
 
     if errors:

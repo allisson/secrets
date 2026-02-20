@@ -7,7 +7,7 @@
 End-to-end shell workflow.
 
 Need first credentials? Create an API client with `app create-client` first.
-See [CLI commands reference](../cli/commands.md).
+See [CLI commands reference](../cli-commands.md).
 
 ## Bootstrap
 
@@ -187,8 +187,8 @@ Deterministic caveat:
 
 ## See also
 
-- [Authentication API](../api/authentication.md)
-- [Secrets API](../api/secrets.md)
-- [Transit API](../api/transit.md)
-- [Clients API](../api/clients.md)
-- [API rate limiting](../api/rate-limiting.md)
+- [Authentication API](../api/auth/authentication.md)
+- [Secrets API](../api/data/secrets.md)
+- [Transit API](../api/data/transit.md)
+- [Clients API](../api/auth/clients.md)
+- [API rate limiting](../api/fundamentals.md#rate-limiting)
