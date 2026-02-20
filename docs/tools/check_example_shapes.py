@@ -20,8 +20,10 @@ def require_keys(payload: dict, keys: list[str], label: str) -> None:
 
 
 def main() -> None:
-    response_shapes = Path("docs/api/response-shapes.md").read_text(encoding="utf-8")
-    transit_api = Path("docs/api/transit.md").read_text(encoding="utf-8")
+    response_shapes = Path("docs/api/observability/response-shapes.md").read_text(
+        encoding="utf-8"
+    )
+    transit_api = Path("docs/api/data/transit.md").read_text(encoding="utf-8")
 
     token = extract_json_block(response_shapes, "Token issuance:")
     require_keys(token, ["token", "expires_at"], "Token issuance")

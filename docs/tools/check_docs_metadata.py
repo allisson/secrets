@@ -23,11 +23,13 @@ def main() -> None:
     require_contains(Path("docs/README.md"), current_release)
 
     # Ensure current release docs links are present in key navigation pages.
-    current_release_note = f"docs/releases/{current_release}.md"
+    # After consolidation, all releases are in RELEASES.md with anchor links.
+    # We only check that RELEASES.md exists and is referenced.
+    current_release_note = "docs/releases/RELEASES.md"
     require_contains(Path("README.md"), current_release_note)
-    require_contains(Path("docs/README.md"), f"releases/{current_release}.md")
+    require_contains(Path("docs/README.md"), "releases/RELEASES.md")
     require_contains(
-        Path("docs/operations/runbook-index.md"), f"../releases/{current_release}.md"
+        Path("docs/operations/runbooks/README.md"), "../releases/RELEASES.md"
     )
 
     openapi = Path("docs/openapi.yaml").read_text(encoding="utf-8")
@@ -36,7 +38,7 @@ def main() -> None:
             "docs/openapi.yaml version does not match docs/metadata.json api_version"
         )
 
-    api_pages = sorted(Path("docs/api").glob("*.md"))
+    api_pages = sorted(Path("docs/api").rglob("*.md"))
     missing = []
     marker = f"> Applies to: API {api_version}"
     for page in api_pages:
@@ -50,10 +52,10 @@ def main() -> None:
     # Ensure docs index points to metadata source.
     require_contains(Path("docs/README.md"), "docs/metadata.json")
 
-    # Soft check: release notes for current release should exist.
-    release_file = Path(f"docs/releases/{current_release}.md")
+    # Soft check: RELEASES.md should exist (consolidated structure).
+    release_file = Path("docs/releases/RELEASES.md")
     if not release_file.exists():
-        raise ValueError(f"Missing release notes file: {release_file}")
+        raise ValueError(f"Missing consolidated release notes file: {release_file}")
 
     # Keep date shape simple for maintainers.
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", metadata["last_docs_refresh"]):

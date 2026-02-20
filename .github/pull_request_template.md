@@ -14,6 +14,6 @@
 
 - [ ] Documentation updated for behavior/contract changes
 - [ ] `Last updated` metadata refreshed in changed docs pages
-- [ ] `docs/CHANGELOG.md` updated for significant docs changes
+- [ ] `CHANGELOG.md` updated for significant docs changes
 - [ ] `make docs-lint` passes locally
 - [ ] Examples/commands were validated or reviewed for accuracy

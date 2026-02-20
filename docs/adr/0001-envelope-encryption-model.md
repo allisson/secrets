@@ -27,4 +27,5 @@ Use envelope encryption hierarchy:
 
 - [Architecture](../concepts/architecture.md)
 - [Security model](../concepts/security-model.md)
-- [Key management operations](../operations/key-management.md)
+- [Key management operations](../operations/kms/key-management.md)
+- [ADR 0004: Dual Database Support](0004-dual-database-support.md) - Database storage for encrypted key material

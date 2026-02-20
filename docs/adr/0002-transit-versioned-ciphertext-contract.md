@@ -25,6 +25,7 @@ Adopt transit ciphertext contract:
 
 ## See also
 
-- [Transit API](../api/transit.md)
-- [Response shapes](../api/response-shapes.md)
+- [Transit API](../api/data/transit.md)
+- [Response shapes](../api/observability/response-shapes.md)
 - [Troubleshooting](../getting-started/troubleshooting.md)
+- [ADR 0007: Path-Based API Versioning](0007-path-based-api-versioning.md) - API versioning context for ciphertext format stability

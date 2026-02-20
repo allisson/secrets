@@ -1,6 +1,6 @@
 # 🐍 Python Examples
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
@@ -167,9 +167,9 @@ Rate-limit note:
 
 ## See also
 
-- [Authentication API](../api/authentication.md)
-- [Secrets API](../api/secrets.md)
-- [Transit API](../api/transit.md)
-- [Tokenization API](../api/tokenization.md)
-- [Response shapes](../api/response-shapes.md)
-- [API rate limiting](../api/rate-limiting.md)
+- [Authentication API](../api/auth/authentication.md)
+- [Secrets API](../api/data/secrets.md)
+- [Transit API](../api/data/transit.md)
+- [Tokenization API](../api/data/tokenization.md)
+- [Response shapes](../api/observability/response-shapes.md)
+- [API rate limiting](../api/fundamentals.md#rate-limiting)

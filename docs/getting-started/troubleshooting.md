@@ -125,7 +125,7 @@ Trusted proxy checks for token endpoint (`POST /v1/token`):
 - If many callers suddenly look like one IP, verify proxy forwarding and trusted proxy settings
 - If `X-Forwarded-For` is accepted from untrusted sources, IP spoofing can bypass intended per-IP controls
 - Compare application logs (`client_ip`) with edge proxy logs to confirm real source-IP propagation
-- Use [Trusted proxy reference](../operations/trusted-proxy-reference.md) for a platform checklist
+- Use [Trusted proxy reference](../operations/security/hardening.md#trusted-proxy-configuration) for a platform checklist
 
 Quick note:
 
@@ -256,28 +256,27 @@ Expected patterns:
   - verify `KMS_KEY_URI` points to the key used to encrypt `MASTER_KEYS`
   - confirm KMS IAM/policy includes decrypt permissions
   - rotate/regenerate master key entries if ciphertext was truncated or malformed
-  - use provider setup checks in [KMS setup guide](../operations/kms-setup.md)
+  - use provider setup checks in [KMS setup guide](../operations/kms/setup.md)
 
 ## Master key load regression triage (historical v0.5.1 fix)
 
 Historical note:
 
 - This section is retained for mixed-version or rollback investigations involving pre-`v0.5.1` builds.
-- For current rollouts, prioritize KMS mode diagnostics and the `v0.7.0` upgrade path.
+- For current rollouts, prioritize KMS mode diagnostics and recent upgrade paths.
 
 - Symptom: startup succeeds, but key-dependent operations fail unexpectedly after a recent rollout
 - Likely cause: running a pre-`v0.5.1` build where decoded master key buffers could be zeroed too early
 - Mixed-version rollout symptom: some requests pass while others fail if old and new images are serving traffic together
 - Version fingerprint checks:
   - local binary: `./bin/app --version`
-  - pinned image check: `docker run --rm allisson/secrets:v0.7.0 --version`
+  - pinned image check: `docker run --rm allisson/secrets --version`
   - running containers: `docker ps --format 'table {{.Names}}\t{{.Image}}'`
 - Fix:
-  - upgrade all instances to `v0.7.0` (or at minimum `v0.5.1+`)
+  - upgrade all instances to the latest version (v0.8.0 or at minimum `v0.5.1+`)
   - restart API instances after deploy
   - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
-  - review [v0.5.1 release notes](../releases/v0.5.1.md) and
-    [v0.5.1 upgrade guide](../releases/v0.5.1-upgrade.md)
+  - review [v0.5.1 release notes](../releases/RELEASES.md#051---2026-02-19)
 
 ## Missing KEK
 
@@ -302,7 +301,7 @@ Historical note:
 - Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 - Fix:
-  - run `./bin/app migrate` (or Docker `... allisson/secrets:v0.7.0 migrate`)
+  - run `./bin/app migrate` (or Docker `... allisson/secrets migrate`)
   - verify migration logs indicate `000002_add_tokenization` applied for your DB
   - confirm initial KEK exists (`create-kek` if missing)
   - re-run smoke flow for tokenization (`tokenize -> detokenize -> validate -> revoke`)
@@ -353,6 +352,6 @@ Q: Why is wildcard `*` risky for normal service clients?
 - [Smoke test](smoke-test.md)
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
-- [Operator runbook index](../operations/runbook-index.md)
-- [Production operations](../operations/production.md)
-- [Trusted proxy reference](../operations/trusted-proxy-reference.md)
+- [Operator runbook index](../operations/runbooks/README.md)
+- [Production operations](../operations/deployment/production.md)
+- [Trusted proxy reference](../operations/security/hardening.md#trusted-proxy-configuration)

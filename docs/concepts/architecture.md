@@ -1,6 +1,6 @@
 # 🏗️ Architecture
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Secrets follows Clean Architecture with domain-driven boundaries so cryptographic rules stay isolated from transport and storage concerns.
 
@@ -81,11 +81,11 @@ flowchart TD
 
 ## 🧱 Layer responsibilities
 
-- `domain/`: business entities and invariants (`Client`, `Token`, `Secret`, `TransitKey`, `TokenizationKey`, `Kek`, `Dek`)
-- `usecase/`: orchestration, transactional boundaries, and policy decisions
-- `repository/`: PostgreSQL/MySQL persistence and query logic
-- `service/`: reusable technical services (crypto, token hashing, helpers)
-- `http/`: Gin handlers, DTO validation, middleware, and error mapping
+- `domain/`: business entities and invariants (`Client`, `Token`, `Secret`, `TransitKey`, `TokenizationKey`, `Kek`, `Dek`) - uses [UUIDv7 for all IDs](../adr/0009-uuidv7-for-identifiers.md)
+- `usecase/`: orchestration, transactional boundaries, and policy decisions (see [ADR 0005: Context-Based Transaction Management](../adr/0005-context-based-transaction-management.md))
+- `repository/`: PostgreSQL/MySQL persistence and query logic (see [ADR 0004: Dual Database Support](../adr/0004-dual-database-support.md))
+- `service/`: reusable technical services (crypto, token hashing with [Argon2id](../adr/0010-argon2id-for-client-secret-hashing.md), helpers)
+- `http/`: Gin handlers, DTO validation, middleware, and error mapping (see [ADR 0008: Gin Web Framework](../adr/0008-gin-web-framework-with-custom-middleware.md))
 
 ## ✅ Why this design works
 
@@ -94,12 +94,27 @@ flowchart TD
 - 🧪 Keep use cases testable with mockable interfaces
 - 🌐 Expose consistent HTTP contracts while preserving domain purity
 
+## Glossary
+
+Quick definitions for terms used across API and operations docs.
+
+### Terms
+
+- `Master Key`: Root key material used to protect KEKs; loaded from environment/KMS
+- `KEK` (Key Encryption Key): Encrypts/decrypts DEKs; rotated over time
+- `DEK` (Data Encryption Key): Encrypts payload data (secret values or transit key material)
+- `Transit Key`: Named, versioned key used by transit encrypt/decrypt endpoints
+- `Versioned ciphertext`: Transit ciphertext format `<version>:<base64-ciphertext>`
+- `Capability`: Authorization permission (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`)
+- `Soft delete`: Record marked deleted without immediate physical removal
+- `Request ID`: Per-request UUID used for traceability and audit correlation
+
 ## See also
 
 - [Security model](security-model.md)
-- [Key management operations](../operations/key-management.md)
-- [Environment variables](../configuration/environment-variables.md)
-- [Secrets API](../api/secrets.md)
-- [Tokenization API](../api/tokenization.md)
+- [Key management operations](../operations/kms/key-management.md)
+- [Environment variables](../configuration.md)
+- [Secrets API](../api/data/secrets.md)
+- [Tokenization API](../api/data/tokenization.md)
 - [ADR 0001: Envelope Encryption Model](../adr/0001-envelope-encryption-model.md)
 - [ADR 0002: Transit Versioned Ciphertext Contract](../adr/0002-transit-versioned-ciphertext-contract.md)

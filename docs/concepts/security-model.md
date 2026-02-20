@@ -1,6 +1,6 @@
 # 🔒 Security Model
 
-> Last updated: 2026-02-19
+> Last updated: 2026-02-20
 
 Secrets is designed for practical defense-in-depth around secret storage and cryptographic operations.
 
@@ -49,7 +49,7 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - Forward audit logs to SIEM/log aggregation for long-term retention
 - Disable CORS unless browser-based access is explicitly required
 
-For comprehensive production security guidance, see [Security Hardening Guide](../operations/security-hardening.md).
+For comprehensive production security guidance, see [Security Hardening Guide](../operations/security/hardening.md).
 
 ## ⚠️ Known limitations
 
@@ -66,11 +66,11 @@ For comprehensive production security guidance, see [Security Hardening Guide](.
 
 ## See also
 
-- [Security hardening guide](../operations/security-hardening.md)
-- [Production deployment](../operations/production.md)
+- [Security hardening guide](../operations/security/hardening.md)
+- [Production deployment](../operations/deployment/production.md)
 - [Architecture](architecture.md)
-- [Authentication API](../api/authentication.md)
-- [Policies cookbook](../api/policies.md)
-- [Capability matrix](../api/capability-matrix.md)
-- [Tokenization API](../api/tokenization.md)
-- [Key management operations](../operations/key-management.md)
+- [Authentication API](../api/auth/authentication.md)
+- [Policies cookbook](../api/auth/policies.md)
+- [Capability matrix](../api/fundamentals.md#capability-matrix)
+- [Tokenization API](../api/data/tokenization.md)
+- [Key management operations](../operations/kms/key-management.md)
