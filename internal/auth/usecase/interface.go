@@ -51,6 +51,10 @@ type AuditLogRepository interface {
 	// Returns error if the audit log ID already exists or database operation fails.
 	Create(ctx context.Context, auditLog *authDomain.AuditLog) error
 
+	// Get retrieves a single audit log by ID. Returns error if not found.
+	// Used for signature verification of specific audit logs.
+	Get(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error)
+
 	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
 	// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional
 	// filters (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps
@@ -163,4 +167,28 @@ type AuditLogUseCase interface {
 	// and returns affected rows. The cutoff date is calculated as current UTC time minus
 	// the specified days.
 	DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error)
+
+	// VerifyIntegrity verifies the cryptographic signature of a specific audit log.
+	// Returns nil if signature is valid, ErrSignatureMissing for unsigned legacy logs,
+	// ErrKekNotFoundForLog if the KEK is missing from the chain, or ErrSignatureInvalid
+	// if the log has been tampered with. This operation retrieves the log from the
+	// repository and verifies using the KEK referenced by log.KekID.
+	VerifyIntegrity(ctx context.Context, id uuid.UUID) error
+
+	// VerifyBatch performs batch verification of audit logs within a time range.
+	// Returns a detailed report including total checked, signed/unsigned counts,
+	// valid/invalid counts, and IDs of logs with invalid signatures. Legacy unsigned
+	// logs are counted separately and do not contribute to invalid count.
+	VerifyBatch(ctx context.Context, startTime, endTime time.Time) (*VerificationReport, error)
+}
+
+// VerificationReport summarizes batch audit log verification results.
+// Used by VerifyBatch to provide detailed integrity check statistics.
+type VerificationReport struct {
+	TotalChecked  int64       // Total number of audit logs checked
+	SignedCount   int64       // Number of signed logs with signatures
+	UnsignedCount int64       // Number of unsigned legacy logs
+	ValidCount    int64       // Number of logs with valid signatures
+	InvalidCount  int64       // Number of logs with invalid signatures
+	InvalidLogs   []uuid.UUID // IDs of logs with invalid signatures (for investigation)
 }

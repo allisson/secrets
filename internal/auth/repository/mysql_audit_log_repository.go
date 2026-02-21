@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -20,7 +22,8 @@ type MySQLAuditLogRepository struct {
 
 // Create inserts a new AuditLog into the MySQL database using BINARY(16) for UUIDs.
 // Uses transaction support via database.GetTx(). Handles nil metadata as database NULL.
-// Returns an error if UUID/metadata marshaling or database insertion fails.
+// Includes cryptographic signature fields for tamper detection. Returns an error if
+// UUID/metadata marshaling or database insertion fails.
 func (m *MySQLAuditLogRepository) Create(ctx context.Context, auditLog *authDomain.AuditLog) error {
 	querier := database.GetTx(ctx, m.db)
 
@@ -35,8 +38,8 @@ func (m *MySQLAuditLogRepository) Create(ctx context.Context, auditLog *authDoma
 		}
 	}
 
-	query := `INSERT INTO audit_logs (id, request_id, client_id, capability, path, metadata, created_at) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO audit_logs (id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at) 
+			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	id, err := auditLog.ID.MarshalBinary()
 	if err != nil {
@@ -53,6 +56,15 @@ func (m *MySQLAuditLogRepository) Create(ctx context.Context, auditLog *authDoma
 		return apperrors.Wrap(err, "failed to marshal audit log client_id")
 	}
 
+	// Marshal kek_id if present (nullable)
+	var kekIDBinary []byte
+	if auditLog.KekID != nil {
+		kekIDBinary, err = auditLog.KekID.MarshalBinary()
+		if err != nil {
+			return apperrors.Wrap(err, "failed to marshal audit log kek_id")
+		}
+	}
+
 	_, err = querier.ExecContext(
 		ctx,
 		query,
@@ -62,6 +74,9 @@ func (m *MySQLAuditLogRepository) Create(ctx context.Context, auditLog *authDoma
 		string(auditLog.Capability),
 		auditLog.Path,
 		metadataJSON,
+		auditLog.Signature,
+		kekIDBinary,
+		auditLog.IsSigned,
 		auditLog.CreatedAt,
 	)
 	if err != nil {
@@ -69,6 +84,79 @@ func (m *MySQLAuditLogRepository) Create(ctx context.Context, auditLog *authDoma
 	}
 
 	return nil
+}
+
+// Get retrieves a single audit log by ID from the MySQL database. UUIDs are stored
+// as BINARY(16) and must be marshaled/unmarshaled. Returns error if the audit log
+// is not found or if database operation fails.
+func (m *MySQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at
+			  FROM audit_logs
+			  WHERE id = ?`
+
+	idBinary, err := id.MarshalBinary()
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to marshal audit log id")
+	}
+
+	var auditLog authDomain.AuditLog
+	var idBin, requestIDBinary, clientIDBinary, kekIDBinary []byte
+	var metadataJSON []byte
+	var capability string
+
+	err = querier.QueryRowContext(ctx, query, idBinary).Scan(
+		&idBin,
+		&requestIDBinary,
+		&clientIDBinary,
+		&capability,
+		&auditLog.Path,
+		&metadataJSON,
+		&auditLog.Signature,
+		&kekIDBinary,
+		&auditLog.IsSigned,
+		&auditLog.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, apperrors.Wrap(apperrors.ErrNotFound, "audit log not found")
+	}
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to get audit log")
+	}
+
+	// Unmarshal UUIDs from BINARY(16)
+	if err := auditLog.ID.UnmarshalBinary(idBin); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal audit log id")
+	}
+
+	if err := auditLog.RequestID.UnmarshalBinary(requestIDBinary); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal audit log request_id")
+	}
+
+	if err := auditLog.ClientID.UnmarshalBinary(clientIDBinary); err != nil {
+		return nil, apperrors.Wrap(err, "failed to unmarshal audit log client_id")
+	}
+
+	// Unmarshal kek_id if not NULL
+	if kekIDBinary != nil {
+		var kekID uuid.UUID
+		if err := kekID.UnmarshalBinary(kekIDBinary); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal audit log kek_id")
+		}
+		auditLog.KekID = &kekID
+	}
+
+	auditLog.Capability = authDomain.Capability(capability)
+
+	// Unmarshal metadata if not NULL
+	if metadataJSON != nil {
+		if err := json.Unmarshal(metadataJSON, &auditLog.Metadata); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal audit log metadata")
+		}
+	}
+
+	return &auditLog, nil
 }
 
 // List retrieves audit logs ordered by created_at descending (newest first) with pagination
@@ -98,7 +186,7 @@ func (m *MySQLAuditLogRepository) List(
 	}
 
 	// Build query
-	query := `SELECT id, request_id, client_id, capability, path, metadata, created_at 
+	query := `SELECT id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at 
 			  FROM audit_logs`
 
 	if len(conditions) > 0 {
@@ -122,7 +210,7 @@ func (m *MySQLAuditLogRepository) List(
 	auditLogs := make([]*authDomain.AuditLog, 0)
 	for rows.Next() {
 		var auditLog authDomain.AuditLog
-		var idBinary, requestIDBinary, clientIDBinary []byte
+		var idBinary, requestIDBinary, clientIDBinary, kekIDBinary []byte
 		var metadataJSON []byte
 		var capability string
 
@@ -133,6 +221,9 @@ func (m *MySQLAuditLogRepository) List(
 			&capability,
 			&auditLog.Path,
 			&metadataJSON,
+			&auditLog.Signature,
+			&kekIDBinary,
+			&auditLog.IsSigned,
 			&auditLog.CreatedAt,
 		)
 		if err != nil {
@@ -150,6 +241,15 @@ func (m *MySQLAuditLogRepository) List(
 
 		if err := auditLog.ClientID.UnmarshalBinary(clientIDBinary); err != nil {
 			return nil, apperrors.Wrap(err, "failed to unmarshal audit log client_id")
+		}
+
+		// Unmarshal kek_id if not NULL
+		if kekIDBinary != nil {
+			var kekID uuid.UUID
+			if err := kekID.UnmarshalBinary(kekIDBinary); err != nil {
+				return nil, apperrors.Wrap(err, "failed to unmarshal audit log kek_id")
+			}
+			auditLog.KekID = &kekID
 		}
 
 		auditLog.Capability = authDomain.Capability(capability)

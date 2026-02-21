@@ -242,3 +242,41 @@ func (a *auditLogUseCaseWithMetrics) DeleteOlderThan(
 
 	return count, err
 }
+
+// VerifyIntegrity records metrics for single audit log verification operations.
+func (a *auditLogUseCaseWithMetrics) VerifyIntegrity(
+	ctx context.Context,
+	id uuid.UUID,
+) error {
+	start := time.Now()
+	err := a.next.VerifyIntegrity(ctx, id)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	a.metrics.RecordOperation(ctx, "auth", "audit_log_verify", status)
+	a.metrics.RecordDuration(ctx, "auth", "audit_log_verify", time.Since(start), status)
+
+	return err
+}
+
+// VerifyBatch records metrics for batch audit log verification operations.
+func (a *auditLogUseCaseWithMetrics) VerifyBatch(
+	ctx context.Context,
+	startTime, endTime time.Time,
+) (*VerificationReport, error) {
+	start := time.Now()
+	report, err := a.next.VerifyBatch(ctx, startTime, endTime)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	a.metrics.RecordOperation(ctx, "auth", "audit_log_verify_batch", status)
+	a.metrics.RecordDuration(ctx, "auth", "audit_log_verify_batch", time.Since(start), status)
+
+	return report, err
+}

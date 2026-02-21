@@ -101,7 +101,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.8.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.9.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 
@@ -124,6 +124,7 @@ This section documents key architectural decisions with their context, rationale
 - 🧾 [ADR 0008: Gin Web Framework with Custom Middleware](adr/0008-gin-web-framework-with-custom-middleware.md) - HTTP framework and middleware strategy
 - 🧾 [ADR 0009: UUIDv7 for Identifiers](adr/0009-uuidv7-for-identifiers.md) - Time-ordered UUID strategy for database IDs
 - 🧾 [ADR 0010: Argon2id for Client Secret Hashing](adr/0010-argon2id-for-client-secret-hashing.md) - Memory-hard password hashing algorithm
+- 🧾 [ADR 0011: HMAC-SHA256 Cryptographic Signing for Audit Log Integrity](adr/0011-hmac-sha256-audit-log-signing.md) - Tamper detection for audit logs
 
 ## 🖥️ Supported Platforms
 

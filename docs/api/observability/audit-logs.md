@@ -58,23 +58,66 @@ Example response (`200 OK`):
         "ip": "192.168.1.10",
         "user_agent": "curl/8.7.1"
       },
+      "signature": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODkwYWJjZGVmZ2hp",
+      "kek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+      "is_signed": true,
       "created_at": "2026-02-14T18:35:12Z"
     }
   ]
 }
 ```
 
+**Note:** Audit logs created before v0.9.0 will have `is_signed=false`, `signature=null`, and `kek_id=null` (legacy unsigned logs).
+
 ## Returned Fields
 
-- `id`
-- `request_id`
-- `client_id`
-- `capability`
-- `path`
-- `metadata.allowed`
-- `metadata.ip`
-- `metadata.user_agent`
-- `created_at`
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Audit log unique identifier (UUIDv7) |
+| `request_id` | UUID | Request unique identifier |
+| `client_id` | UUID | Client that performed the operation |
+| `capability` | string | Capability required for operation (e.g., `read`, `write`, `decrypt`) |
+| `path` | string | Resource path accessed |
+| `metadata` | object | Operation metadata (allowed, ip, user_agent) |
+| `metadata.allowed` | boolean | Whether access was allowed by policy |
+| `metadata.ip` | string | Client IP address |
+| `metadata.user_agent` | string | Client user agent |
+| `signature` | string | Base64-encoded HMAC-SHA256 signature (32 bytes, v0.9.0+) |
+| `kek_id` | UUID | KEK used for signing (null for legacy logs, v0.9.0+) |
+| `is_signed` | boolean | True if cryptographically signed (v0.9.0+) |
+| `created_at` | string | ISO 8601 timestamp (UTC) |
+
+### Signature Fields (v0.9.0+)
+
+**Cryptographic Integrity:**
+
+- All audit logs created in v0.9.0+ are automatically signed with HMAC-SHA256 for tamper detection
+- Signature derived from KEK using HKDF-SHA256 key derivation (separates encryption and signing usage)
+- Complies with PCI DSS Requirement 10.2.2 (audit log protection)
+
+**Field Details:**
+
+- `signature`: HMAC-SHA256 signature for tamper detection (null for legacy logs created before v0.9.0)
+- `kek_id`: References KEK used for signing (null for legacy logs)
+- `is_signed`: `true` for signed logs, `false` for legacy unsigned logs
+
+**Legacy vs Signed Logs:**
+
+- Logs created before v0.9.0 have `is_signed=false` (legacy unsigned)
+- Logs created in v0.9.0+ have `is_signed=true` with signature and KEK ID
+- Use `verify-audit-logs` CLI command to verify cryptographic integrity
+
+**Verification:**
+
+```bash
+# Verify audit log integrity for a date range
+./bin/app verify-audit-logs --start-date "2026-02-20" --end-date "2026-02-20"
+
+# JSON output for automation
+./bin/app verify-audit-logs --start-date "2026-02-20" --end-date "2026-02-20" --format json
+```
+
+See [CLI commands](../../cli-commands.md#verify-audit-logs) for verification details.
 
 ## Practical Checks
 

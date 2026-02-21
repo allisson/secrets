@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/httputil"
 )
 
@@ -93,6 +94,22 @@ func (m *mockAuditLogUseCase) List(
 func (m *mockAuditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error) {
 	args := m.Called(ctx, days, dryRun)
 	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *mockAuditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *mockAuditLogUseCase) VerifyBatch(
+	ctx context.Context,
+	startTime, endTime time.Time,
+) (*authUseCase.VerificationReport, error) {
+	args := m.Called(ctx, startTime, endTime)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authUseCase.VerificationReport), args.Error(1)
 }
 
 // TestMain sets Gin to test mode for all tests in this package.

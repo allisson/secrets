@@ -30,10 +30,13 @@ func TestMySQLAuditLogRepository_Create(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-create")
+
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/test-key",
 		Metadata: map[string]any{
@@ -64,10 +67,13 @@ func TestMySQLAuditLogRepository_Create_WithNilMetadata(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-nil-metadata")
+
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/another-key",
 		Metadata:   nil, // Nil metadata should be stored as NULL
@@ -99,10 +105,13 @@ func TestMySQLAuditLogRepository_Create_WithEmptyMetadata(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-empty-metadata")
+
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID,
 		Capability: authDomain.DeleteCapability,
 		Path:       "/secrets/empty-metadata",
 		Metadata:   map[string]any{}, // Empty map should be stored as {}
@@ -134,11 +143,15 @@ func TestMySQLAuditLogRepository_Create_MultipleAuditLogs(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test clients for foreign key constraints
+	clientID1 := testutil.CreateTestClient(t, db, "mysql", "test-multiple-1")
+	clientID2 := testutil.CreateTestClient(t, db, "mysql", "test-multiple-2")
+
 	// Create first audit log
 	auditLog1 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID1,
 		Capability: authDomain.EncryptCapability,
 		Path:       "/transit/encrypt/key1",
 		Metadata:   map[string]any{"plaintext_length": 256},
@@ -154,7 +167,7 @@ func TestMySQLAuditLogRepository_Create_MultipleAuditLogs(t *testing.T) {
 	auditLog2 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID2,
 		Capability: authDomain.DecryptCapability,
 		Path:       "/transit/decrypt/key2",
 		Metadata:   map[string]any{"ciphertext_length": 512},
@@ -179,6 +192,9 @@ func TestMySQLAuditLogRepository_Create_AllCapabilities(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-all-capabilities")
+
 	capabilities := []authDomain.Capability{
 		authDomain.ReadCapability,
 		authDomain.WriteCapability,
@@ -193,7 +209,7 @@ func TestMySQLAuditLogRepository_Create_AllCapabilities(t *testing.T) {
 		auditLog := &authDomain.AuditLog{
 			ID:         uuid.Must(uuid.NewV7()),
 			RequestID:  uuid.Must(uuid.NewV7()),
-			ClientID:   uuid.Must(uuid.NewV7()),
+			ClientID:   clientID,
 			Capability: capability,
 			Path:       "/test/path",
 			CreatedAt:  time.Now().UTC(),
@@ -224,10 +240,13 @@ func TestMySQLAuditLogRepository_Create_WithTransaction(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	testClientID := testutil.CreateTestClient(t, db, "mysql", "test-tx-commit")
+
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   testClientID,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/tx-test",
 		Metadata:   map[string]any{"transaction": "commit"},
@@ -280,10 +299,13 @@ func TestMySQLAuditLogRepository_Create_TransactionRollback(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	testClientID := testutil.CreateTestClient(t, db, "mysql", "test-tx-rollback")
+
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   testClientID,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/rollback-test",
 		Metadata:   map[string]any{"transaction": "rollback"},
@@ -337,12 +359,17 @@ func TestMySQLAuditLogRepository_List_SortingByCreatedAt(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test clients for foreign key constraints
+	clientID1 := testutil.CreateTestClient(t, db, "mysql", "test-sort-1")
+	clientID2 := testutil.CreateTestClient(t, db, "mysql", "test-sort-2")
+	clientID3 := testutil.CreateTestClient(t, db, "mysql", "test-sort-3")
+
 	// Create audit logs with different created_at timestamps
 	now := time.Now().UTC()
 	auditLog1 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID1,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/oldest",
 		Metadata:   nil,
@@ -351,7 +378,7 @@ func TestMySQLAuditLogRepository_List_SortingByCreatedAt(t *testing.T) {
 	auditLog2 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID2,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/middle",
 		Metadata:   nil,
@@ -360,7 +387,7 @@ func TestMySQLAuditLogRepository_List_SortingByCreatedAt(t *testing.T) {
 	auditLog3 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID3,
 		Capability: authDomain.DeleteCapability,
 		Path:       "/secrets/newest",
 		Metadata:   nil,
@@ -390,12 +417,17 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtFromFilter(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test clients for foreign key constraints
+	clientID1 := testutil.CreateTestClient(t, db, "mysql", "test-from-1")
+	clientID2 := testutil.CreateTestClient(t, db, "mysql", "test-from-2")
+	clientID3 := testutil.CreateTestClient(t, db, "mysql", "test-from-3")
+
 	// Create audit logs with different timestamps
 	now := time.Now().UTC()
 	auditLog1 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID1,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/before",
 		Metadata:   nil,
@@ -404,7 +436,7 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtFromFilter(t *testing.T) {
 	auditLog2 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID2,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/after1",
 		Metadata:   nil,
@@ -413,7 +445,7 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtFromFilter(t *testing.T) {
 	auditLog3 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID3,
 		Capability: authDomain.DeleteCapability,
 		Path:       "/secrets/after2",
 		Metadata:   nil,
@@ -443,12 +475,17 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtToFilter(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test clients for foreign key constraints
+	clientID1 := testutil.CreateTestClient(t, db, "mysql", "test-to-1")
+	clientID2 := testutil.CreateTestClient(t, db, "mysql", "test-to-2")
+	clientID3 := testutil.CreateTestClient(t, db, "mysql", "test-to-3")
+
 	// Create audit logs with different timestamps
 	now := time.Now().UTC()
 	auditLog1 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID1,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/before1",
 		Metadata:   nil,
@@ -457,7 +494,7 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtToFilter(t *testing.T) {
 	auditLog2 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID2,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/before2",
 		Metadata:   nil,
@@ -466,7 +503,7 @@ func TestMySQLAuditLogRepository_List_WithCreatedAtToFilter(t *testing.T) {
 	auditLog3 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID3,
 		Capability: authDomain.DeleteCapability,
 		Path:       "/secrets/after",
 		Metadata:   nil,
@@ -496,12 +533,18 @@ func TestMySQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test clients for foreign key constraints
+	clientID1 := testutil.CreateTestClient(t, db, "mysql", "test-both-1")
+	clientID2 := testutil.CreateTestClient(t, db, "mysql", "test-both-2")
+	clientID3 := testutil.CreateTestClient(t, db, "mysql", "test-both-3")
+	clientID4 := testutil.CreateTestClient(t, db, "mysql", "test-both-4")
+
 	// Create audit logs with different timestamps
 	now := time.Now().UTC()
 	auditLog1 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID1,
 		Capability: authDomain.ReadCapability,
 		Path:       "/secrets/before-range",
 		Metadata:   nil,
@@ -510,7 +553,7 @@ func TestMySQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
 	auditLog2 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID2,
 		Capability: authDomain.WriteCapability,
 		Path:       "/secrets/in-range1",
 		Metadata:   nil,
@@ -519,7 +562,7 @@ func TestMySQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
 	auditLog3 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID3,
 		Capability: authDomain.DeleteCapability,
 		Path:       "/secrets/in-range2",
 		Metadata:   nil,
@@ -528,7 +571,7 @@ func TestMySQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
 	auditLog4 := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   uuid.Must(uuid.NewV7()),
+		ClientID:   clientID4,
 		Capability: authDomain.EncryptCapability,
 		Path:       "/secrets/after-range",
 		Metadata:   nil,
@@ -560,13 +603,16 @@ func TestMySQLAuditLogRepository_List_NoFilters(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-no-filters")
+
 	// Create multiple audit logs
 	now := time.Now().UTC()
 	for i := 0; i < 5; i++ {
 		auditLog := &authDomain.AuditLog{
 			ID:         uuid.Must(uuid.NewV7()),
 			RequestID:  uuid.Must(uuid.NewV7()),
-			ClientID:   uuid.Must(uuid.NewV7()),
+			ClientID:   clientID,
 			Capability: authDomain.ReadCapability,
 			Path:       "/secrets/test",
 			Metadata:   nil,
@@ -610,13 +656,16 @@ func TestMySQLAuditLogRepository_List_Pagination(t *testing.T) {
 	repo := NewMySQLAuditLogRepository(db)
 	ctx := context.Background()
 
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "mysql", "test-pagination")
+
 	// Create 10 audit logs
 	now := time.Now().UTC()
 	for i := 0; i < 10; i++ {
 		auditLog := &authDomain.AuditLog{
 			ID:         uuid.Must(uuid.NewV7()),
 			RequestID:  uuid.Must(uuid.NewV7()),
-			ClientID:   uuid.Must(uuid.NewV7()),
+			ClientID:   clientID,
 			Capability: authDomain.ReadCapability,
 			Path:       "/secrets/test",
 			Metadata:   nil,
