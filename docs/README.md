@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 Metadata source for release/API labels: `docs/metadata.json`
 
@@ -101,7 +101,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.9.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.10.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 

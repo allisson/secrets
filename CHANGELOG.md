@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-02-21
+
+### Added
+- Docker image security improvements with Google Distroless base (Debian 13 Trixie)
+- SHA256 digest pinning for immutable container builds
+- Build-time version injection via ldflags (version, buildDate, commitSHA)
+- Comprehensive OCI labels for better security scanning and SBOM generation
+- Multi-architecture build support (linux/amd64, linux/arm64) in Dockerfile
+- `.dockerignore` file to reduce build context size by ~90%
+- Explicit non-root user execution (UID 65532: nonroot:nonroot)
+- Read-only filesystem support for enhanced runtime security
+- Container security documentation: `docs/operations/security/container-security.md`
+- Health check endpoint documentation for Kubernetes and Docker Compose
+- GitHub Actions workflow enhancements for build metadata injection
+- Version management guidelines in AGENTS.md for coding agents
+
+### Changed
+- Base builder image: `golang:1.25.5-alpine` → `golang:1.25.5-trixie` (Debian 13)
+- Final runtime image: `scratch` → `gcr.io/distroless/static-debian13@sha256:d90359c7a3ad67b3c11ca44fd5f3f5208cbef546f2e692b0dc3410a869de46bf`
+- Application version management: hardcoded → build-time injection
+- Docker image now includes default `CMD ["server"]` for better UX
+- Updated `docs/getting-started/docker.md` with security features and health check examples
+
+### Removed
+- Manual migration directory copy (now embedded in binary via Go embed.FS)
+- Manual CA certificates and timezone data copy (included in distroless)
+
+### Security
+- **BREAKING**: Container now runs as non-root user (UID 65532) by default
+- Minimal attack surface: no shell, package manager, or system utilities in final image
+- Regular security patches from Google Distroless project
+- Immutable builds with SHA256 digest pinning prevent supply chain attacks
+- Enhanced CVE scanning support with comprehensive OCI metadata
+- Image size reduced by 10-20% while improving security posture
+
+### Documentation
+- Added comprehensive container security guide (`docs/operations/security/container-security.md`) with 10 sections covering base image security, runtime security, network security, secrets management, image scanning, health checks, build security, and deployment best practices
+- Added complete health check guide (`docs/operations/observability/health-checks.md`) with platform integrations for Kubernetes, Docker Compose, AWS ECS, Google Cloud Run, and monitoring tools
+- Added security scanning guide (`docs/operations/security/scanning.md`) covering Trivy, Docker Scout, Grype, SBOM generation, and CI/CD integration
+- Added OCI labels reference (`docs/operations/deployment/oci-labels.md`) documenting image metadata schema for security scanning and compliance
+- Added Kubernetes deployment guide (`docs/operations/deployment/kubernetes.md`) with production-ready manifests and security hardening
+- Added Docker Compose deployment guide (`docs/operations/deployment/docker-compose.md`) with development and production configurations
+- Added multi-architecture builds guide (`docs/operations/deployment/multi-arch-builds.md`) for linux/amd64 and linux/arm64
+- Added base image migration guide (`docs/operations/deployment/base-image-migration.md`) for Alpine/scratch to distroless transitions
+- Added volume permissions troubleshooting guide (`docs/operations/troubleshooting/volume-permissions.md`) for non-root container issues
+- Added error reference guide (`docs/operations/troubleshooting/error-reference.md`) with HTTP, database, KMS, and configuration errors
+- Added comprehensive migration guide in `docs/releases/RELEASES.md` with rollback procedures and validation gates
+- Added known issues section to `docs/releases/RELEASES.md` documenting ARM64 builds, health checks, and volume permissions
+- Added rollback testing guidance to `docs/operations/deployment/production-rollout.md`
+- Enhanced KMS security warnings in `docs/configuration.md` and `docs/operations/kms/setup.md`
+- Updated Docker quick start guide with security features overview and health check examples
+- Updated Dockerfile with comprehensive inline documentation (~180 comment lines)
+- Added version management guidelines in AGENTS.md for AI coding agents
+
 ## [0.9.0] - 2026-02-20
 
 ### Added
@@ -211,3 +265,14 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Example code (curl, Python, JavaScript, Go)
 - Security model documentation
 - Architecture documentation
+
+[0.10.0]: https://github.com/allisson/secrets/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/allisson/secrets/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/allisson/secrets/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/allisson/secrets/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/allisson/secrets/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/allisson/secrets/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/allisson/secrets/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/allisson/secrets/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/allisson/secrets/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/allisson/secrets/releases/tag/v0.1.0

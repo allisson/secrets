@@ -1,8 +1,13 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
+
+**Related guides**:
+
+- **[Health Check Endpoints](health-checks.md)** - Liveness and readiness probes for container orchestration
+- **[Incident Response](incident-response.md)** - Troubleshooting production issues
 
 ## Table of Contents
 
@@ -26,6 +31,8 @@ The application uses OpenTelemetry for metrics instrumentation with a Prometheus
 
 1. **Business Operations** - Domain-specific operation counters and durations
 2. **HTTP Requests** - Request counts and response times
+
+**Health monitoring**: For liveness and readiness probes, see [Health Check Endpoints](health-checks.md).
 
 ## Configuration
 

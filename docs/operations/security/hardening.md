@@ -1,6 +1,6 @@
 # 🔒 Security Hardening Guide
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 This guide covers comprehensive security hardening for production deployments of Secrets. These measures are essential for protecting sensitive data and maintaining operational security.
 
@@ -472,8 +472,7 @@ Master keys are the root of trust in the envelope encryption hierarchy. Protect 
 | AWS Secrets Manager | AWS deployments | Use IAM roles for access control |
 | GCP Secret Manager | GCP deployments | Use workload identity for access |
 | Azure Key Vault | Azure deployments | Use managed identities for access |
-| HashiCorp Vault | Multi-cloud/on-prem | Use AppRole or Kubernetes auth |
-| Kubernetes Secrets | Kubernetes clusters | Enable encryption at rest, use external secrets operator |
+| HashiCorp Vault | Multi-cloud/on-prem | Use AppRole or token auth |
 
 ### Master Key Rotation
 

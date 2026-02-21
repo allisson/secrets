@@ -1,6 +1,6 @@
 # 🏭 Production Deployment Guide
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 This guide covers baseline production hardening and operations for Secrets.
 
@@ -43,9 +43,9 @@ Minimal reverse proxy checklist:
 
 ## 3) Database Operations
 
-- Enable DB backups and test restores regularly
+- Enable DB backups and test restores regularly (see [Backup and Restore Guide](backup-restore.md))
 - Use encrypted storage and restricted DB network access
-- Monitor connection pool metrics and error rates
+- Monitor connection pool metrics and error rates (see [Database Scaling Guide](database-scaling.md))
 - Run migrations before rolling out new app versions
 - Define and execute audit log retention cleanup on a fixed cadence
 - Define and execute expired token cleanup on a fixed cadence when tokenization is enabled
@@ -242,6 +242,11 @@ This section documents practical limitations and tradeoffs operators should acco
 - [Production rollout golden path](../deployment/production-rollout.md)
 - [Operator runbook index](../runbooks/README.md)
 - [Monitoring](../observability/monitoring.md)
+- [Backup and Restore Guide](backup-restore.md) - Database backup and restore procedures
+- [Disaster Recovery Runbook](../runbooks/disaster-recovery.md) - Full DR procedures
+- [Database Scaling Guide](database-scaling.md) - Database performance and scaling
+- [Application Scaling Guide](scaling-guide.md) - Horizontal and vertical scaling
+- [Plaintext to KMS Migration Guide](../kms/plaintext-to-kms-migration.md) - Migrate to cloud KMS
 - [Trusted proxy reference](../security/hardening.md#trusted-proxy-configuration)
 - [Operator drills (quarterly)](../runbooks/README.md#operator-drills-quarterly)
 - [Policy smoke tests](../runbooks/policy-smoke-tests.md)

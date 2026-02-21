@@ -29,9 +29,11 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 ## Incident and Recovery
 
+- [Disaster Recovery Runbook](disaster-recovery.md) - Complete service restoration procedures
 - [Incident response guide](../observability/incident-response.md)
 - [Troubleshooting](../../getting-started/troubleshooting.md)
 - [Key management operations](../kms/key-management.md)
+- [Backup and Restore Guide](../deployment/backup-restore.md)
 
 ## Observability and Health
 
@@ -132,7 +134,7 @@ Use this section for quarterly game-day exercises that validate operational read
 | Credential compromise | Client secret leaked | `production.md`, `key-management.md`, `incident-response.md` | revocation timeline, new client IDs, audit evidence |
 | Key rotation under load | KEK/master-key rotation while traffic is active | `key-management.md`, `production-rollout.md` | rotation timestamps, restart logs, smoke checks |
 | Traffic surge / throttling | Burst traffic causes `429` pressure | `monitoring.md`, `api/fundamentals.md#rate-limiting` | `429` ratio, retry behavior, threshold decision |
-| Database outage | DB unreachable / failover | `incident-response.md`, `production.md` | outage timeline, failover duration, restore checks |
+| Database outage | DB unreachable / failover | `disaster-recovery.md`, `backup-restore.md`, `incident-response.md` | outage timeline, failover duration, restore checks |
 
 ### Quarterly Execution Template
 
