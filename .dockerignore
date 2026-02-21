@@ -1,0 +1,46 @@
+# Version control
+.git
+.github
+.gitignore
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Documentation (not needed in build)
+*.md
+!README.md
+docs/
+CHANGELOG.md
+LICENSE
+
+# Build artifacts
+bin/
+coverage.out
+*.coverprofile
+*.test
+*.out
+profile.cov
+t.log
+
+# Test and development
+test/
+.ruff_cache/
+docker-compose*.yml
+
+# CI/CD configuration
+.mockery.yaml
+.golangci.yml
+.markdownlint.json
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS-specific
+.DS_Store
+Thumbs.db

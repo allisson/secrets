@@ -1,10 +1,14 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-run mocks docs-lint docs-check-examples docs-check-metadata docs-check-release-tags
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples docs-check-metadata docs-check-release-tags
 
 APP_NAME := app
 BINARY_DIR := bin
 BINARY := $(BINARY_DIR)/$(APP_NAME)
-DOCKER_IMAGE := go-project-template
+DOCKER_REGISTRY ?= allisson
+DOCKER_IMAGE := $(DOCKER_REGISTRY)/secrets
 DOCKER_TAG := latest
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+COMMIT_SHA ?= $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -82,9 +86,9 @@ docs-check-release-tags: ## Validate pinned release image tags in current docs
 	@echo "Running docs release image tag checks..."
 	@python3 docs/tools/check_release_image_tags.py
 
-docs-lint: ## Run markdown lint and offline link checks
-	@echo "Running markdownlint-cli2..."
-	@docker run --rm -v "$(PWD):/workdir" -w /workdir davidanson/markdownlint-cli2:v0.18.1 README.md "docs/**/*.md" ".github/pull_request_template.md"
+docs-lint: ## Run markdown lint and offline link checks (with auto-fix)
+	@echo "Running markdownlint-cli2 (with auto-fix)..."
+	@docker run --rm -v "$(PWD):/workdir" -w /workdir davidanson/markdownlint-cli2:v0.18.1 --fix README.md "docs/**/*.md" ".github/pull_request_template.md"
 	@$(MAKE) docs-check-examples
 	@$(MAKE) docs-check-metadata
 	@$(MAKE) docs-check-release-tags
@@ -100,10 +104,67 @@ migrate-down: ## Run database migrations down
 	@echo "Rollback migrations not implemented in binary. Use golang-migrate CLI directly."
 
 # Docker
-docker-build: ## Build Docker image
+docker-build: ## Build Docker image with version injection
 	@echo "Building Docker image..."
-	@docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
-	@echo "Docker image built: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	@echo "  Version: $(VERSION)"
+	@echo "  Build Date: $(BUILD_DATE)"
+	@echo "  Commit SHA: $(COMMIT_SHA)"
+	@docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		--build-arg COMMIT_SHA=$(COMMIT_SHA) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
+		-t $(DOCKER_IMAGE):$(VERSION) \
+		.
+	@echo "Docker image built: $(DOCKER_IMAGE):$(DOCKER_TAG) and $(DOCKER_IMAGE):$(VERSION)"
+
+docker-build-multiarch: ## Build and push multi-platform Docker image
+	@echo "Building multi-platform Docker image..."
+	@echo "  Version: $(VERSION)"
+	@echo "  Build Date: $(BUILD_DATE)"
+	@echo "  Commit SHA: $(COMMIT_SHA)"
+	@echo "  Platforms: linux/amd64, linux/arm64"
+	@docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		--build-arg COMMIT_SHA=$(COMMIT_SHA) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
+		-t $(DOCKER_IMAGE):$(VERSION) \
+		--push \
+		.
+	@echo "Multi-platform images pushed: $(DOCKER_IMAGE):$(DOCKER_TAG) and $(DOCKER_IMAGE):$(VERSION)"
+	@echo "Note: Requires 'docker buildx' and authenticated registry access"
+
+docker-inspect: ## Inspect Docker image metadata and labels
+	@echo "Inspecting Docker image: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	@echo ""
+	@echo "=== Version Information ==="
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='Version: {{index .Config.Labels "org.opencontainers.image.version"}}'
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='Build Date: {{index .Config.Labels "org.opencontainers.image.created"}}'
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='Commit SHA: {{index .Config.Labels "org.opencontainers.image.revision"}}'
+	@echo ""
+	@echo "=== Security Information ==="
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='User: {{.Config.User}}'
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='Base Image: {{index .Config.Labels "org.opencontainers.image.base.name"}}'
+	@echo ""
+	@echo "=== Full Labels (JSON) ==="
+	@docker inspect $(DOCKER_IMAGE):$(DOCKER_TAG) --format='{{json .Config.Labels}}' | jq .
+
+docker-scan: ## Scan Docker image for vulnerabilities
+	@echo "Scanning Docker image for vulnerabilities: $(DOCKER_IMAGE):$(DOCKER_TAG)"
+	@if command -v trivy >/dev/null 2>&1; then \
+		trivy image --severity HIGH,CRITICAL $(DOCKER_IMAGE):$(DOCKER_TAG); \
+	else \
+		echo ""; \
+		echo "⚠️  Trivy not installed. Install with:"; \
+		echo "  macOS:   brew install trivy"; \
+		echo "  Linux:   https://aquasecurity.github.io/trivy/latest/getting-started/installation/"; \
+		echo ""; \
+		echo "Alternative: Use Docker Scout (built-in):"; \
+		echo "  docker scout cves $(DOCKER_IMAGE):$(DOCKER_TAG)"; \
+		echo ""; \
+	fi
 
 docker-run-server: docker-build ## Build and run Docker container (server)
 	@echo "Running Docker container (server)..."
@@ -111,13 +172,6 @@ docker-run-server: docker-build ## Build and run Docker container (server)
 		-e DB_DRIVER=postgres \
 		-e DB_CONNECTION_STRING="postgres://user:password@host.docker.internal:5432/mydb?sslmode=disable" \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) server
-
-docker-run-worker: docker-build ## Build and run Docker container (worker)
-	@echo "Running Docker container (worker)..."
-	@docker run --rm \
-		-e DB_DRIVER=postgres \
-		-e DB_CONNECTION_STRING="postgres://user:password@host.docker.internal:5432/mydb?sslmode=disable" \
-		$(DOCKER_IMAGE):$(DOCKER_TAG) worker
 
 docker-run-migrate: docker-build ## Build and run Docker container (migrate)
 	@echo "Running Docker container (migrate)..."

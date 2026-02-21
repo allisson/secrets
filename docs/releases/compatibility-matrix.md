@@ -1,6 +1,6 @@
 # 🔁 Release Compatibility Matrix
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 Use this page to understand upgrade impact between recent releases.
 
@@ -14,6 +14,7 @@ If you need upgrade guidance for older versions, consult the full release histor
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.9.0 -> v0.10.0` | No schema migration required | Docker base image changed (scratch → distroless), container runs as non-root (UID 65532), read-only filesystem support, multi-arch builds (amd64/arm64) | Update volume permissions for bind mounts ([guide](../operations/troubleshooting/volume-permissions.md)), update health check patterns ([guide](../operations/observability/health-checks.md)), verify rollback to v0.9.0 works |
 | `v0.8.0 -> v0.9.0` | Migration 000003 required (adds `signature`, `kek_id`, `is_signed` columns + FK constraints) | Audit logs automatically signed on creation, FK constraints prevent client/KEK deletion with audit logs | Run migration 000003, verify no orphaned client references, validate signing working, confirm FK constraint behavior |
 | `v0.7.0 -> v0.8.0` | No changes | Documentation improvements only | None (backward compatible, no runtime changes) |
 | `v0.6.0 -> v0.7.0` | No new mandatory migration | Added IP-based token endpoint rate limiting (`RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`), token endpoint may return `429` with `Retry-After` | Add and tune `RATE_LIMIT_TOKEN_*`, validate token issuance under normal and burst load, review trusted proxy/IP behavior |
@@ -24,6 +25,16 @@ If you need upgrade guidance for older versions, consult the full release histor
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.10.0`:
+
+1. `GET /health` and `GET /ready` pass
+2. Container starts as non-root user (UID 65532, GID 65532)
+3. Volume mounts have correct permissions (see [volume permissions guide](../operations/troubleshooting/volume-permissions.md) if issues)
+4. `./bin/app --version` shows `v0.10.0` with "v" prefix
+5. Multi-arch image works on both amd64 and arm64
+6. Rollback to v0.9.0 completes without data loss
+7. Security scanning passes (Trivy/Grype show expected base image)
 
 For `v0.9.0`:
 

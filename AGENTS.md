@@ -1,1530 +1,733 @@
-# Agent Guidelines for Secrets Project
+# AGENTS.md - Coding Agent Guide
 
-This document provides essential guidelines for AI coding agents working on the Secrets project, a Go-based cryptographic key management system implementing envelope encryption with Clean Architecture principles.
+This document provides essential information for AI coding agents working in this repository. It covers build commands, code style, architecture patterns, and conventions.
 
 ## Project Overview
 
-- **Language**: Go 1.25+
-- **Web Framework**: Gin v1.11.0
-- **Architecture**: Clean Architecture with Domain-Driven Design
-- **Databases**: PostgreSQL 12+ and MySQL 8.0+ (dual support)
-- **Pattern**: Envelope encryption (Master Key → KEK → DEK → Data)
+**Secrets** is a Go-based secrets management service with envelope encryption, transit encryption, API auth, and audit logs. The project uses Clean Architecture with a clear separation between domain, use cases, and infrastructure layers.
 
-## Build, Lint, and Test Commands
+- **Language**: Go 1.25
+- **Architecture**: Clean Architecture (cmd/, internal/ structure)
+- **Database**: PostgreSQL 12+ or MySQL 8.0+ (driver-agnostic)
+- **Framework**: Gin (HTTP), testify (testing), mockery (mocks)
+- **Build System**: Makefile + Go toolchain
 
-### Build Commands
+## Build, Test, and Lint Commands
+
+### Building
+
 ```bash
-make build              # Build the application binary to bin/app
-make run-server         # Build and run HTTP server (port 8080)
-make run-worker         # Build and run outbox event processor
-make run-migrate        # Build and run database migrations
+# Build the application
+make build
+
+# Build produces: bin/app
+go build -o bin/app ./cmd/app
 ```
 
-### Lint Commands
-```bash
-make lint               # Run golangci-lint with auto-fix enabled
-```
+### Testing
 
-The project uses golangci-lint with the following configuration (.golangci.yml):
-- Default linters: standard
-- Additional linters: gosec, gocritic
-- Formatters: goimports, golines
-- Line length: 110 characters max
-- Tab width: 4 spaces
-- Local import prefix: github.com/allisson/secrets
-
-### Test Commands
 ```bash
 # Run all tests with coverage
-make test               # Runs: go test -v -race -coverprofile=coverage.out ./...
+make test
+go test -v -race -p 1 -coverprofile=coverage.out ./...
 
-# Run tests with real databases
-make test-with-db       # Starts test DBs, runs tests, stops DBs
+# Run tests with test databases (postgres + mysql)
+make test-with-db
 
-# Individual database management
-make test-db-up         # Start PostgreSQL and MySQL test containers
-make test-db-down       # Stop and remove test containers
+# Run a single test
+go test -v -run TestName ./internal/package/path
 
-# View coverage report
-make test-coverage      # Opens HTML coverage report in browser
+# Run a single test in a specific file
+go test -v -run TestFunctionName ./internal/auth/usecase
 
-# Regenerate mock implementations
-make mocks              # Regenerates all mocks using mockery v3
+# Run tests matching a pattern
+go test -v -run "TestClient.*" ./internal/auth/domain
+
+# Run tests with verbose output
+go test -v ./internal/auth/service
+
+# View coverage report in browser
+make test-coverage
 ```
 
-### Running a Single Test
+### Linting
+
 ```bash
-# Run a specific test function
-go test -v -race -run TestFunctionName ./path/to/package
+# Run linter (includes auto-fix)
+make lint
+golangci-lint run -v --fix
 
-# Run a specific test with pattern matching
-go test -v -race -run "TestKekUseCase_Create/Success" ./internal/crypto/usecase
-
-# Run tests in a specific package
-go test -v -race ./internal/crypto/usecase
-
-# Run tests with coverage for a single package
-go test -v -race -coverprofile=coverage.out ./internal/crypto/usecase
-go tool cover -func=coverage.out
+# Linter uses: goimports, golines, gosec, gocritic
+# Max line length: 110 characters
+# Tab length: 4 spaces
 ```
+
+### Other Commands
+
+```bash
+# Regenerate mocks (after changing interfaces)
+make mocks
+
+# Run migrations
+make run-migrate
+
+# Clean build artifacts
+make clean
+```
+
+## Version Management
+
+### Version Update Guidelines
+
+When updating the application version, the following files MUST be updated together:
+
+1. **`cmd/app/main.go`** - Update the `version` variable default value
+   ```go
+   var (
+       version   = "0.10.0" // Update this for each release
+       buildDate = "unknown"
+       commitSHA = "unknown"
+   )
+   ```
+
+2. **`docs/metadata.json`** - Update `current_release` and `last_docs_refresh`
+   ```json
+   {
+     "current_release": "v0.10.0",
+     "api_version": "v1",
+     "last_docs_refresh": "2026-02-21"
+   }
+   ```
+
+3. **`CHANGELOG.md`** - Add new release section at the top
+   - Use semantic versioning (MAJOR.MINOR.PATCH)
+   - Document all changes under Added/Changed/Removed/Fixed/Security/Documentation
+   - Add comparison link at bottom: `[X.Y.Z]: https://github.com/allisson/secrets/compare/vA.B.C...vX.Y.Z`
+
+4. **`README.md`** - Update version references in "What's New" section (if applicable)
+
+### Version Numbering Rules
+
+- **MAJOR** (X.0.0): Breaking changes, incompatible API changes
+- **MINOR** (0.X.0): New features, backward-compatible functionality
+- **PATCH** (0.0.X): Bug fixes, backward-compatible fixes
+
+**Examples**:
+- Database schema changes → MINOR or MAJOR (depending on compatibility)
+- New API endpoints → MINOR
+- Security fixes → PATCH
+- Docker base image changes → MINOR (infrastructure change)
+- Documentation-only changes → PATCH
+
+### Build-Time Version Injection
+
+The version is injected at build time via ldflags in the Dockerfile:
+
+```dockerfile
+-ldflags="-w -s \
+-X main.version=${VERSION} \
+-X main.buildDate=${BUILD_DATE} \
+-X main.commitSHA=${COMMIT_SHA}"
+```
+
+**Local builds** without ldflags will use the default values from `cmd/app/main.go`.
+
+**CI/CD builds** (GitHub Actions) automatically inject:
+- `VERSION`: Git tag (e.g., `v0.10.0`) or `dev` for non-tagged builds
+- `BUILD_DATE`: ISO 8601 timestamp (e.g., `2026-02-21T10:30:00Z`)
+- `COMMIT_SHA`: Full git commit hash
+
+### Version Verification
+
+After building, verify the version:
+
+```bash
+# Local binary
+./bin/app --version
+
+# Example output:
+#   Version:    0.10.0
+#   Build Date: unknown
+#   Commit SHA: unknown
+
+# Docker image
+docker run --rm allisson/secrets:latest --version
+
+# Example output (with injected build metadata):
+#   Version:    v0.10.0
+#   Build Date: 2026-02-21T10:30:00Z
+#   Commit SHA: 23d48a137821f9428304e9929cf470adf8c3dee6
+```
+
+**Note**: Local builds without ldflags will show default values (`Build Date: unknown`, `Commit SHA: unknown`). Docker and CI/CD builds inject actual metadata via build args.
+
+## Docker Commands
+
+### Building Images
+
+Build production-ready Docker images with security features and version injection.
+
+```bash
+# Build with auto-detected version (from git tags)
+make docker-build
+# Produces: allisson/secrets:latest, allisson/secrets:<VERSION>
+
+# Custom registry
+make docker-build DOCKER_REGISTRY=myregistry.io/myorg
+
+# Override version
+make docker-build VERSION=v1.0.0-rc1
+```
+
+**Version injection** (automatic via build args):
+- `VERSION`: Git tag (e.g., `v0.10.0`), commit hash, or `"dev"` fallback
+- `BUILD_DATE`: ISO 8601 UTC timestamp
+- `COMMIT_SHA`: Full git commit hash
+
+### Multi-Architecture Builds
+
+Build and push multi-platform images for amd64 and arm64 architectures.
+
+**Requirements**: Docker Buildx (included in Docker Desktop 19.03+), authenticated registry access
+
+```bash
+# Authenticate to registry
+docker login
+
+# Build and push multi-arch images (linux/amd64, linux/arm64)
+make docker-build-multiarch VERSION=v0.10.0
+
+# Verify images
+docker manifest inspect allisson/secrets:v0.10.0
+```
+
+**Note**: Images are automatically pushed to the registry. Use `docker-build` for local testing.
+
+### Inspecting and Scanning
+
+**Inspect image metadata** (requires `jq`):
+```bash
+make docker-inspect
+
+# Displays:
+#   - Version information (version, build date, commit SHA)
+#   - Security settings (user, base image)
+#   - Full OCI labels (JSON format)
+```
+
+**Scan for vulnerabilities**:
+```bash
+make docker-scan
+
+# Uses Trivy to scan for HIGH and CRITICAL CVEs
+# If Trivy not installed, provides installation instructions
+
+# Manual scan alternative:
+trivy image --severity HIGH,CRITICAL allisson/secrets:latest
+```
+
+### Running Containers
+
+**Run HTTP server**:
+```bash
+make docker-run-server
+
+# Runs on http://localhost:8080
+# Health endpoints: /health (liveness), /ready (readiness)
+```
+
+**Run database migrations**:
+```bash
+make docker-run-migrate
+
+# Runs embedded migrations against configured database
+```
+
+**Custom configuration**:
+```bash
+# Run with custom environment variables
+docker run --rm -p 8080:8080 \
+  -e DB_DRIVER=postgres \
+  -e DB_CONNECTION_STRING="postgres://user:pass@localhost:5432/db?sslmode=disable" \
+  -e MASTER_KEY_PROVIDER=plaintext \
+  -e MASTER_KEY_PLAINTEXT=your-base64-encoded-32-byte-key \
+  allisson/secrets:latest server
+```
+
+**Common patterns**:
+```bash
+# Run with environment file
+docker run --rm -p 8080:8080 --env-file .env allisson/secrets:latest server
+
+# Run with read-only filesystem (security hardening)
+docker run --rm -p 8080:8080 --read-only \
+  -v /tmp \
+  --env-file .env \
+  allisson/secrets:latest server
+
+# Verify version
+docker run --rm allisson/secrets:latest --version
+```
+
+### Docker Variables
+
+| Variable | Default | Description | Override Example |
+|----------|---------|-------------|------------------|
+| `DOCKER_REGISTRY` | `allisson` | Docker registry namespace | `make docker-build DOCKER_REGISTRY=myregistry.io/myorg` |
+| `DOCKER_IMAGE` | `$(DOCKER_REGISTRY)/secrets` | Full image name | Auto-computed from `DOCKER_REGISTRY` |
+| `DOCKER_TAG` | `latest` | Default image tag | `make docker-build DOCKER_TAG=stable` |
+| `VERSION` | Auto-detected | Application version | `make docker-build VERSION=v1.0.0` |
+| `BUILD_DATE` | Auto-computed | ISO 8601 build timestamp | Auto-computed (not overridable) |
+| `COMMIT_SHA` | Auto-detected | Git commit hash | Auto-detected (not overridable) |
+
+**Version detection logic**:
+1. **Git tag** (if available): `git describe --tags --always --dirty` → e.g., `v0.10.0`
+2. **Commit hash** (if no tag): e.g., `abc123d`
+3. **Fallback**: `"dev"` (if git not available)
+
+**Examples**:
+```bash
+# Default: uses auto-detected version
+make docker-build
+# → allisson/secrets:latest, allisson/secrets:v0.10.0
+
+# Custom registry
+make docker-build DOCKER_REGISTRY=ghcr.io/myorg
+# → ghcr.io/myorg/secrets:latest, ghcr.io/myorg/secrets:v0.10.0
+
+# Force version for testing
+make docker-build VERSION=v0.9.0-beta1
+# → allisson/secrets:latest, allisson/secrets:v0.9.0-beta1
+```
+
+## Docker Compose
+
+### Test Databases
+
+The project uses docker-compose to manage PostgreSQL and MySQL test databases for integration testing.
+
+**Start test databases and run tests**:
+```bash
+make test-with-db
+# Starts databases → runs tests → stops databases
+
+# Manual control:
+make test-db-up      # Start databases only
+make test            # Run tests
+make test-db-down    # Stop and remove databases
+```
+
+**Database services** (`docker-compose.test.yml`):
+- **postgres-test**: PostgreSQL 16 on port 5433
+- **mysql-test**: MySQL 8.0 on port 3307
+
+Both services include health checks and auto-restart on failure.
+
+**Common operations**:
+```bash
+# View logs
+docker compose -f docker-compose.test.yml logs -f postgres-test
+
+# Check service status
+docker compose -f docker-compose.test.yml ps
+
+# Restart specific service
+docker compose -f docker-compose.test.yml restart mysql-test
+
+# Clean up volumes
+docker compose -f docker-compose.test.yml down -v
+```
+
+**When to use**: Integration tests that require actual database connections (e.g., repository tests, migration tests).
+
+## Development Databases
+
+For local development, use standalone Docker containers for databases (alternative to docker-compose).
+
+**PostgreSQL**:
+```bash
+make dev-postgres
+# Runs: postgres:16-alpine on port 5432
+# Connection string: See .env.example
+```
+
+**MySQL**:
+```bash
+make dev-mysql
+# Runs: mysql:8.0 on port 3306
+# Connection string: See .env.example
+```
+
+**Stop all dev databases**:
+```bash
+make dev-stop
+```
+
+**When to use**:
+- **Development databases** (`dev-postgres`, `dev-mysql`): Local development, manual testing, running the app locally
+- **Test databases** (`test-with-db`): Automated integration tests via `make test-with-db`
+
+**Key differences**:
+- Dev databases run on **standard ports** (5432, 3306)
+- Test databases run on **alternate ports** (5433, 3307) to avoid conflicts
+- Test databases are **ephemeral** (cleaned up after tests)
+- Dev databases **persist** until manually stopped
+
+## Documentation Validation
+
+All documentation changes MUST be validated before committing.
+
+**Lint documentation**:
+```bash
+make docs-lint
+```
+
+This command checks:
+- Markdown syntax and formatting (markdownlint-cli2)
+- Code examples validation (`docs-check-examples`)
+- Metadata consistency (`docs-check-metadata`)
+- Release tag verification (`docs-check-release-tags`)
+
+**Note**: Always run `make docs-lint` after updating any `.md` files in the `docs/` directory or root documentation files.
 
 ## Code Style Guidelines
 
-### Package Structure and Imports
+### Line Length and Formatting
 
-**Import Order** (enforced by goimports):
-1. Standard library imports
-2. External dependencies
-3. Internal packages (prefixed with github.com/allisson/secrets/internal/)
+- **Max line length**: 110 characters
+- **Tab length**: 4 spaces
+- **Auto-format**: Use `golangci-lint run -v --fix` before committing
+- **Line breaking**: Chain split on dots for method chaining
 
-**Import Aliases**:
-- Use descriptive aliases for domain packages: `cryptoDomain`, `cryptoService`, `cryptoRepository`
-- Use `apperrors` for `github.com/allisson/secrets/internal/errors`
+### Import Organization
 
-Example:
+Imports MUST be organized in 3 sections separated by blank lines:
+
 ```go
 import (
+    // 1. Standard library
     "context"
-    "database/sql"
-    
+    "errors"
+    "fmt"
+    "time"
+
+    // 2. External dependencies
+    "github.com/gin-gonic/gin"
     "github.com/google/uuid"
-    
-    cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+    "github.com/stretchr/testify/assert"
+
+    // 3. Local packages (use domain aliasing for clarity)
+    "github.com/allisson/secrets/internal/database"
+    authDomain "github.com/allisson/secrets/internal/auth/domain"
+    authDTO "github.com/allisson/secrets/internal/auth/http/dto"
     cryptoService "github.com/allisson/secrets/internal/crypto/service"
-    apperrors "github.com/allisson/secrets/internal/errors"
 )
 ```
 
-### Architecture Layers
+**Local import prefix**: `github.com/allisson/secrets`
 
-Follow Clean Architecture strictly:
-
-1. **Domain Layer** (`domain/`)
-   - Pure business entities and domain logic
-   - No external dependencies (except UUIDs)
-   - Domain-specific errors wrapping standard errors
-   - Example: `Kek`, `Dek`, `MasterKey` structs
-
-2. **Repository Layer** (`repository/`)
-   - Data persistence implementations (PostgreSQL and MySQL)
-   - Use `database.GetTx(ctx, db)` for transaction support
-   - Wrap errors with context: `apperrors.Wrap(err, "failed to create kek")`
-   - Always defer `rows.Close()` and check `rows.Err()`
-
-3. **Use Case Layer** (`usecase/`)
-   - Business logic orchestration
-   - Coordinates between repositories and services
-   - Defines interfaces for dependencies
-   - Transaction management via `TxManager.WithTx()`
-
-4. **Presentation Layer** (`http/`)
-   - HTTP handlers using Gin web framework
-   - Request/response DTOs
-   - Maps domain errors to HTTP status codes
-   - Input validation using jellydator/validation
-   - Custom slog-based logging middleware
-
-5. **Service Layer** (`service/`)
-   - Reusable technical services (encryption, key management)
-   - No business logic
+**Domain aliasing pattern**: When importing multiple packages from different domains, use aliases like `authDomain`, `transitDomain`, `cryptoService`, `authDTO`.
 
 ### Naming Conventions
 
-**Interfaces**: Named after behavior (e.g., `KekRepository`, `KeyManager`, `TxManager`)
+| Type | Convention | Example |
+|------|------------|---------|
+| Variables | camelCase | `userID`, `clientName`, `isValid` |
+| Constants | PascalCase or SCREAMING_SNAKE_CASE | `DefaultTimeout`, `MAX_RETRIES` |
+| Functions | PascalCase (exported), camelCase (private) | `CreateClient()`, `validateInput()` |
+| Types (structs) | PascalCase | `Client`, `AuditLog`, `TransitKey` |
+| Interfaces | PascalCase + descriptive | `ClientRepository`, `TokenUseCase`, `SecretService` |
+| Interface methods | PascalCase | `GetByID()`, `Create()`, `Delete()` |
+| Test functions | `Test` + PascalCase | `TestCreateClient`, `TestValidatePolicy` |
+| Table test variables | `tt` or `tc` | `for _, tt := range tests` |
+| Mock types | `Mock` + InterfaceName | `MockClientRepository` |
 
-**Structs**: 
-- Domain entities: PascalCase (e.g., `Kek`, `MasterKey`)
-- Internal implementations: lowercase with package name (e.g., `kekUseCase`, `postgresqlKekRepository`)
+### Function Comments
 
-**Methods**: Use descriptive verbs:
-- `Create`, `Update`, `List` (repositories)
-- `CreateKek`, `DecryptKek`, `EncryptDek` (services)
-- `Wrap`, `Unwrap`, `Rotate` (use cases)
+All exported identifiers (functions, types, constants, variables) MUST have comments. Comments should describe what the code does, not how it does it.
 
-**Variables**:
-- Use full words, not abbreviations (except common ones: `ctx`, `db`, `id`, `tx`)
-- Example: `masterKey` not `mk`, `kekChain` not `kc`
+**General Rules**:
+- Start comment with the name of what you're documenting
+- Use complete sentences with proper punctuation
+- Use present tense ("creates", "validates", not "will create")
+- End with a period
+- Place comment directly above the declaration
 
-### Types and Interfaces
+**Exported Functions**:
 
-**UUIDs**: Use `google/uuid` package, prefer UUIDv7 for database IDs:
 ```go
-id := uuid.Must(uuid.NewV7())
+// Create generates and persists a new Client with a random secret.
+// Returns the client ID and plain text secret. The plain secret is only returned once
+// and must be securely stored by the caller.
+func (uc *ClientUseCase) Create(
+    ctx context.Context,
+    input *domain.CreateClientInput,
+) (*domain.CreateClientOutput, error)
 ```
 
-**Context**: Always pass `context.Context` as the first parameter:
+**Unexported Functions** (comment when logic is non-trivial):
+
 ```go
-func Create(ctx context.Context, kek *Kek) error
+// matchPath checks if the request path matches the policy path pattern.
+// Supports three types of wildcards:
+//  1. Full wildcard: "*" matches any path
+//  2. Trailing wildcard: "prefix/*" matches any path starting with "prefix/"
+//  3. Mid-path wildcard: "/v1/keys/*/rotate" matches paths with * as single segment
+func matchPath(policyPath, requestPath string) bool
 ```
 
-**Error Returns**: Return errors as the last return value:
+**Package Comments** (required, placed before package declaration):
+
 ```go
-func Get(id uuid.UUID) (*Kek, error)
+// Package usecase implements transit encryption business logic.
+//
+// Coordinates between cryptographic services and repositories to manage transit keys
+// with versioning and envelope encryption. Uses TxManager for transactional consistency.
+package usecase
+```
+
+**Type/Struct Comments**:
+
+```go
+// Client represents an authentication client with associated authorization policies.
+// Clients are used to authenticate API requests and enforce access control.
+type Client struct {
+    ID        uuid.UUID
+    Name      string
+    Secret    string //nolint:gosec // hashed client secret (not plaintext)
+    IsActive  bool
+    Policies  []PolicyDocument
+}
+```
+
+**Interface Method Comments**:
+
+```go
+type ClientRepository interface {
+    // Create stores a new client in the repository.
+    Create(ctx context.Context, client *domain.Client) error
+    
+    // Get retrieves a client by ID. Returns ErrClientNotFound if not found.
+    Get(ctx context.Context, clientID uuid.UUID) (*domain.Client, error)
+}
+```
+
+**Special Annotations**:
+- `SECURITY:` - Security warnings or sensitive operations
+- `Returns ErrXxx` - Document error conditions
+- `Examples:` - Provide usage examples with bullet points
+- `NOTE:` - Important implementation details
+
+**Quick Reference**:
+
+| Context | Pattern | Required? |
+|---------|---------|-----------|
+| Exported function | `// FunctionName describes what it does.` | Yes |
+| Unexported function | Same format, when non-trivial | Conditional |
+| Package | Multi-line above `package` statement | Yes |
+| Type/Struct | `// TypeName represents...` | Yes (if exported) |
+| Interface methods | Comment each method | Yes |
+| Constructor | `// NewTypeName creates a new...` | Yes |
+| HTTP handlers | Include route and capability requirements | Yes |
+
+### Type Usage Patterns
+
+**Interfaces**: Define behavior contracts, typically in the package that uses them
+
+```go
+// Repository pattern (in usecase package)
+type ClientRepository interface {
+    Create(ctx context.Context, client *domain.Client) error
+    GetByID(ctx context.Context, id string) (*domain.Client, error)
+    Update(ctx context.Context, client *domain.Client) error
+    Delete(ctx context.Context, id string) error
+}
+```
+
+**Structs**: Domain entities, DTOs, use cases, services
+
+```go
+// Domain entity
+type Client struct {
+    ID        string
+    Name      string
+    CreatedAt time.Time
+    UpdatedAt time.Time
+}
+
+// Use case with dependency injection
+type ClientUseCase struct {
+    repo     ClientRepository
+    txMgr    database.TxManager
+}
 ```
 
 ### Error Handling
 
-**Standard Errors** (internal/errors/errors.go):
-- `ErrNotFound` → 404 Not Found
-- `ErrConflict` → 409 Conflict
-- `ErrInvalidInput` → 422 Unprocessable Entity
-- `ErrUnauthorized` → 401 Unauthorized
-- `ErrForbidden` → 403 Forbidden
+**Error types**: Define domain-specific errors as package-level variables
 
-**Domain Errors**: Wrap standard errors with context:
 ```go
-var ErrKekNotFound = errors.Wrap(errors.ErrNotFound, "kek not found")
+var (
+    ErrClientNotFound     = errors.New("client not found")
+    ErrInvalidCredentials = errors.New("invalid credentials")
+    ErrUnauthorized       = errors.New("unauthorized")
+)
 ```
 
-**Error Checking**:
+**Error wrapping**: Use `fmt.Errorf` with `%w` to wrap errors
+
 ```go
+func (uc *ClientUseCase) GetByID(ctx context.Context, id string) (*domain.Client, error) {
+    client, err := uc.repo.GetByID(ctx, id)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get client: %w", err)
+    }
+    return client, nil
+}
+```
+
+**Error checking**: Always check errors immediately, use early returns
+
+```go
+// Good
 if err != nil {
-    return apperrors.Wrap(err, "failed to perform operation")
+    return nil, fmt.Errorf("operation failed: %w", err)
+}
+
+// Bad - don't ignore errors
+_ = someOperation()
+```
+
+## Testing Guidelines
+
+### Test File Naming
+
+- Test files: `*_test.go` in the same package
+- Integration tests: `test/integration/`
+- Table-driven tests: Preferred pattern
+
+### Table-Driven Test Pattern
+
+```go
+func TestCreateClient(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   *domain.Client
+        wantErr bool
+        errType error
+    }{
+        {
+            name:    "valid client",
+            input:   &domain.Client{Name: "test"},
+            wantErr: false,
+        },
+        {
+            name:    "empty name",
+            input:   &domain.Client{Name: ""},
+            wantErr: true,
+            errType: ErrInvalidInput,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := CreateClient(tt.input)
+            if tt.wantErr {
+                assert.Error(t, err)
+                if tt.errType != nil {
+                    assert.ErrorIs(t, err, tt.errType)
+                }
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
 }
 ```
 
-**Error Comparison**: Use `errors.Is()` and `errors.As()`:
+### Test Assertions
+
+Use `testify/assert` and `testify/require`:
+- `assert.*`: Continues test on failure
+- `require.*`: Stops test on failure
+
 ```go
-if errors.Is(err, sql.ErrNoRows) {
-    return domain.ErrKekNotFound
-}
+require.NoError(t, err) // Stop if error
+assert.Equal(t, expected, actual)
+assert.NotNil(t, result)
+assert.True(t, condition)
 ```
 
-### Validation
+### Mocks
 
-Use `github.com/jellydator/validation` for input validation:
-```go
-func (d *CreateDTO) Validate() error {
-    return validation.ValidateStruct(d,
-        validation.Field(&d.Name, validation.Required, validation.Length(1, 255)),
-        validation.Field(&d.Email, validation.Required, customValidation.Email),
-    )
-}
-```
-
-Wrap validation errors: `validation.WrapValidationError(err)`
-
-### Documentation
-
-**Docstring Format**: Use the **enhanced compact format** consistently across the codebase.
-
-**Package Documentation**: Start with concise package comment (1-2 lines):
-```go
-// Package domain defines core cryptographic domain models for envelope encryption.
-// Implements Master Key → KEK → DEK → Data hierarchy with AESGCM and ChaCha20 support.
-package domain
-```
-
-**Function Comments**: 
-- Start with function name and concise description (1-2 sentences)
-- Include important context inline without formal "Parameters:" or "Returns:" sections
-- Document error cases and security notes inline
-- Use bullet lists for patterns or special cases when needed
-- Focus on "what" and "why", not implementation details
-
-**Compact Format Examples:**
-
-Simple function:
-```go
-// Create generates and persists a new KEK using the active master key.
-// Returns ErrMasterKeyNotFound if the active master key is not in the chain.
-func (k *kekUseCase) Create(ctx context.Context, masterKeyChain *cryptoDomain.MasterKeyChain, alg cryptoDomain.Algorithm) error
-```
-
-Function with security notes:
-```go
-// Authenticate validates a token hash and returns the associated client. Validates token
-// is not expired/revoked and client is active. Returns ErrInvalidCredentials for
-// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
-// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
-func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
-```
-
-Function with patterns:
-```go
-// AuthorizationMiddleware enforces capability-based authorization for authenticated clients.
-//
-// MUST be used after AuthenticationMiddleware. Retrieves authenticated client from context,
-// extracts request path, and checks if Client.IsAllowed(path, capability) permits access.
-//
-// Path Matching:
-//   - Exact: "/secrets/mykey" matches policy "/secrets/mykey"
-//   - Wildcard: "*" matches all paths
-//   - Prefix: "secret/*" matches paths starting with "secret/"
-//
-// Returns:
-//   - 401 Unauthorized: No authenticated client in context
-//   - 403 Forbidden: Insufficient permissions
-func AuthorizationMiddleware(capability authDomain.Capability, logger *slog.Logger) gin.HandlerFunc
-```
-
-**When to Include Details:**
-- Security implications (timing attacks, enumeration, key zeroing)
-- Error cases and return conditions
-- Transaction behavior
-- Special requirements or constraints
-- Wildcard patterns or matching rules
-
-**What to Avoid:**
-- Step-by-step implementation details (e.g., "1. Do X, 2. Do Y, 3. Do Z")
-- Redundant descriptions that simply restate the code
-- Formal "Parameters:" and "Returns:" sections (integrate inline instead)
-- Excessive examples unless for complex public APIs
-
-### Testing
-
-**Test Framework**: Use `testify` for assertions and mocks
-
-**Test Naming**: `Test<Struct>_<Method>` or `Test<Function>`
-```go
-func TestKekUseCase_Create(t *testing.T)
-```
-
-**Subtests**: Use descriptive names with underscores:
-```go
-t.Run("Success_CreateKekWithAESGCM", func(t *testing.T) { ... })
-t.Run("Error_MasterKeyNotFound", func(t *testing.T) { ... })
-```
-
-**Mocks**: Generate using mockery v3 (.mockery.yaml configuration):
-```bash
-make mocks
-```
-
-**Test Structure**:
-```go
-t.Run("TestName", func(t *testing.T) {
-    // Setup mocks
-    mockRepo := mocks.NewMockRepository(t)
-    
-    // Create test data
-    testData := createTestData()
-    
-    // Setup expectations
-    mockRepo.EXPECT().Method(...).Return(...).Once()
-    
-    // Execute
-    result, err := useCase.Method(ctx, ...)
-    
-    // Assert
-    assert.NoError(t, err)
-    assert.Equal(t, expected, result)
-})
-```
-
-**Integration Tests**: Use real databases (PostgreSQL and MySQL) via testutil helpers
-
-## Additional Guidelines
-
-- **Line Length**: Maximum 110 characters (enforced by golines)
-- **Defer Usage**: Always defer cleanup operations (`Close()`, `rows.Close()`)
-- **Security**: Use `Zero()` functions to clear sensitive data from memory
-- **Transactions**: Use `TxManager.WithTx()` for atomic multi-step operations
-- **Thread Safety**: Use `sync.Map` for concurrent access to shared data
-- **Binary Data**: Store as `[]byte`, use BYTEA (PostgreSQL) or BLOB (MySQL)
-- **Timestamps**: Use `time.Time` with UTC, store with timezone in PostgreSQL
+- Generate mocks using mockery: `make mocks`
+- Configuration: `.mockery.yaml`
+- Mock location: `internal/package/mocks/mocks.go`
+- Mock naming: `Mock{InterfaceName}`
 
 ## Common Patterns
 
-### Repository Pattern with Transactions
+### Dependency Injection
+
+Use constructor functions with interface dependencies:
+
 ```go
-func (r *Repository) Create(ctx context.Context, entity *Entity) error {
-    querier := database.GetTx(ctx, r.db)
-    _, err := querier.ExecContext(ctx, query, args...)
+func NewClientUseCase(repo ClientRepository, txMgr database.TxManager) *ClientUseCase {
+    return &ClientUseCase{
+        repo:  repo,
+        txMgr: txMgr,
+    }
+}
+```
+
+### Repository Pattern
+
+Repositories handle data persistence, typically implemented with SQL:
+
+```go
+type clientRepository struct {
+    db *sql.DB
+}
+
+func (r *clientRepository) Create(ctx context.Context, client *domain.Client) error {
+    query := `INSERT INTO clients (id, name, created_at) VALUES ($1, $2, $3)`
+    _, err := r.db.ExecContext(ctx, query, client.ID, client.Name, client.CreatedAt)
     return err
 }
 ```
 
-### Use Case with Transaction
-```go
-return k.txManager.WithTx(ctx, func(ctx context.Context) error {
-    if err := k.repo.Update(ctx, old); err != nil {
-        return err
-    }
-    return k.repo.Create(ctx, new)
-})
-```
-
-### Dependency Injection
-```go
-func NewUseCase(txManager TxManager, repo Repository) UseCase {
-    return &useCase{txManager: txManager, repo: repo}
-}
-```
-
-## CLI Commands Structure
-
-The application uses **urfave/cli v3** for command-line interface with commands organized in separate files.
-
-### Directory Structure
-```
-cmd/app/
-├── commands/           # Command implementations package
-│   ├── helpers.go      # Unexported helper functions (closeContainer, closeMigrate)
-│   ├── server.go       # RunServer() - HTTP server command
-│   ├── migrations.go   # RunMigrations() - Database migration command
-│   ├── master_key.go   # RunCreateMasterKey() - Master key generation command
-│   ├── create_kek.go   # RunCreateKek() - KEK creation command (+ parseAlgorithm helper)
-│   └── rotate_kek.go   # RunRotateKek() - KEK rotation command
-└── main.go             # CLI setup and routing only (~87 lines)
-```
-
-### Command Organization
-
-**Exported Functions**: Command entry points are exported with `Run` prefix (e.g., `RunServer`, `RunMigrations`)
-
-**Unexported Helpers**: Shared utilities remain package-private (e.g., `closeContainer`, `parseAlgorithm`)
-
-**Single Responsibility**: Each command lives in its own file for better maintainability
-
-**Shared Logic**: Common algorithm parsing and cleanup functions are reused across commands
-
-### Command Implementation Pattern
+### HTTP Handlers (Gin)
 
 ```go
-// Package commands contains CLI command implementations.
-package commands
-
-import (
-    "context"
-    "fmt"
-    "log/slog"
-    
-    "github.com/allisson/secrets/internal/app"
-    "github.com/allisson/secrets/internal/config"
-)
-
-// RunCommandName performs the command operation.
-// Brief description of what the command does and any requirements.
-func RunCommandName(ctx context.Context, args string) error {
-    // Load configuration
-    cfg := config.Load()
-    
-    // Create DI container
-    container := app.NewContainer(cfg)
-    logger := container.Logger()
-    
-    // Ensure cleanup on exit
-    defer closeContainer(container, logger)
-    
-    // Command implementation
-    // ...
-    
-    return nil
-}
-
-// unexported helper functions shared across commands
-func closeContainer(container *app.Container, logger *slog.Logger) {
-    if err := container.Shutdown(context.Background()); err != nil {
-        logger.Error("failed to shutdown container", slog.Any("error", err))
-    }
-}
-```
-
-### CLI Setup in main.go
-
-The `main.go` file contains only CLI definitions and routes to command functions:
-
-```go
-package main
-
-import (
-    "context"
-    "log/slog"
-    "os"
-    
-    "github.com/urfave/cli/v3"
-    
-    "github.com/allisson/secrets/cmd/app/commands"
-)
-
-func main() {
-    cmd := &cli.Command{
-        Name:    "app",
-        Usage:   "Application description",
-        Version: "1.0.0",
-        Commands: []*cli.Command{
-            {
-                Name:  "server",
-                Usage: "Start the HTTP server",
-                Action: func(ctx context.Context, cmd *cli.Command) error {
-                    return commands.RunServer(ctx)
-                },
-            },
-            // Additional commands...
-        },
-    }
-    
-    if err := cmd.Run(context.Background(), os.Args); err != nil {
-        slog.Error("application error", slog.Any("error", err))
-        os.Exit(1)
-    }
-}
-```
-
-### Available Commands
-
-**Server Commands:**
-- `app server` - Start HTTP server with graceful shutdown
-- `app migrate` - Run database migrations (PostgreSQL or MySQL)
-
-**Cryptographic Key Management:**
-- `app create-master-key [--id <key-id>]` - Generate new 32-byte master key
-- `app create-kek [--algorithm aes-gcm|chacha20-poly1305]` - Create initial KEK
-- `app rotate-kek [--algorithm aes-gcm|chacha20-poly1305]` - Rotate existing KEK
-
-**Audit Log Operations:**
-- `app clean-audit-logs --days <days> [--dry-run] [--format text|json]` - Delete old audit logs or preview count
-
-### Command Testing
-
-When adding new commands:
-1. Create new file in `cmd/app/commands/` with `Run<CommandName>` function
-2. Add command definition to `main.go` CLI setup
-3. Verify with `make build && ./bin/app --help`
-4. Test command execution: `./bin/app <command-name>`
-
-## HTTP Layer with Gin
-
-### Server Setup
-
-The project uses **Gin v1.11.0** as the web framework with custom slog-based middleware:
-
-```go
-// Create Gin engine without default middleware
-router := gin.New()
-
-// Apply custom middleware
-router.Use(gin.Recovery())                   // Gin's panic recovery
-router.Use(requestid.New(requestid.WithGenerator(func() string {
-    return uuid.Must(uuid.NewV7()).String()
-})))                                         // Request ID with UUIDv7
-router.Use(CustomLoggerMiddleware(logger))   // Custom slog logger
-
-// Health endpoints (outside API versioning)
-router.GET("/health", s.healthHandler)
-router.GET("/ready", s.readinessHandler(ctx))
-
-// API v1 routes group
-v1 := router.Group("/api/v1")
-{
-    // Business endpoints
-    v1.POST("/secrets", authMiddleware, s.createSecretHandler)
-}
-```
-
-**Key Features:**
-- Manual `http.Server` configuration for timeout control (ReadTimeout: 15s, WriteTimeout: 15s, IdleTimeout: 60s)
-- Gin mode auto-configured from `LOG_LEVEL` environment variable (debug/release)
-- Router groups for API versioning (`/api/v1`)
-- Graceful shutdown support
-- Request ID tracking with UUIDv7 (`X-Request-Id` header)
-
-### Handler Pattern
-
-```go
-// Handler method signature
-func (s *Server) createSecretHandler(c *gin.Context) {
-    var req CreateSecretRequest
-    
-    // 1. Parse and bind JSON
+func (h *ClientHandler) Create(c *gin.Context) {
+    var req dto.CreateClientRequest
     if err := c.ShouldBindJSON(&req); err != nil {
-        httputil.HandleValidationErrorGin(c, err, s.logger)
+        httputil.RespondError(c, http.StatusBadRequest, err)
         return
     }
-    
-    // 2. Validate with jellydator/validation
-    if err := req.Validate(); err != nil {
-        httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), s.logger)
-        return
-    }
-    
-    // 3. Call use case
-    result, err := s.secretUseCase.CreateOrUpdate(c.Request.Context(), req.Path, req.Value)
+
+    client, err := h.useCase.Create(c.Request.Context(), &req)
     if err != nil {
-        httputil.HandleErrorGin(c, err, s.logger)
+        httputil.RespondError(c, http.StatusInternalServerError, err)
         return
     }
-    
-    // 4. Return success response
-    c.JSON(http.StatusCreated, mapToResponse(result))
+
+    c.JSON(http.StatusCreated, client)
 }
 ```
 
-### Error Handling in HTTP
-
-Use `httputil.HandleErrorGin()` to map domain errors to HTTP status codes:
-
-```go
-// Automatically maps domain errors to HTTP responses
-httputil.HandleErrorGin(c, err, s.logger)
-
-// Error mapping:
-// ErrNotFound       → 404 Not Found
-// ErrConflict       → 409 Conflict
-// ErrInvalidInput   → 422 Unprocessable Entity
-// ErrUnauthorized   → 401 Unauthorized
-// ErrForbidden      → 403 Forbidden
-// Unknown errors    → 500 Internal Server Error
-```
-
-### Request/Response DTOs
-
-```go
-type CreateSecretRequest struct {
-    Path  string `json:"path" binding:"required"`
-    Value []byte `json:"value" binding:"required"`
-}
-
-func (r *CreateSecretRequest) Validate() error {
-    return validation.ValidateStruct(r,
-        validation.Field(&r.Path, validation.Required, validation.Length(1, 255)),
-        validation.Field(&r.Value, validation.Required),
-    )
-}
-
-type SecretResponse struct {
-    ID      string    `json:"id"`
-    Path    string    `json:"path"`
-    Version int       `json:"version"`
-    CreatedAt time.Time `json:"created_at"`
-}
-```
-
-### Testing HTTP Handlers
-
-Use Gin's test utilities for HTTP handler tests:
-
-```go
-func TestHealthHandler(t *testing.T) {
-    // Set Gin to test mode
-    gin.SetMode(gin.TestMode)
-    
-    // Create test server
-    server := createTestServer()
-    
-    // Create test context
-    w := httptest.NewRecorder()
-    c, _ := gin.CreateTestContext(w)
-    c.Request = httptest.NewRequest(http.MethodGet, "/health", nil)
-    
-    // Call handler
-    server.healthHandler(c)
-    
-    // Assert response
-    assert.Equal(t, http.StatusOK, w.Code)
-    var response map[string]string
-    json.Unmarshal(w.Body.Bytes(), &response)
-    assert.Equal(t, "healthy", response["status"])
-}
-```
-
-**Integration Tests** (test full router):
-```go
-func TestRouter_HealthEndpoint(t *testing.T) {
-    gin.SetMode(gin.TestMode)
-    server := createTestServer()
-    router := server.setupRouter(context.Background())
-    
-    w := httptest.NewRecorder()
-    req := httptest.NewRequest(http.MethodGet, "/health", nil)
-    router.ServeHTTP(w, req)
-    
-    assert.Equal(t, http.StatusOK, w.Code)
-}
-```
-
-### Middleware Pattern
-
-Custom middleware follows Gin's signature:
-
-```go
-func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        start := time.Now()
-        
-        // Process request
-        c.Next()
-        
-        // Log after completion
-        logger.Info("http request",
-            slog.String("method", c.Request.Method),
-            slog.String("path", c.Request.URL.Path),
-            slog.Int("status", c.Writer.Status()),
-            slog.Duration("duration", time.Since(start)),
-            slog.String("client_ip", c.ClientIP()),
-            slog.String("request_id", requestid.Get(c)),
-        )
-    }
-}
-```
-
-**Request ID Tracking:**
-- Every HTTP request automatically generates a unique UUIDv7 request ID
-- Request ID is included in `X-Request-Id` response header
-- Request ID is logged with every HTTP request for tracing
-- Handlers can access request ID using `requestid.Get(c)` for distributed tracing
-
-Example log output with request ID:
-```json
-{
-  "time": "2026-02-12T10:30:45Z",
-  "level": "INFO",
-  "msg": "http request",
-  "method": "GET",
-  "path": "/api/v1/secrets",
-  "status": 200,
-  "duration": "15ms",
-  "client_ip": "192.168.1.100",
-  "request_id": "01933e4a-7890-7abc-def0-123456789abc"
-}
-```
-
-Apply middleware globally or per route group:
-```go
-// Global middleware (in order)
-router.Use(gin.Recovery())
-router.Use(requestid.New(requestid.WithGenerator(func() string {
-    return uuid.Must(uuid.NewV7()).String()
-})))
-router.Use(CustomLoggerMiddleware(logger))
-
-// Per-group middleware
-v1 := router.Group("/api/v1")
-v1.Use(authMiddleware)
-```
-
-### Rate Limiting Middleware
-
-The project implements two types of rate limiting middleware to protect against abuse:
-
-#### 1. Client-Based Rate Limiting (Authenticated Endpoints)
-
-**File:** `/internal/auth/http/rate_limit_middleware.go`
-
-**Purpose:** Protects authenticated endpoints from abuse by limiting requests per authenticated client.
-
-**Usage:**
-```go
-// Create middleware with configuration
-rateLimitMiddleware := authHTTP.RateLimitMiddleware(
-    cfg.RateLimitRequestsPerSec,  // e.g., 10.0 requests/second
-    cfg.RateLimitBurst,            // e.g., 20 burst capacity
-    logger,
-)
-
-// Apply to authenticated route groups
-clients := v1.Group("/clients")
-clients.Use(authMiddleware)        // Must come first
-clients.Use(rateLimitMiddleware)   // Rate limit per client
-```
-
-**Key Features:**
-- **Requires authentication:** Must be used after `AuthenticationMiddleware`
-- **Per-client limits:** Each authenticated client (by client ID) gets independent rate limiter
-- **Token bucket algorithm:** Uses `golang.org/x/time/rate` for smooth rate limiting
-- **Automatic cleanup:** Removes stale limiters after 1 hour of inactivity
-- **Configurable:** Controlled by `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS_PER_SEC`, `RATE_LIMIT_BURST`
-
-**Response:**
-- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
-- Error response: `{"error": "rate_limit_exceeded", "message": "Too many requests. Please retry after the specified delay."}`
-
-#### 2. IP-Based Rate Limiting (Unauthenticated Endpoints)
-
-**File:** `/internal/auth/http/token_rate_limit_middleware.go`
-
-**Purpose:** Protects unauthenticated endpoints (e.g., token issuance) from credential stuffing and brute force attacks.
-
-**Usage:**
-```go
-// Create middleware with configuration
-tokenRateLimitMiddleware := authHTTP.TokenRateLimitMiddleware(
-    cfg.RateLimitTokenRequestsPerSec,  // e.g., 5.0 requests/second
-    cfg.RateLimitTokenBurst,            // e.g., 10 burst capacity
-    logger,
-)
-
-// Apply to unauthenticated endpoints
-if tokenRateLimitMiddleware != nil {
-    v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
-}
-```
-
-**Key Features:**
-- **No authentication required:** Works on unauthenticated endpoints
-- **Per-IP limits:** Each IP address gets independent rate limiter
-- **Automatic IP detection:** Uses `c.ClientIP()` which handles:
-  - `X-Forwarded-For` header (takes first IP)
-  - `X-Real-IP` header
-  - Direct connection remote address
-- **Token bucket algorithm:** Uses `golang.org/x/time/rate` for smooth rate limiting
-- **Automatic cleanup:** Removes stale limiters after 1 hour of inactivity
-- **Configurable:** Controlled by `RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`
-
-**Response:**
-- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
-- Error response: `{"error": "rate_limit_exceeded", "message": "Too many token requests from this IP. Please retry after the specified delay."}`
-
-**Security Considerations:**
-
-*Strengths:*
-- Protects against credential stuffing and brute force attacks
-- Stricter default limits (5 req/sec, burst 10) than authenticated endpoints
-- No overhead on authenticated endpoints
-
-*Limitations & Mitigations:*
-- **Shared IPs (NAT, corporate proxies):** May affect legitimate users behind same IP
-  - Mitigation: Reasonable burst capacity (10 requests) handles legitimate retries
-  - Mitigation: Can be disabled via `RATE_LIMIT_TOKEN_ENABLED=false` if needed
-- **IP Spoofing via X-Forwarded-For:** Attacker could rotate IPs in header
-  - Mitigation: Configure Gin's trusted proxy settings in production
-  - Mitigation: Deploy behind proper reverse proxy/load balancer
-
-**Configuration Example (.env):**
-```bash
-# Authenticated endpoint rate limiting (per client)
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_REQUESTS_PER_SEC=10.0
-RATE_LIMIT_BURST=20
-
-# Token endpoint rate limiting (per IP, unauthenticated)
-RATE_LIMIT_TOKEN_ENABLED=true
-RATE_LIMIT_TOKEN_REQUESTS_PER_SEC=5.0
-RATE_LIMIT_TOKEN_BURST=10
-```
-
-**Testing:**
-Both middleware implementations include comprehensive test coverage:
-- Requests within limit allowed
-- Requests exceeding limit blocked with 429
-- Retry-After header present
-- Independent limits per client/IP
-- Burst capacity handling
-- Automatic cleanup of stale entries
-
-**Reference:**
-- Client-based: `/internal/auth/http/rate_limit_middleware.go` and `rate_limit_middleware_test.go`
-- IP-based: `/internal/auth/http/token_rate_limit_middleware.go` and `token_rate_limit_middleware_test.go`
-
-## Authentication & Authorization HTTP Layer
-
-### HTTP Handler Organization Pattern
-
-The HTTP layer follows a structured organization pattern that separates concerns by domain responsibility:
-
-**Directory Structure:**
-```
-internal/auth/http/
-├── client_handler.go          # ClientHandler - manages API clients (CRUD)
-├── client_handler_test.go     # ClientHandler integration tests
-├── token_handler.go           # TokenHandler - token issuance
-├── token_handler_test.go      # TokenHandler integration tests
-├── middleware.go              # Authentication & authorization middleware
-├── middleware_test.go         # Middleware tests
-├── context.go                 # Context helper functions (WithClient, GetClient)
-├── test_helpers.go            # Shared test utilities (createTestContext)
-├── dto/                       # Data Transfer Objects package
-│   ├── request.go             # Request DTOs with validation
-│   ├── request_test.go        # Request validation tests
-│   ├── response.go            # Response DTOs with mapping functions
-│   └── response_test.go       # Response mapping tests
-└── mocks/                     # Manual mocks (separate from generated mocks)
-    └── token_usecase.go       # MockTokenUseCase
-```
-
-**Handler Organization Guidelines:**
-
-**When to Split Handlers:**
-- Split by **domain responsibility**, not by CRUD operation
-- Example: `ClientHandler` (client management) vs `TokenHandler` (token issuance)
-- Each handler struct manages one domain concept with multiple HTTP methods
-- Avoid creating separate handlers for each HTTP method (e.g., don't create `CreateClientHandler`, `UpdateClientHandler`)
-
-**DTO Package Conventions:**
-
-1. **Separation by Direction:**
-   - `request.go` - Request DTOs and validation logic
-   - `response.go` - Response DTOs and mapping functions
-
-2. **Validation Placement:**
-   - Request DTOs include `Validate() error` methods
-   - Use `github.com/jellydator/validation` for validation rules
-   - Unexported helper functions (e.g., `validatePolicyDocument()`) stay in `request.go`
-
-3. **Mapping Functions:**
-   - Response mapping functions live in `response.go`
-   - Export mapping functions that handlers need (e.g., `MapClientToResponse()`)
-   - Keep unexported helpers for internal transformations
-
-4. **Testing:**
-   - Create corresponding test files: `request_test.go`, `response_test.go`
-   - Test validation logic in isolation from HTTP handlers
-   - Test mapping functions with domain model fixtures
-
-**Test Helper Guidelines:**
-
-1. **Shared Utilities:**
-   - Extract common test setup to `test_helpers.go` (not `*_test.go` suffix)
-   - Example: `createTestContext(method, path, body) (*gin.Context, *httptest.ResponseRecorder)`
-   - Reuse across all handler test files
-
-2. **Mock Organization:**
-   - Manual mocks go in `mocks/` subdirectory (e.g., `mocks/token_usecase.go`)
-   - Generated mocks (via mockery v3) are consolidated in `mocks/mocks.go` per package
-   - Keep manual and generated mocks separate to avoid conflicts
-
-**Example Handler Structure:**
-
-```go
-// client_handler.go
-package http
-
-import (
-    authUseCase "github.com/allisson/secrets/internal/auth/usecase"
-    authDTO "github.com/allisson/secrets/internal/auth/http/dto"
-)
-
-type ClientHandler struct {
-    clientUseCase   authUseCase.ClientUseCase
-    auditLogUseCase authUseCase.AuditLogUseCase
-}
-
-func (h *ClientHandler) CreateHandler(c *gin.Context) {
-    var req authDTO.CreateClientRequest
-    
-    if err := c.ShouldBindJSON(&req); err != nil {
-        httputil.HandleValidationErrorGin(c, err, h.logger)
-        return
-    }
-    
-    if err := req.Validate(); err != nil {
-        httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), h.logger)
-        return
-    }
-    
-    client, secret, err := h.clientUseCase.Create(c.Request.Context(), ...)
-    if err != nil {
-        httputil.HandleErrorGin(c, err, h.logger)
-        return
-    }
-    
-    response := authDTO.CreateClientResponse{
-        ID:     client.ID.String(),
-        Secret: secret,
-    }
-    c.JSON(http.StatusCreated, response)
-}
-```
-
-**Key Patterns:**
-- Import DTOs with alias: `authDTO "github.com/allisson/secrets/internal/auth/http/dto"`
-- Use `authDTO.CreateClientRequest` for request binding
-- Call `req.Validate()` after binding
-- Use `authDTO.MapClientToResponse(client)` for response mapping
-- Keep handlers thin - delegate business logic to use cases
-
-### Authentication Middleware
-
-The project implements Bearer token authentication via `AuthenticationMiddleware`:
-
-```go
-// AuthenticationMiddleware validates Bearer tokens and sets authenticated client in context
-func AuthenticationMiddleware(tokenUseCase authUseCase.TokenUseCase, logger *slog.Logger) gin.HandlerFunc
-```
-
-**Behavior:**
-- Extracts token from `Authorization` header (case-insensitive "Bearer" prefix: `bearer`, `Bearer`, `BEARER`)
-- Validates token hash via `TokenUseCase.Authenticate()` which checks:
-  - Token exists and is not expired/revoked
-  - Associated client exists and is active
-  - All time comparisons use UTC
-- Sets authenticated client in context via `authHTTP.WithClient(c, client)`
-- Returns 401 Unauthorized for:
-  - Missing Authorization header
-  - Malformed header (not "Bearer <token>")
-  - Invalid/expired/revoked token
-  - Inactive client
-  - Database errors (prevents enumeration attacks)
-
-**Usage:**
-```go
-// Apply to routes requiring authentication
-router.POST("/v1/clients", authenticationMiddleware, handler)
-```
-
-**Reference:** `/internal/auth/http/middleware.go` (lines 15-74)
-
-**Context Helpers:**
-- `authHTTP.WithClient(c, client)` - Store client in context
-- `authHTTP.GetClient(c)` - Retrieve client from context
-- See `/internal/auth/http/context.go` for all context helpers
-
-### Authorization Middleware
-
-Enforces capability-based authorization via `AuthorizationMiddleware`:
-
-```go
-// AuthorizationMiddleware checks if authenticated client has required capability for the request path
-func AuthorizationMiddleware(capability authDomain.Capability, logger *slog.Logger) gin.HandlerFunc
-```
-
-**Requirements:**
-- **MUST** be used after `AuthenticationMiddleware`
-- Authenticated client must be present in context
-
-**Behavior:**
-- Retrieves authenticated client from context via `authHTTP.GetClient(c)`
-- Extracts request path from `c.Request.URL.Path`
-- Stores path and capability in context for audit logging
-- Checks `client.IsAllowed(path, capability)` which implements path matching:
-  - **Exact match:** `/secrets/mykey` matches policy path `/secrets/mykey`
-  - **Wildcard:** `*` matches all paths
-  - **Prefix:** `secrets/*` matches paths starting with `secrets/`
-- Returns 401 Unauthorized if no authenticated client in context
-- Returns 403 Forbidden if client lacks required capability for path
-
-**Usage:**
-```go
-// Apply with specific capability per route
-router.POST("/v1/clients", authMiddleware, authzMiddleware(authDomain.WriteCapability), handler)
-router.GET("/v1/clients/:id", authMiddleware, authzMiddleware(authDomain.ReadCapability), handler)
-router.DELETE("/v1/clients/:id", authMiddleware, authzMiddleware(authDomain.DeleteCapability), handler)
-```
-
-**Available Capabilities:**
-- `ReadCapability` - View resources
-- `WriteCapability` - Create/update resources
-- `DeleteCapability` - Delete resources
-- `EncryptCapability` - Encrypt data
-- `DecryptCapability` - Decrypt data
-- `RotateCapability` - Rotate keys
-
-**Reference:** `/internal/auth/http/middleware.go` (lines 76-130)
-
-### Client Management Handler Pattern
-
-Client management handlers follow this pattern:
-
-```go
-// ClientHandler handles HTTP requests for client management
-type ClientHandler struct {
-    clientUseCase   authUseCase.ClientUseCase
-    auditLogUseCase authUseCase.AuditLogUseCase
-}
-
-func NewClientHandler(clientUseCase authUseCase.ClientUseCase, auditLogUseCase authUseCase.AuditLogUseCase) *ClientHandler
-```
-
-**Request DTOs:**
-```go
-type CreateClientRequest struct {
-    Name           string                    `json:"name" binding:"required"`
-    IsActive       bool                      `json:"is_active"`
-    PolicyDocument *authDomain.PolicyDocument `json:"policy_document" binding:"required"`
-}
-
-type UpdateClientRequest struct {
-    Name           string                    `json:"name" binding:"required"`
-    IsActive       bool                      `json:"is_active"`
-    PolicyDocument *authDomain.PolicyDocument `json:"policy_document" binding:"required"`
-}
-```
-
-**Response DTOs:**
-```go
-// CreateClientResponse includes the client secret (only returned on creation)
-type CreateClientResponse struct {
-    ID     string `json:"id"`
-    Secret string `json:"secret"`
-}
-
-// ClientResponse excludes the secret for Get/Update operations
-type ClientResponse struct {
-    ID             string                    `json:"id"`
-    Name           string                    `json:"name"`
-    IsActive       bool                      `json:"is_active"`
-    PolicyDocument *authDomain.PolicyDocument `json:"policy_document"`
-    CreatedAt      time.Time                 `json:"created_at"`
-    UpdatedAt      time.Time                 `json:"updated_at"`
-}
-```
-
-**Handler Methods:**
-- `CreateHandler(c *gin.Context)` - POST, returns 201 with ID and secret
-- `GetHandler(c *gin.Context)` - GET by UUID param, returns 200 with client (no secret)
-- `UpdateHandler(c *gin.Context)` - PUT by UUID param, returns 200 with updated client
-- `DeleteHandler(c *gin.Context)` - DELETE by UUID param, returns 204 No Content
-
-**Key Patterns:**
-
-**UUID Extraction from URL:**
-```go
-id, err := uuid.Parse(c.Param("id"))
-if err != nil {
-    httputil.HandleValidationErrorGin(c, validation.WrapValidationError(err), h.logger)
-    return
-}
-```
-
-**Policy Document Validation:**
-```go
-// validatePolicyDocument ensures policy document has valid structure
-func validatePolicyDocument(doc *authDomain.PolicyDocument) error {
-    if doc == nil {
-        return errors.New("policy_document is required")
-    }
-    for _, policy := range doc.Policies {
-        if policy.Path == "" {
-            return errors.New("policy path cannot be empty")
-        }
-        if len(policy.Capabilities) == 0 {
-            return errors.New("policy capabilities cannot be empty")
-        }
-    }
-    return nil
-}
-```
-
-**DELETE Handler Pattern:**
-```go
-// DELETE must use c.Data() to properly set 204 No Content with empty body
-if err := h.clientUseCase.Delete(c.Request.Context(), id); err != nil {
-    httputil.HandleErrorGin(c, err, h.logger)
-    return
-}
-c.Data(http.StatusNoContent, "application/json", nil)  // NOT c.Status()
-```
-
-**Reference:** 
-- Implementation: `/internal/auth/http/client_handler.go` and `/internal/auth/http/token_handler.go`
-- Tests: `/internal/auth/http/client_handler_test.go` and `/internal/auth/http/token_handler_test.go`
-- DTOs: `/internal/auth/http/dto/` package (request.go, response.go)
-- Test Helpers: `/internal/auth/http/test_helpers.go`
-- Mocks: `/internal/auth/http/mocks/token_usecase.go`
-
-### Route Registration with Authentication & Authorization
-
-Client management routes are registered in `SetupRouter()` with middleware chaining:
-
-```go
-func (s *Server) SetupRouter(
-    clientHandler *authHTTP.ClientHandler,
-    tokenUseCase authUseCase.TokenUseCase,
-    tokenService authService.TokenService,
-    auditLogUseCase authUseCase.AuditLogUseCase,
-) {
-    // Create middleware instances
-    authMiddleware := authHTTP.AuthenticationMiddleware(tokenUseCase, s.logger)
-    auditMiddleware := authHTTP.AuditLogMiddleware(auditLogUseCase, s.logger)
-    
-    // Register client management routes under /v1/clients
-    v1 := s.router.Group("/v1")
-    v1.Use(auditMiddleware)  // Apply audit logging to all v1 routes
-    {
-        clients := v1.Group("/clients")
-        {
-            // POST /v1/clients - Create client (requires WriteCapability)
-            clients.POST("", 
-                authMiddleware,
-                authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, s.logger),
-                clientHandler.CreateHandler,
-            )
-            
-            // GET /v1/clients/:id - Get client (requires ReadCapability)
-            clients.GET("/:id",
-                authMiddleware,
-                authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, s.logger),
-                clientHandler.GetHandler,
-            )
-            
-            // PUT /v1/clients/:id - Update client (requires WriteCapability)
-            clients.PUT("/:id",
-                authMiddleware,
-                authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, s.logger),
-                clientHandler.UpdateHandler,
-            )
-            
-            // DELETE /v1/clients/:id - Delete client (requires DeleteCapability)
-            clients.DELETE("/:id",
-                authMiddleware,
-                authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, s.logger),
-                clientHandler.DeleteHandler,
-            )
-        }
-    }
-}
-```
-
-**Middleware Execution Order:**
-1. Global middleware (Recovery, RequestID, CustomLogger)
-2. Route group middleware (AuditLog)
-3. Route-specific middleware (Authentication → Authorization)
-4. Handler
-
-**Capability Mapping:**
-- `POST /v1/clients` → `WriteCapability` (create new client)
-- `GET /v1/clients/:id` → `ReadCapability` (view client details)
-- `PUT /v1/clients/:id` → `WriteCapability` (modify client)
-- `DELETE /v1/clients/:id` → `DeleteCapability` (remove client)
-
-**Reference:** `/internal/http/server.go` (SetupRouter method)
-
-## KMS Service Implementation
-
-The project supports KMS (Key Management Service) integration for encrypting master keys at rest using external providers. KMS functionality follows interface segregation principles with the domain layer defining minimal interfaces and the service layer providing concrete implementations.
-
-### Interface Segregation Pattern
-
-**Domain Layer** (`internal/crypto/domain/master_key.go`):
-```go
-// Minimal interfaces defined by domain - no external dependencies
-type KMSService interface {
-    OpenKeeper(ctx context.Context, keyURI string) (KMSKeeper, error)
-}
-
-type KMSKeeper interface {
-    Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error)
-    Close() error
-}
-```
-
-**Service Layer** (`internal/crypto/service/kms_service.go`):
-- Implements `KMSService` using `gocloud.dev/secrets`
-- Imports all KMS provider drivers (gcpkms, awskms, azurekeyvault, hashivault, localsecrets)
-- Returns `*secrets.Keeper` which naturally implements `KMSKeeper` (duck typing)
-
-**Type Compatibility:**
-- `*secrets.Keeper` from gocloud.dev implements both `Decrypt()` and `Close()` methods
-- No wrapper types needed - direct type assertion works in implementation code
-
-**Reference:** `/internal/crypto/service/kms_service.go` and `/internal/crypto/domain/master_key.go:114-128`
-
-### Testing with localsecrets Provider
-
-**Always use `localsecrets` provider for tests** - no external dependencies or credentials required.
-
-**Generate test KMS key:**
-```go
-func generateLocalSecretsKMSKey(t *testing.T) string {
-    t.Helper()
-    key := make([]byte, 32)
-    _, err := rand.Read(key)
-    require.NoError(t, err)
-    return "base64key://" + base64.URLEncoding.EncodeToString(key)
-}
-```
-
-**Type assertion for Encrypt method** (not part of domain interface):
-```go
-keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
-require.NoError(t, err)
-
-// Type assert to access Encrypt method for tests
-keeper, ok := keeperInterface.(*secrets.Keeper)
-require.True(t, ok, "keeper should be *secrets.Keeper")
-
-ciphertext, err := keeper.Encrypt(ctx, plaintext)
-```
-
-**Mock implementations must return copies** to avoid issues when ciphertext is zeroed:
-```go
-// BAD - returns slice of input (will be zeroed)
-func (m *MockKMSKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
-    return ciphertext, nil
-}
-
-// GOOD - returns a copy
-func (m *MockKMSKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
-    result := make([]byte, len(ciphertext))
-    copy(result, ciphertext)
-    return result, nil
-}
-```
-
-**Reference:** `/internal/crypto/service/kms_service_test.go` and `/test/integration/api_test.go` (KMS helpers)
-
-### Error Handling for Close() Calls
-
-**All `Close()` calls MUST check errors** (enforced by golangci-lint errcheck).
-
-**Production code pattern** (with logging):
-```go
-defer func() {
-    if closeErr := keeper.Close(); closeErr != nil {
-        logger.Error("failed to close KMS keeper", slog.Any("error", closeErr))
-    }
-}()
-```
-
-**Test code pattern** (with assertions):
-```go
-defer func() {
-    assert.NoError(t, keeper.Close())
-}()
-```
-
-**CLI code pattern** (with user-facing message):
-```go
-defer func() {
-    if closeErr := keeperInterface.Close(); closeErr != nil {
-        fmt.Printf("Warning: failed to close KMS keeper: %v\n", closeErr)
-    }
-}()
-```
-
-**Reference:** `/internal/crypto/domain/master_key.go:213-217` and `/cmd/app/commands/master_key.go:58-62`
-
-### Memory Safety and Performance
-
-**Startup-only decryption:**
-- KMS operations happen only at application startup
-- Master keys decrypted into memory once via `LoadMasterKeyChain()`
-- No per-operation KMS calls (performance optimization)
-
-**Memory cleanup:**
-- Master key zeroing handled by existing `MasterKeyChain.Close()`
-- KEK chain similarly zeroed via `KekChain.Close()`
-- No additional cleanup needed for KMS-decrypted keys
-
-**Ownership transfer:**
-- Decrypted key data ownership transfers to `MasterKeyChain`
-- Original slices can be safely reused by KMS keeper
-- Domain layer makes defensive copies when needed
-
-**Reference:** `/internal/crypto/domain/master_key.go:183-285` (loadMasterKeyChainFromKMS)
-
-### URI Masking for Security
-
-**Use `maskKeyURI()` to redact sensitive URI components in logs:**
-
-```go
-maskedURI := maskKeyURI(cfg.KMSKeyURI)
-logger.Info("opening KMS keeper",
-    slog.String("kms_provider", cfg.KMSProvider),
-    slog.String("kms_key_uri", maskedURI),
-)
-```
-
-**Masking examples:**
-- `gcpkms://projects/my-project/...` → `gcpkms://projects/***/...`
-- `awskms://key-id-123?region=us-east-1` → `awskms://***?region=us-east-1`
-- `azurekeyvault://vault.azure.net/keys/mykey` → `azurekeyvault://***`
-- `base64key://c2VjcmV0a2V5` → `base64key://***`
-
-**Purpose:**
-- Prevents sensitive key identifiers from appearing in logs
-- Preserves provider type and structure for debugging
-- Retains query parameters (e.g., region) that are not sensitive
-
-**Reference:** `/internal/crypto/domain/master_key.go:130-181` (maskKeyURI function)
-
-### Auto-Detection Mode
-
-**KMS vs Legacy mode determined by environment variables:**
-
-```go
-// KMS mode: both KMS_PROVIDER and KMS_KEY_URI must be set
-if cfg.KMSProvider != "" && cfg.KMSKeyURI != "" {
-    return loadMasterKeyChainFromKMS(ctx, cfg, kmsService, logger)
-}
-
-// Legacy mode: neither should be set
-if cfg.KMSProvider == "" && cfg.KMSKeyURI == "" {
-    return LoadMasterKeyChainFromEnv()
-}
-
-// Error: inconsistent configuration
-return ErrKMSProviderNotSet or ErrKMSKeyURINotSet
-```
-
-**Validation:**
-- Fail fast on inconsistent configuration (one set, one empty)
-- Clear error messages indicating which variable is missing
-- No silent fallbacks - explicit mode selection
-
-**Reference:** `/internal/crypto/domain/master_key.go:287-315` (LoadMasterKeyChain)
-
-## Audit Log Cryptographic Signing
-
-The project implements HMAC-SHA256 cryptographic signing for audit logs to detect tampering and meet PCI DSS Requirement 10.2.2.
-
-### Architecture Pattern
-
-**Service Layer** (`internal/auth/service/audit_signer.go`):
-- Implements `AuditSigner` interface with `Sign()` and `Verify()` methods
-- Uses HKDF-SHA256 to derive signing key from KEK (separates encryption and signing usage)
-- Canonical log serialization with length-prefixed encoding for variable fields
-
-**Use Case Layer** (`internal/auth/usecase/audit_log_usecase.go`):
-- `Create()` automatically signs logs if `KekChain` and `AuditSigner` available
-- `VerifyBatch()` validates signatures for time range with KEK chain lookup
-- `VerifyAuditLog()` validates single log signature
-
-**Repository Layer**:
-- Stores `signature` (BYTEA), `kek_id` (UUID FK), `is_signed` (BOOLEAN)
-- Foreign key constraints prevent orphaned client/KEK references
-
-### Signature Algorithm
-
-**Key Derivation (HKDF-SHA256):**
-```go
-info := []byte("audit-log-signing-v1")
-hash := sha256.New
-hkdf := hkdf.New(hash, kekKey, nil, info)
-signingKey := make([]byte, 32)
-io.ReadFull(hkdf, signingKey)
-```
-
-**Canonical Log Format:**
-```
-request_id (16 bytes) || 
-client_id (16 bytes) || 
-len(capability) (4 bytes) || capability (variable) ||
-len(path) (4 bytes) || path (variable) ||
-len(metadata_json) (4 bytes) || metadata_json (variable) ||
-created_at_unix_nano (8 bytes)
-```
-
-**HMAC-SHA256 Signature:**
-```go
-mac := hmac.New(sha256.New, signingKey)
-mac.Write(canonicalBytes)
-signature := mac.Sum(nil)  // 32 bytes
-```
-
-### Testing with Foreign Key Constraints
-
-Migration 000003 adds FK constraints requiring valid client and KEK references.
-
-**Test Helpers** (`internal/testutil/database.go`):
-```go
-// Create FK-compliant test client
-client := testutil.CreateTestClient(t, db, "postgresql", "test-client")
-
-// Create FK-compliant test KEK
-kek := testutil.CreateTestKek(t, db, "postgresql", "test-kek")
-
-// Create both client and KEK
-client, kek := testutil.CreateTestClientAndKek(t, db, "postgresql", "test")
-```
-
-**Pattern for Audit Log Tests:**
-```go
-func TestAuditLogRepository_Create(t *testing.T) {
-    db := setupTestDB(t)
-    
-    // Create required FK references FIRST
-    client := testutil.CreateTestClient(t, db, "postgresql", "test-client")
-    kek := testutil.CreateTestKek(t, db, "postgresql", "test-kek")
-    
-    // Create audit log with valid FK references
-    auditLog := &authDomain.AuditLog{
-        ID:        uuid.Must(uuid.NewV7()),
-        ClientID:  client.ID,  // Valid FK reference
-        KekID:     &kek.ID,    // Valid FK reference
-        IsSigned:  true,
-        // ... other fields
-    }
-    
-    err := repo.Create(ctx, auditLog)
-    assert.NoError(t, err)
-}
-```
-
-**Driver-Agnostic UUID Handling:**
-- PostgreSQL: Native UUID type
-- MySQL: BINARY(16) with hex conversion
-- Test helpers abstract driver differences
-
-### CLI Command Pattern
-
-**Command Implementation** (`cmd/app/commands/verify_audit_logs.go`):
-```go
-func RunVerifyAuditLogs(ctx context.Context, startDate, endDate string, format string) error {
-    // Parse and validate inputs
-    start, err := parseDate(startDate)
-    end, err := parseDate(endDate)
-    
-    // Load config and create container
-    cfg := config.Load()
-    container := app.NewContainer(cfg)
-    defer closeContainer(container, logger)
-    
-    // Execute verification
-    auditLogUseCase, err := container.AuditLogUseCase()
-    report, err := auditLogUseCase.VerifyBatch(ctx, start, end)
-    
-    // Output based on format
-    if format == "json" {
-        outputVerifyJSON(report)
-    } else {
-        outputVerifyText(report, start, end)
-    }
-    
-    // Exit with error if integrity failed
-    if report.InvalidCount > 0 {
-        return fmt.Errorf("integrity check failed: %d invalid signature(s)", report.InvalidCount)
-    }
-    
-    return nil
-}
-```
-
-**Key Patterns:**
-- Separate unexported helpers for parsing and output formatting
-- Graceful container shutdown with `closeContainer()`
-- Exit code indicates verification status (0=pass, 1=fail)
-- Support both human-readable and JSON output
-
-### Migration Testing Guidelines
-
-When adding migrations that introduce FK constraints:
-
-1. **Update all existing repository tests** to create required FK references
-2. **Use testutil helpers** for consistent test data creation
-3. **Test both PostgreSQL and MySQL** with identical logic
-4. **Verify FK constraint enforcement** with negative tests
-
-Example negative test:
-```go
-func TestAuditLogRepository_Create_FKViolation(t *testing.T) {
-    db := setupTestDB(t)
-    
-    // Create audit log with non-existent client_id (FK violation)
-    auditLog := &authDomain.AuditLog{
-        ID:       uuid.Must(uuid.NewV7()),
-        ClientID: uuid.Must(uuid.NewV7()),  // Does not exist in clients table
-        // ... other fields
-    }
-    
-    err := repo.Create(ctx, auditLog)
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "foreign key constraint")
-}
-```
-
-### Performance Considerations
-
-**Signing Performance:**
-- HKDF derivation: ~5-10µs per log
-- HMAC-SHA256: ~1-2µs per log
-- Total overhead: ~10-15µs per audit log (negligible)
-
-**Verification Performance:**
-- KEK lookup from chain: O(1) with map
-- Signature verification: ~1-2µs per log
-- Batch verification of 10k logs: ~20-30ms
-
-**Benchmarks** (`internal/auth/service/audit_signer_benchmark_test.go`):
-```
-BenchmarkSign-8        100000   10234 ns/op   1024 B/op   12 allocs/op
-BenchmarkVerify-8      200000    5123 ns/op    512 B/op    6 allocs/op
-```
-
-## See also
-
-- [Repository README](README.md)
-- [Documentation index](docs/README.md)
-- [Testing guide](docs/development/testing.md)
-- [Contributing guide](docs/contributing.md)
+## Security Notes
+
+- Never commit secrets to `.env` files (use `.env.example`)
+- Use KMS providers for production (not plaintext master keys)
+- Always validate user input using `validation` package
+- Use parameterized queries (never string concatenation for SQL)
+- Follow principle of least privilege for client policies
+
+## Additional Resources
+
+- **Makefile**: Run `make help` for all available commands
+- **Configuration**: See `.env.example` for all environment variables
+- **Architecture docs**: `docs/concepts/architecture.md`
+- **API docs**: `docs/api/` directory
+- **Contributing**: `docs/contributing.md`

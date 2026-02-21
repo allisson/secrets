@@ -1,25 +1,39 @@
 # KMS Setup Guide
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-21
 
 This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode provides an additional security layer by ensuring master keys are never stored in plaintext.
 
 ## Table of Contents
 
 - [Overview](#overview)
+
 - [Quick Start (Local Development)](#quick-start-local-development)
+
 - [Provider Setup](#provider-setup)
+
   - [Provider Quick Matrix](#provider-quick-matrix)
+
   - [Placeholders Legend](#placeholders-legend)
+
   - [Ciphertext Format Caveats](#ciphertext-format-caveats)
+
   - [Provider Preflight Validation](#provider-preflight-validation)
+
   - [Google Cloud KMS](#google-cloud-kms)
+
   - [AWS KMS](#aws-kms)
+
   - [Azure Key Vault](#azure-key-vault)
+
   - [HashiCorp Vault](#hashicorp-vault)
+
 - [Runtime Injection Examples](#runtime-injection-examples)
+
 - [Migration from Legacy Mode](#migration-from-legacy-mode)
+
 - [Key Rotation](#key-rotation)
+
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
@@ -27,8 +41,11 @@ This guide covers setting up Key Management Service (KMS) integration for encryp
 **KMS Mode** encrypts master keys using external Key Management Services before storing them in environment variables. This provides:
 
 - **Defense in Depth**: Master keys encrypted at rest, even if environment variables are compromised
+
 - **Audit Trail**: KMS providers log all key access operations
+
 - **Compliance**: Meets regulatory requirements for key management (e.g., PCI-DSS, HIPAA)
+
 - **Centralized Management**: KMS keys managed separately from application secrets
 
 **Legacy Mode** stores master keys as plaintext base64-encoded values. This is **only suitable for development and testing**.
@@ -49,7 +66,387 @@ KEK Encryption/Decryption
 DEK Encryption/Decryption
   ↓
 Data Encryption/Decryption
+
 ```
+
+## Security Considerations
+
+**KMS integration is critical infrastructure** - compromise of your KMS configuration leads to complete exposure of all encrypted data. Follow these security principles when deploying KMS.
+
+### 🔒 Critical Security Requirements
+
+#### 1. Never Use `base64key://` in Production
+
+The `localsecrets` provider with `base64key://` embeds the encryption key directly in the `KMS_KEY_URI` environment variable.
+
+```dotenv
+# ❌ INSECURE - Development/testing only
+
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+
+```
+
+**Never use this in staging or production.** Instead, use cloud KMS providers:
+
+```dotenv
+# ✅ SECURE - Production (GCP KMS)
+
+KMS_PROVIDER=gcpkms
+KMS_KEY_URI=gcpkms://projects/my-prod-project/locations/us-central1/keyRings/secrets-keyring/cryptoKeys/master-key
+
+# ✅ SECURE - Production (AWS KMS)
+
+KMS_PROVIDER=awskms
+KMS_KEY_URI=awskms:///alias/secrets-master-key
+
+# ✅ SECURE - Production (Azure Key Vault)
+
+KMS_PROVIDER=azurekeyvault
+KMS_KEY_URI=azurekeyvault://my-prod-vault.vault.azure.net/keys/master-key
+
+```
+
+#### 2. Protect KMS_KEY_URI Like Passwords
+
+The `KMS_KEY_URI` variable provides the path to decrypt all master keys. Treat it as a critical secret:
+
+**Do:**
+
+- ✅ Store in secrets manager (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault)
+
+- ✅ Use `.env` files excluded from git (`.env` is in `.gitignore`)
+
+- ✅ Inject via CI/CD secrets for automated deployments
+
+- ✅ Encrypt at rest in backups and disaster recovery systems
+
+- ✅ Rotate KMS keys quarterly or per organizational policy
+
+**Don't:**
+
+- ❌ Commit to source control (even private repos)
+
+- ❌ Store in plaintext configuration files
+
+- ❌ Include in log output or error messages
+
+- ❌ Share via email, Slack, or insecure channels
+
+- ❌ Embed in Docker images or container layers
+
+#### 3. Use Least Privilege IAM Permissions
+
+Restrict KMS access to the minimum required permissions:
+
+**Google Cloud KMS:**
+
+```bash
+# Grant ONLY encrypt/decrypt permissions (not admin)
+gcloud kms keys add-iam-policy-binding master-key-encryption \
+  --location=us-central1 \
+  --keyring=secrets-keyring \
+  --member="serviceAccount:secrets-app@project.iam.gserviceaccount.com" \
+  --role="roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+```
+
+**AWS KMS:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+    }
+  ]
+}
+
+```
+
+**Azure Key Vault:**
+
+```bash
+# Grant ONLY encrypt/decrypt operations
+az keyvault set-policy \
+  --name secrets-kv-unique \
+  --spn <app-service-principal> \
+  --key-permissions encrypt decrypt
+
+```
+
+**HashiCorp Vault:**
+
+```hcl
+# Grant ONLY transit encrypt/decrypt
+path "transit/encrypt/master-key-encryption" {
+  capabilities = ["update"]
+}
+
+path "transit/decrypt/master-key-encryption" {
+  capabilities = ["update"]
+}
+
+```
+
+❌ **Do not grant**:
+
+- Admin/owner permissions on KMS keys
+
+- Key deletion permissions
+
+- Key rotation permissions (unless specifically required for automation)
+
+- Broad wildcard permissions (`kms:*`, `cloudkms.*`)
+
+#### 4. Use Workload Identity / IAM Roles (Not Static Credentials)
+
+Prefer cloud-native authentication over static credentials:
+
+| Platform | Recommended Auth | Avoid |
+|----------|------------------|-------|
+| **GCP** | Workload Identity | Service account JSON keys |
+| **AWS** | IAM Roles | IAM user access keys |
+| **Azure** | Managed Identity | Service principal passwords |
+| **HashiCorp Vault** | AppRole | Root tokens, long-lived tokens |
+
+*### Example: GCP Workload Identity**
+
+```bash
+# Bind service account to GCP service account
+gcloud iam service-accounts add-iam-policy-binding \
+  secrets-kms-user@project.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:project.svc.id.goog[secrets/secrets-api]"
+
+```
+
+*### Example: AWS IAM Roles**
+
+```bash
+# Associate IAM role with application
+aws iam create-role \
+  --role-name SecretsKMSRole \
+  --assume-role-policy-document file://trust-policy.json
+
+aws iam attach-role-policy \
+  --role-name SecretsKMSRole \
+  --policy-arn arn:aws:iam::123456789012:policy/SecretsKMSPolicy
+
+```
+
+#### 5. Enable Audit Logging and Monitoring
+
+Monitor KMS key access for security incidents:
+
+**Google Cloud KMS:**
+
+```bash
+# Enable Cloud Audit Logs for KMS
+gcloud logging read "protoPayload.serviceName=cloudkms.googleapis.com" --limit 10
+
+```
+
+**AWS KMS:**
+
+```bash
+# Enable CloudTrail for KMS (if not already enabled)
+aws cloudtrail create-trail --name kms-audit --s3-bucket-name my-audit-bucket
+
+# Query KMS events
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=ResourceType,AttributeValue=AWS::KMS::Key
+
+```
+
+**Azure Key Vault:**
+
+```bash
+# Enable diagnostic logs
+az monitor diagnostic-settings create \
+  --resource /subscriptions/<subscription-id>/resourceGroups/secrets-rg/providers/Microsoft.KeyVault/vaults/secrets-kv-unique \
+  --name kms-audit \
+  --logs '[{"category": "AuditEvent", "enabled": true}]' \
+  --workspace <log-analytics-workspace-id>
+
+```
+
+**Alert on suspicious patterns:**
+
+- Decrypt operations from unknown IPs or regions
+
+- Failed authentication attempts
+
+- Key access outside business hours
+
+- Unusual spike in decrypt operations
+
+#### 6. Implement Key Rotation
+
+Rotate KMS keys regularly to limit exposure:
+
+**Rotation frequency recommendations:**
+
+- **High-security environments**: 90 days
+
+- **Standard deployments**: 180 days
+
+- **Low-risk environments**: 365 days
+
+**Before rotating KMS keys**, ensure:
+
+1. [ ] Old KMS key remains available for decrypting existing `MASTER_KEYS`
+2. [ ] New KMS key created and permissions granted
+3. [ ] Testing completed in staging environment
+4. [ ] Rollback plan documented and tested
+
+See [Key Rotation](#key-rotation) section below for detailed procedures.
+
+#### 7. Backup and Disaster Recovery
+
+**Backup strategy for KMS:**
+
+- ✅ Document KMS key IDs/URIs in encrypted password manager
+
+- ✅ Store KMS provider credentials in separate secrets manager
+
+- ✅ Maintain offline encrypted backup of `MASTER_KEYS` ciphertext
+
+- ✅ Test disaster recovery quarterly
+
+**Disaster recovery checklist:**
+
+- [ ] Can you recreate KMS keys from documented URIs?
+
+- [ ] Can you restore `MASTER_KEYS` from backup?
+
+- [ ] Can you authenticate to KMS provider (credential recovery process)?
+
+- [ ] Can you decrypt at least one test secret end-to-end?
+
+#### 8. Incident Response for KMS Compromise
+
+If `KMS_KEY_URI` or KMS credentials are exposed:
+
+**Immediate (within 1 hour):**
+
+1. Revoke compromised credentials (service account keys, IAM access keys, tokens)
+2. Disable or delete compromised KMS key (if supported by provider)
+3. Create new KMS key with new credentials
+4. Update incident log with timeline and exposure scope
+
+**Within 24 hours:**
+
+1. Generate new `MASTER_KEYS` using new KMS key
+2. Deploy updated configuration to all environments
+3. Rotate all KEKs using `rotate-kek` command
+4. Audit database access logs during exposure window
+
+**Within 1 week:**
+
+1. Review and rotate all secrets that may have been accessed
+2. Update runbooks with lessons learned
+3. Implement additional controls (pre-commit hooks, automated secret scanning)
+4. Conduct post-incident review with team
+
+### Example: GCP KMS key rotation after compromise
+
+```bash
+# 1. Disable compromised key version
+gcloud kms keys versions disable 1 \
+  --key master-key-encryption \
+  --keyring secrets-keyring \
+  --location us-central1
+
+# 2. Create new key version (automatic with GCP KMS)
+gcloud kms keys update master-key-encryption \
+  --keyring secrets-keyring \
+  --location us-central1 \
+  --default-algorithm google-symmetric-encryption
+
+# 3. Generate new master key with new KMS key version
+./bin/app create-master-key \
+  --kms-provider=gcpkms \
+  --kms-key-uri="gcpkms://projects/my-project/locations/us-central1/keyRings/secrets-keyring/cryptoKeys/master-key-encryption"
+
+```
+
+### Security Comparison: KMS Providers
+
+| Provider | Security Level | Compliance Certifications | HSM Support | Cost (approx) |
+|----------|---------------|---------------------------|-------------|---------------|
+| `localsecrets` (`base64key://`) | ⚠️ Low (dev only) | None | No | Free |
+| Google Cloud KMS | 🔒 High | SOC 2, ISO 27001, HIPAA | Yes (Cloud HSM) | ~$1/key/month + $0.03/10k ops |
+| AWS KMS | 🔒 High | SOC 2, ISO 27001, PCI-DSS, HIPAA | Yes (CloudHSM) | ~$1/key/month + $0.03/10k ops |
+| Azure Key Vault | 🔒 High | SOC 2, ISO 27001, HIPAA, FedRAMP | Yes (Premium tier) | ~$0.03/10k ops (Standard), ~$1/key/month (HSM) |
+| HashiCorp Vault | 🔒 Medium-High | SOC 2 (Enterprise) | Yes (Enterprise) | Self-hosted or ~$0.03/hour (HCP) |
+
+**Recommendations by environment:**
+
+- **Production**: Cloud KMS (GCP/AWS/Azure) with HSM-backed keys
+
+- **Staging**: Cloud KMS (standard tier acceptable)
+
+- **Development**: `localsecrets` (`base64key://`) acceptable for local testing only
+
+### Pre-Production Security Checklist
+
+Before deploying KMS to production, verify:
+
+**Configuration:**
+
+- [ ] `KMS_PROVIDER` is NOT `localsecrets` (unless development)
+
+- [ ] `KMS_KEY_URI` does NOT use `base64key://` (unless development)
+
+- [ ] `KMS_KEY_URI` is stored in secrets manager, not committed to git
+
+- [ ] `.env` file is in `.gitignore` and excluded from version control
+
+**IAM/Permissions:**
+
+- [ ] Service account/role has ONLY `encrypt` and `decrypt` permissions
+
+- [ ] No admin or key management permissions granted
+
+- [ ] Workload Identity / IAM Roles used instead of static credentials
+
+- [ ] Credential rotation schedule documented (90-180 days)
+
+**Monitoring:**
+
+- [ ] KMS audit logging enabled (CloudTrail, Cloud Audit Logs, Azure Monitor)
+
+- [ ] Alerts configured for failed decrypt attempts
+
+- [ ] Alerts configured for unusual access patterns
+
+- [ ] Monthly audit log review scheduled
+
+**Disaster Recovery:**
+
+- [ ] KMS key URIs documented in password manager
+
+- [ ] `MASTER_KEYS` ciphertext backed up to encrypted storage
+
+- [ ] Disaster recovery runbook tested in last 90 days
+
+- [ ] Rollback plan documented and validated
+
+**Incident Response:**
+
+- [ ] KMS compromise incident response plan documented
+
+- [ ] Rotation procedures tested in staging
+
+- [ ] On-call team trained on KMS emergency procedures
+
+- [ ] Post-incident review process defined
 
 ## Quick Start (Local Development)
 
@@ -63,6 +460,7 @@ The KMS key is used to encrypt/decrypt master keys. Generate a 32-byte key:
 # Generate random 32-byte key and encode as base64
 openssl rand -base64 32
 # Output: smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+
 ```
 
 **⚠️ Security**: Store this KMS key securely! In production, use cloud KMS instead of `localsecrets`.
@@ -73,6 +471,7 @@ openssl rand -base64 32
 ./bin/app create-master-key \
   --kms-provider=localsecrets \
   --kms-key-uri="base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4="
+
 ```
 
 Output:
@@ -86,6 +485,7 @@ KMS_PROVIDER="localsecrets"
 KMS_KEY_URI="base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4="
 MASTER_KEYS="master-key-2026-02-19:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04"
 ACTIVE_MASTER_KEY_ID="master-key-2026-02-19"
+
 ```
 
 ### 3. Configure Environment
@@ -97,12 +497,14 @@ KMS_PROVIDER=localsecrets
 KMS_KEY_URI=base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
 MASTER_KEYS=master-key-2026-02-19:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04
 ACTIVE_MASTER_KEY_ID=master-key-2026-02-19
+
 ```
 
 ### 4. Start the Application
 
 ```bash
 ./bin/app server
+
 ```
 
 Check logs for successful KMS initialization:
@@ -111,6 +513,7 @@ Check logs for successful KMS initialization:
 INFO KMS mode enabled provider=localsecrets
 INFO master key decrypted via KMS key_id=master-key-2026-02-19
 INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_keys=1
+
 ```
 
 ## Provider Setup
@@ -119,6 +522,7 @@ INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_ke
 
 | Provider | URI format | Required auth | Minimum permission |
 | --- | --- | --- | --- |
+
 | `localsecrets` | `base64key://<base64-32-byte-key>` | none | local key only |
 | `gcpkms` | `gcpkms://projects/<project>/locations/<location>/keyRings/<ring>/cryptoKeys/<key>` | `GOOGLE_APPLICATION_CREDENTIALS` | encrypt + decrypt |
 | `awskms` | `awskms:///<key-id-or-alias>` | AWS SDK default chain (`AWS_ACCESS_KEY_ID`/role) | `kms:Encrypt`, `kms:Decrypt` |
@@ -128,8 +532,11 @@ INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_ke
 ### Placeholders Legend
 
 - `<provider>`: one of `localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, `hashivault`
+
 - `<uri>`: provider-specific KMS URI shown in the matrix above
+
 - `<generated-encrypted-key>`: full `id:ciphertext` output from `create-master-key`
+
 - `<kms-ciphertext-for-old-key>`: ciphertext produced by encrypting an existing legacy key with your KMS
 
 Treat placeholders as templates only; replace with exact runtime values before applying.
@@ -137,11 +544,17 @@ Treat placeholders as templates only; replace with exact runtime values before a
 ### Ciphertext Format Caveats
 
 - `MASTER_KEYS` values in KMS mode must be ciphertext outputs from the selected provider.
+
 - Do not assume provider outputs use the same encoding format:
+
   - Cloud KMS tooling often returns base64-like blobs.
+
   - Vault transit typically returns prefixed ciphertext (for example `vault:v1:...`).
+
 - Keep each provider's ciphertext format as-is; do not transform to another format unless the
+
   provider documentation requires it.
+
 - Never mix plaintext legacy values and KMS ciphertext values in `MASTER_KEYS` when KMS mode is enabled.
 
 ### Provider Preflight Validation
@@ -152,6 +565,7 @@ Use an isolated temp folder and clean it up when done:
 
 ```bash
 mkdir -p /tmp/secrets-kms-preflight
+
 ```
 
 Google Cloud KMS:
@@ -165,6 +579,7 @@ gcloud kms decrypt --project="$PROJECT_ID" --location="us-central1" --keyring="s
   --key="master-key-encryption" --ciphertext-file="/tmp/secrets-kms-preflight/cipher.bin" \
   --plaintext-file="/tmp/secrets-kms-preflight/output.txt"
 cmp /tmp/secrets-kms-preflight/input.txt /tmp/secrets-kms-preflight/output.txt
+
 ```
 
 AWS KMS:
@@ -176,6 +591,7 @@ CIPHERTEXT_B64="$(aws kms encrypt --key-id alias/secrets-master-key \
 export CIPHERTEXT_B64
 
 python3 - <<'PY'
+
 import base64, os
 data = base64.b64decode(os.environ["CIPHERTEXT_B64"])
 open('/tmp/secrets-kms-preflight/cipher.bin', 'wb').write(data)
@@ -186,12 +602,14 @@ DECRYPTED_B64="$(aws kms decrypt --ciphertext-blob fileb:///tmp/secrets-kms-pref
 export DECRYPTED_B64
 
 python3 - <<'PY'
+
 import base64, os
 data = base64.b64decode(os.environ["DECRYPTED_B64"])
 open('/tmp/secrets-kms-preflight/output.txt', 'wb').write(data)
 PY
 
 cmp /tmp/secrets-kms-preflight/input.txt /tmp/secrets-kms-preflight/output.txt
+
 ```
 
 Azure Key Vault:
@@ -203,6 +621,7 @@ az keyvault key show --vault-name secrets-kv-unique --name master-key-encryption
 # Optional encrypt/decrypt smoke test (CLI/algorithm support may vary by key type)
 az keyvault key encrypt --vault-name secrets-kv-unique --name master-key-encryption \
   --algorithm RSA-OAEP-256 --value "kms-preflight"
+
 ```
 
 HashiCorp Vault Transit:
@@ -212,12 +631,14 @@ PLAINTEXT_B64="$(printf 'kms-preflight' | base64 | tr -d '\n')"
 CIPHERTEXT="$(vault write -field=ciphertext transit/encrypt/master-key-encryption plaintext="$PLAINTEXT_B64")"
 vault write -field=plaintext transit/decrypt/master-key-encryption ciphertext="$CIPHERTEXT" | \
   python3 -c 'import base64,sys;print(base64.b64decode(sys.stdin.read().strip()).decode(), end="")'
+
 ```
 
 Cleanup:
 
 ```bash
 rm -rf /tmp/secrets-kms-preflight
+
 ```
 
 ### Google Cloud KMS
@@ -266,6 +687,7 @@ gcloud kms keys add-iam-policy-binding master-key-encryption \
 gcloud iam service-accounts keys create gcp-kms-key.json \
   --iam-account=secrets-kms-user@$PROJECT_ID.iam.gserviceaccount.com \
   --project=$PROJECT_ID
+
 ```
 
 #### GCP Generate Encrypted Master Key
@@ -278,6 +700,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-kms-key.json"
 ./bin/app create-master-key \
   --kms-provider=gcpkms \
   --kms-key-uri="gcpkms://projects/$PROJECT_ID/locations/us-central1/keyRings/secrets-keyring/cryptoKeys/master-key-encryption"
+
 ```
 
 #### GCP Environment Configuration
@@ -289,6 +712,7 @@ KMS_PROVIDER=gcpkms
 KMS_KEY_URI=gcpkms://projects/my-gcp-project/locations/us-central1/keyRings/secrets-keyring/cryptoKeys/master-key-encryption
 MASTER_KEYS=<generated-encrypted-key>
 ACTIVE_MASTER_KEY_ID=<key-id>
+
 ```
 
 ### AWS KMS
@@ -341,6 +765,7 @@ aws iam put-user-policy \
   --user-name secrets-app \
   --policy-name SecretsKMSPolicy \
   --policy-document file://secrets-kms-policy.json
+
 ```
 
 #### AWS Generate Encrypted Master Key
@@ -360,6 +785,7 @@ export AWS_REGION="us-east-1"
 ./bin/app create-master-key \
   --kms-provider=awskms \
   --kms-key-uri="awskms:///alias/secrets-master-key"
+
 ```
 
 #### AWS Environment Configuration
@@ -372,6 +798,7 @@ KMS_PROVIDER=awskms
 KMS_KEY_URI=awskms:///alias/secrets-master-key
 MASTER_KEYS=<generated-encrypted-key>
 ACTIVE_MASTER_KEY_ID=<key-id>
+
 ```
 
 ### Azure Key Vault
@@ -418,6 +845,7 @@ az keyvault set-policy \
   --name secrets-kv-unique \
   --spn <appId-from-step-4> \
   --key-permissions encrypt decrypt
+
 ```
 
 #### Azure Generate Encrypted Master Key
@@ -432,6 +860,7 @@ export AZURE_CLIENT_SECRET="your-client-secret"
 ./bin/app create-master-key \
   --kms-provider=azurekeyvault \
   --kms-key-uri="azurekeyvault://secrets-kv-unique.vault.azure.net/keys/master-key-encryption"
+
 ```
 
 #### Azure Environment Configuration
@@ -444,6 +873,7 @@ KMS_PROVIDER=azurekeyvault
 KMS_KEY_URI=azurekeyvault://secrets-kv-unique.vault.azure.net/keys/master-key-encryption
 MASTER_KEYS=<generated-encrypted-key>
 ACTIVE_MASTER_KEY_ID=<key-id>
+
 ```
 
 ### HashiCorp Vault
@@ -479,6 +909,7 @@ vault policy write secrets-kms secrets-kms-policy.hcl
 # 4. Create token with policy
 vault token create -policy=secrets-kms
 # Output: Save the token
+
 ```
 
 #### Vault Generate Encrypted Master Key
@@ -492,6 +923,7 @@ export VAULT_TOKEN="your-vault-token"
 ./bin/app create-master-key \
   --kms-provider=hashivault \
   --kms-key-uri="hashivault:///transit/keys/master-key-encryption"
+
 ```
 
 #### Vault Environment Configuration
@@ -503,6 +935,7 @@ KMS_PROVIDER=hashivault
 KMS_KEY_URI=hashivault:///transit/keys/master-key-encryption
 MASTER_KEYS=<generated-encrypted-key>
 ACTIVE_MASTER_KEY_ID=<key-id>
+
 ```
 
 ## Runtime Injection Examples
@@ -517,44 +950,13 @@ services:
     image: allisson/secrets
     env_file:
       - .env
+
     environment:
       KMS_PROVIDER: gcpkms
       KMS_KEY_URI: gcpkms://projects/my-project/locations/us-central1/keyRings/secrets/cryptoKeys/master-key
       MASTER_KEYS: ${MASTER_KEYS}
       ACTIVE_MASTER_KEY_ID: ${ACTIVE_MASTER_KEY_ID}
-```
 
-Kubernetes example:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: secrets-api
-spec:
-  template:
-    spec:
-      containers:
-        - name: app
-          image: allisson/secrets
-          env:
-            - name: KMS_PROVIDER
-              value: gcpkms
-            - name: KMS_KEY_URI
-              valueFrom:
-                secretKeyRef:
-                  name: secrets-kms
-                  key: kms-key-uri
-            - name: MASTER_KEYS
-              valueFrom:
-                secretKeyRef:
-                  name: secrets-master-keys
-                  key: master-keys
-            - name: ACTIVE_MASTER_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: secrets-master-keys
-                  key: active-master-key-id
 ```
 
 ## Migration from Legacy Mode
@@ -572,6 +974,7 @@ Follow provider-specific setup instructions above.
   --id=master-key-kms-2026 \
   --kms-provider=<provider> \
   --kms-key-uri=<uri>
+
 ```
 
 ### Step 3: Re-encode Existing Master Keys for KMS
@@ -582,6 +985,7 @@ Unsupported (do not use):
 
 ```bash
 MASTER_KEYS=old-plaintext-key:<plaintext-base64>,new-key:<kms-ciphertext>
+
 ```
 
 Supported KMS mode input: all entries must be KMS-encrypted ciphertext.
@@ -592,6 +996,7 @@ MASTER_KEYS=old-key:<kms-ciphertext-for-old-key>,master-key-kms-2026:<kms-cipher
 ACTIVE_MASTER_KEY_ID=old-key
 KMS_PROVIDER=<provider>
 KMS_KEY_URI=<uri>
+
 ```
 
 To produce `<kms-ciphertext-for-old-key>`, use your provider's native encrypt API with the
@@ -603,6 +1008,7 @@ Provider examples for re-encoding an existing plaintext key:
 # Input: old plaintext key as base64 string (from legacy MASTER_KEYS value)
 OLD_KEY_B64="bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y="
 printf '%s' "$OLD_KEY_B64" | base64 --decode > /tmp/old-master-key.bin
+
 ```
 
 Google Cloud KMS:
@@ -617,6 +1023,7 @@ gcloud kms encrypt \
   --ciphertext-file="/tmp/old-master-key.cipher"
 
 OLD_KEY_KMS_CIPHERTEXT="$(base64 < /tmp/old-master-key.cipher | tr -d '\n')"
+
 ```
 
 AWS KMS:
@@ -627,6 +1034,7 @@ OLD_KEY_KMS_CIPHERTEXT="$(aws kms encrypt \
   --plaintext fileb:///tmp/old-master-key.bin \
   --query CiphertextBlob \
   --output text)"
+
 ```
 
 Azure Key Vault:
@@ -639,6 +1047,7 @@ OLD_KEY_KMS_CIPHERTEXT="$(az keyvault key encrypt \
   --file /tmp/old-master-key.bin \
   --query result \
   --output tsv)"
+
 ```
 
 HashiCorp Vault Transit:
@@ -646,12 +1055,14 @@ HashiCorp Vault Transit:
 ```bash
 OLD_KEY_KMS_CIPHERTEXT="$(vault write -field=ciphertext transit/encrypt/master-key-encryption \
   plaintext="$OLD_KEY_B64")"
+
 ```
 
 Then build your KMS-only chain:
 
 ```bash
 MASTER_KEYS="old-key:${OLD_KEY_KMS_CIPHERTEXT},master-key-kms-2026:<kms-ciphertext-for-new-key>"
+
 ```
 
 ### Step 4: Update Environment (Encrypted-Only Chain)
@@ -663,6 +1074,7 @@ KMS_PROVIDER=<provider>
 KMS_KEY_URI=<uri>
 MASTER_KEYS=old-key:<kms-ciphertext-for-old-key>,master-key-kms-2026:<kms-ciphertext-for-new-key>
 ACTIVE_MASTER_KEY_ID=old-key
+
 ```
 
 ### Step 5: Restart Application
@@ -674,6 +1086,7 @@ INFO KMS mode enabled provider=gcpkms
 INFO master key decrypted via KMS key_id=old-key
 INFO master key decrypted via KMS key_id=master-key-kms-2026
 INFO master key chain loaded active_master_key_id=old-key total_keys=2
+
 ```
 
 ### Step 6: Rotate KEKs to New Master Key
@@ -687,6 +1100,7 @@ export ACTIVE_MASTER_KEY_ID=master-key-kms-2026
 
 # Rotate all KEKs (re-encrypts with new master key)
 ./bin/app rotate-kek --algorithm aes-gcm
+
 ```
 
 ### Step 7: Remove Old Master Key
@@ -697,6 +1111,7 @@ After verifying all KEKs are encrypted with the new master key:
 # Remove old key from MASTER_KEYS
 MASTER_KEYS=master-key-kms-2026:<kms-encrypted-ciphertext>
 ACTIVE_MASTER_KEY_ID=master-key-kms-2026
+
 ```
 
 ### Migration Checklist
@@ -706,23 +1121,33 @@ Use this checklist for migrating from legacy plaintext master keys to KMS mode.
 #### 1) Precheck
 
 - [ ] Confirm target release is v0.8.0 or newer
+
 - [ ] Back up current environment configuration
+
 - [ ] Confirm rollback owner and change window
+
 - [ ] Confirm KMS provider credentials are available in runtime
+
 - [ ] Confirm KMS encrypt/decrypt permissions are granted
 
 #### 2) Build KMS key chain
 
 - [ ] Generate new KMS-encrypted key with `create-master-key --kms-provider ... --kms-key-uri ...`
+
 - [ ] Re-encode existing legacy plaintext keys into KMS ciphertext
+
 - [ ] Build `MASTER_KEYS` with only KMS ciphertext entries (no plaintext mix)
+
 - [ ] Set `KMS_PROVIDER`, `KMS_KEY_URI`, and `ACTIVE_MASTER_KEY_ID`
 
 #### 3) Rollout
 
 - [ ] Restart API instances (rolling)
+
 - [ ] Verify startup logs show KMS mode and key decrypt lines
+
 - [ ] Run baseline checks: `GET /health`, `GET /ready`
+
 - [ ] Run key-dependent smoke checks: token issuance, secrets, transit
 
 Reference: [Production rollout golden path](../deployment/production-rollout.md)
@@ -730,8 +1155,11 @@ Reference: [Production rollout golden path](../deployment/production-rollout.md)
 #### 4) Rotation and cleanup
 
 - [ ] Rotate KEK after switching to KMS key chain
+
 - [ ] Verify reads/decrypt for existing data still succeed
+
 - [ ] Remove old key entries from `MASTER_KEYS` only after verification
+
 - [ ] Restart API instances again after key-chain cleanup
 
 Reference: [Key management operations](../kms/key-management.md)
@@ -739,8 +1167,11 @@ Reference: [Key management operations](../kms/key-management.md)
 #### 5) Rollback readiness
 
 - [ ] Keep previous image tag available
+
 - [ ] Keep pre-change env snapshot available
+
 - [ ] If rollback needed, revert app version first
+
 - [ ] Re-validate health and smoke checks after rollback
 
 Reference: [Release notes](../../releases/RELEASES.md#070---2026-02-20)
@@ -753,6 +1184,7 @@ Rotate master keys regularly (recommended: every 90-180 days).
 
 ```bash
 ./bin/app rotate-master-key --id=master-key-2026-08
+
 ```
 
 Output includes combined configuration:
@@ -762,6 +1194,7 @@ KMS_PROVIDER=gcpkms
 KMS_KEY_URI=gcpkms://...
 MASTER_KEYS=old-key:<old-ciphertext>,master-key-2026-08:<new-ciphertext>
 ACTIVE_MASTER_KEY_ID=master-key-2026-08
+
 ```
 
 ### Rotation Workflow
@@ -783,6 +1216,7 @@ ACTIVE_MASTER_KEY_ID=master-key-2026-08
 
 # 6. Restart application
 ./bin/app server
+
 ```
 
 ## Troubleshooting
@@ -800,8 +1234,11 @@ ACTIVE_MASTER_KEY_ID=master-key-2026-08
 **Solution**:
 
 - **GCP**: Check `GOOGLE_APPLICATION_CREDENTIALS` points to valid service account key
+
 - **AWS**: Verify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are set
+
 - **Azure**: Confirm `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` are correct
+
 - **Vault**: Ensure `VAULT_ADDR` and `VAULT_TOKEN` are valid
 
 ### Issue: "KMS_PROVIDER is set but KMS_KEY_URI is empty"
@@ -817,7 +1254,9 @@ ACTIVE_MASTER_KEY_ID=master-key-2026-08
 **Solution**:
 
 - Verify IAM permissions include `decrypt` capability
+
 - Check KMS key is enabled and not scheduled for deletion
+
 - Confirm `KMS_KEY_URI` matches the key used during encryption
 
 ### Issue: Startup fails with mixed plaintext and KMS master keys
@@ -827,7 +1266,9 @@ ACTIVE_MASTER_KEY_ID=master-key-2026-08
 **Solution**:
 
 - Use plaintext entries only in legacy mode (both `KMS_PROVIDER` and `KMS_KEY_URI` unset)
+
 - Use KMS ciphertext entries only in KMS mode (both KMS variables set)
+
 - Re-encode legacy keys with provider-native encrypt APIs before enabling KMS mode
 
 ### Issue: Application slow to start with KMS enabled
@@ -844,6 +1285,7 @@ Enable debug logs to troubleshoot KMS issues:
 
 ```bash
 LOG_LEVEL=debug ./bin/app server
+
 ```
 
 Look for:
@@ -851,10 +1293,15 @@ Look for:
 ```text
 DEBUG KMS keeper opened uri=gcpkms://...
 DEBUG master key decrypted key_id=master-key-2026-02-19 ciphertext_length=64
+
 ```
 
 ## See Also
 
+- [Plaintext to KMS Migration Guide](plaintext-to-kms-migration.md) - Migrate from plaintext to cloud KMS
+
 - [Key Management Guide](../kms/key-management.md) - KEK and DEK rotation procedures
+
 - [Security Hardening](../security/hardening.md) - Production security best practices
+
 - [Production Deployment](../deployment/production.md) - Production deployment checklist

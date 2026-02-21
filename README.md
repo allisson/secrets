@@ -29,14 +29,14 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.9.0
+## 🆕 What's New in v0.10.0
 
-- 🔐 Cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
-- ✅ New `verify-audit-logs` CLI command for integrity verification (text/JSON output)
-- 🔑 HKDF-SHA256 key derivation separates encryption and signing key usage
-- 🗄️ Database migration 000003 adds signature columns and FK constraints
-- 🛡️ Foreign key constraints prevent orphaned audit log references
-- 📘 See [v0.9.0 release notes](docs/releases/RELEASES.md#090---2026-02-20) and [upgrade guide](docs/releases/v0.9.0-upgrade.md)
+- 🐳 Docker security improvements with Google Distroless base (Debian 13 Trixie)
+- 🔒 SHA256 digest pinning for immutable container builds
+- 🏗️ Build-time version injection via ldflags (version, buildDate, commitSHA)
+- 🛡️ Non-root user execution (UID 65532) and read-only filesystem support
+- 🌐 Multi-architecture support (linux/amd64, linux/arm64)
+- 📘 See [v0.10.0 release notes](docs/releases/RELEASES.md#0100---2026-02-21) and [container security guide](docs/operations/security/container-security.md)
 
 Release history:
 
@@ -128,7 +128,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - 📊 **OpenTelemetry metrics** with Prometheus-compatible `/metrics` export
 - 🧪 **CLI tooling** (`verify-audit-logs`, `rotate-kek`, `create-master-key`, `rotate-master-key`)
 - 🌐 **CORS support** (configurable, disabled by default)
-- 🏥 **Health endpoints** (`/health`, `/ready`) for Kubernetes/Docker health checks
+- 🏥 **Health endpoints** (`/health`, `/ready`) for Docker health checks
 - 🧯 **Comprehensive documentation** with [runbooks](docs/operations/runbooks/README.md), [incident response guides](docs/operations/observability/incident-response.md), and [operator drills](docs/operations/runbooks/README.md#operator-drills-quarterly)
 
 ## 🌐 API Overview

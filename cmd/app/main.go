@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -11,11 +12,25 @@ import (
 	"github.com/allisson/secrets/cmd/app/commands"
 )
 
+// Build-time version information (injected via ldflags during build).
+var (
+	version   = "v0.10.0" // Semantic version with "v" prefix (e.g., "v0.10.0")
+	buildDate = "unknown" // ISO 8601 build timestamp
+	commitSHA = "unknown" // Git commit SHA
+)
+
 func main() {
+	// Custom version printer to display build metadata
+	cli.VersionPrinter = func(cmd *cli.Command) {
+		fmt.Printf("Version:    %s\n", version)
+		fmt.Printf("Build Date: %s\n", buildDate)
+		fmt.Printf("Commit SHA: %s\n", commitSHA)
+	}
+
 	cmd := &cli.Command{
 		Name:    "app",
 		Usage:   "Go project template application",
-		Version: "0.8.0",
+		Version: version,
 		Commands: []*cli.Command{
 			{
 				Name:  "server",
