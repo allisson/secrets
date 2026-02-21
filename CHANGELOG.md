@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-02-20
+
+### Added
+- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
+- Added HKDF-SHA256 key derivation to separate encryption and signing key usage
+- Added `verify-audit-logs` CLI command for batch integrity verification with text/JSON output
+- Added database columns: `signature` (BYTEA), `kek_id` (UUID FK), `is_signed` (BOOLEAN)
+- Added foreign key constraints: `fk_audit_logs_client_id` and `fk_audit_logs_kek_id` to prevent orphaned records
+- Added `AuditSigner` service for canonical log serialization and HMAC generation
+- Added test infrastructure: `CreateTestClient()` and `CreateTestKek()` helpers for FK-compliant testing
+
+### Changed
+- Audit logs now automatically signed on creation when KEK chain is available
+- Audit log API responses now include signature metadata (`signature`, `kek_id`, `is_signed`)
+- Database migration 000003 required (adds signature columns and FK constraints)
+
+### Fixed
+- Fixed 46 audit log repository tests to comply with FK constraints
+
+### Security
+- Enhanced audit log tamper detection with cryptographic integrity verification
+- Enforced data integrity with FK constraints preventing orphaned client/KEK references
+
+### Documentation
+- Added `docs/releases/v0.9.0-upgrade.md` upgrade guide with pre/post-migration checks
+- Updated `docs/cli-commands.md` with `verify-audit-logs` command
+- Updated `docs/api/observability/audit-logs.md` with signature field documentation
+- Added AGENTS.md guidelines for audit signer architecture and FK testing patterns
+
+## [0.8.0] - 2026-02-20
+
+### Documentation
+- Documentation consolidation: reduced from 77 to 47 markdown files (39% reduction)
+- Established 8 new Architecture Decision Records (ADR 0003-0010) covering key architectural decisions
+- Restructured API documentation with themed subdirectories (auth/, data/, observability/)
+- Consolidated operations documentation with centralized runbook hub
+- Merged all development documentation into contributing.md
+- Comprehensive cross-reference updates throughout documentation (182+ updates)
+
 ## [0.7.0] - 2026-02-20
 
 ### Added

@@ -29,14 +29,14 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.8.0
+## 🆕 What's New in v0.9.0
 
-- 📚 Major documentation consolidation: 77 → 47 files (39% reduction)
-- 🏛️ Established 8 new Architecture Decision Records (ADR 0003-0010)
-- 📂 Restructured API docs with themed organization (auth/, data/, observability/)
-- 📖 Consolidated operations documentation with centralized runbook hub
-- 🔗 Comprehensive cross-reference updates throughout documentation
-- 📘 See [v0.8.0 release notes](docs/releases/RELEASES.md#080---2026-02-20)
+- 🔐 Cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
+- ✅ New `verify-audit-logs` CLI command for integrity verification (text/JSON output)
+- 🔑 HKDF-SHA256 key derivation separates encryption and signing key usage
+- 🗄️ Database migration 000003 adds signature columns and FK constraints
+- 🛡️ Foreign key constraints prevent orphaned audit log references
+- 📘 See [v0.9.0 release notes](docs/releases/RELEASES.md#090---2026-02-20) and [upgrade guide](docs/releases/v0.9.0-upgrade.md)
 
 Release history:
 
@@ -96,14 +96,40 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 
 ## ✨ What You Get
 
-- 🔐 Envelope encryption (`Master Key -> KEK -> DEK -> Secret Data`)
-- 🔑 **KMS Integration** for master key encryption at rest (supports Google Cloud KMS, AWS KMS, Azure Key Vault, HashiCorp Vault, and local secrets for testing)
-- 🚄 Transit encryption (`/v1/transit/keys/*`) for encrypt/decrypt as a service (decrypt input uses `<version>:<base64-ciphertext>`; see [Transit API docs](docs/api/data/transit.md), [create vs rotate](docs/api/data/transit.md#create-vs-rotate), and [error matrix](docs/api/data/transit.md#endpoint-error-matrix))
-- 🎫 Tokenization API (`/v1/tokenization/*`) for token generation, detokenization, validation, and revocation
-- 👤 Token-based authentication and policy-based authorization
-- 📦 Versioned secrets by path (`/v1/secrets/*path`)
-- 📜 Audit logs with request correlation (`request_id`) and filtering
-- 📊 OpenTelemetry metrics with Prometheus-compatible `/metrics` export
+**Core Cryptography:**
+
+- 🔐 **Envelope encryption** (`Master Key → KEK → DEK → Secret Data`) with [key rotation](docs/operations/kms/key-management.md)
+- 🔑 **KMS integration** for master key encryption at rest (Google Cloud KMS, AWS KMS, Azure Key Vault, HashiCorp Vault) - [v0.6.0+](docs/operations/kms/setup.md)
+- 🔄 **Dual algorithm support** (AES-GCM and ChaCha20-Poly1305) for envelope encryption
+
+**Authentication & Authorization:**
+
+- 🎫 **Token-based authentication** with Argon2id password hashing (memory-hard, GPU-resistant)
+- 🛡️ **Capability-based authorization** with [path-matching policies](docs/api/auth/policies.md) (exact, wildcard, prefix)
+- 🎭 **Policy templates** for common personas (read-only, CI writer, key operator, break-glass admin)
+- 🚦 **Dual-scope rate limiting** (per-client for authenticated endpoints, per-IP for token issuance)
+
+**Data Services:**
+
+- 📦 **Versioned secrets** by path (`/v1/secrets/*path`) with automatic versioning
+- 🚄 **Transit encryption** (`/v1/transit/*`) for encrypt/decrypt as a service with [key rotation](docs/api/data/transit.md#create-vs-rotate)
+- 🎫 **Tokenization API** (`/v1/tokenization/*`) with token generation, detokenization, validation, revocation, and TTL expiration
+
+**Security & Compliance:**
+
+- 🔏 **Cryptographic audit log signing** with HMAC-SHA256 for tamper detection (PCI DSS 10.2.2) - [v0.9.0+](docs/releases/RELEASES.md#090---2026-02-20)
+- 📜 **Comprehensive audit logs** with request correlation (`request_id`), filtering, and [integrity verification](docs/cli-commands.md#verify-audit-logs)
+- 🧹 **Memory safety** with sensitive key material zeroing in critical paths
+- 🔒 **AEAD encryption** for authenticated encryption with associated data
+
+**Operations & Observability:**
+
+- 🗄️ **Dual database support** (PostgreSQL 12+ and MySQL 8.0+) with driver-agnostic migrations
+- 📊 **OpenTelemetry metrics** with Prometheus-compatible `/metrics` export
+- 🧪 **CLI tooling** (`verify-audit-logs`, `rotate-kek`, `create-master-key`, `rotate-master-key`)
+- 🌐 **CORS support** (configurable, disabled by default)
+- 🏥 **Health endpoints** (`/health`, `/ready`) for Kubernetes/Docker health checks
+- 🧯 **Comprehensive documentation** with [runbooks](docs/operations/runbooks/README.md), [incident response guides](docs/operations/observability/incident-response.md), and [operator drills](docs/operations/runbooks/README.md#operator-drills-quarterly)
 
 ## 🌐 API Overview
 

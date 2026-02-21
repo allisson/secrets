@@ -14,6 +14,7 @@ If you need upgrade guidance for older versions, consult the full release histor
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.8.0 -> v0.9.0` | Migration 000003 required (adds `signature`, `kek_id`, `is_signed` columns + FK constraints) | Audit logs automatically signed on creation, FK constraints prevent client/KEK deletion with audit logs | Run migration 000003, verify no orphaned client references, validate signing working, confirm FK constraint behavior |
 | `v0.7.0 -> v0.8.0` | No changes | Documentation improvements only | None (backward compatible, no runtime changes) |
 | `v0.6.0 -> v0.7.0` | No new mandatory migration | Added IP-based token endpoint rate limiting (`RATE_LIMIT_TOKEN_ENABLED`, `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC`, `RATE_LIMIT_TOKEN_BURST`), token endpoint may return `429` with `Retry-After` | Add and tune `RATE_LIMIT_TOKEN_*`, validate token issuance under normal and burst load, review trusted proxy/IP behavior |
 | `v0.5.1 -> v0.6.0` | No new mandatory migration | Added KMS-based master key support (`KMS_PROVIDER`, `KMS_KEY_URI`), new `rotate-master-key` CLI workflow | Decide KMS vs legacy mode, validate startup key loading, run key-dependent smoke checks |
@@ -23,6 +24,15 @@ If you need upgrade guidance for older versions, consult the full release histor
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.9.0`:
+
+1. `GET /health` and `GET /ready` pass
+2. Migration 000003 applied successfully (check `SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1` returns `3`)
+3. New audit logs have `is_signed=true`, `signature` populated, and `kek_id` set
+4. `verify-audit-logs` reports valid signatures for today's logs
+5. FK constraints prevent client deletion with audit logs (DELETE returns FK violation error)
+6. Legacy audit logs marked as `is_signed=false` (no signature)
 
 For `v0.8.0`:
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/allisson/secrets/internal/auth/domain"
+	"github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -1599,4 +1600,33 @@ func (_c *MockAuditLogUseCase_List_Call) Return(auditLogs []*domain.AuditLog, er
 func (_c *MockAuditLogUseCase_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error)) *MockAuditLogUseCase_List_Call {
 	_c.Call.Return(run)
 	return _c
+}
+
+// VerifyIntegrity provides a mock function with given fields: ctx, id
+func (_m *MockAuditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) error {
+	ret := _m.Called(ctx, id)
+	return ret.Error(0)
+}
+
+// VerifyBatch provides a mock function with given fields: ctx, startTime, endTime
+func (_m *MockAuditLogUseCase) VerifyBatch(ctx context.Context, startTime time.Time, endTime time.Time) (*usecase.VerificationReport, error) {
+	ret := _m.Called(ctx, startTime, endTime)
+
+	var r0 *usecase.VerificationReport
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) *usecase.VerificationReport); ok {
+		r0 = rf(ctx, startTime, endTime)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*usecase.VerificationReport)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = rf(ctx, startTime, endTime)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

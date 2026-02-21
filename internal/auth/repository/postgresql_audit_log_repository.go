@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -20,8 +22,9 @@ type PostgreSQLAuditLogRepository struct {
 }
 
 // Create inserts a new AuditLog into the PostgreSQL database. Uses transaction support
-// via database.GetTx(). Handles nil metadata as database NULL. Returns an error if
-// metadata marshaling or database insertion fails.
+// via database.GetTx(). Handles nil metadata as database NULL. Includes cryptographic
+// signature fields (signature, kek_id, is_signed) for tamper detection. Returns an error
+// if metadata marshaling or database insertion fails.
 func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *authDomain.AuditLog) error {
 	querier := database.GetTx(ctx, p.db)
 
@@ -36,8 +39,8 @@ func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *aut
 		}
 	}
 
-	query := `INSERT INTO audit_logs (id, request_id, client_id, capability, path, metadata, created_at) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	query := `INSERT INTO audit_logs (id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err = querier.ExecContext(
 		ctx,
@@ -48,6 +51,9 @@ func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *aut
 		string(auditLog.Capability),
 		auditLog.Path,
 		metadataJSON,
+		auditLog.Signature,
+		auditLog.KekID,
+		auditLog.IsSigned,
 		auditLog.CreatedAt,
 	)
 	if err != nil {
@@ -55,6 +61,50 @@ func (p *PostgreSQLAuditLogRepository) Create(ctx context.Context, auditLog *aut
 	}
 
 	return nil
+}
+
+// Get retrieves a single audit log by ID from the PostgreSQL database. Returns
+// error if the audit log is not found or if database operation fails.
+func (p *PostgreSQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at
+			  FROM audit_logs
+			  WHERE id = $1`
+
+	var auditLog authDomain.AuditLog
+	var metadataJSON []byte
+	var capability string
+
+	err := querier.QueryRowContext(ctx, query, id).Scan(
+		&auditLog.ID,
+		&auditLog.RequestID,
+		&auditLog.ClientID,
+		&capability,
+		&auditLog.Path,
+		&metadataJSON,
+		&auditLog.Signature,
+		&auditLog.KekID,
+		&auditLog.IsSigned,
+		&auditLog.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, apperrors.Wrap(apperrors.ErrNotFound, "audit log not found")
+	}
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to get audit log")
+	}
+
+	auditLog.Capability = authDomain.Capability(capability)
+
+	// Unmarshal metadata if not NULL
+	if metadataJSON != nil {
+		if err := json.Unmarshal(metadataJSON, &auditLog.Metadata); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal audit log metadata")
+		}
+	}
+
+	return &auditLog, nil
 }
 
 // List retrieves audit logs ordered by created_at descending (newest first) with pagination
@@ -87,7 +137,7 @@ func (p *PostgreSQLAuditLogRepository) List(
 	}
 
 	// Build query
-	query := `SELECT id, request_id, client_id, capability, path, metadata, created_at 
+	query := `SELECT id, request_id, client_id, capability, path, metadata, signature, kek_id, is_signed, created_at 
 			  FROM audit_logs`
 
 	if len(conditions) > 0 {
@@ -121,6 +171,9 @@ func (p *PostgreSQLAuditLogRepository) List(
 			&capability,
 			&auditLog.Path,
 			&metadataJSON,
+			&auditLog.Signature,
+			&auditLog.KekID,
+			&auditLog.IsSigned,
 			&auditLog.CreatedAt,
 		)
 		if err != nil {

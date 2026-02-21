@@ -23,6 +23,14 @@ func (m *mockAuditLogRepository) Create(ctx context.Context, auditLog *authDomai
 	return args.Error(0)
 }
 
+func (m *mockAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authDomain.AuditLog), args.Error(1)
+}
+
 func (m *mockAuditLogRepository) List(
 	ctx context.Context,
 	offset, limit int,
@@ -72,7 +80,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		// Execute
 		err := useCase.Create(ctx, requestID, clientID, capability, path, metadata)
@@ -111,7 +119,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		// Execute with nil metadata
 		err := useCase.Create(ctx, requestID, clientID, capability, path, nil)
@@ -147,7 +155,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Times(3)
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		// Execute multiple times
 		for i := 0; i < 3; i++ {
@@ -201,7 +209,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Times(len(capabilities))
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		// Execute for each capability
 		for _, cap := range capabilities {
@@ -234,7 +242,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		// Execute
 		err := useCase.Create(ctx, requestID, clientID, capability, path, metadata)
@@ -244,6 +252,61 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to create audit log", "error should be wrapped")
 		assert.Contains(t, err.Error(), "database connection failed", "original error should be included")
 		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_TimestampTruncatedToMicrosecondPrecision", func(t *testing.T) {
+		// Setup mocks
+		mockRepo := &mockAuditLogRepository{}
+
+		// Test data
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := uuid.Must(uuid.NewV7())
+		capability := authDomain.ReadCapability
+		path := "/api/v1/secrets/test"
+
+		// Capture the audit log passed to repository
+		var capturedAuditLog *authDomain.AuditLog
+		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.AuditLog")).
+			Run(func(args mock.Arguments) {
+				capturedAuditLog = args.Get(1).(*authDomain.AuditLog)
+			}).
+			Return(nil).
+			Once()
+
+		// Create use case
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+
+		// Execute
+		beforeCreate := time.Now().UTC()
+		err := useCase.Create(ctx, requestID, clientID, capability, path, nil)
+		afterCreate := time.Now().UTC()
+
+		// Assert
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+
+		// Verify timestamp is within expected range
+		assert.True(t, capturedAuditLog.CreatedAt.After(beforeCreate) ||
+			capturedAuditLog.CreatedAt.Equal(beforeCreate),
+			"created_at should be after or equal to beforeCreate")
+		assert.True(t, capturedAuditLog.CreatedAt.Before(afterCreate) ||
+			capturedAuditLog.CreatedAt.Equal(afterCreate),
+			"created_at should be before or equal to afterCreate")
+
+		// Verify timestamp is truncated to microsecond precision (no nanoseconds beyond microseconds)
+		// PostgreSQL TIMESTAMPTZ and MySQL DATETIME(6) both store microsecond precision
+		nanos := capturedAuditLog.CreatedAt.Nanosecond()
+		assert.Equal(
+			t,
+			0,
+			nanos%1000,
+			"timestamp should be truncated to microsecond precision (last 3 digits of nanoseconds should be 0)",
+		)
+
+		// Verify truncation matches database storage precision
+		expectedTruncated := capturedAuditLog.CreatedAt.Truncate(time.Microsecond)
+		assert.Equal(t, expectedTruncated, capturedAuditLog.CreatedAt,
+			"timestamp should equal its microsecond-truncated value")
 	})
 }
 
@@ -272,7 +335,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -292,7 +355,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -313,7 +376,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -343,7 +406,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 					Return(tc.expectedCount, nil).
 					Once()
 
-				useCase := NewAuditLogUseCase(mockRepo)
+				useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 				count, err := useCase.DeleteOlderThan(ctx, tc.days, tc.dryRun)
 
@@ -365,7 +428,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(int64(0), repositoryErr).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -399,7 +462,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
 
@@ -430,7 +493,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, &createdAtFrom, nil)
 
@@ -461,7 +524,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, nil, &createdAtTo)
 
@@ -493,7 +556,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, &createdAtFrom, &createdAtTo)
 
@@ -511,7 +574,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
 
@@ -539,7 +602,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(expectedAuditLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 10, 25, nil, nil)
 
@@ -556,7 +619,7 @@ func TestAuditLogUseCase_List(t *testing.T) {
 			Return(nil, repositoryErr).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo)
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
 
 		auditLogs, err := useCase.List(ctx, 0, 50, nil, nil)
 

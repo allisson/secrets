@@ -330,6 +330,38 @@ func main() {
 					)
 				},
 			},
+			{
+				Name:  "verify-audit-logs",
+				Usage: "Verify cryptographic integrity of audit logs",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "start-date",
+						Aliases:  []string{"s"},
+						Required: true,
+						Usage:    "Start date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format",
+					},
+					&cli.StringFlag{
+						Name:     "end-date",
+						Aliases:  []string{"e"},
+						Required: true,
+						Usage:    "End date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format",
+					},
+					&cli.StringFlag{
+						Name:    "format",
+						Aliases: []string{"f"},
+						Value:   "text",
+						Usage:   "Output format: 'text' or 'json'",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunVerifyAuditLogs(
+						ctx,
+						cmd.String("start-date"),
+						cmd.String("end-date"),
+						cmd.String("format"),
+					)
+				},
+			},
 		},
 	}
 

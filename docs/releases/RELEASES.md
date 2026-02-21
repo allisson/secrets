@@ -8,10 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.8.0](#080---2026-02-20)
+**Latest Release**: [v0.9.0](#090---2026-02-20)
 
 **All Releases**:
 
+- [v0.9.0 (2026-02-20)](#090---2026-02-20) - Cryptographic audit log signing
 - [v0.8.0 (2026-02-20)](#080---2026-02-20) - Documentation consolidation and ADR establishment
 - [v0.7.0 (2026-02-20)](#070---2026-02-20) - IP-based rate limiting for token endpoint
 - [v0.6.0 (2026-02-19)](#060---2026-02-19) - KMS provider support
@@ -22,6 +23,151 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.3.0 (2026-02-16)](#030---2026-02-16) - Client management
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.9.0] - 2026-02-20
+
+### Highlights
+
+- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
+- Added `verify-audit-logs` CLI command for integrity verification with text/JSON output
+- Added HKDF-SHA256 key derivation to separate encryption and signing key usage
+- Added database migration 000003 with signature columns and FK constraints
+- Enhanced audit log integrity with automatic signing on creation
+
+### Runtime Changes
+
+- **Database migration required** (000003) - adds `signature`, `kek_id`, `is_signed` columns
+- **Foreign key constraints added:**
+  - `fk_audit_logs_client_id` - prevents client deletion with audit logs
+  - `fk_audit_logs_kek_id` - prevents KEK deletion with audit logs
+- Audit log API responses now include signature metadata
+- New CLI command: `verify-audit-logs --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD> [--format text|json]`
+- Existing audit logs marked as legacy (`is_signed=false`) after migration
+
+### Security and Operations Impact
+
+- **Breaking Change:** Foreign key constraints prevent deletion of clients/KEKs with associated audit logs
+- Improves compliance posture for PCI DSS Requirement 10.2.2 (audit log protection)
+- Enables cryptographic verification of audit log integrity and tamper detection
+- Legacy unsigned logs remain queryable but cannot be cryptographically verified
+
+### Upgrade from v0.8.0
+
+#### What Changed
+
+- Added cryptographic signing to all new audit logs using active KEK
+- Added database migration 000003 with signature columns and FK constraints
+- Added `verify-audit-logs` CLI command for integrity verification
+- **BREAKING:** FK constraints prevent client/KEK deletion with audit logs
+
+#### Migration Requirements
+
+⚠️ **CRITICAL:** This release requires database migration 000003. Review the [upgrade guide](v0.9.0-upgrade.md) before proceeding.
+
+**Breaking Changes:**
+
+1. **Foreign key constraints** prevent deletion of clients/KEKs that have audit logs
+2. **Schema changes** require downtime or careful migration strategy
+3. **Existing audit logs** become legacy unsigned logs (`is_signed=false`)
+
+#### Pre-Migration Checks
+
+```bash
+# Check for orphaned client references in audit_logs
+psql $DB_CONNECTION_STRING -c "
+  SELECT COUNT(*) AS orphaned_client_refs 
+  FROM audit_logs al 
+  LEFT JOIN clients c ON al.client_id = c.id 
+  WHERE c.id IS NULL;"
+
+# Check KEK chain is loaded
+curl -sS http://localhost:8080/ready
+
+# Backup database before migration
+pg_dump $DB_CONNECTION_STRING > backup-pre-v0.9.0-$(date +%s).sql
+```
+
+#### Recommended Upgrade Steps
+
+1. **Backup database** (see command above)
+2. **Review orphaned references** (FK migration will fail if found)
+3. **Update image/binary to v0.9.0**
+4. **Run database migration:** `./bin/app migrate`
+5. **Restart API instances** with standard rolling rollout
+6. **Run baseline checks:** `GET /health`, `GET /ready`
+7. **Verify signing is working:** Check new audit logs have signatures
+8. **Run integrity verification:** `./bin/app verify-audit-logs --start-date <today> --end-date <today>`
+
+#### Quick Verification Commands
+
+```bash
+# Health checks
+curl -sS http://localhost:8080/health
+curl -sS http://localhost:8080/ready
+
+# Create an audit-triggering operation
+TOKEN_RESPONSE="$(curl -sS -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"<client-id>","client_secret":"<client-secret>"}')"
+
+CLIENT_TOKEN="$(printf '%s' "${TOKEN_RESPONSE}" | jq -r '.token')"
+
+# Perform an operation that creates audit log
+curl -sS -X POST http://localhost:8080/v1/secrets/test/v090 \
+  -H "Authorization: Bearer ${CLIENT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"value":"djA5MC1zbW9rZQ=="}'
+
+# List audit logs and verify signature present
+curl -sS http://localhost:8080/v1/audit-logs \
+  -H "Authorization: Bearer ${CLIENT_TOKEN}" | jq '.audit_logs[] | {id, is_signed, kek_id}'
+
+# Verify audit log integrity
+TODAY=$(date +%Y-%m-%d)
+./bin/app verify-audit-logs --start-date "$TODAY" --end-date "$TODAY" --format text
+```
+
+#### Operator Verification Checklist
+
+1. ✅ Confirm migration 000003 applied successfully
+2. ✅ Confirm `GET /health` and `GET /ready` succeed
+3. ✅ Confirm new audit logs have `is_signed=true` and `signature` populated
+4. ✅ Confirm `verify-audit-logs` reports valid signatures for new logs
+5. ✅ Confirm legacy logs marked as `is_signed=false` (no signature)
+6. ✅ Confirm FK constraint prevents client deletion with audit logs
+7. ✅ Confirm mixed signed/unsigned log queries work correctly
+
+#### Rollback Instructions
+
+If issues arise, rollback to v0.8.0 requires reverting migration 000003:
+
+```bash
+# Stop API instances
+# Restore database from backup OR run down migration
+psql $DB_CONNECTION_STRING < migrations/postgresql/000003_add_audit_log_signature.down.sql
+
+# Downgrade to v0.8.0 image/binary
+# Restart API instances
+```
+
+⚠️ **WARNING:** Rollback will **delete all signature data** from audit logs. Only rollback if absolutely necessary.
+
+#### Documentation Updates
+
+- Added [v0.9.0 upgrade guide](v0.9.0-upgrade.md) with detailed migration steps
+- Added [ADR 0011: HMAC-SHA256 Cryptographic Signing for Audit Log Integrity](../adr/0011-hmac-sha256-audit-log-signing.md)
+- Updated [CLI commands](../cli-commands.md) with `verify-audit-logs` command
+- Updated [Audit logs API](../api/observability/audit-logs.md) with signature field documentation
+- Added AGENTS.md guidelines for audit signer service and FK testing patterns
+
+#### See Also
+
+- [v0.9.0 upgrade guide](v0.9.0-upgrade.md) - Comprehensive migration guide
+- [Compatibility matrix](compatibility-matrix.md)
+- [Audit logs API](../api/observability/audit-logs.md)
+- [CLI commands](../cli-commands.md#verify-audit-logs)
 
 ---
 

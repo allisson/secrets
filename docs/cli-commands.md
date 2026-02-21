@@ -154,6 +154,121 @@ Master key rotation quick sequence:
 # remove old master key from MASTER_KEYS after verification
 ```
 
+### `verify-audit-logs`
+
+Verifies cryptographic integrity of audit logs within a time range. Validates HMAC-SHA256 signatures against KEK-derived signing keys for tamper detection.
+
+**Requirements:**
+
+- Database migrated to version 000003 (signature columns)
+- KEK chain loaded (for verifying signed logs)
+
+Flags:
+
+- `--start-date`, `-s`: start date (format: `YYYY-MM-DD` or `YYYY-MM-DD HH:MM:SS`)
+- `--end-date`, `-e`: end date (format: `YYYY-MM-DD` or `YYYY-MM-DD HH:MM:SS`)
+- `--format`, `-f`: output format (`text` or `json`, default: `text`)
+
+Local:
+
+```bash
+# Verify today's audit logs (text output)
+TODAY=$(date +%Y-%m-%d)
+./bin/app verify-audit-logs --start-date "$TODAY" --end-date "$TODAY"
+
+# Verify date range (JSON output for automation)
+./bin/app verify-audit-logs \
+  --start-date "2026-02-01" \
+  --end-date "2026-02-20" \
+  --format json
+
+# Verify with datetime precision
+./bin/app verify-audit-logs \
+  --start-date "2026-02-20 00:00:00" \
+  --end-date "2026-02-20 23:59:59"
+```
+
+Docker:
+
+```bash
+docker run --rm --env-file .env allisson/secrets \
+  verify-audit-logs \
+  --start-date "2026-02-20" \
+  --end-date "2026-02-20" \
+  --format text
+```
+
+Output (text format):
+
+```text
+Audit Log Integrity Verification
+=================================
+
+Time Range: 2026-02-20 00:00:00 to 2026-02-20 23:59:59
+
+Total Checked:  150
+Signed:         120
+Unsigned:       30 (legacy)
+Valid:          120
+Invalid:        0
+
+Status: PASSED ✓
+```
+
+Output (JSON format):
+
+```json
+{
+  "total_checked": 150,
+  "signed_count": 120,
+  "unsigned_count": 30,
+  "valid_count": 120,
+  "invalid_count": 0,
+  "invalid_logs": [],
+  "passed": true
+}
+```
+
+Output (failed verification):
+
+```text
+Audit Log Integrity Verification
+=================================
+
+Time Range: 2026-02-15 00:00:00 to 2026-02-15 23:59:59
+
+Total Checked:  100
+Signed:         100
+Unsigned:       0
+Valid:          95
+Invalid:        5
+
+Status: FAILED ✗
+
+Details:
+- 5 audit logs with invalid signatures detected
+- KEK chain may be missing historical KEKs
+- Use --format json to identify specific failed log IDs
+```
+
+Exit Codes:
+
+- `0`: All signatures valid (or no logs found)
+- `1`: Invalid signatures detected (integrity check failed)
+
+Use Cases:
+
+- Periodic compliance audits (PCI DSS Requirement 10.2.2)
+- Incident investigation and tamper detection
+- Post-KEK-rotation verification
+- Continuous monitoring integration (CI/CD, cron jobs)
+
+Notes:
+
+- Legacy unsigned logs (`is_signed=false`) are counted but not verified
+- Invalid signatures indicate potential tampering or KEK mismatch
+- Verification requires KEK IDs referenced in audit logs to exist in database
+
 ## Tokenization
 
 ### `create-tokenization-key`
