@@ -253,6 +253,61 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 		assert.Contains(t, err.Error(), "database connection failed", "original error should be included")
 		mockRepo.AssertExpectations(t)
 	})
+
+	t.Run("Success_TimestampTruncatedToMicrosecondPrecision", func(t *testing.T) {
+		// Setup mocks
+		mockRepo := &mockAuditLogRepository{}
+
+		// Test data
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := uuid.Must(uuid.NewV7())
+		capability := authDomain.ReadCapability
+		path := "/api/v1/secrets/test"
+
+		// Capture the audit log passed to repository
+		var capturedAuditLog *authDomain.AuditLog
+		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.AuditLog")).
+			Run(func(args mock.Arguments) {
+				capturedAuditLog = args.Get(1).(*authDomain.AuditLog)
+			}).
+			Return(nil).
+			Once()
+
+		// Create use case
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+
+		// Execute
+		beforeCreate := time.Now().UTC()
+		err := useCase.Create(ctx, requestID, clientID, capability, path, nil)
+		afterCreate := time.Now().UTC()
+
+		// Assert
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+
+		// Verify timestamp is within expected range
+		assert.True(t, capturedAuditLog.CreatedAt.After(beforeCreate) ||
+			capturedAuditLog.CreatedAt.Equal(beforeCreate),
+			"created_at should be after or equal to beforeCreate")
+		assert.True(t, capturedAuditLog.CreatedAt.Before(afterCreate) ||
+			capturedAuditLog.CreatedAt.Equal(afterCreate),
+			"created_at should be before or equal to afterCreate")
+
+		// Verify timestamp is truncated to microsecond precision (no nanoseconds beyond microseconds)
+		// PostgreSQL TIMESTAMPTZ and MySQL DATETIME(6) both store microsecond precision
+		nanos := capturedAuditLog.CreatedAt.Nanosecond()
+		assert.Equal(
+			t,
+			0,
+			nanos%1000,
+			"timestamp should be truncated to microsecond precision (last 3 digits of nanoseconds should be 0)",
+		)
+
+		// Verify truncation matches database storage precision
+		expectedTruncated := capturedAuditLog.CreatedAt.Truncate(time.Microsecond)
+		assert.Equal(t, expectedTruncated, capturedAuditLog.CreatedAt,
+			"timestamp should equal its microsecond-truncated value")
+	})
 }
 
 func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
