@@ -1,6 +1,6 @@
 # 🚀 Production Rollout Golden Path
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
