@@ -93,7 +93,6 @@ Example response (`200 OK`):
 
 - All audit logs created in v0.9.0+ are automatically signed with HMAC-SHA256 for tamper detection
 - Signature derived from KEK using HKDF-SHA256 key derivation (separates encryption and signing usage)
-- Complies with PCI DSS Requirement 10.2.2 (audit log protection)
 
 **Field Details:**
 

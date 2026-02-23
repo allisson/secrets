@@ -1825,7 +1825,7 @@ func setupIntegrationTestWithLockout(
 }
 
 // TestIntegration_AccountLockout_CompleteFlow tests the full lockout → unlock → re-auth cycle.
-// Validates PCI DSS 8.3.4 account lockout enforcement and admin unlock capability against both databases.
+// Validates account lockout enforcement and admin unlock capability against both databases.
 func TestIntegration_AccountLockout_CompleteFlow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

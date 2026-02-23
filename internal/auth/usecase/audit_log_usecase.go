@@ -14,7 +14,7 @@ import (
 )
 
 // auditLogUseCase implements AuditLogUseCase interface for recording and verifying audit logs.
-// Provides cryptographic signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2).
+// Provides cryptographic signing with HMAC-SHA256 for tamper detection.
 type auditLogUseCase struct {
 	auditLogRepo AuditLogRepository
 	auditSigner  authService.AuditSigner

@@ -258,7 +258,7 @@ Exit Codes:
 
 Use Cases:
 
-- Periodic compliance audits (PCI DSS Requirement 10.2.2)
+- Periodic compliance audits
 - Incident investigation and tamper detection
 - Post-KEK-rotation verification
 - Continuous monitoring integration (CI/CD, cron jobs)

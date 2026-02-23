@@ -7,7 +7,6 @@
 
 The application must ensure audit log integrity to meet compliance requirements and detect unauthorized tampering:
 
-- **PCI DSS Requirement 10.2.2**: Protect audit trail from alterations
 - **Tamper detection**: Detect if audit logs are modified after creation
 - **Compliance evidence**: Provide cryptographic proof of log authenticity
 - **Key separation**: Separate signing keys from encryption keys (best practice)
@@ -23,7 +22,6 @@ Key security considerations:
 - **Threat model**: Attacker gains database write access, attempts to hide malicious activity by modifying/deleting logs
 - **Attack vectors**: Log tampering (modify metadata), log deletion (cover tracks), log injection (false audit trail)
 - **Insider threats**: Malicious administrator with database access modifying logs post-breach
-- **Compliance scope**: PCI DSS 10.2.2 requires audit trail protection from alterations
 
 ## Decision
 
@@ -251,7 +249,6 @@ Send logs to third-party service (e.g., Splunk, Datadog, AWS CloudTrail).
 **Benefits:**
 
 - **Tamper detection**: Cryptographic proof of log integrity, detects modifications/deletions
-- **PCI DSS compliance**: Meets Requirement 10.2.2 for audit trail protection
 - **Key separation**: HKDF derivation separates signing keys from encryption keys (security best practice)
 - **Backward compatibility**: `is_signed` flag supports mixed signed/unsigned logs during migration
 - **Minimal performance impact**: ~10-15µs signing overhead per log (negligible)
@@ -377,4 +374,3 @@ if kekChain != nil && auditSigner != nil {
 - [ADR 0009: UUIDv7 for Identifiers](0009-uuidv7-for-identifiers.md) - Request ID embedded timestamps
 - [NIST SP 800-107](https://csrc.nist.gov/pubs/sp/800/107/r1/final) - Recommendation for HMAC
 - [RFC 5869 (HKDF)](https://www.rfc-editor.org/rfc/rfc5869.html) - HKDF specification
-- [PCI DSS v4.0 Requirement 10.2.2](https://docs-prv.pcisecuritystandards.org/PCI%20DSS/Standard/PCI-DSS-v4_0.pdf) - Audit trail protection

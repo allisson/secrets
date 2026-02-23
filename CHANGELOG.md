@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] - 2026-02-20
 
 ### Added
-- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
+- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection
 - Added HKDF-SHA256 key derivation to separate encryption and signing key usage
 - Added `verify-audit-logs` CLI command for batch integrity verification with text/JSON output
 - Added database columns: `signature` (BYTEA), `kek_id` (UUID FK), `is_signed` (BOOLEAN)

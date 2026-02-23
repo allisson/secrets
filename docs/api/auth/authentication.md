@@ -77,7 +77,7 @@ Rate limiting note:
 
 ## Account Lockout
 
-`POST /v1/token` enforces account lockout to prevent brute-force attacks (PCI DSS 8.3.4).
+`POST /v1/token` enforces account lockout to prevent brute-force attacks.
 
 **Behavior:**
 
@@ -109,7 +109,7 @@ Rate limiting note:
 POST /v1/clients/{id}/unlock  (requires WriteCapability on /v1/clients/{id})
 ```
 
-See [Configuration reference](../../configuration.md#account-lockout-pci-dss-834) for details.
+See [Configuration reference](../../configuration.md#account-lockout) for details.
 
 ## Token `429` Handling Quick Check
 

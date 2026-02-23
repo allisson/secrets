@@ -51,7 +51,7 @@ type Config struct {
 	KMSProvider string
 	KMSKeyURI   string
 
-	// Account Lockout (PCI DSS 8.3.4)
+	// Account Lockout
 	LockoutMaxAttempts int
 	LockoutDuration    time.Duration
 }
@@ -104,7 +104,7 @@ func Load() *Config {
 		KMSProvider: env.GetString("KMS_PROVIDER", ""),
 		KMSKeyURI:   env.GetString("KMS_KEY_URI", ""),
 
-		// Account Lockout (PCI DSS 8.3.4)
+		// Account Lockout
 		LockoutMaxAttempts: env.GetInt("LOCKOUT_MAX_ATTEMPTS", 10),
 		LockoutDuration:    env.GetDuration("LOCKOUT_DURATION_MINUTES", 30, time.Minute),
 	}

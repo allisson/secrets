@@ -12,7 +12,7 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 **All Releases**:
 
-- [v0.11.0 (2026-02-23)](#0110---2026-02-23) - Account lockout (PCI DSS 8.3.4)
+- [v0.11.0 (2026-02-23)](#0110---2026-02-23) - Account lockout
 
 - [v0.10.0 (2026-02-21)](#0100---2026-02-21) - Docker security improvements
 
@@ -42,9 +42,9 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## [0.11.0] - 2026-02-23
 
-### Account Lockout (PCI DSS 8.3.4)
+### Account Lockout
 
-This release adds persistent account lockout to prevent brute-force attacks against the token endpoint, satisfying PCI DSS Requirement 8.3.4 (lock accounts after ≤10 failed attempts for ≥30 minutes).
+This release adds persistent account lockout to prevent brute-force attacks against the token endpoint.
 
 ### Added
 
@@ -73,8 +73,6 @@ This release adds persistent account lockout to prevent brute-force attacks agai
 - Lock check is based on `locked_until` timestamp — expired locks are treated as unlocked
 
 ### Security and Operations Impact
-
-- Satisfies PCI DSS Requirement 8.3.4: account lockout after ≤10 failed authentication attempts for ≥30 minutes
 
 - Complements the existing IP-based rate limiting on `POST /v1/token` — lockout is per-client identity, not per-IP
 
@@ -145,7 +143,7 @@ The down migration is non-destructive for data — it only drops the two new col
 #### See Also
 
 - [Account lockout behavior](../api/auth/authentication.md#account-lockout)
-- [Configuration reference](../configuration.md#account-lockout-pci-dss-834)
+- [Configuration reference](../configuration.md#account-lockout)
 - [Upgrade guide](v0.11.0-upgrade.md)
 
 ---
@@ -799,7 +797,7 @@ If you encounter an issue not listed above:
 
 ### Highlights
 
-- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection (PCI DSS Requirement 10.2.2)
+- Added cryptographic audit log signing with HMAC-SHA256 for tamper detection
 
 - Added `verify-audit-logs` CLI command for integrity verification with text/JSON output
 
@@ -828,8 +826,6 @@ If you encounter an issue not listed above:
 ### Security and Operations Impact
 
 - **Breaking Change:** Foreign key constraints prevent deletion of clients/KEKs with associated audit logs
-
-- Improves compliance posture for PCI DSS Requirement 10.2.2 (audit log protection)
 
 - Enables cryptographic verification of audit log integrity and tamper detection
 

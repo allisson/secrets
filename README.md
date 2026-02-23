@@ -31,7 +31,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 
 ## 🆕 What's New in v0.11.0
 
-- 🔒 Account lockout on `POST /v1/token`: clients locked after 10 consecutive failed attempts (PCI DSS 8.3.4)
+- 🔒 Account lockout on `POST /v1/token`: clients locked after 10 consecutive failed attempts
 - 🚫 Locked clients receive `423 Locked` with `"error": "client_locked"`
 - ⚙️ Configurable via `LOCKOUT_MAX_ATTEMPTS` (default `10`) and `LOCKOUT_DURATION_MINUTES` (default `30`)
 - 🗄️ Database migration `000004_add_account_lockout` (additive, zero-downtime)
@@ -116,7 +116,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 
 **Security & Compliance:**
 
-- 🔏 **Cryptographic audit log signing** with HMAC-SHA256 for tamper detection (PCI DSS 10.2.2) - [v0.9.0+](docs/releases/RELEASES.md#090---2026-02-20)
+- 🔏 **Cryptographic audit log signing** with HMAC-SHA256 for tamper detection - [v0.9.0+](docs/releases/RELEASES.md#090---2026-02-20)
 - 📜 **Comprehensive audit logs** with request correlation (`request_id`), filtering, and [integrity verification](docs/cli-commands.md#verify-audit-logs)
 - 🧹 **Memory safety** with sensitive key material zeroing in critical paths
 - 🔒 **AEAD encryption** for authenticated encryption with associated data

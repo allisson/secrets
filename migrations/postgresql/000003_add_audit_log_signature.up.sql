@@ -1,4 +1,4 @@
--- Add cryptographic signature columns to audit_logs for tamper detection (PCI DSS Requirement 10.2.2)
+-- Add cryptographic signature columns to audit_logs for tamper detection
 ALTER TABLE audit_logs 
 ADD COLUMN signature BYTEA,
 ADD COLUMN kek_id UUID REFERENCES keks(id) ON DELETE RESTRICT,

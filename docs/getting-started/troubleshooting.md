@@ -214,24 +214,16 @@ Common 422 cases:
 **Resolution:**
 
 1. Wait for `LOCKOUT_DURATION_MINUTES` (default `30` minutes) — the lock expires automatically
-2. Or manually unlock in the database:
+2. Or unlock immediately via the API:
 
-   ```sql
-   -- PostgreSQL
-   UPDATE clients SET failed_attempts = 0, locked_until = NULL WHERE id = '<client-uuid>';
-
-   -- MySQL
-   UPDATE clients SET failed_attempts = 0, locked_until = NULL WHERE id = UNHEX(REPLACE('<client-uuid>', '-', ''));
+   ```bash
+   curl -X POST http://localhost:8080/v1/clients/<client-uuid>/unlock \
+     -H "Authorization: Bearer <token>"
    ```
 
+   Requires a token with `WriteCapability` on `/v1/clients/<client-uuid>`. Returns the updated client object on success (`200 OK`).
+
 3. After unlocking, authenticate with the correct secret — this resets the counter
-
-**Diagnosis:**
-
-```sql
--- Check lock state
-SELECT id, name, failed_attempts, locked_until FROM clients WHERE id = '<client-uuid>';
-```
 
 **Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../api/auth/authentication.md#account-lockout) for behavior details.
 

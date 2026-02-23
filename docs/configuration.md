@@ -46,7 +46,7 @@ CORS_ALLOW_ORIGINS=
 METRICS_ENABLED=true
 METRICS_NAMESPACE=secrets
 
-# Account lockout (PCI DSS 8.3.4)
+# Account lockout
 LOCKOUT_MAX_ATTEMPTS=10
 LOCKOUT_DURATION_MINUTES=30
 
@@ -377,7 +377,7 @@ Allows short request spikes while preserving stricter controls for the unauthent
 
 Tune based on `POST /v1/token` `429` rates, NAT/proxy sharing patterns, and retry behavior.
 
-## Account Lockout (PCI DSS 8.3.4)
+## Account Lockout
 
 Account lockout protects `POST /v1/token` against brute-force attacks by temporarily locking clients that exceed the failure threshold.
 
@@ -385,15 +385,11 @@ Account lockout protects `POST /v1/token` against brute-force attacks by tempora
 
 Number of consecutive failed authentication attempts before the client is locked (default: `10`).
 
-PCI DSS 8.3.4 requires locking after ≤10 failed attempts; the default satisfies this requirement.
-
-Set to `0` to disable lockout (not recommended for PCI DSS environments).
+Set to `0` to disable lockout.
 
 ### LOCKOUT_DURATION_MINUTES
 
 How long a locked client remains locked, in minutes (default: `30`).
-
-PCI DSS 8.3.4 requires a minimum of 30 minutes; the default satisfies this requirement.
 
 **Example:**
 

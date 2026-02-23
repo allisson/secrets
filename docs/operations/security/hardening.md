@@ -10,7 +10,7 @@ This guide covers comprehensive security hardening for production deployments of
 - [2) Database Security](#2-database-security)
 - [3) Network Security](#3-network-security)
 - [4) Rate Limiting](#4-rate-limiting)
-  - [Account Lockout (PCI DSS 8.3.4)](#account-lockout-pci-dss-834)
+  - [Account Lockout](#account-lockout)
 - [5) Cross-Origin Resource Sharing (CORS)](#5-cross-origin-resource-sharing-cors)
 - [6) Authentication and Token Management](#6-authentication-and-token-management)
 - [7) Master Key Storage and Management](#7-master-key-storage-and-management)
@@ -323,15 +323,15 @@ RATE_LIMIT_TOKEN_BURST=10
 - Use reverse proxy for IP-based rate limiting
 - Use application rate limiting for client-based rate limiting
 
-### Account Lockout (PCI DSS 8.3.4)
+### Account Lockout
 
 Account lockout operates at the client-identity level and complements IP-based rate limiting:
 
 ```dotenv
-# Failed attempts before lockout (default: 10, satisfies PCI DSS 8.3.4)
+# Failed attempts before lockout (default: 10)
 LOCKOUT_MAX_ATTEMPTS=10
 
-# Lock duration in minutes (default: 30, satisfies PCI DSS 8.3.4)
+# Lock duration in minutes (default: 30)
 LOCKOUT_DURATION_MINUTES=30
 ```
 
@@ -717,7 +717,7 @@ Use this checklist for production deployment validation.
 - [ ] Default/test clients disabled or deleted
 - [ ] Client credentials stored securely
 - [ ] Rate limiting enabled
-- [ ] Account lockout enabled and configured (PCI DSS 8.3.4)
+- [ ] Account lockout enabled and configured
 - [ ] CORS disabled (or explicitly required and configured)
 
 ### Master Key Management
