@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -96,7 +97,7 @@ func (p *PostgreSQLClientRepository) Get(
 ) (*authDomain.Client, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, secret, name, is_active, policies, created_at FROM clients WHERE id = $1`
+	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at FROM clients WHERE id = $1`
 
 	var client authDomain.Client
 	var policiesJSON []byte
@@ -107,6 +108,8 @@ func (p *PostgreSQLClientRepository) Get(
 		&client.Name,
 		&client.IsActive,
 		&policiesJSON,
+		&client.FailedAttempts,
+		&client.LockedUntil,
 		&client.CreatedAt,
 	)
 	if err != nil {
@@ -132,9 +135,9 @@ func (p *PostgreSQLClientRepository) List(
 ) ([]*authDomain.Client, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, secret, name, is_active, policies, created_at 
-			  FROM clients 
-			  ORDER BY id DESC 
+	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at
+			  FROM clients
+			  ORDER BY id DESC
 			  LIMIT $1 OFFSET $2`
 
 	rows, err := querier.QueryContext(ctx, query, limit, offset)
@@ -157,6 +160,8 @@ func (p *PostgreSQLClientRepository) List(
 			&client.Name,
 			&client.IsActive,
 			&policiesJSON,
+			&client.FailedAttempts,
+			&client.LockedUntil,
 			&client.CreatedAt,
 		)
 		if err != nil {
@@ -175,6 +180,22 @@ func (p *PostgreSQLClientRepository) List(
 	}
 
 	return clients, nil
+}
+
+// UpdateLockState atomically updates the failed attempt counter and lock expiry for a client.
+func (p *PostgreSQLClientRepository) UpdateLockState(
+	ctx context.Context,
+	clientID uuid.UUID,
+	failedAttempts int,
+	lockedUntil *time.Time,
+) error {
+	querier := database.GetTx(ctx, p.db)
+	query := `UPDATE clients SET failed_attempts = $1, locked_until = $2 WHERE id = $3`
+	_, err := querier.ExecContext(ctx, query, failedAttempts, lockedUntil, clientID)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to update client lock state")
+	}
+	return nil
 }
 
 // NewPostgreSQLClientRepository creates a new PostgreSQL Client repository.

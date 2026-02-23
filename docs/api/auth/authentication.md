@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-23
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -67,12 +67,49 @@ Expected result: token request returns `201 Created`, authenticated clients requ
 - `401 Unauthorized`: invalid credentials
 - `403 Forbidden`: inactive client
 - `422 Unprocessable Entity`: malformed request
+- `423 Locked`: client account locked due to too many failed authentication attempts
 - `429 Too Many Requests`: token issuance throttled by IP-based token endpoint limits
 
 Rate limiting note:
 
 - `POST /v1/token` is rate-limited per client IP when `RATE_LIMIT_TOKEN_ENABLED=true`
 - Protected endpoints called with issued tokens are rate-limited per authenticated client
+
+## Account Lockout
+
+`POST /v1/token` enforces account lockout to prevent brute-force attacks (PCI DSS 8.3.4).
+
+**Behavior:**
+
+1. Each failed authentication attempt (wrong secret) increments the client's `failed_attempts` counter
+2. When `failed_attempts` reaches `LOCKOUT_MAX_ATTEMPTS` (default `10`), the client is locked for `LOCKOUT_DURATION_MINUTES` (default `30` minutes)
+3. While locked, `POST /v1/token` returns `423 Locked` regardless of the provided secret
+4. After the lock window expires, the next request is evaluated normally
+5. A successful authentication resets `failed_attempts` to `0` and clears `locked_until`
+
+**Response when locked (`423 Locked`):**
+
+```json
+{
+  "error": "client_locked",
+  "message": "Account is locked due to too many failed authentication attempts"
+}
+```
+
+**Configuration:**
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LOCKOUT_MAX_ATTEMPTS` | `10` | Failed attempts before lockout |
+| `LOCKOUT_DURATION_MINUTES` | `30` | Lock duration in minutes |
+
+**Manual unlock** (for operators):
+
+```text
+POST /v1/clients/{id}/unlock  (requires WriteCapability on /v1/clients/{id})
+```
+
+See [Configuration reference](../../configuration.md#account-lockout-pci-dss-834) for details.
 
 ## Token `429` Handling Quick Check
 

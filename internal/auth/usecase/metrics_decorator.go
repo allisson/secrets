@@ -114,6 +114,22 @@ func (c *clientUseCaseWithMetrics) Delete(ctx context.Context, clientID uuid.UUI
 	return err
 }
 
+// Unlock records metrics for client unlock operations.
+func (c *clientUseCaseWithMetrics) Unlock(ctx context.Context, clientID uuid.UUID) error {
+	start := time.Now()
+	err := c.next.Unlock(ctx, clientID)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	c.metrics.RecordOperation(ctx, "auth", "client_unlock", status)
+	c.metrics.RecordDuration(ctx, "auth", "client_unlock", time.Since(start), status)
+
+	return err
+}
+
 // tokenUseCaseWithMetrics decorates TokenUseCase with metrics instrumentation.
 type tokenUseCaseWithMetrics struct {
 	next    TokenUseCase

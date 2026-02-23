@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -101,7 +102,7 @@ func (m *MySQLClientRepository) Update(ctx context.Context, client *authDomain.C
 func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, secret, name, is_active, policies, created_at FROM clients WHERE id = ?`
+	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at FROM clients WHERE id = ?`
 
 	id, err := clientID.MarshalBinary()
 	if err != nil {
@@ -118,6 +119,8 @@ func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*a
 		&client.Name,
 		&client.IsActive,
 		&policiesJSON,
+		&client.FailedAttempts,
+		&client.LockedUntil,
 		&client.CreatedAt,
 	)
 	if err != nil {
@@ -147,9 +150,9 @@ func (m *MySQLClientRepository) List(
 ) ([]*authDomain.Client, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, secret, name, is_active, policies, created_at 
-			  FROM clients 
-			  ORDER BY id DESC 
+	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at
+			  FROM clients
+			  ORDER BY id DESC
 			  LIMIT ? OFFSET ?`
 
 	rows, err := querier.QueryContext(ctx, query, limit, offset)
@@ -173,6 +176,8 @@ func (m *MySQLClientRepository) List(
 			&client.Name,
 			&client.IsActive,
 			&policiesJSON,
+			&client.FailedAttempts,
+			&client.LockedUntil,
 			&client.CreatedAt,
 		)
 		if err != nil {
@@ -195,6 +200,28 @@ func (m *MySQLClientRepository) List(
 	}
 
 	return clients, nil
+}
+
+// UpdateLockState atomically updates the failed attempt counter and lock expiry for a client.
+func (m *MySQLClientRepository) UpdateLockState(
+	ctx context.Context,
+	clientID uuid.UUID,
+	failedAttempts int,
+	lockedUntil *time.Time,
+) error {
+	querier := database.GetTx(ctx, m.db)
+
+	id, err := clientID.MarshalBinary()
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client id")
+	}
+
+	query := `UPDATE clients SET failed_attempts = ?, locked_until = ? WHERE id = ?`
+	_, err = querier.ExecContext(ctx, query, failedAttempts, lockedUntil, id)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to update client lock state")
+	}
+	return nil
 }
 
 // NewMySQLClientRepository creates a new MySQL Client repository.

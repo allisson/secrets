@@ -22,6 +22,9 @@ var (
 
 	// ErrForbidden indicates insufficient permissions.
 	ErrForbidden = errors.New("forbidden")
+
+	// ErrLocked indicates the resource is temporarily locked.
+	ErrLocked = errors.New("locked")
 )
 
 // New creates a new error with the given message.

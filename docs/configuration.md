@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 Secrets is configured through environment variables.
 
@@ -45,6 +45,10 @@ CORS_ALLOW_ORIGINS=
 # Metrics configuration
 METRICS_ENABLED=true
 METRICS_NAMESPACE=secrets
+
+# Account lockout (PCI DSS 8.3.4)
+LOCKOUT_MAX_ATTEMPTS=10
+LOCKOUT_DURATION_MINUTES=30
 
 ```
 
@@ -372,6 +376,33 @@ Allows short request spikes while preserving stricter controls for the unauthent
 | Internal trusted | `20.0` | `40` | Internal service mesh token broker |
 
 Tune based on `POST /v1/token` `429` rates, NAT/proxy sharing patterns, and retry behavior.
+
+## Account Lockout (PCI DSS 8.3.4)
+
+Account lockout protects `POST /v1/token` against brute-force attacks by temporarily locking clients that exceed the failure threshold.
+
+### LOCKOUT_MAX_ATTEMPTS
+
+Number of consecutive failed authentication attempts before the client is locked (default: `10`).
+
+PCI DSS 8.3.4 requires locking after ≤10 failed attempts; the default satisfies this requirement.
+
+Set to `0` to disable lockout (not recommended for PCI DSS environments).
+
+### LOCKOUT_DURATION_MINUTES
+
+How long a locked client remains locked, in minutes (default: `30`).
+
+PCI DSS 8.3.4 requires a minimum of 30 minutes; the default satisfies this requirement.
+
+**Example:**
+
+```dotenv
+LOCKOUT_MAX_ATTEMPTS=10
+LOCKOUT_DURATION_MINUTES=30
+```
+
+See [Authentication API: account lockout](api/auth/authentication.md#account-lockout) for behavior details and [Troubleshooting: 423 Locked](getting-started/troubleshooting.md#423-locked-account-lockout) for resolution steps.
 
 ## CORS configuration
 

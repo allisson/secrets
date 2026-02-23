@@ -22,12 +22,14 @@ type PolicyDocument struct {
 // Client represents an authentication client with associated authorization policies.
 // Clients are used to authenticate API requests and enforce access control.
 type Client struct {
-	ID        uuid.UUID        // Unique identifier (UUIDv7)
-	Secret    string           //nolint:gosec // hashed client secret (not plaintext)
-	Name      string           // Human-readable client name
-	IsActive  bool             // Whether the client can authenticate
-	Policies  []PolicyDocument // Authorization policies for this client
-	CreatedAt time.Time
+	ID             uuid.UUID        // Unique identifier (UUIDv7)
+	Secret         string           //nolint:gosec // hashed client secret (not plaintext)
+	Name           string           // Human-readable client name
+	IsActive       bool             // Whether the client can authenticate
+	Policies       []PolicyDocument // Authorization policies for this client
+	FailedAttempts int              // Number of consecutive failed authentication attempts
+	LockedUntil    *time.Time       // Time until which the client is locked (nil if not locked)
+	CreatedAt      time.Time
 }
 
 // matchPath checks if the request path matches the policy path pattern.

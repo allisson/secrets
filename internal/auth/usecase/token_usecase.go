@@ -28,6 +28,7 @@ type tokenUseCase struct {
 //
 // Security: Returns ErrInvalidCredentials for non-existent clients or wrong secrets to prevent
 // user enumeration attacks. Returns ErrClientInactive if the client exists but is not active.
+// Returns ErrClientLocked if the client is locked due to too many failed authentication attempts.
 func (t *tokenUseCase) Issue(
 	ctx context.Context,
 	issueTokenInput *authDomain.IssueTokenInput,
@@ -42,6 +43,11 @@ func (t *tokenUseCase) Issue(
 		return nil, err
 	}
 
+	// Check hard lock (active lock window)
+	if client.LockedUntil != nil && time.Now().UTC().Before(*client.LockedUntil) {
+		return nil, authDomain.ErrClientLocked
+	}
+
 	// Check if client is active
 	if !client.IsActive {
 		return nil, authDomain.ErrClientInactive
@@ -49,7 +55,20 @@ func (t *tokenUseCase) Issue(
 
 	// Verify the client secret
 	if !t.secretService.CompareSecret(issueTokenInput.ClientSecret, client.Secret) {
+		newAttempts := client.FailedAttempts + 1
+		var lockedUntil *time.Time
+		if t.config.LockoutMaxAttempts > 0 && newAttempts >= t.config.LockoutMaxAttempts {
+			lockExpiry := time.Now().UTC().Add(t.config.LockoutDuration)
+			lockedUntil = &lockExpiry
+		}
+		// Best-effort: don't block on lock-state errors
+		_ = t.clientRepo.UpdateLockState(ctx, client.ID, newAttempts, lockedUntil)
 		return nil, authDomain.ErrInvalidCredentials
+	}
+
+	// Reset on success
+	if client.FailedAttempts > 0 || client.LockedUntil != nil {
+		_ = t.clientRepo.UpdateLockState(ctx, client.ID, 0, nil)
 	}
 
 	// Generate a new token

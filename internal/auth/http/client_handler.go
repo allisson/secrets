@@ -177,6 +177,29 @@ func (h *ClientHandler) DeleteHandler(c *gin.Context) {
 	c.Data(http.StatusNoContent, "application/json", nil)
 }
 
+// UnlockHandler resets the lockout state for a client.
+// POST /v1/clients/:id/unlock - Requires WriteCapability.
+// Returns 200 OK with updated client data.
+func (h *ClientHandler) UnlockHandler(c *gin.Context) {
+	clientID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httputil.HandleValidationErrorGin(c,
+			fmt.Errorf("invalid client ID format: must be a valid UUID"),
+			h.logger)
+		return
+	}
+	if err := h.clientUseCase.Unlock(c.Request.Context(), clientID); err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+	client, err := h.clientUseCase.Get(c.Request.Context(), clientID)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+	c.JSON(http.StatusOK, dto.MapClientToResponse(client))
+}
+
 // ListHandler retrieves clients with pagination support.
 // GET /v1/clients?offset=0&limit=50 - Requires ReadCapability on path /v1/clients.
 // Returns 200 OK with paginated client list.

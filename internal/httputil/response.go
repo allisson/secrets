@@ -57,6 +57,13 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 			Message: "Authentication is required",
 		}
 
+	case apperrors.Is(err, apperrors.ErrLocked):
+		statusCode = http.StatusLocked
+		errorResponse = ErrorResponse{
+			Error:   "client_locked",
+			Message: "Account is locked due to too many failed authentication attempts",
+		}
+
 	case apperrors.Is(err, apperrors.ErrForbidden):
 		statusCode = http.StatusForbidden
 		errorResponse = ErrorResponse{

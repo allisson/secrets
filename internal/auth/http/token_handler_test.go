@@ -228,6 +228,33 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		mockUseCase.AssertExpectations(t)
 	})
 
+	t.Run("Error_ClientLocked", func(t *testing.T) {
+		handler, mockUseCase := setupTokenTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		request := dto.IssueTokenRequest{
+			ClientID:     clientID.String(),
+			ClientSecret: "test_secret_123",
+		}
+
+		mockUseCase.On("Issue", mock.Anything, mock.Anything).
+			Return(nil, authDomain.ErrClientLocked).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/token", request)
+
+		handler.IssueTokenHandler(c)
+
+		assert.Equal(t, http.StatusLocked, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "client_locked", response["error"])
+
+		mockUseCase.AssertExpectations(t)
+	})
+
 	t.Run("Error_RepositoryError", func(t *testing.T) {
 		handler, mockUseCase := setupTokenTestHandler(t)
 

@@ -170,6 +170,10 @@ func (s *Server) SetupRouter(
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				clientHandler.DeleteHandler,
 			)
+			clients.POST("/:id/unlock",
+				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+				clientHandler.UnlockHandler,
+			)
 		}
 
 		// Audit log endpoints

@@ -1,6 +1,6 @@
 # 🚀 Release Notes
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 This document contains release notes and upgrade guides for all versions of Secrets.
 
@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.10.0](#0100---2026-02-21)
+**Latest Release**: [v0.11.0](#0110---2026-02-23)
 
 **All Releases**:
+
+- [v0.11.0 (2026-02-23)](#0110---2026-02-23) - Account lockout (PCI DSS 8.3.4)
 
 - [v0.10.0 (2026-02-21)](#0100---2026-02-21) - Docker security improvements
 
@@ -35,6 +37,116 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.11.0] - 2026-02-23
+
+### Account Lockout (PCI DSS 8.3.4)
+
+This release adds persistent account lockout to prevent brute-force attacks against the token endpoint, satisfying PCI DSS Requirement 8.3.4 (lock accounts after ≤10 failed attempts for ≥30 minutes).
+
+### Added
+
+- Account lockout: clients are locked for 30 minutes after 10 consecutive failed authentication attempts
+
+- `LOCKOUT_MAX_ATTEMPTS` environment variable (default `10`) — configures the failure threshold
+
+- `LOCKOUT_DURATION_MINUTES` environment variable (default `30`) — configures the lockout duration in minutes
+
+- `423 Locked` HTTP response on `POST /v1/token` when a client is locked
+
+- Database migration `000004_add_account_lockout` — adds `failed_attempts` and `locked_until` columns to the `clients` table
+
+### Runtime Changes
+
+- New environment variables:
+
+  - `LOCKOUT_MAX_ATTEMPTS` (default `10`)
+
+  - `LOCKOUT_DURATION_MINUTES` (default `30`)
+
+- `POST /v1/token` may now return `423 Locked` when a client account is locked due to too many failed attempts
+
+- Failed attempt counter and lock expiry are reset automatically on successful authentication
+
+- Lock check is based on `locked_until` timestamp — expired locks are treated as unlocked
+
+### Security and Operations Impact
+
+- Satisfies PCI DSS Requirement 8.3.4: account lockout after ≤10 failed authentication attempts for ≥30 minutes
+
+- Complements the existing IP-based rate limiting on `POST /v1/token` — lockout is per-client identity, not per-IP
+
+- Operators can manually unlock a client by setting `locked_until = NULL` and `failed_attempts = 0` in the database
+
+### Upgrade from v0.10.0
+
+#### What Changed
+
+- Added account lockout logic to `POST /v1/token`
+
+- Added database migration `000004` (two new nullable/defaulted columns)
+
+- Added `LOCKOUT_MAX_ATTEMPTS` and `LOCKOUT_DURATION_MINUTES` configuration
+
+#### Migration Requirements
+
+⚠️ **Database migration required** before updating the binary. The migration is additive and safe to apply with zero downtime.
+
+```bash
+./bin/app migrate
+```
+
+#### Env Diff
+
+```diff
++ LOCKOUT_MAX_ATTEMPTS=10
++ LOCKOUT_DURATION_MINUTES=30
+```
+
+#### Recommended Upgrade Steps
+
+1. **Backup database**
+2. **Run migration:** `./bin/app migrate`
+3. Update binary/image to `v0.11.0`
+4. Optionally add `LOCKOUT_*` variables to override defaults
+5. Restart API instances with standard rolling rollout
+6. Run baseline checks: `GET /health`, `GET /ready`
+7. Verify `POST /v1/token` still issues tokens for valid credentials
+
+#### Quick Verification Commands
+
+```bash
+curl -sS http://localhost:8080/health
+curl -sS http://localhost:8080/ready
+
+# Normal auth should still work
+curl -sS -X POST http://localhost:8080/v1/token \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"<client-id>","client_secret":"<correct-secret>"}'
+
+# After 10 wrong attempts, POST /v1/token should return 423
+```
+
+#### Rollback Instructions
+
+```bash
+# Stop API instances
+# Restore database from backup OR run down migration:
+psql $DB_CONNECTION_STRING < migrations/postgresql/000004_add_account_lockout.down.sql
+
+# Downgrade to v0.10.0 binary/image
+# Restart API instances
+```
+
+The down migration is non-destructive for data — it only drops the two new columns.
+
+#### See Also
+
+- [Account lockout behavior](../api/auth/authentication.md#account-lockout)
+- [Configuration reference](../configuration.md#account-lockout-pci-dss-834)
+- [Upgrade guide](v0.11.0-upgrade.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-23
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -18,6 +18,7 @@ Client APIs manage machine identities and policy documents.
 - `GET /v1/clients/:id`
 - `PUT /v1/clients/:id`
 - `DELETE /v1/clients/:id`
+- `POST /v1/clients/:id/unlock`
 
 All endpoints require Bearer authentication.
 
@@ -28,6 +29,7 @@ Capability mapping:
 - `GET /v1/clients/:id` -> `read`
 - `PUT /v1/clients/:id` -> `write`
 - `DELETE /v1/clients/:id` -> `delete`
+- `POST /v1/clients/:id/unlock` -> `write`
 
 ## Status Code Quick Reference
 
@@ -38,6 +40,7 @@ Capability mapping:
 | `GET /v1/clients/:id` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `PUT /v1/clients/:id` | `200` | `401`, `403`, `404`, `409`, `422`, `429` |
 | `DELETE /v1/clients/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/clients/:id/unlock` | `200` | `401`, `403`, `404`, `422`, `429` |
 
 ## Create Client
 
@@ -67,6 +70,17 @@ curl "http://localhost:8080/v1/clients?offset=0&limit=20" \
 ```
 
 Example success status: `200 OK`.
+
+## Unlock Client
+
+Clears the lockout state for a client that was locked due to too many failed authentication attempts. See [Account Lockout](authentication.md#account-lockout) for lockout behavior.
+
+```bash
+curl -X POST http://localhost:8080/v1/clients/<id>/unlock \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+Returns `200 OK` with the updated client object.
 
 ## Common Errors
 

@@ -1,6 +1,6 @@
 # 🧩 API Fundamentals
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-23
 > Applies to: API v1
 
 This page consolidates foundational API concepts for quick reference: error triage, capability mapping, rate limiting, and versioning policy.
@@ -81,6 +81,7 @@ This section is the canonical capability-to-endpoint reference used by API docs 
 | `GET /v1/clients/:id` | `read` |
 | `PUT /v1/clients/:id` | `write` |
 | `DELETE /v1/clients/:id` | `delete` |
+| `POST /v1/clients/:id/unlock` | `write` |
 | `GET /v1/audit-logs` | `read` |
 | `POST /v1/secrets/*path` | `encrypt` |
 | `GET /v1/secrets/*path` | `decrypt` |
