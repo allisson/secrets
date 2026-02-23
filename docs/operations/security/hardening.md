@@ -1,6 +1,6 @@
 # 🔒 Security Hardening Guide
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 This guide covers comprehensive security hardening for production deployments of Secrets. These measures are essential for protecting sensitive data and maintaining operational security.
 
@@ -10,6 +10,7 @@ This guide covers comprehensive security hardening for production deployments of
 - [2) Database Security](#2-database-security)
 - [3) Network Security](#3-network-security)
 - [4) Rate Limiting](#4-rate-limiting)
+  - [Account Lockout](#account-lockout)
 - [5) Cross-Origin Resource Sharing (CORS)](#5-cross-origin-resource-sharing-cors)
 - [6) Authentication and Token Management](#6-authentication-and-token-management)
 - [7) Master Key Storage and Management](#7-master-key-storage-and-management)
@@ -321,6 +322,26 @@ RATE_LIMIT_TOKEN_BURST=10
 - Combine application rate limiting with reverse proxy rate limiting
 - Use reverse proxy for IP-based rate limiting
 - Use application rate limiting for client-based rate limiting
+
+### Account Lockout
+
+Account lockout operates at the client-identity level and complements IP-based rate limiting:
+
+```dotenv
+# Failed attempts before lockout (default: 10)
+LOCKOUT_MAX_ATTEMPTS=10
+
+# Lock duration in minutes (default: 30)
+LOCKOUT_DURATION_MINUTES=30
+```
+
+- **Scope:** Per-client-ID (not per-IP) — persists in the database across server restarts
+- **Trigger:** `LOCKOUT_MAX_ATTEMPTS` consecutive failed attempts on `POST /v1/token`
+- **Response:** `423 Locked` with `"error": "client_locked"`
+- **Reset:** Successful authentication resets the counter and clears the lock
+- **Manual unlock:** `UPDATE clients SET failed_attempts = 0, locked_until = NULL WHERE id = '<id>'`
+
+Together, IP-based rate limiting and account lockout provide layered defense-in-depth against credential brute-forcing.
 
 ## 5) Cross-Origin Resource Sharing (CORS)
 
@@ -696,6 +717,7 @@ Use this checklist for production deployment validation.
 - [ ] Default/test clients disabled or deleted
 - [ ] Client credentials stored securely
 - [ ] Rate limiting enabled
+- [ ] Account lockout enabled and configured
 - [ ] CORS disabled (or explicitly required and configured)
 
 ### Master Key Management

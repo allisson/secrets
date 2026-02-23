@@ -54,6 +54,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "423":
+          $ref: "#/components/responses/Locked"
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /v1/clients:
@@ -105,6 +107,38 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/clients/{id}/unlock:
+    post:
+      tags: [clients]
+      summary: Unlock client account
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client unlocked
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /v1/secrets/{path}:
@@ -616,6 +650,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Locked:
+      description: Account locked due to too many failed authentication attempts
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: client_locked
+            message: Account is locked due to too many failed authentication attempts
     TooManyRequests:
       description: Rate limit exceeded
       headers:

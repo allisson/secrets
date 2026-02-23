@@ -1,6 +1,6 @@
 # 🚀 Production Rollout Golden Path
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -185,7 +185,7 @@ docker run -d --name secrets-api \
 
 ```bash
 # Update docker-compose.yml to use previous version
-sed -i.bak 's|allisson/secrets:v0.10.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
+sed -i.bak 's|allisson/secrets:v0.11.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
 
 # Restart service
 docker-compose up -d secrets-api
@@ -238,7 +238,7 @@ docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.11.0 server
 
 # Verify health and functionality (repeat Step 3 checks)
 

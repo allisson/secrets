@@ -481,6 +481,81 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 	})
 }
 
+func TestClientHandler_UnlockHandler(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		unlockedClient := &authDomain.Client{
+			ID:       clientID,
+			Name:     "Test Client",
+			IsActive: true,
+			Policies: []authDomain.PolicyDocument{},
+		}
+
+		mockUseCase.EXPECT().
+			Unlock(mock.Anything, clientID).
+			Return(nil).
+			Once()
+
+		mockUseCase.EXPECT().
+			Get(mock.Anything, clientID).
+			Return(unlockedClient, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/"+clientID.String()+"/unlock", nil)
+		c.Params = gin.Params{{Key: "id", Value: clientID.String()}}
+
+		handler.UnlockHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ClientResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, clientID.String(), response.ID)
+	})
+
+	t.Run("InvalidUUID", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/invalid-uuid/unlock", nil)
+		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
+
+		handler.UnlockHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+
+	t.Run("ClientNotFound", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+
+		mockUseCase.EXPECT().
+			Unlock(mock.Anything, clientID).
+			Return(authDomain.ErrClientNotFound).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/"+clientID.String()+"/unlock", nil)
+		c.Params = gin.Params{{Key: "id", Value: clientID.String()}}
+
+		handler.UnlockHandler(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "not_found", response["error"])
+	})
+}
+
 func TestClientHandler_ListHandler(t *testing.T) {
 	t.Run("Success_DefaultPagination", func(t *testing.T) {
 		handler, mockUseCase := setupTestHandler(t)

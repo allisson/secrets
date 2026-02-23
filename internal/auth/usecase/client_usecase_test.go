@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,16 @@ func (m *mockClientRepository) List(
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*authDomain.Client), args.Error(1)
+}
+
+func (m *mockClientRepository) UpdateLockState(
+	ctx context.Context,
+	clientID uuid.UUID,
+	failedAttempts int,
+	lockedUntil *time.Time,
+) error {
+	args := m.Called(ctx, clientID, failedAttempts, lockedUntil)
+	return args.Error(0)
 }
 
 func TestClientUseCase_Create(t *testing.T) {
@@ -540,6 +551,57 @@ func TestClientUseCase_Delete(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
+		mockClientRepo.AssertExpectations(t)
+	})
+}
+
+func TestClientUseCase_Unlock(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success", func(t *testing.T) {
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		existingClient := &authDomain.Client{
+			ID:       clientID,
+			Name:     "test-client",
+			IsActive: true,
+			Policies: []authDomain.PolicyDocument{},
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(existingClient, nil).
+			Once()
+
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 0, (*time.Time)(nil)).
+			Return(nil).
+			Once()
+
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		err := uc.Unlock(ctx, clientID)
+
+		assert.NoError(t, err)
+		mockClientRepo.AssertExpectations(t)
+	})
+
+	t.Run("ClientNotFound", func(t *testing.T) {
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := &mockClientRepository{}
+		mockSecretService := &mockSecretService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(nil, authDomain.ErrClientNotFound).
+			Once()
+
+		uc := NewClientUseCase(mockTxManager, mockClientRepo, mockSecretService)
+		err := uc.Unlock(ctx, clientID)
+
+		assert.Error(t, err)
+		assert.Equal(t, authDomain.ErrClientNotFound, err)
 		mockClientRepo.AssertExpectations(t)
 	})
 }

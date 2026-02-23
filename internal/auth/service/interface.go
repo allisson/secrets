@@ -50,7 +50,7 @@ type TokenService interface {
 
 // AuditSigner provides cryptographic signing and verification for audit logs.
 // Uses HMAC-SHA256 with KEK-derived signing keys (via HKDF) to detect tampering
-// and ensure compliance with PCI DSS Requirement 10.2.2.
+// and detect tampering.
 type AuditSigner interface {
 	// Sign generates HMAC-SHA256 signature for audit log using KEK-derived key.
 	// The signing key is derived from the KEK using HKDF-SHA256 with info parameter

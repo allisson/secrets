@@ -212,6 +212,8 @@ func TestMySQLClientRepository_Get_Success(t *testing.T) {
 	assert.Equal(t, client.Name, retrievedClient.Name)
 	assert.Equal(t, client.IsActive, retrievedClient.IsActive)
 	assert.WithinDuration(t, client.CreatedAt, retrievedClient.CreatedAt, time.Second)
+	assert.Equal(t, 0, retrievedClient.FailedAttempts)
+	assert.Nil(t, retrievedClient.LockedUntil)
 }
 
 func TestMySQLClientRepository_Get_NotFound(t *testing.T) {
@@ -433,6 +435,12 @@ func TestMySQLClientRepository_List_Success(t *testing.T) {
 	assert.Equal(t, clients[4].ID, retrieved[0].ID)
 	assert.Equal(t, clients[3].ID, retrieved[1].ID)
 	assert.Equal(t, clients[2].ID, retrieved[2].ID)
+
+	// Verify lockout fields default to zero values
+	for _, c := range retrieved {
+		assert.Equal(t, 0, c.FailedAttempts)
+		assert.Nil(t, c.LockedUntil)
+	}
 }
 
 func TestMySQLClientRepository_List_WithOffset(t *testing.T) {
@@ -585,4 +593,86 @@ func TestMySQLClientRepository_List_WithPolicies(t *testing.T) {
 	assert.Equal(t, "secrets/*", retrieved[0].Policies[0].Path)
 	assert.Contains(t, retrieved[0].Policies[0].Capabilities, authDomain.ReadCapability)
 	assert.Contains(t, retrieved[0].Policies[0].Capabilities, authDomain.WriteCapability)
+}
+
+func TestMySQLClientRepository_UpdateLockState_SetLock(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	client := &authDomain.Client{
+		ID:        uuid.Must(uuid.NewV7()),
+		Secret:    "secret",
+		Name:      "lock-test-client",
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	err := repo.Create(ctx, client)
+	require.NoError(t, err)
+
+	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
+	err = repo.UpdateLockState(ctx, client.ID, 3, &lockedUntil)
+	require.NoError(t, err)
+
+	retrieved, err := repo.Get(ctx, client.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, retrieved.FailedAttempts)
+	require.NotNil(t, retrieved.LockedUntil)
+	assert.WithinDuration(t, lockedUntil, *retrieved.LockedUntil, time.Second)
+}
+
+func TestMySQLClientRepository_UpdateLockState_ClearLock(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	client := &authDomain.Client{
+		ID:        uuid.Must(uuid.NewV7()),
+		Secret:    "secret",
+		Name:      "clear-lock-test-client",
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	err := repo.Create(ctx, client)
+	require.NoError(t, err)
+
+	// Set a lock first
+	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
+	err = repo.UpdateLockState(ctx, client.ID, 3, &lockedUntil)
+	require.NoError(t, err)
+
+	// Now clear it
+	err = repo.UpdateLockState(ctx, client.ID, 0, nil)
+	require.NoError(t, err)
+
+	retrieved, err := repo.Get(ctx, client.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, 0, retrieved.FailedAttempts)
+	assert.Nil(t, retrieved.LockedUntil)
+}
+
+func TestMySQLClientRepository_UpdateLockState_NonExistentClient(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	nonExistentID := uuid.Must(uuid.NewV7())
+	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
+
+	// Zero rows affected is not an error
+	err := repo.UpdateLockState(ctx, nonExistentID, 1, &lockedUntil)
+	assert.NoError(t, err)
 }

@@ -25,6 +25,10 @@ type ClientRepository interface {
 	// List retrieves clients ordered by ID descending (newest first) with pagination.
 	// Uses offset and limit for pagination control. Returns empty slice if no clients found.
 	List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error)
+
+	// UpdateLockState atomically updates the failed attempt counter and lock expiry.
+	// Pass failedAttempts=0 and lockedUntil=nil to reset the lock on successful auth.
+	UpdateLockState(ctx context.Context, clientID uuid.UUID, failedAttempts int, lockedUntil *time.Time) error
 }
 
 // TokenRepository defines persistence operations for authentication tokens.
@@ -116,6 +120,10 @@ type ClientUseCase interface {
 	//
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	Delete(ctx context.Context, clientID uuid.UUID) error
+
+	// Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.
+	// Returns ErrClientNotFound if the specified client doesn't exist.
+	Unlock(ctx context.Context, clientID uuid.UUID) error
 }
 
 // TokenUseCase defines business logic operations for token management.

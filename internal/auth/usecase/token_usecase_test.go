@@ -70,6 +70,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		// Setup mocks
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
 		}
 		mockClientRepo := &mockClientRepository{}
 		mockTokenRepo := &mockTokenRepository{}
@@ -209,6 +211,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		// Setup mocks
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
 		}
 		mockClientRepo := &mockClientRepository{}
 		mockTokenRepo := &mockTokenRepository{}
@@ -220,11 +224,12 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
 
 		client := &authDomain.Client{
-			ID:       clientID,
-			Secret:   hashedSecret,
-			Name:     "test-client",
-			IsActive: true,
-			Policies: []authDomain.PolicyDocument{},
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 0,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
@@ -241,6 +246,11 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			Return(false). // Secret doesn't match
 			Once()
 
+		// UpdateLockState called with incremented attempts, no lock yet
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, (*time.Time)(nil)).
+			Return(nil).
+			Once()
+
 		// Execute
 		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		output, err := uc.Issue(ctx, issueInput)
@@ -251,6 +261,230 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
 		mockClientRepo.AssertExpectations(t)
 		mockSecretService.AssertExpectations(t)
+	})
+
+	t.Run("Error_AccountLocked", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		lockedUntil := time.Now().UTC().Add(29 * time.Minute) // locked for 29 more minutes
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         "hashed-secret",
+			Name:           "locked-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 10,
+			LockedUntil:    &lockedUntil,
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: "any-secret",
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.Error(t, err)
+		assert.Nil(t, output)
+		assert.Equal(t, authDomain.ErrClientLocked, err)
+		mockClientRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error_FailedAttemptsReachesLockThreshold", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		wrongSecret := "wrong-secret"
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 9, // One more failure triggers lock
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: wrongSecret,
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
+			Return(false).
+			Once()
+
+		// 10th attempt should set a lockedUntil
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 10, mock.MatchedBy(func(t *time.Time) bool {
+			return t != nil && t.After(time.Now().UTC())
+		})).
+			Return(nil).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.Error(t, err)
+		assert.Nil(t, output)
+		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
+		mockClientRepo.AssertExpectations(t)
+		mockSecretService.AssertExpectations(t)
+	})
+
+	t.Run("Success_ResetsCounterAfterSuccessfulAuth", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		clientSecret := "correct-secret"
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
+		plainToken := "test-token"
+		tokenHash := "token-hash"
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 5, // Has previous failures
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
+			Return(true).
+			Once()
+
+		// Should reset counter on success
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 0, (*time.Time)(nil)).
+			Return(nil).
+			Once()
+
+		mockTokenService.On("GenerateToken").
+			Return(plainToken, tokenHash, nil).
+			Once()
+
+		mockTokenRepo.On("Create", ctx, mock.AnythingOfType("*domain.Token")).
+			Return(nil).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, output)
+		mockClientRepo.AssertExpectations(t)
+		mockSecretService.AssertExpectations(t)
+		mockTokenService.AssertExpectations(t)
+		mockTokenRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_LockExpiredAllowsAuth", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		clientSecret := "correct-secret"
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
+		plainToken := "test-token"
+		tokenHash := "token-hash"
+		expiredLock := time.Now().UTC().Add(-1 * time.Minute) // lock expired 1 minute ago
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 10,
+			LockedUntil:    &expiredLock,
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
+			Return(true).
+			Once()
+
+		// Should reset counter since lock expired and auth succeeded
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 0, (*time.Time)(nil)).
+			Return(nil).
+			Once()
+
+		mockTokenService.On("GenerateToken").
+			Return(plainToken, tokenHash, nil).
+			Once()
+
+		mockTokenRepo.On("Create", ctx, mock.AnythingOfType("*domain.Token")).
+			Return(nil).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, output)
+		mockClientRepo.AssertExpectations(t)
+		mockSecretService.AssertExpectations(t)
+		mockTokenService.AssertExpectations(t)
+		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_TokenGenerationFails", func(t *testing.T) {
@@ -441,6 +675,112 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		mockSecretService.AssertExpectations(t)
 		mockTokenService.AssertExpectations(t)
 		mockTokenRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error_UpdateLockStateFails_StillReturnsInvalidCredentials", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  10,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		wrongSecret := "wrong-secret"
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 0,
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: wrongSecret,
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
+			Return(false).
+			Once()
+
+		// UpdateLockState returns a DB error — should be silently ignored (best-effort)
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, (*time.Time)(nil)).
+			Return(errors.New("database error")).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.Error(t, err)
+		assert.Nil(t, output)
+		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
+		mockClientRepo.AssertExpectations(t)
+		mockSecretService.AssertExpectations(t)
+	})
+
+	t.Run("Error_FirstFailureWithMaxAttemptsOne_TriggersImmediateLock", func(t *testing.T) {
+		mockConfig := &config.Config{
+			AuthTokenExpiration: 24 * time.Hour,
+			LockoutMaxAttempts:  1,
+			LockoutDuration:     30 * time.Minute,
+		}
+		mockClientRepo := &mockClientRepository{}
+		mockTokenRepo := &mockTokenRepository{}
+		mockSecretService := &mockSecretService{}
+		mockTokenService := &mockTokenService{}
+
+		clientID := uuid.Must(uuid.NewV7())
+		wrongSecret := "wrong-secret"
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
+
+		client := &authDomain.Client{
+			ID:             clientID,
+			Secret:         hashedSecret,
+			Name:           "test-client",
+			IsActive:       true,
+			Policies:       []authDomain.PolicyDocument{},
+			FailedAttempts: 0, // First attempt
+		}
+
+		issueInput := &authDomain.IssueTokenInput{
+			ClientID:     clientID,
+			ClientSecret: wrongSecret,
+		}
+
+		mockClientRepo.On("Get", ctx, clientID).
+			Return(client, nil).
+			Once()
+
+		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
+			Return(false).
+			Once()
+
+		// First failure with MaxAttempts=1 should immediately set a lock
+		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, mock.MatchedBy(func(t *time.Time) bool {
+			return t != nil && t.After(time.Now().UTC())
+		})).
+			Return(nil).
+			Once()
+
+		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		output, err := uc.Issue(ctx, issueInput)
+
+		assert.Error(t, err)
+		assert.Nil(t, output)
+		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
+		mockClientRepo.AssertExpectations(t)
+		mockSecretService.AssertExpectations(t)
 	})
 
 	t.Run("Error_RepositoryGetReturnsUnexpectedError", func(t *testing.T) {

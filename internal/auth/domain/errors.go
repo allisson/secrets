@@ -21,6 +21,10 @@ var (
 	// Inactive clients cannot authenticate or issue tokens.
 	ErrClientInactive = errors.Wrap(errors.ErrForbidden, "client is inactive")
 
+	// ErrClientLocked indicates the client is temporarily locked due to too many failed
+	// authentication attempts. The client must wait for the lockout period to expire.
+	ErrClientLocked = errors.Wrap(errors.ErrLocked, "client is locked")
+
 	// ErrSignatureInvalid indicates the audit log HMAC signature verification failed.
 	// This typically means the audit log data has been tampered with after creation.
 	ErrSignatureInvalid = errors.Wrap(errors.ErrInvalidInput, "audit log signature is invalid")

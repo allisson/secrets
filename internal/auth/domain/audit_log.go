@@ -11,7 +11,7 @@ import (
 // Used to track access patterns and investigate security incidents.
 //
 // Cryptographic Integrity: All audit logs are signed with HMAC-SHA256 using KEK-derived
-// signing keys to detect tampering (PCI DSS Requirement 10.2.2). The Signature field
+// signing keys to detect tampering. The Signature field
 // contains the 32-byte HMAC, KekID references the KEK used for signing, and IsSigned
 // distinguishes signed logs from legacy unsigned logs created before the feature.
 type AuditLog struct {

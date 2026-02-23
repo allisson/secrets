@@ -104,6 +104,15 @@ func (c *clientUseCase) List(ctx context.Context, offset, limit int) ([]*authDom
 	return c.clientRepo.List(ctx, offset, limit)
 }
 
+// Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.
+// Returns ErrClientNotFound if the client doesn't exist.
+func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
+	if _, err := c.clientRepo.Get(ctx, clientID); err != nil {
+		return err
+	}
+	return c.clientRepo.UpdateLockState(ctx, clientID, 0, nil)
+}
+
 // NewClientUseCase creates a new ClientUseCase with the provided dependencies.
 func NewClientUseCase(
 	txManager database.TxManager,

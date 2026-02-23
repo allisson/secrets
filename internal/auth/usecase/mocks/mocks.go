@@ -297,6 +297,70 @@ func (_c *MockClientRepository_Update_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
+// UpdateLockState provides a mock function for the type MockClientRepository
+func (_mock *MockClientRepository) UpdateLockState(ctx context.Context, clientID uuid.UUID, failedAttempts int, lockedUntil *time.Time) error {
+	ret := _mock.Called(ctx, clientID, failedAttempts, lockedUntil)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateLockState")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int, *time.Time) error); ok {
+		r0 = returnFunc(ctx, clientID, failedAttempts, lockedUntil)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClientRepository_UpdateLockState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateLockState'
+type MockClientRepository_UpdateLockState_Call struct {
+	*mock.Call
+}
+
+// UpdateLockState is a helper method to define mock.On call
+//   - ctx context.Context
+//   - clientID uuid.UUID
+//   - failedAttempts int
+//   - lockedUntil *time.Time
+func (_e *MockClientRepository_Expecter) UpdateLockState(ctx interface{}, clientID interface{}, failedAttempts interface{}, lockedUntil interface{}) *MockClientRepository_UpdateLockState_Call {
+	return &MockClientRepository_UpdateLockState_Call{Call: _e.mock.On("UpdateLockState", ctx, clientID, failedAttempts, lockedUntil)}
+}
+
+func (_c *MockClientRepository_UpdateLockState_Call) Run(run func(ctx context.Context, clientID uuid.UUID, failedAttempts int, lockedUntil *time.Time)) *MockClientRepository_UpdateLockState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		var arg3 *time.Time
+		if args[3] != nil {
+			arg3 = args[3].(*time.Time)
+		}
+		run(arg0, arg1, arg2, arg3)
+	})
+	return _c
+}
+
+func (_c *MockClientRepository_UpdateLockState_Call) Return(err error) *MockClientRepository_UpdateLockState_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientRepository_UpdateLockState_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID, failedAttempts int, lockedUntil *time.Time) error) *MockClientRepository_UpdateLockState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockTokenRepository creates a new instance of MockTokenRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockTokenRepository(t interface {
@@ -1169,6 +1233,60 @@ func (_c *MockClientUseCase_Update_Call) Return(err error) *MockClientUseCase_Up
 }
 
 func (_c *MockClientUseCase_Update_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID, updateClientInput *domain.UpdateClientInput) error) *MockClientUseCase_Update_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Unlock provides a mock function for the type MockClientUseCase
+func (_mock *MockClientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
+	ret := _mock.Called(ctx, clientID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Unlock")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClientUseCase_Unlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unlock'
+type MockClientUseCase_Unlock_Call struct {
+	*mock.Call
+}
+
+// Unlock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - clientID uuid.UUID
+func (_e *MockClientUseCase_Expecter) Unlock(ctx interface{}, clientID interface{}) *MockClientUseCase_Unlock_Call {
+	return &MockClientUseCase_Unlock_Call{Call: _e.mock.On("Unlock", ctx, clientID)}
+}
+
+func (_c *MockClientUseCase_Unlock_Call) Run(run func(ctx context.Context, clientID uuid.UUID)) *MockClientUseCase_Unlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(arg0, arg1)
+	})
+	return _c
+}
+
+func (_c *MockClientUseCase_Unlock_Call) Return(err error) *MockClientUseCase_Unlock_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientUseCase_Unlock_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) error) *MockClientUseCase_Unlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

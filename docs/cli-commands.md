@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-23
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -258,7 +258,7 @@ Exit Codes:
 
 Use Cases:
 
-- Periodic compliance audits (PCI DSS Requirement 10.2.2)
+- Periodic compliance audits
 - Incident investigation and tamper detection
 - Post-KEK-rotation verification
 - Continuous monitoring integration (CI/CD, cron jobs)

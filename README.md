@@ -29,14 +29,13 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.10.0
+## 🆕 What's New in v0.11.0
 
-- 🐳 Docker security improvements with Google Distroless base (Debian 13 Trixie)
-- 🔒 SHA256 digest pinning for immutable container builds
-- 🏗️ Build-time version injection via ldflags (version, buildDate, commitSHA)
-- 🛡️ Non-root user execution (UID 65532) and read-only filesystem support
-- 🌐 Multi-architecture support (linux/amd64, linux/arm64)
-- 📘 See [v0.10.0 release notes](docs/releases/RELEASES.md#0100---2026-02-21) and [container security guide](docs/operations/security/container-security.md)
+- 🔒 Account lockout on `POST /v1/token`: clients locked after 10 consecutive failed attempts
+- 🚫 Locked clients receive `423 Locked` with `"error": "client_locked"`
+- ⚙️ Configurable via `LOCKOUT_MAX_ATTEMPTS` (default `10`) and `LOCKOUT_DURATION_MINUTES` (default `30`)
+- 🗄️ Database migration `000004_add_account_lockout` (additive, zero-downtime)
+- 📘 See [v0.11.0 release notes](docs/releases/RELEASES.md#0110---2026-02-23) and [upgrade guide](docs/releases/v0.11.0-upgrade.md)
 
 Release history:
 
@@ -117,7 +116,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 
 **Security & Compliance:**
 
-- 🔏 **Cryptographic audit log signing** with HMAC-SHA256 for tamper detection (PCI DSS 10.2.2) - [v0.9.0+](docs/releases/RELEASES.md#090---2026-02-20)
+- 🔏 **Cryptographic audit log signing** with HMAC-SHA256 for tamper detection - [v0.9.0+](docs/releases/RELEASES.md#090---2026-02-20)
 - 📜 **Comprehensive audit logs** with request correlation (`request_id`), filtering, and [integrity verification](docs/cli-commands.md#verify-audit-logs)
 - 🧹 **Memory safety** with sensitive key material zeroing in critical paths
 - 🔒 **AEAD encryption** for authenticated encryption with associated data
@@ -136,7 +135,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - Health: `GET /health`
 - Readiness: `GET /ready`
 - Token issuance: `POST /v1/token`
-- Clients: `GET/POST /v1/clients`, `GET/PUT/DELETE /v1/clients/:id`
+- Clients: `GET/POST /v1/clients`, `GET/PUT/DELETE /v1/clients/:id`, `POST /v1/clients/:id/unlock`
 - Secrets: `POST/GET/DELETE /v1/secrets/*path`
 - Transit: `POST /v1/transit/keys`, `POST /v1/transit/keys/:name/rotate`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/transit/keys/:name/decrypt`, `DELETE /v1/transit/keys/:id` ([create vs rotate](docs/api/data/transit.md#create-vs-rotate), [error matrix](docs/api/data/transit.md#endpoint-error-matrix))
 - Tokenization: `POST /v1/tokenization/keys`, `POST /v1/tokenization/keys/:name/rotate`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/keys/:name/tokenize`, `POST /v1/tokenization/detokenize`, `POST /v1/tokenization/validate`, `POST /v1/tokenization/revoke`

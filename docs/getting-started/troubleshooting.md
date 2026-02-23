@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-23
 
 Use this guide for common setup and runtime errors.
 
@@ -11,7 +11,7 @@ Use this guide for common setup and runtime errors.
 Use this quick route before diving into detailed sections:
 
 1. `curl http://localhost:8080/health` fails -> go to `Database connection failure` and `Migration failure`
-2. Token endpoint (`POST /v1/token`) returns `401`/`403`/`429` -> go to `401 Unauthorized`, `429 Too Many Requests`, or `Token issuance fails with valid-looking credentials`
+2. Token endpoint (`POST /v1/token`) returns `401`/`403`/`423`/`429` -> go to `401 Unauthorized`, `423 Locked`, `429 Too Many Requests`, or `Token issuance fails with valid-looking credentials`
 3. API requests return `403` with valid token -> go to `403 Forbidden` (policy/capability mismatch)
 4. API requests return `422` -> go to `422 Unprocessable Entity` (payload/query format)
 5. API requests return `429` -> go to `429 Too Many Requests` (rate limiting)
@@ -33,6 +33,8 @@ Use this quick route before diving into detailed sections:
 - [409 Conflict](#409-conflict)
 
 - [422 Unprocessable Entity](#422-unprocessable-entity)
+
+- [423 Locked (Account Lockout)](#423-locked-account-lockout)
 
 - [429 Too Many Requests](#429-too-many-requests)
 
@@ -203,6 +205,27 @@ Common 422 cases:
   - for transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version>:<base64-ciphertext>`)
 
   - validate `offset`, `limit`, and RFC3339 timestamps on audit endpoints
+
+## 423 Locked (Account Lockout)
+
+- Symptom: `POST /v1/token` returns `423 Locked` with `"error": "client_locked"`
+- Cause: the client exceeded `LOCKOUT_MAX_ATTEMPTS` (default `10`) consecutive failed authentication attempts
+
+**Resolution:**
+
+1. Wait for `LOCKOUT_DURATION_MINUTES` (default `30` minutes) — the lock expires automatically
+2. Or unlock immediately via the API:
+
+   ```bash
+   curl -X POST http://localhost:8080/v1/clients/<client-uuid>/unlock \
+     -H "Authorization: Bearer <token>"
+   ```
+
+   Requires a token with `WriteCapability` on `/v1/clients/<client-uuid>`. Returns the updated client object on success (`200 OK`).
+
+3. After unlocking, authenticate with the correct secret — this resets the counter
+
+**Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../api/auth/authentication.md#account-lockout) for behavior details.
 
 ## 429 Too Many Requests
 
