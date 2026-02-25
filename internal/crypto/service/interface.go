@@ -35,6 +35,9 @@ type KeyManager interface {
 	// CreateDek creates a new DEK encrypted with the KEK.
 	CreateDek(kek *cryptoDomain.Kek, alg cryptoDomain.Algorithm) (cryptoDomain.Dek, error)
 
+	// EncryptDek encrypts an existing DEK plaintext key using the provided KEK.
+	EncryptDek(dekKey []byte, kek *cryptoDomain.Kek) (ciphertext, nonce []byte, err error)
+
 	// DecryptDek decrypts a DEK using the KEK.
 	DecryptDek(dek *cryptoDomain.Dek, kek *cryptoDomain.Kek) ([]byte, error)
 }

@@ -58,6 +58,7 @@ type Container struct {
 
 	// Repositories
 	kekRepository               cryptoUseCase.KekRepository
+	cryptoDekRepository         cryptoUseCase.DekRepository
 	dekRepository               secretsUseCase.DekRepository
 	secretRepository            secretsUseCase.SecretRepository
 	clientRepository            authUseCase.ClientRepository
@@ -71,6 +72,7 @@ type Container struct {
 
 	// Use Cases
 	kekUseCase             cryptoUseCase.KekUseCase
+	cryptoDekUseCase       cryptoUseCase.DekUseCase
 	secretUseCase          secretsUseCase.SecretUseCase
 	clientUseCase          authUseCase.ClientUseCase
 	tokenUseCase           authUseCase.TokenUseCase
@@ -106,6 +108,7 @@ type Container struct {
 	secretServiceInit               sync.Once
 	tokenServiceInit                sync.Once
 	kekRepositoryInit               sync.Once
+	cryptoDekRepositoryInit         sync.Once
 	dekRepositoryInit               sync.Once
 	secretRepositoryInit            sync.Once
 	clientRepositoryInit            sync.Once
@@ -117,6 +120,7 @@ type Container struct {
 	tokenizationTokenRepositoryInit sync.Once
 	tokenizationDekRepositoryInit   sync.Once
 	kekUseCaseInit                  sync.Once
+	cryptoDekUseCaseInit            sync.Once
 	secretUseCaseInit               sync.Once
 	clientUseCaseInit               sync.Once
 	tokenUseCaseInit                sync.Once
@@ -305,6 +309,42 @@ func (c *Container) KekUseCase() (cryptoUseCase.KekUseCase, error) {
 		return nil, storedErr
 	}
 	return c.kekUseCase, nil
+}
+
+// CryptoDekRepository returns the DEK repository for the crypto use case based on database driver.
+func (c *Container) CryptoDekRepository() (cryptoUseCase.DekRepository, error) {
+	var err error
+	c.cryptoDekRepositoryInit.Do(func() {
+		c.cryptoDekRepository, err = c.initCryptoDekRepository()
+		if err != nil {
+			c.initErrors["cryptoDekRepository"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["cryptoDekRepository"]; exists {
+		return nil, storedErr
+	}
+	return c.cryptoDekRepository, nil
+}
+
+// CryptoDekUseCase returns the DEK use case for the crypto module.
+func (c *Container) CryptoDekUseCase() (cryptoUseCase.DekUseCase, error) {
+	var err error
+	c.cryptoDekUseCaseInit.Do(func() {
+		c.cryptoDekUseCase, err = c.initCryptoDekUseCase()
+		if err != nil {
+			c.initErrors["cryptoDekUseCase"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["cryptoDekUseCase"]; exists {
+		return nil, storedErr
+	}
+	return c.cryptoDekUseCase, nil
 }
 
 // HTTPServer returns the HTTP server instance.
@@ -1049,6 +1089,40 @@ func (c *Container) initAuditLogHandler() (*authHTTP.AuditLogHandler, error) {
 	logger := c.Logger()
 
 	return authHTTP.NewAuditLogHandler(auditLogUseCase, logger), nil
+}
+
+// initCryptoDekRepository creates the DEK repository for crypto use case based on the database driver.
+func (c *Container) initCryptoDekRepository() (cryptoUseCase.DekRepository, error) {
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database: %w", err)
+	}
+
+	switch c.config.DBDriver {
+	case "postgres":
+		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+	case "mysql":
+		return cryptoRepository.NewMySQLDekRepository(db), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
+	}
+}
+
+// initCryptoDekUseCase creates the DEK use case for the crypto module.
+func (c *Container) initCryptoDekUseCase() (cryptoUseCase.DekUseCase, error) {
+	txManager, err := c.TxManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tx manager: %w", err)
+	}
+
+	dekRepo, err := c.CryptoDekRepository()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get crypto dek repository: %w", err)
+	}
+
+	keyManager := c.KeyManager()
+
+	return cryptoUseCase.NewDekUseCase(txManager, dekRepo, keyManager), nil
 }
 
 // initDekRepository creates the DEK repository based on the database driver.

@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-24
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -140,6 +140,27 @@ Docker:
 
 ```bash
 docker run --rm --network secrets-net --env-file .env allisson/secrets rotate-kek --algorithm aes-gcm
+```
+
+### `rewrap-deks`
+
+Rewraps all Data Encryption Keys (DEKs) that are not currently encrypted with the specified KEK ID.
+
+Flags:
+
+- `--kek-id`, `-k` (required): target KEK ID to encrypt DEKs with
+- `--batch-size`, `-b` (default `100`): number of DEKs to process per batch
+
+Local:
+
+```bash
+./bin/app rewrap-deks --kek-id "target-kek-id" --batch-size 100
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env allisson/secrets rewrap-deks --kek-id "target-kek-id"
 ```
 
 After master key or KEK rotation, restart API server instances so they load updated key material.

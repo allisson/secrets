@@ -131,6 +131,67 @@ func (m *MySQLDekRepository) Update(ctx context.Context, dek *cryptoDomain.Dek) 
 	return nil
 }
 
+// GetBatchNotKekID retrieves a batch of DEKs that are not encrypted with the given KEK ID.
+func (m *MySQLDekRepository) GetBatchNotKekID(
+	ctx context.Context,
+	kekID uuid.UUID,
+	limit int,
+) ([]*cryptoDomain.Dek, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, kek_id, algorithm, encrypted_key, nonce, created_at 
+			  FROM deks 
+			  WHERE kek_id != ? 
+			  ORDER BY created_at ASC 
+			  LIMIT ?`
+
+	kekIDBytes, err := kekID.MarshalBinary()
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to marshal kek id")
+	}
+
+	rows, err := querier.QueryContext(ctx, query, kekIDBytes, limit)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to query deks batch")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var deks []*cryptoDomain.Dek
+	for rows.Next() {
+		var dek cryptoDomain.Dek
+		var idBytes, currKekIDBytes []byte
+
+		if err := rows.Scan(
+			&idBytes,
+			&currKekIDBytes,
+			&dek.Algorithm,
+			&dek.EncryptedKey,
+			&dek.Nonce,
+			&dek.CreatedAt,
+		); err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan dek")
+		}
+
+		if err := dek.ID.UnmarshalBinary(idBytes); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+		}
+
+		if err := dek.KekID.UnmarshalBinary(currKekIDBytes); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal kek id")
+		}
+
+		deks = append(deks, &dek)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating deks")
+	}
+
+	return deks, nil
+}
+
 // NewMySQLDekRepository creates a new MySQL DEK repository.
 func NewMySQLDekRepository(db *sql.DB) *MySQLDekRepository {
 	return &MySQLDekRepository{db: db}

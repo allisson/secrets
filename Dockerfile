@@ -15,7 +15,7 @@
 #
 # Build Command:
 #   docker build -t allisson/secrets:latest \
-#     --build-arg VERSION=v0.10.0 \
+#     --build-arg VERSION=v0.12.0 \
 #     --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 #     --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 #

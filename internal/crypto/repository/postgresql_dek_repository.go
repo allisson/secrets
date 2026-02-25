@@ -99,6 +99,51 @@ func (p *PostgreSQLDekRepository) Update(ctx context.Context, dek *cryptoDomain.
 	return nil
 }
 
+// GetBatchNotKekID retrieves a batch of DEKs that are not encrypted with the given KEK ID.
+func (p *PostgreSQLDekRepository) GetBatchNotKekID(
+	ctx context.Context,
+	kekID uuid.UUID,
+	limit int,
+) ([]*cryptoDomain.Dek, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, kek_id, algorithm, encrypted_key, nonce, created_at 
+			  FROM deks 
+			  WHERE kek_id != $1 
+			  ORDER BY created_at ASC 
+			  LIMIT $2`
+
+	rows, err := querier.QueryContext(ctx, query, kekID, limit)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to query deks batch")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var deks []*cryptoDomain.Dek
+	for rows.Next() {
+		var dek cryptoDomain.Dek
+		if err := rows.Scan(
+			&dek.ID,
+			&dek.KekID,
+			&dek.Algorithm,
+			&dek.EncryptedKey,
+			&dek.Nonce,
+			&dek.CreatedAt,
+		); err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan dek")
+		}
+		deks = append(deks, &dek)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating deks")
+	}
+
+	return deks, nil
+}
+
 // NewPostgreSQLDekRepository creates a new PostgreSQL DEK repository.
 func NewPostgreSQLDekRepository(db *sql.DB) *PostgreSQLDekRepository {
 	return &PostgreSQLDekRepository{db: db}

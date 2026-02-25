@@ -346,7 +346,12 @@ func (_c *MockClientRepository_UpdateLockState_Call) Run(run func(ctx context.Co
 		if args[3] != nil {
 			arg3 = args[3].(*time.Time)
 		}
-		run(arg0, arg1, arg2, arg3)
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
 	})
 	return _c
 }
@@ -794,6 +799,74 @@ func (_c *MockAuditLogRepository_DeleteOlderThan_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// Get provides a mock function for the type MockAuditLogRepository
+func (_mock *MockAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*domain.AuditLog, error) {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
+
+	var r0 *domain.AuditLog
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*domain.AuditLog, error)); ok {
+		return returnFunc(ctx, id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *domain.AuditLog); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.AuditLog)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockAuditLogRepository_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type MockAuditLogRepository_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id uuid.UUID
+func (_e *MockAuditLogRepository_Expecter) Get(ctx interface{}, id interface{}) *MockAuditLogRepository_Get_Call {
+	return &MockAuditLogRepository_Get_Call{Call: _e.mock.On("Get", ctx, id)}
+}
+
+func (_c *MockAuditLogRepository_Get_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockAuditLogRepository_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuditLogRepository_Get_Call) Return(auditLog *domain.AuditLog, err error) *MockAuditLogRepository_Get_Call {
+	_c.Call.Return(auditLog, err)
+	return _c
+}
+
+func (_c *MockAuditLogRepository_Get_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (*domain.AuditLog, error)) *MockAuditLogRepository_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // List provides a mock function for the type MockAuditLogRepository
 func (_mock *MockAuditLogRepository) List(ctx context.Context, offset int, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error) {
 	ret := _mock.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
@@ -1174,6 +1247,63 @@ func (_c *MockClientUseCase_List_Call) RunAndReturn(run func(ctx context.Context
 	return _c
 }
 
+// Unlock provides a mock function for the type MockClientUseCase
+func (_mock *MockClientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
+	ret := _mock.Called(ctx, clientID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Unlock")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClientUseCase_Unlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unlock'
+type MockClientUseCase_Unlock_Call struct {
+	*mock.Call
+}
+
+// Unlock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - clientID uuid.UUID
+func (_e *MockClientUseCase_Expecter) Unlock(ctx interface{}, clientID interface{}) *MockClientUseCase_Unlock_Call {
+	return &MockClientUseCase_Unlock_Call{Call: _e.mock.On("Unlock", ctx, clientID)}
+}
+
+func (_c *MockClientUseCase_Unlock_Call) Run(run func(ctx context.Context, clientID uuid.UUID)) *MockClientUseCase_Unlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClientUseCase_Unlock_Call) Return(err error) *MockClientUseCase_Unlock_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientUseCase_Unlock_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) error) *MockClientUseCase_Unlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function for the type MockClientUseCase
 func (_mock *MockClientUseCase) Update(ctx context.Context, clientID uuid.UUID, updateClientInput *domain.UpdateClientInput) error {
 	ret := _mock.Called(ctx, clientID, updateClientInput)
@@ -1233,60 +1363,6 @@ func (_c *MockClientUseCase_Update_Call) Return(err error) *MockClientUseCase_Up
 }
 
 func (_c *MockClientUseCase_Update_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID, updateClientInput *domain.UpdateClientInput) error) *MockClientUseCase_Update_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Unlock provides a mock function for the type MockClientUseCase
-func (_mock *MockClientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
-	ret := _mock.Called(ctx, clientID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Unlock")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, clientID)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockClientUseCase_Unlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unlock'
-type MockClientUseCase_Unlock_Call struct {
-	*mock.Call
-}
-
-// Unlock is a helper method to define mock.On call
-//   - ctx context.Context
-//   - clientID uuid.UUID
-func (_e *MockClientUseCase_Expecter) Unlock(ctx interface{}, clientID interface{}) *MockClientUseCase_Unlock_Call {
-	return &MockClientUseCase_Unlock_Call{Call: _e.mock.On("Unlock", ctx, clientID)}
-}
-
-func (_c *MockClientUseCase_Unlock_Call) Run(run func(ctx context.Context, clientID uuid.UUID)) *MockClientUseCase_Unlock_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(arg0, arg1)
-	})
-	return _c
-}
-
-func (_c *MockClientUseCase_Unlock_Call) Return(err error) *MockClientUseCase_Unlock_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockClientUseCase_Unlock_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) error) *MockClientUseCase_Unlock_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1720,31 +1796,133 @@ func (_c *MockAuditLogUseCase_List_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
-// VerifyIntegrity provides a mock function with given fields: ctx, id
-func (_m *MockAuditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
-	return ret.Error(0)
-}
+// VerifyBatch provides a mock function for the type MockAuditLogUseCase
+func (_mock *MockAuditLogUseCase) VerifyBatch(ctx context.Context, startTime time.Time, endTime time.Time) (*usecase.VerificationReport, error) {
+	ret := _mock.Called(ctx, startTime, endTime)
 
-// VerifyBatch provides a mock function with given fields: ctx, startTime, endTime
-func (_m *MockAuditLogUseCase) VerifyBatch(ctx context.Context, startTime time.Time, endTime time.Time) (*usecase.VerificationReport, error) {
-	ret := _m.Called(ctx, startTime, endTime)
+	if len(ret) == 0 {
+		panic("no return value specified for VerifyBatch")
+	}
 
 	var r0 *usecase.VerificationReport
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) *usecase.VerificationReport); ok {
-		r0 = rf(ctx, startTime, endTime)
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) (*usecase.VerificationReport, error)); ok {
+		return returnFunc(ctx, startTime, endTime)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, time.Time) *usecase.VerificationReport); ok {
+		r0 = returnFunc(ctx, startTime, endTime)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*usecase.VerificationReport)
 		}
 	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
-		r1 = rf(ctx, startTime, endTime)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time, time.Time) error); ok {
+		r1 = returnFunc(ctx, startTime, endTime)
 	} else {
 		r1 = ret.Error(1)
 	}
-
 	return r0, r1
+}
+
+// MockAuditLogUseCase_VerifyBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VerifyBatch'
+type MockAuditLogUseCase_VerifyBatch_Call struct {
+	*mock.Call
+}
+
+// VerifyBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime time.Time
+//   - endTime time.Time
+func (_e *MockAuditLogUseCase_Expecter) VerifyBatch(ctx interface{}, startTime interface{}, endTime interface{}) *MockAuditLogUseCase_VerifyBatch_Call {
+	return &MockAuditLogUseCase_VerifyBatch_Call{Call: _e.mock.On("VerifyBatch", ctx, startTime, endTime)}
+}
+
+func (_c *MockAuditLogUseCase_VerifyBatch_Call) Run(run func(ctx context.Context, startTime time.Time, endTime time.Time)) *MockAuditLogUseCase_VerifyBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 time.Time
+		if args[2] != nil {
+			arg2 = args[2].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_VerifyBatch_Call) Return(verificationReport *usecase.VerificationReport, err error) *MockAuditLogUseCase_VerifyBatch_Call {
+	_c.Call.Return(verificationReport, err)
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_VerifyBatch_Call) RunAndReturn(run func(ctx context.Context, startTime time.Time, endTime time.Time) (*usecase.VerificationReport, error)) *MockAuditLogUseCase_VerifyBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// VerifyIntegrity provides a mock function for the type MockAuditLogUseCase
+func (_mock *MockAuditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for VerifyIntegrity")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockAuditLogUseCase_VerifyIntegrity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VerifyIntegrity'
+type MockAuditLogUseCase_VerifyIntegrity_Call struct {
+	*mock.Call
+}
+
+// VerifyIntegrity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id uuid.UUID
+func (_e *MockAuditLogUseCase_Expecter) VerifyIntegrity(ctx interface{}, id interface{}) *MockAuditLogUseCase_VerifyIntegrity_Call {
+	return &MockAuditLogUseCase_VerifyIntegrity_Call{Call: _e.mock.On("VerifyIntegrity", ctx, id)}
+}
+
+func (_c *MockAuditLogUseCase_VerifyIntegrity_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockAuditLogUseCase_VerifyIntegrity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_VerifyIntegrity_Call) Return(err error) *MockAuditLogUseCase_VerifyIntegrity_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockAuditLogUseCase_VerifyIntegrity_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockAuditLogUseCase_VerifyIntegrity_Call {
+	_c.Call.Return(run)
+	return _c
 }

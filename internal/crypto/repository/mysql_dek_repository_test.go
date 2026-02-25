@@ -1282,3 +1282,94 @@ func TestMySQLDekRepository_Get_WithTransaction(t *testing.T) {
 	assert.NotNil(t, retrievedDek)
 	assert.Equal(t, dek.ID, retrievedDek.ID)
 }
+
+func TestMySQLDekRepository_GetBatchNotKekID(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLDekRepository(db)
+	ctx := context.Background()
+
+	// Create two KEKs
+	kek1ID := uuid.Must(uuid.NewV7())
+	kek2ID := uuid.Must(uuid.NewV7())
+	kekRepo := NewMySQLKekRepository(db)
+
+	kek1 := &cryptoDomain.Kek{
+		ID:           kek1ID,
+		MasterKeyID:  "master-key-1",
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-kek-data"),
+		Nonce:        []byte("kek-nonce"),
+		Version:      1,
+		CreatedAt:    time.Now().UTC(),
+	}
+	err := kekRepo.Create(ctx, kek1)
+	require.NoError(t, err)
+
+	kek2 := &cryptoDomain.Kek{
+		ID:           kek2ID,
+		MasterKeyID:  "master-key-1",
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("encrypted-kek-data-2"),
+		Nonce:        []byte("kek-nonce-2"),
+		Version:      2,
+		CreatedAt:    time.Now().UTC(),
+	}
+	err = kekRepo.Create(ctx, kek2)
+	require.NoError(t, err)
+
+	// Create DEKs: 2 with KEK1, 1 with KEK2
+	dek1 := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kek1ID,
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("key1"),
+		Nonce:        []byte("nonce1"),
+		CreatedAt:    time.Now().UTC(),
+	}
+	time.Sleep(10 * time.Millisecond) // Ensure time delta
+	dek2 := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kek1ID,
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("key2"),
+		Nonce:        []byte("nonce2"),
+		CreatedAt:    time.Now().UTC(),
+	}
+	time.Sleep(10 * time.Millisecond)
+	dek3 := &cryptoDomain.Dek{
+		ID:           uuid.Must(uuid.NewV7()),
+		KekID:        kek2ID,
+		Algorithm:    cryptoDomain.AESGCM,
+		EncryptedKey: []byte("key3"),
+		Nonce:        []byte("nonce3"),
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	require.NoError(t, repo.Create(ctx, dek1))
+	require.NoError(t, repo.Create(ctx, dek2))
+	require.NoError(t, repo.Create(ctx, dek3))
+
+	// Get batches not encrypted with kek1
+	// Expected: only dek3
+	deks, err := repo.GetBatchNotKekID(ctx, kek1ID, 10)
+	require.NoError(t, err)
+	assert.Len(t, deks, 1)
+	assert.Equal(t, dek3.ID, deks[0].ID)
+
+	// Get batches not encrypted with kek2
+	// Expected: dek1, dek2
+	deks, err = repo.GetBatchNotKekID(ctx, kek2ID, 10)
+	require.NoError(t, err)
+	assert.Len(t, deks, 2)
+	assert.Equal(t, dek1.ID, deks[0].ID)
+	assert.Equal(t, dek2.ID, deks[1].ID)
+
+	// Test limits
+	deks, err = repo.GetBatchNotKekID(ctx, kek2ID, 1)
+	require.NoError(t, err)
+	assert.Len(t, deks, 1)
+	assert.Equal(t, dek1.ID, deks[0].ID) // ordered by created_at asc
+}

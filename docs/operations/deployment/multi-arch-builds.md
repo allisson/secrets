@@ -1,7 +1,7 @@
 # 🏗️ Multi-Architecture Build Guide
 
-> **Document version**: v0.10.0  
-> Last updated: 2026-02-21  
+> **Document version**: v0.12.0  
+> Last updated: 2026-02-24  
 > **Audience**: DevOps engineers, release managers, CI/CD maintainers
 
 ## Table of Contents
@@ -65,7 +65,7 @@ make docker-build-multiarch
 
 # Outputs:
 #   allisson/secrets:latest (multi-arch manifest)
-#   allisson/secrets:v0.10.0 (multi-arch manifest)
+#   allisson/secrets:v0.12.0 (multi-arch manifest)
 
 ```
 
@@ -84,7 +84,7 @@ docker buildx build --platform linux/arm64 --load -t secrets:arm64 .
 
 ```bash
 # Inspect manifest (shows all supported architectures)
-docker manifest inspect allisson/secrets:v0.10.0
+docker manifest inspect allisson/secrets:v0.12.0
 
 # Example output:
 # {
@@ -228,7 +228,7 @@ Building multi-platform Docker image...
   Platforms: linux/amd64, linux/arm64
 [+] Building 45.2s (24/24) FINISHED
 ...
-Multi-platform images pushed: allisson/secrets:latest and allisson/secrets:v0.10.0
+Multi-platform images pushed: allisson/secrets:latest and allisson/secrets:v0.12.0
 
 ```
 
@@ -240,10 +240,10 @@ For advanced use cases, use `docker buildx` directly:
 # Build and push multi-arch images
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --build-arg VERSION=v0.10.0 \
+  --build-arg VERSION=v0.12.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) \
-  -t allisson/secrets:v0.10.0 \
+  -t allisson/secrets:v0.12.0 \
   -t allisson/secrets:latest \
   --push \
   .
@@ -284,17 +284,17 @@ For air-gapped environments or offline builds:
 # Step 1: Build multi-arch images to local cache
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --build-arg VERSION=v0.10.0 \
-  -t allisson/secrets:v0.10.0 \
-  --output type=oci,dest=secrets-v0.10.0.tar \
+  --build-arg VERSION=v0.12.0 \
+  -t allisson/secrets:v0.12.0 \
+  --output type=oci,dest=secrets-v0.12.0.tar \
   .
 
 # Step 2: Transfer OCI archive to target environment (USB, network copy, etc.)
-# secrets-v0.10.0.tar contains all platform images
+# secrets-v0.12.0.tar contains all platform images
 
 # Step 3: Load and push from target environment
-docker load < secrets-v0.10.0.tar
-docker push allisson/secrets:v0.10.0
+docker load < secrets-v0.12.0.tar
+docker push allisson/secrets:v0.12.0
 
 ```
 
@@ -308,7 +308,7 @@ Multi-arch images use **manifest lists** (also called "fat manifests") that poin
 
 ```bash
 # Inspect multi-arch manifest
-docker manifest inspect allisson/secrets:v0.10.0
+docker manifest inspect allisson/secrets:v0.12.0
 
 # Example output (simplified):
 {
@@ -342,12 +342,12 @@ docker manifest inspect allisson/secrets:v0.10.0
 
 ```bash
 # Get amd64 digest
-docker manifest inspect allisson/secrets:v0.10.0 | \
+docker manifest inspect allisson/secrets:v0.12.0 | \
   jq -r '.manifests[] | select(.platform.architecture=="amd64") | .digest'
 # sha256:abc123...
 
 # Get arm64 digest
-docker manifest inspect allisson/secrets:v0.10.0 | \
+docker manifest inspect allisson/secrets:v0.12.0 | \
   jq -r '.manifests[] | select(.platform.architecture=="arm64") | .digest'
 # sha256:def456...
 
@@ -359,14 +359,14 @@ Docker automatically pulls the correct platform image based on the host architec
 
 ```bash
 # On x86_64 host: pulls amd64 image
-docker pull allisson/secrets:v0.10.0
+docker pull allisson/secrets:v0.12.0
 
 # On ARM64 host: pulls arm64 image
-docker pull allisson/secrets:v0.10.0
+docker pull allisson/secrets:v0.12.0
 
 # Force pull specific platform (regardless of host)
-docker pull --platform linux/arm64 allisson/secrets:v0.10.0
-docker pull --platform linux/amd64 allisson/secrets:v0.10.0
+docker pull --platform linux/arm64 allisson/secrets:v0.12.0
+docker pull --platform linux/amd64 allisson/secrets:v0.12.0
 
 ```
 
@@ -376,16 +376,16 @@ docker pull --platform linux/amd64 allisson/secrets:v0.10.0
 
 ```bash
 # Run on x86_64 host (native execution)
-docker run --rm allisson/secrets:v0.10.0 uname -m
+docker run --rm allisson/secrets:v0.12.0 uname -m
 # x86_64
 
 # Run ARM image on x86_64 host (QEMU emulation)
-docker run --rm --platform linux/arm64 allisson/secrets:v0.10.0 uname -m
+docker run --rm --platform linux/arm64 allisson/secrets:v0.12.0 uname -m
 # aarch64
 
 # Verify application works on both platforms
-docker run --rm --platform linux/amd64 allisson/secrets:v0.10.0 --version
-docker run --rm --platform linux/arm64 allisson/secrets:v0.10.0 --version
+docker run --rm --platform linux/amd64 allisson/secrets:v0.12.0 --version
+docker run --rm --platform linux/arm64 allisson/secrets:v0.12.0 --version
 # Both should output: Version: v0.10.0
 
 ```
@@ -394,11 +394,11 @@ docker run --rm --platform linux/arm64 allisson/secrets:v0.10.0 --version
 
 ```bash
 # Pull both platforms
-docker pull --platform linux/amd64 allisson/secrets:v0.10.0
-docker pull --platform linux/arm64 allisson/secrets:v0.10.0
+docker pull --platform linux/amd64 allisson/secrets:v0.12.0
+docker pull --platform linux/arm64 allisson/secrets:v0.12.0
 
 # Compare sizes
-docker images allisson/secrets:v0.10.0
+docker images allisson/secrets:v0.12.0
 # REPOSITORY         TAG       IMAGE ID       CREATED        SIZE
 # allisson/secrets   v0.10.0   abc123...      2 hours ago    12.5 MB (amd64)
 # allisson/secrets   v0.10.0   def456...      2 hours ago    12.3 MB (arm64)
@@ -569,7 +569,7 @@ pipeline {
 docker buildx build --platform linux/amd64,linux/arm64 --load -t secrets .
 
 # Correct (push to registry)
-docker buildx build --platform linux/amd64,linux/arm64 --push -t allisson/secrets:v0.10.0 .
+docker buildx build --platform linux/amd64,linux/arm64 --push -t allisson/secrets:v0.12.0 .
 
 # Correct (load single platform locally)
 docker buildx build --platform linux/amd64 --load -t secrets:amd64 .
@@ -587,7 +587,7 @@ docker buildx build --platform linux/amd64 --load -t secrets:amd64 .
 docker run --privileged --rm tonistiigi/binfmt --install all
 
 # Or force pull correct platform
-docker pull --platform linux/amd64 allisson/secrets:v0.10.0
+docker pull --platform linux/amd64 allisson/secrets:v0.12.0
 
 ```
 
@@ -610,16 +610,16 @@ docker pull --platform linux/amd64 allisson/secrets:v0.10.0
 
    ```bash
    # On x86_64 host
-   docker buildx build --platform linux/amd64 --push -t allisson/secrets:v0.10.0-amd64 .
+   docker buildx build --platform linux/amd64 --push -t allisson/secrets:v0.12.0-amd64 .
    
    # On ARM64 host
-   docker buildx build --platform linux/arm64 --push -t allisson/secrets:v0.10.0-arm64 .
+   docker buildx build --platform linux/arm64 --push -t allisson/secrets:v0.12.0-arm64 .
    
    # Create manifest manually
-   docker manifest create allisson/secrets:v0.10.0 \
-     allisson/secrets:v0.10.0-amd64 \
-     allisson/secrets:v0.10.0-arm64
-   docker manifest push allisson/secrets:v0.10.0
+   docker manifest create allisson/secrets:v0.12.0 \
+     allisson/secrets:v0.12.0-amd64 \
+     allisson/secrets:v0.12.0-arm64
+   docker manifest push allisson/secrets:v0.12.0
    ```
 
 3. **Enable BuildKit inline cache**:
@@ -808,7 +808,7 @@ make docker-build-multiarch VERSION=v1.0.0
 # docker-compose.yml
 services:
   secrets:
-    image: allisson/secrets:v0.10.0  # Pulls amd64 on x86_64, arm64 on ARM64
+    image: allisson/secrets:v0.12.0  # Pulls amd64 on x86_64, arm64 on ARM64
     ports:
       - "8080:8080"
 
@@ -819,8 +819,8 @@ services:
 **A**: Inspect the image after pulling:
 
 ```bash
-docker pull allisson/secrets:v0.10.0
-docker inspect allisson/secrets:v0.10.0 --format='{{.Architecture}}'
+docker pull allisson/secrets:v0.12.0
+docker inspect allisson/secrets:v0.12.0 --format='{{.Architecture}}'
 # amd64 (on x86_64 host)
 # arm64 (on ARM64 host)
 

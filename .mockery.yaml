@@ -26,6 +26,8 @@ packages:
     interfaces:
       KekRepository: {}
       KekUseCase: {}
+      DekRepository: {}
+      DekUseCase: {}
   github.com/allisson/secrets/internal/database:
     interfaces:
       TxManager: {}

@@ -1,6 +1,6 @@
 # 🐳 Container Security Guide
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-24
 
 This guide covers comprehensive container security best practices for running Secrets in production environments. It focuses on Docker-specific security hardening, image security, runtime protection, and deployment patterns for Docker Standalone and Docker Compose.
 
@@ -44,11 +44,11 @@ This quick start provides copy-paste commands for secure deployments. For detail
 
 ```bash
 # 1. Pull latest image
-docker pull allisson/secrets:v0.10.0
+docker pull allisson/secrets:v0.12.0
 
 # 2. Scan for vulnerabilities (optional but recommended)
-docker scout cves allisson/secrets:v0.10.0
-# or: trivy image allisson/secrets:v0.10.0
+docker scout cves allisson/secrets:v0.12.0
+# or: trivy image allisson/secrets:v0.12.0
 
 # 3. Create network
 docker network create secrets-net
@@ -79,13 +79,13 @@ EOF
 docker run --rm \
   --network secrets-net \
   --env-file .env \
-  allisson/secrets:v0.10.0 migrate
+  allisson/secrets:v0.12.0 migrate
 
 # 7. Create encryption key
 docker run --rm \
   --network secrets-net \
   --env-file .env \
-  allisson/secrets:v0.10.0 create-kek --algorithm aes-gcm
+  allisson/secrets:v0.12.0 create-kek --algorithm aes-gcm
 
 # 8. Start API with security hardening
 docker run -d --name secrets-api \
@@ -96,7 +96,7 @@ docker run -d --name secrets-api \
   --security-opt=no-new-privileges:true \
   --pids-limit=100 \
   -p 127.0.0.1:8080:8080 \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 # 9. Verify deployment
 curl http://127.0.0.1:8080/health
@@ -166,7 +166,7 @@ services:
       retries: 3
 
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     container_name: secrets-api
     environment:
       DB_DRIVER: postgres
@@ -394,7 +394,7 @@ docker run --rm \
   --read-only \
   --cap-drop=ALL \
   --security-opt=no-new-privileges:true \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -408,7 +408,7 @@ When mounting host directories or persistent volumes, ensure they're readable/wr
 
 ```bash
 # Verify container runs as UID 65532
-docker run --rm allisson/secrets:v0.10.0 id
+docker run --rm allisson/secrets:v0.12.0 id
 # uid=65532(nonroot) gid=65532(nonroot)
 
 # Check volume permissions (should be owned by 65532)
@@ -422,7 +422,7 @@ ls -la /path/to/volume
 
    ```bash
    docker volume create secrets-data
-   docker run -v secrets-data:/data allisson/secrets:v0.10.0
+   docker run -v secrets-data:/data allisson/secrets:v0.12.0
    # Docker automatically sets correct permissions
    ```
 
@@ -430,7 +430,7 @@ ls -la /path/to/volume
 
    ```bash
    sudo chown -R 65532:65532 /path/to/host/dir
-   docker run -v /path/to/host/dir:/data allisson/secrets:v0.10.0
+   docker run -v /path/to/host/dir:/data allisson/secrets:v0.12.0
    ```
 
 **For comprehensive troubleshooting**, see:
@@ -445,7 +445,7 @@ Secrets supports **read-only root filesystem** (no writes at runtime):
 # Docker
 docker run --rm --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,size=10m \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -465,7 +465,7 @@ docker run --rm --read-only \
 
   - **Security benefit**: If `/tmp` is needed, using `noexec` and `nosuid` flags prevents privilege escalation
 
-- **Verification**: Test read-only filesystem works: `docker run --rm --read-only allisson/secrets:v0.10.0 --version`
+- **Verification**: Test read-only filesystem works: `docker run --rm --read-only allisson/secrets:v0.12.0 --version`
 
 **Security recommendations**:
 
@@ -484,7 +484,7 @@ docker run --rm \
   --memory=512m \
   --memory-swap=512m \
   --pids-limit=100 \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -520,7 +520,7 @@ EXPOSE 8080
 **Docker run with env file:**
 
 ```bash
-docker run --rm --env-file .env allisson/secrets:v0.10.0 server
+docker run --rm --env-file .env allisson/secrets:v0.12.0 server
 
 ```
 
@@ -529,7 +529,7 @@ docker run --rm --env-file .env allisson/secrets:v0.10.0 server
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     env_file:
       - .env
 
@@ -562,7 +562,7 @@ export MASTER_KEYS=$(aws secretsmanager get-secret-value \
 docker run --rm \
   -e DB_CONNECTION_STRING \
   -e MASTER_KEYS \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -578,7 +578,7 @@ docker service create \
   --name secrets-api \
   --secret db_connection_string \
   --secret master_keys \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -596,7 +596,7 @@ chmod 750 /data/secrets
 docker run --rm \
   -v /data/secrets:/data:ro \
   --user 65532:65532 \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 ```
 
@@ -619,13 +619,13 @@ brew install trivy  # macOS
 apt-get install trivy  # Debian/Ubuntu
 
 # Scan image
-trivy image allisson/secrets:v0.10.0
+trivy image allisson/secrets:v0.12.0
 
 # Fail on HIGH/CRITICAL vulnerabilities
-trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.12.0
 
 # Generate SBOM
-trivy image --format cyclonedx --output sbom.json allisson/secrets:v0.10.0
+trivy image --format cyclonedx --output sbom.json allisson/secrets:v0.12.0
 
 ```
 
@@ -638,13 +638,13 @@ trivy image --format cyclonedx --output sbom.json allisson/secrets:v0.10.0
 docker scout enroll
 
 # Quick scan
-docker scout cves allisson/secrets:v0.10.0
+docker scout cves allisson/secrets:v0.12.0
 
 # Compare with previous version
-docker scout compare --to allisson/secrets:v0.9.0 allisson/secrets:v0.10.0
+docker scout compare --to allisson/secrets:v0.9.0 allisson/secrets:v0.12.0
 
 # View recommendations
-docker scout recommendations allisson/secrets:v0.10.0
+docker scout recommendations allisson/secrets:v0.12.0
 
 ```
 
@@ -735,7 +735,7 @@ Secrets exposes two health endpoints for container orchestration:
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     environment:
       - DB_CONNECTION_STRING=postgres://...
 
@@ -839,10 +839,10 @@ RUN if [ "$VERSION" != "dev" ] && ! echo "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+
 
 ```bash
 # Using Syft
-syft allisson/secrets:v0.10.0 -o cyclonedx-json > sbom.json
+syft allisson/secrets:v0.12.0 -o cyclonedx-json > sbom.json
 
 # Using Docker Scout
-docker scout sbom allisson/secrets:v0.10.0 --format cyclonedx > sbom.json
+docker scout sbom allisson/secrets:v0.12.0 --format cyclonedx > sbom.json
 
 # Sign SBOM with Cosign
 cosign sign-blob --key cosign.key sbom.json > sbom.json.sig
@@ -855,10 +855,10 @@ cosign sign-blob --key cosign.key sbom.json > sbom.json.sig
 
 ```bash
 # Sign image with Cosign
-cosign sign --key cosign.key allisson/secrets:v0.10.0
+cosign sign --key cosign.key allisson/secrets:v0.12.0
 
 # Verify signature
-cosign verify --key cosign.pub allisson/secrets:v0.10.0
+cosign verify --key cosign.pub allisson/secrets:v0.12.0
 
 ```
 
@@ -873,7 +873,7 @@ version: '3.8'
 
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     deploy:
       replicas: 3
       restart_policy:
@@ -941,23 +941,23 @@ Choose your deployment type and complete all verification steps before deploying
 
   - [ ] Base image uses latest distroless digest (`docker inspect --format='{{.Config.Image}}'`)
 
-  - [ ] No HIGH/CRITICAL vulnerabilities (`trivy image allisson/secrets:v0.10.0`)
+  - [ ] No HIGH/CRITICAL vulnerabilities (`trivy image allisson/secrets:v0.12.0`)
 
   - [ ] Image signature verified (if using Docker Content Trust)
 
 - [ ] **Container configuration**:
 
-  - [ ] Non-root user: `docker inspect --format='{{.Config.User}}' allisson/secrets:v0.10.0` shows `65532:65532`
+  - [ ] Non-root user: `docker inspect --format='{{.Config.User}}' allisson/secrets:v0.12.0` shows `65532:65532`
 
-  - [ ] Read-only filesystem tested: `docker run --rm --read-only -v /tmp allisson/secrets:v0.10.0 --version`
+  - [ ] Read-only filesystem tested: `docker run --rm --read-only -v /tmp allisson/secrets:v0.12.0 --version`
 
-  - [ ] Version metadata correct: `docker run --rm allisson/secrets:v0.10.0 --version` shows `v0.10.0`
+  - [ ] Version metadata correct: `docker run --rm allisson/secrets:v0.12.0 --version` shows `v0.10.0`
 
 - [ ] **Volume permissions**:
 
   - [ ] Named volumes used (not bind mounts) OR bind mount permissions set to UID 65532
 
-  - [ ] Volume permissions tested: `docker run --rm -v secrets-data:/data allisson/secrets:v0.10.0 sh -c 'touch /data/test'`
+  - [ ] Volume permissions tested: `docker run --rm -v secrets-data:/data allisson/secrets:v0.12.0 sh -c 'touch /data/test'`
 
 - [ ] **Network security**:
 
@@ -1103,7 +1103,7 @@ Choose your deployment type and complete all verification steps before deploying
 
 - [ ] **Vulnerability scanning**:
 
-  - [ ] No HIGH vulnerabilities: `trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0`
+  - [ ] No HIGH vulnerabilities: `trivy image --severity HIGH,CRITICAL allisson/secrets:v0.12.0`
 
   - [ ] No CRITICAL vulnerabilities
 
@@ -1116,10 +1116,10 @@ Choose your deployment type and complete all verification steps before deploying
   - [ ] OCI labels present and correct:
 
     ```bash
-    docker inspect allisson/secrets:v0.10.0 --format='{{json .Config.Labels}}' | jq
+    docker inspect allisson/secrets:v0.12.0 --format='{{json .Config.Labels}}' | jq
     ```
 
-  - [ ] Version label matches release: `org.opencontainers.image.version=v0.10.0`
+  - [ ] Version label matches release: `org.opencontainers.image.version=v0.12.0`
 
   - [ ] Build date within expected range
 
@@ -1255,7 +1255,7 @@ Choose your deployment type and complete all verification steps before deploying
 
     - [ ] Rebuild image with same version tag but new digest
 
-    - [ ] Scan new image to verify patch: `trivy image allisson/secrets:v0.10.0`
+    - [ ] Scan new image to verify patch: `trivy image allisson/secrets:v0.12.0`
 
     - [ ] Test in staging environment
 

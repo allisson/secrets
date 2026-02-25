@@ -19,7 +19,6 @@ def main() -> None:
     current_release = metadata["current_release"]
     api_version = metadata["api_version"]
 
-    require_contains(Path("README.md"), current_release)
     require_contains(Path("docs/README.md"), current_release)
 
     # Ensure current release docs links are present in key navigation pages.

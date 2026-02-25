@@ -1,7 +1,7 @@
 # 🔍 Security Scanning Guide
 
-> **Document version**: v0.10.0  
-> Last updated: 2026-02-21  
+> **Document version**: v0.12.0  
+> Last updated: 2026-02-24  
 > **Audience**: DevOps engineers, security teams, release managers
 
 ## Table of Contents
@@ -69,7 +69,7 @@ sudo apt-get update && sudo apt-get install trivy
 
 # Docker (no installation required)
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-  aquasec/trivy image allisson/secrets:v0.10.0
+  aquasec/trivy image allisson/secrets:v0.12.0
 
 ```
 
@@ -77,10 +77,10 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
 
 ```bash
 # Scan for HIGH and CRITICAL vulnerabilities
-trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL allisson/secrets:v0.12.0
 
 # Expected output for v0.10.0 (distroless base):
-# allisson/secrets:v0.10.0 (debian 13)
+# allisson/secrets:v0.12.0 (debian 13)
 # Total: 0 (HIGH: 0, CRITICAL: 0)
 
 ```
@@ -116,22 +116,22 @@ trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0
 
 ```bash
 # Scan image
-trivy image allisson/secrets:v0.10.0
+trivy image allisson/secrets:v0.12.0
 
 # Filter by severity
-trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL allisson/secrets:v0.12.0
 
 # Output formats
-trivy image --format json -o results.json allisson/secrets:v0.10.0
-trivy image --format sarif -o results.sarif allisson/secrets:v0.10.0  # GitHub Security tab
-trivy image --format table allisson/secrets:v0.10.0  # Human-readable table
+trivy image --format json -o results.json allisson/secrets:v0.12.0
+trivy image --format sarif -o results.sarif allisson/secrets:v0.12.0  # GitHub Security tab
+trivy image --format table allisson/secrets:v0.12.0  # Human-readable table
 
 # Scan specific platforms
-trivy image --platform linux/amd64 allisson/secrets:v0.10.0
-trivy image --platform linux/arm64 allisson/secrets:v0.10.0
+trivy image --platform linux/amd64 allisson/secrets:v0.12.0
+trivy image --platform linux/arm64 allisson/secrets:v0.12.0
 
 # Exit with error if vulnerabilities found (CI/CD)
-trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.12.0
 
 ```
 
@@ -139,20 +139,20 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.10.0
 
 ```bash
 # Ignore unfixed vulnerabilities (can't be patched yet)
-trivy image --ignore-unfixed allisson/secrets:v0.10.0
+trivy image --ignore-unfixed allisson/secrets:v0.12.0
 
 # Scan with custom policy (fail on specific CVEs)
 trivy image --severity HIGH,CRITICAL \
   --ignore-policy .trivyignore \
-  allisson/secrets:v0.10.0
+  allisson/secrets:v0.12.0
 
 # Scan offline (air-gapped environments)
 trivy image --download-db-only  # Download vulnerability database
-trivy image --skip-update allisson/secrets:v0.10.0  # Scan without updating DB
+trivy image --skip-update allisson/secrets:v0.12.0  # Scan without updating DB
 
 # Generate SBOM
-trivy image --format cyclonedx -o sbom.json allisson/secrets:v0.10.0
-trivy image --format spdx-json -o sbom-spdx.json allisson/secrets:v0.10.0
+trivy image --format cyclonedx -o sbom.json allisson/secrets:v0.12.0
+trivy image --format spdx-json -o sbom-spdx.json allisson/secrets:v0.12.0
 
 ```
 
@@ -170,7 +170,7 @@ CVE-2023-1234
 CVE-2023-5678
 
 # Scan with ignore file
-trivy image --ignore-policy .trivyignore allisson/secrets:v0.10.0
+trivy image --ignore-policy .trivyignore allisson/secrets:v0.12.0
 
 ```
 
@@ -203,19 +203,19 @@ docker login
 
 ```bash
 # Quick scan
-docker scout cves allisson/secrets:v0.10.0
+docker scout cves allisson/secrets:v0.12.0
 
 # Compare with previous version
-docker scout compare --to allisson/secrets:v0.9.0 allisson/secrets:v0.10.0
+docker scout compare --to allisson/secrets:v0.9.0 allisson/secrets:v0.12.0
 
 # Get recommendations
-docker scout recommendations allisson/secrets:v0.10.0
+docker scout recommendations allisson/secrets:v0.12.0
 
 # Generate SBOM
-docker scout sbom allisson/secrets:v0.10.0 --format cyclonedx > sbom.json
+docker scout sbom allisson/secrets:v0.12.0 --format cyclonedx > sbom.json
 
 # Policy evaluation (requires Docker Scout subscription)
-docker scout policy allisson/secrets:v0.10.0
+docker scout policy allisson/secrets:v0.12.0
 
 ```
 
@@ -261,7 +261,7 @@ curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh 
 
 # Docker
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-  anchore/grype:latest allisson/secrets:v0.10.0
+  anchore/grype:latest allisson/secrets:v0.12.0
 
 ```
 
@@ -269,17 +269,17 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
 
 ```bash
 # Scan image
-grype allisson/secrets:v0.10.0
+grype allisson/secrets:v0.12.0
 
 # Filter by severity
-grype allisson/secrets:v0.10.0 --fail-on high
+grype allisson/secrets:v0.12.0 --fail-on high
 
 # Output formats
-grype allisson/secrets:v0.10.0 -o json > results.json
-grype allisson/secrets:v0.10.0 -o sarif > results.sarif
+grype allisson/secrets:v0.12.0 -o json > results.json
+grype allisson/secrets:v0.12.0 -o sarif > results.sarif
 
 # Generate SBOM with Syft (Anchore's SBOM tool)
-syft allisson/secrets:v0.10.0 -o cyclonedx-json > sbom.json
+syft allisson/secrets:v0.12.0 -o cyclonedx-json > sbom.json
 grype sbom:sbom.json  # Scan SBOM instead of image (faster)
 
 ```
@@ -313,16 +313,16 @@ snyk auth
 
 ```bash
 # Scan image
-snyk container test allisson/secrets:v0.10.0
+snyk container test allisson/secrets:v0.12.0
 
 # Monitor image (continuous scanning)
-snyk container monitor allisson/secrets:v0.10.0
+snyk container monitor allisson/secrets:v0.12.0
 
 # Scan with custom Dockerfile
-snyk container test allisson/secrets:v0.10.0 --file=Dockerfile
+snyk container test allisson/secrets:v0.12.0 --file=Dockerfile
 
 # CI/CD integration
-snyk container test allisson/secrets:v0.10.0 \
+snyk container test allisson/secrets:v0.12.0 \
   --severity-threshold=high \
   --fail-on=upgradable
 
@@ -344,7 +344,7 @@ snyk container test allisson/secrets:v0.10.0 \
 
 ```bash
 # Use clairctl CLI
-clairctl report allisson/secrets:v0.10.0
+clairctl report allisson/secrets:v0.12.0
 
 ```
 
@@ -370,13 +370,13 @@ SBOM (Software Bill of Materials) is a complete inventory of all components, lib
 
 ```bash
 # CycloneDX format (recommended for vulnerability scanning)
-trivy image --format cyclonedx -o sbom-cyclonedx.json allisson/secrets:v0.10.0
+trivy image --format cyclonedx -o sbom-cyclonedx.json allisson/secrets:v0.12.0
 
 # SPDX format (recommended for compliance)
-trivy image --format spdx-json -o sbom-spdx.json allisson/secrets:v0.10.0
+trivy image --format spdx-json -o sbom-spdx.json allisson/secrets:v0.12.0
 
 # Human-readable SBOM
-trivy image --format json -o sbom-full.json allisson/secrets:v0.10.0
+trivy image --format json -o sbom-full.json allisson/secrets:v0.12.0
 cat sbom-full.json | jq '.Results[].Packages[] | {Name: .Name, Version: .Version}'
 
 ```
@@ -388,9 +388,9 @@ cat sbom-full.json | jq '.Results[].Packages[] | {Name: .Name, Version: .Version
 curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
 # Generate SBOM
-syft allisson/secrets:v0.10.0 -o cyclonedx-json > sbom.json
-syft allisson/secrets:v0.10.0 -o spdx-json > sbom-spdx.json
-syft allisson/secrets:v0.10.0 -o table  # Human-readable
+syft allisson/secrets:v0.12.0 -o cyclonedx-json > sbom.json
+syft allisson/secrets:v0.12.0 -o spdx-json > sbom-spdx.json
+syft allisson/secrets:v0.12.0 -o table  # Human-readable
 
 ```
 
@@ -398,7 +398,7 @@ syft allisson/secrets:v0.10.0 -o table  # Human-readable
 
 ```bash
 # Generate SBOM once
-syft allisson/secrets:v0.10.0 -o cyclonedx-json > sbom.json
+syft allisson/secrets:v0.12.0 -o cyclonedx-json > sbom.json
 
 # Scan SBOM multiple times (faster than scanning image)
 grype sbom:sbom.json
@@ -411,10 +411,10 @@ trivy sbom --format cyclonedx sbom.json
 ```bash
 # Attach SBOM to container image (OCI artifact)
 oras attach --artifact-type application/vnd.cyclonedx+json \
-  allisson/secrets:v0.10.0 sbom.json
+  allisson/secrets:v0.12.0 sbom.json
 
 # Upload to registry
-docker scout sbom allisson/secrets:v0.10.0 --output sbom.json
+docker scout sbom allisson/secrets:v0.12.0 --output sbom.json
 # Store in artifact repository (Artifactory, Nexus)
 
 ```
@@ -693,7 +693,7 @@ Quay uses Clair for vulnerability scanning:
 **1. Scan detects vulnerability:**
 
 ```bash
-trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL allisson/secrets:v0.12.0
 
 # Example output:
 # CVE-2023-1234 (HIGH)
@@ -738,7 +738,7 @@ trivy image --severity HIGH,CRITICAL secrets:patched
 echo "CVE-2023-1234  # False positive - application doesn't use TLS 1.0" >> .trivyignore
 
 # Scan with ignore file
-trivy image --ignore-policy .trivyignore allisson/secrets:v0.10.0
+trivy image --ignore-policy .trivyignore allisson/secrets:v0.12.0
 
 ```
 
@@ -780,7 +780,7 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 secrets:$CI_COMMIT_SHA
 # Use GitHub Actions scheduled workflow
 
 # Scan before deployment
-trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL --exit-code 1 allisson/secrets:v0.12.0
 
 ```
 
@@ -790,13 +790,13 @@ Different scanners have different vulnerability databases. Use at least two:
 
 ```bash
 # Trivy (primary)
-trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.0
+trivy image --severity HIGH,CRITICAL allisson/secrets:v0.12.0
 
 # Grype (secondary)
-grype allisson/secrets:v0.10.0 --fail-on high
+grype allisson/secrets:v0.12.0 --fail-on high
 
 # Docker Scout (tertiary, if available)
-docker scout cves allisson/secrets:v0.10.0
+docker scout cves allisson/secrets:v0.12.0
 
 ```
 
@@ -815,7 +815,7 @@ FROM gcr.io/distroless/static-debian13:nonroot@sha256:d90359c7...
 
 ```bash
 # Generate SBOM during build
-trivy image --format cyclonedx -o sbom-v0.10.0.json allisson/secrets:v0.10.0
+trivy image --format cyclonedx -o sbom-v0.10.0.json allisson/secrets:v0.12.0
 
 # Store SBOM in artifact repository
 # Upload to GitHub release
@@ -872,7 +872,7 @@ trivy image --severity HIGH,CRITICAL allisson/secrets:latest
 trivy image --download-db-only
 
 # Retry scan
-trivy image allisson/secrets:v0.10.0
+trivy image allisson/secrets:v0.12.0
 
 ```
 
@@ -896,10 +896,10 @@ CVE-2023-1234  # False positive - TLS 1.0 disabled in config
 
 ```bash
 # Increase timeout
-trivy image --timeout 10m allisson/secrets:v0.10.0
+trivy image --timeout 10m allisson/secrets:v0.12.0
 
 # Use local cache
-trivy image --cache-dir /tmp/trivy-cache allisson/secrets:v0.10.0
+trivy image --cache-dir /tmp/trivy-cache allisson/secrets:v0.12.0
 
 ```
 

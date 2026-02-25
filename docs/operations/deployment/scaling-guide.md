@@ -1,7 +1,7 @@
 # 📈 Application Scaling Guide
 
-> **Document version**: v0.10.0  
-> Last updated: 2026-02-21  
+> **Document version**: v0.12.0  
+> Last updated: 2026-02-24  
 > **Audience**: Platform engineers, SRE teams, DevOps engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -211,7 +211,7 @@ Use vertical scaling when:
 ```yaml
 services:
   secrets:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     deploy:
       resources:
         limits:

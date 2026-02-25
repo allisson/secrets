@@ -14,7 +14,7 @@ import (
 
 // Build-time version information (injected via ldflags during build).
 var (
-	version   = "v0.10.0" // Semantic version with "v" prefix (e.g., "v0.10.0")
+	version   = "v0.12.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
 	buildDate = "unknown" // ISO 8601 build timestamp
 	commitSHA = "unknown" // Git commit SHA
 )
@@ -118,6 +118,31 @@ func main() {
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return commands.RunRotateKek(ctx, cmd.String("algorithm"))
+				},
+			},
+			{
+				Name:  "rewrap-deks",
+				Usage: "Rewrap all DEKs that are not encrypted with a specific KEK",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "kek-id",
+						Aliases:  []string{"k"},
+						Required: true,
+						Usage:    "Target KEK ID to encrypt the DEKs with",
+					},
+					&cli.IntFlag{
+						Name:    "batch-size",
+						Aliases: []string{"b"},
+						Value:   100,
+						Usage:   "Number of DEKs to process per batch",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return commands.RunRewrapDeks(
+						ctx,
+						cmd.String("kek-id"),
+						int(cmd.Int("batch-size")),
+					)
 				},
 			},
 			{

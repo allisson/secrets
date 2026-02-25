@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-24
 
 This guide covers master keys and KEK lifecycle operations.
 
@@ -91,9 +91,10 @@ Operational step:
 2. Rotate master key (if planned)
 3. Restart API instances to load the updated master key chain
 4. Rotate KEK
-5. Verify secret read/write and transit encrypt/decrypt
-6. Remove old master key from `MASTER_KEYS` after KEK rotation completes
-7. Review audit logs for anomalies
+5. Re-wrap existing DEKs with the new KEK using `rewrap-deks`
+6. Verify secret read/write and transit encrypt/decrypt
+7. Remove old master key from `MASTER_KEYS` after KEK rotation completes
+8. Review audit logs for anomalies
 
 ## Copy/Paste Rotation Runbook
 
@@ -109,12 +110,16 @@ Use this sequence for master key rotation with minimal operator drift:
 # 4) Rotate KEK to re-wrap with active master key
 ./bin/app rotate-kek --algorithm aes-gcm
 
-# 5) Validate key-dependent paths
+# 5) Determine new KEK ID and rewrap DEKs
+# Get the new active KEK ID from the database or logs, then:
+./bin/app rewrap-deks --kek-id "<new-kek-id>" --batch-size 100
+
+# 6) Validate key-dependent paths
 curl -sS http://localhost:8080/health
 curl -sS http://localhost:8080/ready
 
-# 6) Remove old master key from MASTER_KEYS
-# 7) Restart API instances again
+# 7) Remove old master key from MASTER_KEYS
+# 8) Restart API instances again
 ```
 
 ## Transit Create/Rotate Automation

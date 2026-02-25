@@ -1,7 +1,7 @@
 # 🐳 Docker Compose Deployment Guide
 
-> **Document version**: v0.10.0  
-> Last updated: 2026-02-21  
+> **Document version**: v0.12.0  
+> Last updated: 2026-02-24  
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
 ## Table of Contents
@@ -65,7 +65,7 @@ services:
       - secrets-net
 
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     container_name: secrets-api
     depends_on:
       postgres:
@@ -129,7 +129,7 @@ services:
       - secrets-net
 
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     container_name: secrets-api
     depends_on:
       mysql:
@@ -212,7 +212,7 @@ services:
 
   # Secrets API application
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     container_name: secrets-api
     depends_on:
       postgres:
@@ -533,7 +533,7 @@ Since distroless images have no shell, use an external container for health chec
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     # No HEALTHCHECK instruction (distroless has no shell)
 
   healthcheck:
@@ -689,7 +689,7 @@ services:
 
   # Application
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     depends_on:
       postgres:
         condition: service_healthy
