@@ -93,3 +93,22 @@ func (s *secretUseCaseWithMetrics) Delete(ctx context.Context, path string) erro
 
 	return err
 }
+
+// List records metrics for secret listing operations.
+func (s *secretUseCaseWithMetrics) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*secretsDomain.Secret, error) {
+	start := time.Now()
+	secrets, err := s.next.List(ctx, offset, limit)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	s.metrics.RecordOperation(ctx, "secrets", "secret_list", status)
+	s.metrics.RecordDuration(ctx, "secrets", "secret_list", time.Since(start), status)
+
+	return secrets, err
+}

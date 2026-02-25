@@ -28,6 +28,7 @@ All endpoints require Bearer authentication.
 
 ## Endpoints
 
+- `GET /v1/transit/keys` (list keys)
 - `POST /v1/transit/keys` (create key)
 - `POST /v1/transit/keys/:name/rotate` (rotate key)
 - `DELETE /v1/transit/keys/:id` (soft delete key)
@@ -36,6 +37,7 @@ All endpoints require Bearer authentication.
 
 Capability mapping:
 
+- `GET /v1/transit/keys` -> `read`
 - `POST /v1/transit/keys` -> `write`
 - `POST /v1/transit/keys/:name/rotate` -> `rotate`
 - `DELETE /v1/transit/keys/:id` -> `delete`
@@ -50,11 +52,37 @@ Wildcard matcher semantics reference:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
+| `GET /v1/transit/keys` | `200` | `401`, `403`, `422`, `429` |
 | `POST /v1/transit/keys` | `201` | `401`, `403`, `409`, `422`, `429` |
 | `POST /v1/transit/keys/:name/rotate` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `POST /v1/transit/keys/:name/encrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `POST /v1/transit/keys/:name/decrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `DELETE /v1/transit/keys/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
+
+## List Transit Keys
+
+```bash
+curl "http://localhost:8080/v1/transit/keys?offset=0&limit=50" \
+  -H "Authorization: Bearer <token>"
+```
+
+Retrieves a paginated list of transit keys. Only the latest active version of each key name is returned.
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+      "name": "payment-data",
+      "algorithm": "aes-gcm",
+      "version": 2,
+      "created_at": "2026-02-15T10:30:00Z"
+    }
+  ]
+}
+```
 
 ## Create Transit Key
 

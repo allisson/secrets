@@ -595,6 +595,80 @@ func (_c *MockTokenizationKeyRepository_GetByNameAndVersion_Call) RunAndReturn(r
 	return _c
 }
 
+// List provides a mock function for the type MockTokenizationKeyRepository
+func (_mock *MockTokenizationKeyRepository) List(ctx context.Context, offset int, limit int) ([]*domain0.TokenizationKey, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.TokenizationKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.TokenizationKey, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.TokenizationKey); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.TokenizationKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenizationKeyRepository_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockTokenizationKeyRepository_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockTokenizationKeyRepository_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockTokenizationKeyRepository_List_Call {
+	return &MockTokenizationKeyRepository_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockTokenizationKeyRepository_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockTokenizationKeyRepository_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenizationKeyRepository_List_Call) Return(tokenizationKeys []*domain0.TokenizationKey, err error) *MockTokenizationKeyRepository_List_Call {
+	_c.Call.Return(tokenizationKeys, err)
+	return _c
+}
+
+func (_c *MockTokenizationKeyRepository_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.TokenizationKey, error)) *MockTokenizationKeyRepository_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockTokenRepository creates a new instance of MockTokenRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockTokenRepository(t interface {
@@ -1176,6 +1250,80 @@ func (_c *MockTokenizationKeyUseCase_Delete_Call) Return(err error) *MockTokeniz
 }
 
 func (_c *MockTokenizationKeyUseCase_Delete_Call) RunAndReturn(run func(ctx context.Context, keyID uuid.UUID) error) *MockTokenizationKeyUseCase_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// List provides a mock function for the type MockTokenizationKeyUseCase
+func (_mock *MockTokenizationKeyUseCase) List(ctx context.Context, offset int, limit int) ([]*domain0.TokenizationKey, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.TokenizationKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.TokenizationKey, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.TokenizationKey); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.TokenizationKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenizationKeyUseCase_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockTokenizationKeyUseCase_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockTokenizationKeyUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockTokenizationKeyUseCase_List_Call {
+	return &MockTokenizationKeyUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockTokenizationKeyUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockTokenizationKeyUseCase_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenizationKeyUseCase_List_Call) Return(tokenizationKeys []*domain0.TokenizationKey, err error) *MockTokenizationKeyUseCase_List_Call {
+	_c.Call.Return(tokenizationKeys, err)
+	return _c
+}
+
+func (_c *MockTokenizationKeyUseCase_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.TokenizationKey, error)) *MockTokenizationKeyUseCase_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

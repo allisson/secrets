@@ -33,6 +33,10 @@ type TransitKeyRepository interface {
 
 	// GetByNameAndVersion retrieves a specific version of a transit key. Returns ErrTransitKeyNotFound if not found.
 	GetByNameAndVersion(ctx context.Context, name string, version uint) (*transitDomain.TransitKey, error)
+
+	// List retrieves transit keys ordered by name ascending with pagination.
+	// Returns the latest version for each key.
+	List(ctx context.Context, offset, limit int) ([]*transitDomain.TransitKey, error)
 }
 
 // TransitKeyUseCase defines the interface for transit encryption operations.
@@ -58,4 +62,8 @@ type TransitKeyUseCase interface {
 	// Security Note: The returned EncryptedBlob contains plaintext data in the Plaintext field.
 	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
 	Decrypt(ctx context.Context, name string, ciphertext string) (*transitDomain.EncryptedBlob, error)
+
+	// List retrieves transit keys ordered by name ascending with pagination.
+	// Returns the latest version for each key.
+	List(ctx context.Context, offset, limit int) ([]*transitDomain.TransitKey, error)
 }

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-02-25
+
+### Added
+- Added listing endpoints with pagination (`offset`, `limit`) for secrets (`GET /v1/secrets`), transit keys (`GET /v1/transit/keys`), and tokenization keys (`GET /v1/tokenization/keys`)
+- Added list DTO structures for consistent API responses across modules
+
 ## [0.15.0] - 2026-02-25
 
 ### Added

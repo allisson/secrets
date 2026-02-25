@@ -448,6 +448,80 @@ func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) RunAndReturn(run fu
 	return _c
 }
 
+// List provides a mock function for the type MockTransitKeyRepository
+func (_mock *MockTransitKeyRepository) List(ctx context.Context, offset int, limit int) ([]*domain0.TransitKey, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.TransitKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.TransitKey, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.TransitKey); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.TransitKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTransitKeyRepository_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockTransitKeyRepository_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockTransitKeyRepository_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockTransitKeyRepository_List_Call {
+	return &MockTransitKeyRepository_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockTransitKeyRepository_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockTransitKeyRepository_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_List_Call) Return(transitKeys []*domain0.TransitKey, err error) *MockTransitKeyRepository_List_Call {
+	_c.Call.Return(transitKeys, err)
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.TransitKey, error)) *MockTransitKeyRepository_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockTransitKeyUseCase creates a new instance of MockTransitKeyUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockTransitKeyUseCase(t interface {
@@ -750,6 +824,80 @@ func (_c *MockTransitKeyUseCase_Encrypt_Call) Return(encryptedBlob *domain0.Encr
 }
 
 func (_c *MockTransitKeyUseCase_Encrypt_Call) RunAndReturn(run func(ctx context.Context, name string, plaintext []byte) (*domain0.EncryptedBlob, error)) *MockTransitKeyUseCase_Encrypt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// List provides a mock function for the type MockTransitKeyUseCase
+func (_mock *MockTransitKeyUseCase) List(ctx context.Context, offset int, limit int) ([]*domain0.TransitKey, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.TransitKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.TransitKey, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.TransitKey); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.TransitKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTransitKeyUseCase_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockTransitKeyUseCase_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockTransitKeyUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockTransitKeyUseCase_List_Call {
+	return &MockTransitKeyUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockTransitKeyUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockTransitKeyUseCase_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_List_Call) Return(transitKeys []*domain0.TransitKey, err error) *MockTransitKeyUseCase_List_Call {
+	_c.Call.Return(transitKeys, err)
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.TransitKey, error)) *MockTransitKeyUseCase_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

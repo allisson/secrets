@@ -1255,3 +1255,94 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
 	})
 }
+
+// TestTransitKeyUseCase_List tests the List method of transitKeyUseCase.
+func TestTransitKeyUseCase_List(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListTransitKeys", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+
+		kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedKeys := []*transitDomain.TransitKey{
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Name:    "key-1",
+				Version: 1,
+			},
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Name:    "key-2",
+				Version: 2,
+			},
+		}
+
+		mockTransitRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(expectedKeys, nil).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager,
+			mockTransitRepo,
+			mockDekRepo,
+			mockKeyManager,
+			mockAeadManager,
+			kekChain,
+		)
+
+		keys, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, keys, 2)
+		assert.Equal(t, "key-1", keys[0].Name)
+		assert.Equal(t, uint(1), keys[0].Version)
+		assert.Equal(t, "key-2", keys[1].Name)
+		assert.Equal(t, uint(2), keys[1].Version)
+	})
+
+	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+
+		kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedErr := errors.New("db error")
+
+		mockTransitRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(nil, expectedErr).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager,
+			mockTransitRepo,
+			mockDekRepo,
+			mockKeyManager,
+			mockAeadManager,
+			kekChain,
+		)
+
+		keys, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, keys)
+		assert.Equal(t, expectedErr, err)
+	})
+}

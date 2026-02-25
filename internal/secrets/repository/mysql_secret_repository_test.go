@@ -1400,3 +1400,62 @@ func createMySQLDek(t *testing.T, db *sql.DB, kekID uuid.UUID) uuid.UUID {
 
 	return dekID
 }
+
+func TestMySQLSecretRepository_List(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLSecretRepository(db)
+	ctx := context.Background()
+	_, dekID := createMySQLKekAndDek(t, db)
+
+	// Create a few secrets
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Millisecond) // Ensure ordering
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       fmt.Sprintf("/app/secret-%02d", i),
+			Version:    1,
+			DekID:      dekID,
+			Ciphertext: []byte("encrypted-data"),
+			Nonce:      []byte("nonce"),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err := repo.Create(ctx, secret)
+		require.NoError(t, err)
+
+		// Create a second version for the same path
+		time.Sleep(time.Millisecond)
+		secretV2 := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       fmt.Sprintf("/app/secret-%02d", i),
+			Version:    2,
+			DekID:      dekID,
+			Ciphertext: []byte("encrypted-data-v2"),
+			Nonce:      []byte("nonce-v2"),
+			CreatedAt:  time.Now().UTC(),
+		}
+		err = repo.Create(ctx, secretV2)
+		require.NoError(t, err)
+	}
+
+	// Test pagination
+	secrets, err := repo.List(ctx, 0, 3)
+	require.NoError(t, err)
+	assert.Len(t, secrets, 3)
+	assert.Equal(t, "/app/secret-00", secrets[0].Path)
+	assert.Equal(t, uint(2), secrets[0].Version)
+	assert.Equal(t, "/app/secret-01", secrets[1].Path)
+	assert.Equal(t, uint(2), secrets[1].Version)
+	assert.Equal(t, "/app/secret-02", secrets[2].Path)
+	assert.Equal(t, uint(2), secrets[2].Version)
+
+	secrets, err = repo.List(ctx, 3, 3)
+	require.NoError(t, err)
+	assert.Len(t, secrets, 2)
+	assert.Equal(t, "/app/secret-03", secrets[0].Path)
+	assert.Equal(t, uint(2), secrets[0].Version)
+	assert.Equal(t, "/app/secret-04", secrets[1].Path)
+	assert.Equal(t, uint(2), secrets[1].Version)
+}

@@ -122,6 +122,63 @@ func (p *PostgreSQLTransitKeyRepository) GetByNameAndVersion(
 	return &transitKey, nil
 }
 
+// List retrieves transit keys ordered by name ascending with pagination.
+// Returns the latest version for each key.
+func (p *PostgreSQLTransitKeyRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*transitDomain.TransitKey, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `
+		SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at
+		FROM transit_keys tk
+		INNER JOIN (
+			SELECT name, MAX(version) as max_version
+			FROM transit_keys
+			WHERE deleted_at IS NULL
+			GROUP BY name
+			ORDER BY name ASC
+			LIMIT $1 OFFSET $2
+		) latest ON tk.name = latest.name AND tk.version = latest.max_version
+		ORDER BY tk.name ASC`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list transit keys")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var transitKeys []*transitDomain.TransitKey
+	for rows.Next() {
+		var transitKey transitDomain.TransitKey
+		err := rows.Scan(
+			&transitKey.ID,
+			&transitKey.Name,
+			&transitKey.Version,
+			&transitKey.DekID,
+			&transitKey.CreatedAt,
+			&transitKey.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan transit key")
+		}
+		transitKeys = append(transitKeys, &transitKey)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating transit keys")
+	}
+
+	if transitKeys == nil {
+		transitKeys = make([]*transitDomain.TransitKey, 0)
+	}
+
+	return transitKeys, nil
+}
+
 // NewPostgreSQLTransitKeyRepository creates a new PostgreSQL transit key repository instance.
 func NewPostgreSQLTransitKeyRepository(db *sql.DB) *PostgreSQLTransitKeyRepository {
 	return &PostgreSQLTransitKeyRepository{db: db}

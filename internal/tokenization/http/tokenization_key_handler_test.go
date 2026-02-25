@@ -411,3 +411,50 @@ func TestTokenizationKeyHandler_DeleteHandler(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
+
+func TestTokenizationKeyHandler_ListHandler(t *testing.T) {
+	t.Run("Success_ListTokenizationKeys", func(t *testing.T) {
+		handler, mockUseCase := setupTestKeyHandler(t)
+
+		now := time.Now().UTC()
+		expectedKeys := []*tokenizationDomain.TokenizationKey{
+			{
+				ID:        uuid.Must(uuid.NewV7()),
+				Name:      "tok-key-1",
+				Version:   1,
+				CreatedAt: now,
+			},
+		}
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 100).
+			Return(expectedKeys, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys?offset=0&limit=100", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListTokenizationKeysResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Items, 1)
+		assert.Equal(t, "tok-key-1", response.Items[0].Name)
+	})
+
+	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
+		handler, _ := setupTestKeyHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys?offset=invalid", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+}

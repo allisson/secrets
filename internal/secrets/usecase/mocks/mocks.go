@@ -448,6 +448,80 @@ func (_c *MockSecretRepository_GetByPathAndVersion_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// List provides a mock function for the type MockSecretRepository
+func (_mock *MockSecretRepository) List(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.Secret
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.Secret, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.Secret); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.Secret)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockSecretRepository_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockSecretRepository_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockSecretRepository_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockSecretRepository_List_Call {
+	return &MockSecretRepository_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockSecretRepository_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockSecretRepository_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockSecretRepository_List_Call) Return(secrets []*domain0.Secret, err error) *MockSecretRepository_List_Call {
+	_c.Call.Return(secrets, err)
+	return _c
+}
+
+func (_c *MockSecretRepository_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error)) *MockSecretRepository_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockSecretUseCase creates a new instance of MockSecretUseCase. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockSecretUseCase(t interface {
@@ -744,6 +818,80 @@ func (_c *MockSecretUseCase_GetByVersion_Call) Return(secret *domain0.Secret, er
 }
 
 func (_c *MockSecretUseCase_GetByVersion_Call) RunAndReturn(run func(ctx context.Context, path string, version uint) (*domain0.Secret, error)) *MockSecretUseCase_GetByVersion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// List provides a mock function for the type MockSecretUseCase
+func (_mock *MockSecretUseCase) List(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error) {
+	ret := _mock.Called(ctx, offset, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []*domain0.Secret
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.Secret, error)); ok {
+		return returnFunc(ctx, offset, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.Secret); ok {
+		r0 = returnFunc(ctx, offset, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.Secret)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, offset, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockSecretUseCase_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type MockSecretUseCase_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - offset int
+//   - limit int
+func (_e *MockSecretUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockSecretUseCase_List_Call {
+	return &MockSecretUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+}
+
+func (_c *MockSecretUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockSecretUseCase_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockSecretUseCase_List_Call) Return(secrets []*domain0.Secret, err error) *MockSecretUseCase_List_Call {
+	_c.Call.Return(secrets, err)
+	return _c
+}
+
+func (_c *MockSecretUseCase_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error)) *MockSecretUseCase_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -23,6 +23,7 @@ All endpoints require `Authorization: Bearer <token>`.
 
 Key management:
 
+- `GET /v1/tokenization/keys` (list keys)
 - `POST /v1/tokenization/keys` (create key)
 - `POST /v1/tokenization/keys/:name/rotate` (rotate key)
 - `DELETE /v1/tokenization/keys/:id` (soft delete key)
@@ -38,6 +39,7 @@ Capability mapping:
 
 | Endpoint | Required capability |
 | --- | --- |
+| `GET /v1/tokenization/keys` | `read` |
 | `POST /v1/tokenization/keys` | `write` |
 | `POST /v1/tokenization/keys/:name/rotate` | `rotate` |
 | `DELETE /v1/tokenization/keys/:id` | `delete` |
@@ -50,6 +52,7 @@ Capability mapping:
 
 | Endpoint | Success | Common error statuses |
 | --- | --- | --- |
+| `GET /v1/tokenization/keys` | `200` | `401`, `403`, `422`, `429` |
 | `POST /v1/tokenization/keys` | `201` | `401`, `403`, `409`, `422`, `429` |
 | `POST /v1/tokenization/keys/:name/rotate` | `201` | `401`, `403`, `404`, `422`, `429` |
 | `DELETE /v1/tokenization/keys/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
@@ -57,6 +60,32 @@ Capability mapping:
 | `POST /v1/tokenization/detokenize` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `POST /v1/tokenization/validate` | `200` | `401`, `403`, `422`, `429` |
 | `POST /v1/tokenization/revoke` | `204` | `401`, `403`, `404`, `422`, `429` |
+
+## List Tokenization Keys
+
+Retrieves a paginated list of tokenization keys, showing the latest version for each.
+
+```bash
+curl "http://localhost:8080/v1/tokenization/keys?offset=0&limit=50" \
+  -H "Authorization: Bearer <token>"
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+      "name": "payment-cards",
+      "version": 1,
+      "format_type": "luhn-preserving",
+      "is_deterministic": true,
+      "created_at": "2026-02-18T10:30:00Z"
+    }
+  ]
+}
+```
 
 ## Create Tokenization Key
 

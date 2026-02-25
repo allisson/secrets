@@ -344,3 +344,50 @@ func TestTransitKeyHandler_DeleteHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }
+
+func TestTransitKeyHandler_ListHandler(t *testing.T) {
+	t.Run("Success_ListTransitKeys", func(t *testing.T) {
+		handler, mockUseCase := setupTestTransitKeyHandler(t)
+
+		now := time.Now().UTC()
+		expectedKeys := []*transitDomain.TransitKey{
+			{
+				ID:        uuid.Must(uuid.NewV7()),
+				Name:      "key-1",
+				Version:   1,
+				CreatedAt: now,
+			},
+		}
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 100).
+			Return(expectedKeys, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys?offset=0&limit=100", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListTransitKeysResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, "key-1", response.Data[0].Name)
+	})
+
+	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
+		handler, _ := setupTestTransitKeyHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys?offset=invalid", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+}

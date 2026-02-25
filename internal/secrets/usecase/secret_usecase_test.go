@@ -956,6 +956,99 @@ func TestSecretUseCase_Delete(t *testing.T) {
 	})
 }
 
+// TestSecretUseCase_List tests the List method of secretUseCase.
+func TestSecretUseCase_List(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListSecrets", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedSecrets := []*secretsDomain.Secret{
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Path:    "sec-1",
+				Version: 1,
+			},
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Path:    "sec-2",
+				Version: 2,
+			},
+		}
+
+		mockSecretRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(expectedSecrets, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+
+		secrets, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, secrets, 2)
+		assert.Equal(t, "sec-1", secrets[0].Path)
+		assert.Equal(t, uint(1), secrets[0].Version)
+		assert.Equal(t, "sec-2", secrets[1].Path)
+		assert.Equal(t, uint(2), secrets[1].Version)
+	})
+
+	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedErr := errors.New("db error")
+
+		mockSecretRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(nil, expectedErr).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+
+		secrets, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, secrets)
+		assert.Equal(t, expectedErr, err)
+	})
+}
+
 // createKekChain is a helper function to create a KEK chain for testing.
 func createKekChain(keks []*cryptoDomain.Kek) *cryptoDomain.KekChain {
 	if len(keks) == 0 {

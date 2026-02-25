@@ -29,6 +29,10 @@ type TokenizationKeyRepository interface {
 		name string,
 		version uint,
 	) (*tokenizationDomain.TokenizationKey, error)
+
+	// List retrieves tokenization keys ordered by name ascending with pagination.
+	// Returns the latest version for each key.
+	List(ctx context.Context, offset, limit int) ([]*tokenizationDomain.TokenizationKey, error)
 }
 
 // TokenRepository defines the interface for token mapping persistence.
@@ -73,6 +77,10 @@ type TokenizationKeyUseCase interface {
 
 	// Delete soft deletes a tokenization key and all its versions by key ID.
 	Delete(ctx context.Context, keyID uuid.UUID) error
+
+	// List retrieves tokenization keys ordered by name ascending with pagination.
+	// Returns the latest version for each key.
+	List(ctx context.Context, offset, limit int) ([]*tokenizationDomain.TokenizationKey, error)
 }
 
 // TokenizationUseCase defines the interface for token generation and management operations.

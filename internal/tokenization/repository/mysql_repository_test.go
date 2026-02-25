@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -438,4 +439,137 @@ func TestMySQLTokenRepository_DeleteExpired_ZeroTime(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), count)
 	assert.Contains(t, err.Error(), "olderThan timestamp cannot be zero")
+}
+
+func TestMySQLTokenizationKeyRepository_List(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Millisecond)
+		key := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            fmt.Sprintf("tok-key-%02d", i),
+			Version:         1,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           dekID,
+			CreatedAt:       time.Now().UTC(),
+		}
+		err := repo.Create(ctx, key)
+		require.NoError(t, err)
+
+		time.Sleep(time.Millisecond)
+		keyV2 := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            fmt.Sprintf("tok-key-%02d", i),
+			Version:         2,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           dekID,
+			CreatedAt:       time.Now().UTC(),
+		}
+		err = repo.Create(ctx, keyV2)
+		require.NoError(t, err)
+	}
+
+	keys, err := repo.List(ctx, 0, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 3)
+	assert.Equal(t, "tok-key-00", keys[0].Name)
+	assert.Equal(t, uint(2), keys[0].Version)
+	assert.Equal(t, "tok-key-01", keys[1].Name)
+	assert.Equal(t, "tok-key-02", keys[2].Name)
+
+	keys, err = repo.List(ctx, 3, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 2)
+	assert.Equal(t, "tok-key-03", keys[0].Name)
+	assert.Equal(t, "tok-key-04", keys[1].Name)
+}
+
+func TestMySQLTokenizationKeyRepository_Get(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	key := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "get-test-key",
+		Version:         1,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+	}
+	err := repo.Create(ctx, key)
+	require.NoError(t, err)
+
+	retrieved, err := repo.Get(ctx, key.ID)
+	require.NoError(t, err)
+	assert.Equal(t, key.ID, retrieved.ID)
+	assert.Equal(t, key.Name, retrieved.Name)
+}
+
+func TestMySQLTokenizationKeyRepository_GetByNameAndVersion(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	key := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "get-name-version-key",
+		Version:         2,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+	}
+	err := repo.Create(ctx, key)
+	require.NoError(t, err)
+
+	retrieved, err := repo.GetByNameAndVersion(ctx, key.Name, key.Version)
+	require.NoError(t, err)
+	assert.Equal(t, key.ID, retrieved.ID)
+	assert.Equal(t, key.Version, retrieved.Version)
+}
+
+func TestMySQLTokenRepository_GetByToken(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	tokenRepo := NewMySQLTokenRepository(db)
+	ctx := context.Background()
+	keyID := createTokenizationKeyMySQL(t, db)
+
+	token := &tokenizationDomain.Token{
+		ID:                uuid.Must(uuid.NewV7()),
+		TokenizationKeyID: keyID,
+		Token:             "tok_getbytoken",
+		Ciphertext:        []byte("encrypted"),
+		Nonce:             []byte("nonce"),
+		CreatedAt:         time.Now().UTC(),
+	}
+	err := tokenRepo.Create(ctx, token)
+	require.NoError(t, err)
+
+	retrieved, err := tokenRepo.GetByToken(ctx, token.Token)
+	require.NoError(t, err)
+	assert.Equal(t, token.ID, retrieved.ID)
+	assert.Equal(t, token.Token, retrieved.Token)
 }

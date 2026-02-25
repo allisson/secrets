@@ -161,6 +161,14 @@ func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) er
 	return t.tokenizationKeyRepo.Delete(ctx, keyID)
 }
 
+// List retrieves tokenization keys ordered by name ascending with pagination.
+func (t *tokenizationKeyUseCase) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*tokenizationDomain.TokenizationKey, error) {
+	return t.tokenizationKeyRepo.List(ctx, offset, limit)
+}
+
 // NewTokenizationKeyUseCase creates a new tokenization key use case instance.
 func NewTokenizationKeyUseCase(
 	txManager database.TxManager,

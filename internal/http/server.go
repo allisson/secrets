@@ -197,6 +197,10 @@ func (s *Server) SetupRouter(
 			secrets.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
 		}
 		{
+			secrets.GET("",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				secretHandler.ListHandler,
+			)
 			secrets.POST("/*path",
 				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
 				secretHandler.CreateOrUpdateHandler,
@@ -220,6 +224,12 @@ func (s *Server) SetupRouter(
 		{
 			keys := transit.Group("/keys")
 			{
+				// List transit keys
+				keys.GET("",
+					authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+					transitKeyHandler.ListHandler,
+				)
+
 				// Create new transit key
 				keys.POST("",
 					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
@@ -261,6 +271,12 @@ func (s *Server) SetupRouter(
 		{
 			keys := tokenization.Group("/keys")
 			{
+				// List tokenization keys
+				keys.GET("",
+					authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+					tokenizationKeyHandler.ListHandler,
+				)
+
 				// Create new tokenization key
 				keys.POST("",
 					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),

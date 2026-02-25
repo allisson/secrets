@@ -613,3 +613,90 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		assert.Equal(t, expectedError, err)
 	})
 }
+
+// TestTokenizationKeyUseCase_List tests the List method of tokenizationKeyUseCase.
+func TestTokenizationKeyUseCase_List(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListTokenizationKeys", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedKeys := []*tokenizationDomain.TokenizationKey{
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Name:    "tok-1",
+				Version: 1,
+			},
+			{
+				ID:      uuid.Must(uuid.NewV7()),
+				Name:    "tok-2",
+				Version: 2,
+			},
+		}
+
+		mockTokenizationKeyRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(expectedKeys, nil).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+
+		keys, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, keys, 2)
+		assert.Equal(t, "tok-1", keys[0].Name)
+		assert.Equal(t, uint(1), keys[0].Version)
+		assert.Equal(t, "tok-2", keys[1].Name)
+		assert.Equal(t, uint(2), keys[1].Version)
+	})
+
+	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		expectedErr := errors.New("db error")
+
+		mockTokenizationKeyRepo.EXPECT().
+			List(ctx, 0, 10).
+			Return(nil, expectedErr).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+
+		keys, err := uc.List(ctx, 0, 10)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, keys)
+		assert.Equal(t, expectedErr, err)
+	})
+}

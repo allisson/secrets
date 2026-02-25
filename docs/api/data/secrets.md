@@ -17,6 +17,7 @@ All endpoints require Bearer authentication.
 
 - `POST /v1/secrets/*path` (create or update)
 - `GET /v1/secrets/*path` (read latest)
+- `GET /v1/secrets` (list secrets with pagination)
 - `DELETE /v1/secrets/*path` (soft delete latest)
 
 ## Status Code Quick Reference
@@ -25,6 +26,7 @@ All endpoints require Bearer authentication.
 | --- | --- | --- |
 | `POST /v1/secrets/*path` | `201` | `401`, `403`, `422`, `429` |
 | `GET /v1/secrets/*path` | `200` | `401`, `403`, `404`, `429` |
+| `GET /v1/secrets` | `200` | `401`, `403`, `422`, `429` |
 | `DELETE /v1/secrets/*path` | `204` | `401`, `403`, `404`, `429` |
 
 ## Create or Update Secret
@@ -69,6 +71,35 @@ Example response (`200 OK`):
   "created_at": "2026-02-14T18:22:00Z"
 }
 ```
+
+## List Secrets
+
+```bash
+curl "http://localhost:8080/v1/secrets?offset=0&limit=50" \
+  -H "Authorization: Bearer <token>"
+```
+
+Pagination parameters:
+
+- `offset`: Defaults to `0`
+- `limit`: Defaults to `50` (max `100`)
+
+Example response (`200 OK`):
+
+```json
+{
+  "items": [
+    {
+      "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
+      "path": "/app/prod/database-password",
+      "version": 3,
+      "created_at": "2026-02-14T18:22:00Z"
+    }
+  ]
+}
+```
+
+> **Note**: Secret values are deliberately excluded from list responses. Use `GET /v1/secrets/*path` to retrieve specific secret payloads.
 
 ## Delete Secret
 
@@ -144,6 +175,7 @@ Expected result: write returns `201 Created`; read returns `200 OK` with base64 
 
 - `POST /v1/secrets/*path` -> `encrypt`
 - `GET /v1/secrets/*path` -> `decrypt`
+- `GET /v1/secrets` -> `read`
 - `DELETE /v1/secrets/*path` -> `delete`
 
 Wildcard matcher semantics reference:

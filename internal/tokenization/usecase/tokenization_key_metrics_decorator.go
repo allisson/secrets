@@ -87,3 +87,22 @@ func (t *tokenizationKeyUseCaseWithMetrics) Delete(ctx context.Context, tokeniza
 
 	return err
 }
+
+// List records metrics for tokenization key listing operations.
+func (t *tokenizationKeyUseCaseWithMetrics) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*tokenizationDomain.TokenizationKey, error) {
+	start := time.Now()
+	keys, err := t.next.List(ctx, offset, limit)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "tokenization", "tokenization_key_list", status)
+	t.metrics.RecordDuration(ctx, "tokenization", "tokenization_key_list", time.Since(start), status)
+
+	return keys, err
+}

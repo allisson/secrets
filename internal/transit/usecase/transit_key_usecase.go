@@ -271,6 +271,14 @@ func (t *transitKeyUseCase) Decrypt(
 	}, nil
 }
 
+// List retrieves transit keys ordered by name ascending with pagination.
+func (t *transitKeyUseCase) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*transitDomain.TransitKey, error) {
+	return t.transitRepo.List(ctx, offset, limit)
+}
+
 // NewTransitKeyUseCase creates a new TransitKeyUseCase with injected dependencies.
 func NewTransitKeyUseCase(
 	txManager database.TxManager,

@@ -53,6 +53,12 @@ Configuration is managed via environment variables (see `internal/config/config.
 ### Testing Practices
 - **Parallel Tests:** Unit tests should be able to run in parallel.
 - **Integration Tests:** Located in `test/integration/`. Use `make test-with-db` to run them locally.
+  - **CRITICAL:** Every new repository method (e.g., `Create`, `Get`, `List`, `Delete`) MUST have corresponding tests written natively in BOTH its `mysql_..._repository_test.go` and `postgresql_..._repository_test.go` files, and must be validated to pass against the test databases via `make test-with-db`.
+- **HTTP/DTO Tests:** 
+  - **CRITICAL:** Every new HTTP handler (e.g., `ListHandler`, `CreateHandler`) MUST have corresponding unit tests in its `..._handler_test.go` file.
+  - **CRITICAL:** Every new mapping DTO (e.g., `MapSecretsToListResponse`) MUST have corresponding unit tests in its package (e.g., `list_secrets_response_test.go`) to ensure accurate payload mapping.
+- **Usecase Tests:**
+  - **CRITICAL:** Every new usecase method MUST have corresponding unit tests written natively in its `..._usecase_test.go` file to ensure core business logic is tested independently.
 - **Coverage:** Aim for high coverage in `usecase` and `domain` layers.
 
 ### Contribution Guidelines
@@ -63,6 +69,7 @@ Configuration is managed via environment variables (see `internal/config/config.
   3. **Changelog:** Every new version MUST be added to the high-level `CHANGELOG.md` in the root directory.
   4. **Main Version:** The `version` variable in `cmd/app/main.go` MUST be updated to match the new release version.
   5. **Docs Linting:** The command `make docs-lint` MUST be executed and all issues resolved.
+  6. **OpenAPI Spec:** Any new API handler or configuration change MUST be reflected in `docs/openapi.yaml`.
 - **Migrations:** New database changes must include both `up` and `down` SQL scripts for both MySQL and PostgreSQL.
 
 ### Tooling

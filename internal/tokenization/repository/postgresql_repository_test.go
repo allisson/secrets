@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -438,4 +439,137 @@ func TestPostgreSQLTokenRepository_DeleteExpired_ZeroTime(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), count)
 	assert.Contains(t, err.Error(), "olderThan timestamp cannot be zero")
+}
+
+func TestPostgreSQLTokenizationKeyRepository_List(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createKekAndDek(t, db)
+
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Millisecond)
+		key := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            fmt.Sprintf("tok-key-%02d", i),
+			Version:         1,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           dekID,
+			CreatedAt:       time.Now().UTC(),
+		}
+		err := repo.Create(ctx, key)
+		require.NoError(t, err)
+
+		time.Sleep(time.Millisecond)
+		keyV2 := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            fmt.Sprintf("tok-key-%02d", i),
+			Version:         2,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           dekID,
+			CreatedAt:       time.Now().UTC(),
+		}
+		err = repo.Create(ctx, keyV2)
+		require.NoError(t, err)
+	}
+
+	keys, err := repo.List(ctx, 0, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 3)
+	assert.Equal(t, "tok-key-00", keys[0].Name)
+	assert.Equal(t, uint(2), keys[0].Version)
+	assert.Equal(t, "tok-key-01", keys[1].Name)
+	assert.Equal(t, "tok-key-02", keys[2].Name)
+
+	keys, err = repo.List(ctx, 3, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 2)
+	assert.Equal(t, "tok-key-03", keys[0].Name)
+	assert.Equal(t, "tok-key-04", keys[1].Name)
+}
+
+func TestPostgreSQLTokenizationKeyRepository_Get(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+	_, dekID := createKekAndDek(t, db)
+
+	key := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "get-test-key",
+		Version:         1,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+	}
+	err := repo.Create(ctx, key)
+	require.NoError(t, err)
+
+	retrieved, err := repo.Get(ctx, key.ID)
+	require.NoError(t, err)
+	assert.Equal(t, key.ID, retrieved.ID)
+	assert.Equal(t, key.Name, retrieved.Name)
+}
+
+func TestPostgreSQLTokenizationKeyRepository_GetByNameAndVersion(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+	_, dekID := createKekAndDek(t, db)
+
+	key := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "get-name-version-key",
+		Version:         2,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+	}
+	err := repo.Create(ctx, key)
+	require.NoError(t, err)
+
+	retrieved, err := repo.GetByNameAndVersion(ctx, key.Name, key.Version)
+	require.NoError(t, err)
+	assert.Equal(t, key.ID, retrieved.ID)
+	assert.Equal(t, key.Version, retrieved.Version)
+}
+
+func TestPostgreSQLTokenRepository_GetByToken(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	tokenRepo := NewPostgreSQLTokenRepository(db)
+	ctx := context.Background()
+	keyID := createTokenizationKey(t, db)
+
+	token := &tokenizationDomain.Token{
+		ID:                uuid.Must(uuid.NewV7()),
+		TokenizationKeyID: keyID,
+		Token:             "tok_getbytoken",
+		Ciphertext:        []byte("encrypted"),
+		Nonce:             []byte("nonce"),
+		CreatedAt:         time.Now().UTC(),
+	}
+	err := tokenRepo.Create(ctx, token)
+	require.NoError(t, err)
+
+	retrieved, err := tokenRepo.GetByToken(ctx, token.Token)
+	require.NoError(t, err)
+	assert.Equal(t, token.ID, retrieved.ID)
+	assert.Equal(t, token.Token, retrieved.Token)
 }
