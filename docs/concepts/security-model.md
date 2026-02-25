@@ -45,7 +45,7 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - Enable rate limiting to protect against abuse and denial-of-service attacks
 - Use short token expiration times appropriate for your threat model (default: 4 hours)
 - Enable database SSL/TLS in production (`sslmode=require` or `sslmode=verify-full`)
-- Restrict network access to `/metrics` endpoint
+- Restrict network access to `/metrics` endpoint (port 8081)
 - Forward audit logs to SIEM/log aggregation for long-term retention
 - Disable CORS unless browser-based access is explicitly required
 

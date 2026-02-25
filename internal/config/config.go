@@ -46,6 +46,7 @@ type Config struct {
 	// Metrics
 	MetricsEnabled   bool
 	MetricsNamespace string
+	MetricsPort      int
 
 	// KMS configuration
 	KMSProvider string
@@ -99,6 +100,7 @@ func Load() *Config {
 		// Metrics
 		MetricsEnabled:   env.GetBool("METRICS_ENABLED", true),
 		MetricsNamespace: env.GetString("METRICS_NAMESPACE", "secrets"),
+		MetricsPort:      env.GetInt("METRICS_PORT", 8081),
 
 		// KMS configuration
 		KMSProvider: env.GetString("KMS_PROVIDER", ""),

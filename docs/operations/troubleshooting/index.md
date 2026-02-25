@@ -24,8 +24,6 @@ Use this quick route before diving into detailed sections:
 
 ## 📑 Table of Contents
 
-- [Volume Permission Errors (v0.10.0+)](#volume-permission-errors-v0100)
-
 - [401 Unauthorized](#401-unauthorized)
 
 - [403 Forbidden](#403-forbidden)
@@ -69,49 +67,6 @@ Use this quick route before diving into detailed sections:
 - [Policy matcher FAQ](#policy-matcher-faq)
 
 - [Quick diagnostics checklist](#quick-diagnostics-checklist)
-
-## Volume Permission Errors (v0.10.0+)
-
-**Symptom**: Container fails to start or logs show "permission denied" errors after upgrading to v0.10.0
-
-**Cause**: v0.10.0 introduced non-root user (UID 65532) for security. The container cannot write to host-mounted volumes owned by other users.
-
-**Quick diagnosis**:
-
-```bash
-# Check container user
-docker run --rm allisson/secrets:v0.13.0 id
-# uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
-
-# Check host directory ownership
-ls -la /path/to/mounted/volume
-# drwxr-xr-x 2 root root ...  (owned by root, not UID 65532)
-
-```
-
-**Quick fix** (Docker):
-
-```bash
-# Change ownership to UID 65532
-sudo chown -R 65532:65532 /path/to/host/directory
-
-```
-
-**Comprehensive solutions**:
-
-- **Docker**: Named volumes, chown host directory
-
-- **Docker Compose**: Named volumes with healthcheck sidecar
-
-For detailed solutions with examples, see:
-
-- **[Volume Permission Troubleshooting Guide](volume-permissions.md)** (comprehensive)
-
-**Related**:
-
-- [v0.10.0 Release Notes](../../releases/RELEASES.md#0100---2026-02-21)
-
-- [Container Security Guide](../deployment/docker-hardened.md)
 
 ## 401 Unauthorized
 

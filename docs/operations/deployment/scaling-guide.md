@@ -211,7 +211,7 @@ Use vertical scaling when:
 ```yaml
 services:
   secrets:
-    image: allisson/secrets:v0.13.0
+    image: allisson/secrets:v0.14.0
     deploy:
       resources:
         limits:

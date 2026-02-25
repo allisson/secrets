@@ -10,6 +10,7 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/sync/singleflight"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
@@ -32,18 +34,22 @@ import (
 
 // Server represents the HTTP server.
 type Server struct {
-	server *http.Server
-	logger *slog.Logger
-	router *gin.Engine
+	db       *sql.DB
+	server   *http.Server
+	logger   *slog.Logger
+	router   *gin.Engine
+	reqGroup singleflight.Group
 }
 
 // NewServer creates a new HTTP server.
 func NewServer(
+	db *sql.DB,
 	host string,
 	port int,
 	logger *slog.Logger,
 ) *Server {
 	return &Server{
+		db:     db,
 		logger: logger,
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", host, port),
@@ -95,11 +101,6 @@ func (s *Server) SetupRouter(
 	// Add HTTP metrics middleware if metrics are enabled
 	if metricsProvider != nil {
 		router.Use(metrics.HTTPMetricsMiddleware(metricsProvider.MeterProvider(), metricsNamespace))
-	}
-
-	// Metrics endpoint (Prometheus scrape endpoint, no authentication required)
-	if metricsProvider != nil {
-		router.GET("/metrics", gin.WrapH(metricsProvider.Handler()))
 	}
 
 	// Health and readiness endpoints (outside API versioning)
@@ -340,10 +341,50 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // healthHandler returns a simple health check response.
 func (s *Server) healthHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+	v, _, _ := s.reqGroup.Do("health", func() (interface{}, error) {
+		return gin.H{"status": "healthy"}, nil
+	})
+	c.JSON(http.StatusOK, v)
+}
+
+type readinessResponse struct {
+	StatusCode int
+	Body       gin.H
 }
 
 // readinessHandler returns a simple readiness check response.
 func (s *Server) readinessHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	v, _, _ := s.reqGroup.Do("readiness", func() (interface{}, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		dbStatus := "ok"
+		httpStatus := http.StatusOK
+
+		if s.db == nil {
+			s.logger.Error("readiness check failed: database not initialized")
+			dbStatus = "error"
+			httpStatus = http.StatusServiceUnavailable
+		} else if err := s.db.PingContext(ctx); err != nil {
+			s.logger.Error("readiness check failed: database ping error", slog.Any("err", err))
+			dbStatus = "error"
+			httpStatus = http.StatusServiceUnavailable
+		}
+
+		return readinessResponse{
+			StatusCode: httpStatus,
+			Body: gin.H{
+				"status": map[int]string{
+					http.StatusOK:                 "ready",
+					http.StatusServiceUnavailable: "not_ready",
+				}[httpStatus],
+				"components": gin.H{
+					"database": dbStatus,
+				},
+			},
+		}, nil
+	})
+
+	res := v.(readinessResponse)
+	c.JSON(res.StatusCode, res.Body)
 }

@@ -36,7 +36,7 @@ func main() {
 				Name:  "server",
 				Usage: "Start the HTTP server",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return commands.RunServer(ctx)
+					return commands.RunServer(ctx, version)
 				},
 			},
 			{
