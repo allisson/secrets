@@ -61,6 +61,8 @@ Configuration is managed via environment variables (see `internal/config/config.
   1. **Freshness:** Any modified markdown file MUST have its `> Last updated: YYYY-MM-DD` header updated to match `last_docs_refresh` in `metadata.json`.
   2. **Release Matrix:** Every new version added to `docs/releases/RELEASES.md` (which serves purely as a changelog) MUST also be explicitly added to `docs/releases/compatibility-matrix.md` (both the table and verification checklist).
   3. **Changelog:** Every new version MUST be added to the high-level `CHANGELOG.md` in the root directory.
+  4. **Main Version:** The `version` variable in `cmd/app/main.go` MUST be updated to match the new release version.
+  5. **Docs Linting:** The command `make docs-lint` MUST be executed and all issues resolved.
 - **Migrations:** New database changes must include both `up` and `down` SQL scripts for both MySQL and PostgreSQL.
 
 ### Tooling

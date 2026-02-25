@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.14.1](#0141---2026-02-25)
+**Latest Release**: [v0.15.0](#0150---2026-02-25)
 
 **All Releases**:
+
+- [v0.15.0 (2026-02-25)](#0150---2026-02-25) - Goreleaser support
 
 - [v0.14.1 (2026-02-25)](#0141---2026-02-25) - KEK bug fixes
 
@@ -45,6 +47,14 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.15.0] - 2026-02-25
+
+### Added
+
+- Goreleaser support for automated cross-platform builds and releases.
 
 ---
 
