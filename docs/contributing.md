@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-25
 
 Use this guide when adding or editing project documentation.
 
@@ -135,7 +135,7 @@ For behavior changes, update all relevant docs in the same PR:
 2. OpenAPI contract updates (`docs/openapi.yaml`) for new/changed request and response shapes
 3. Examples parity (`docs/examples/*.md`) for at least curl and one SDK/runtime path
 4. Monitoring/query updates (`docs/operations/observability/monitoring.md`) when new operations/metrics are introduced
-5. Runbook updates (`docs/operations/*.md` or `docs/getting-started/troubleshooting.md`) for incident/upgrade impact
+5. Runbook updates (`docs/operations/*.md` or `docs/operations/troubleshooting/index.md`) for incident/upgrade impact
 6. Release notes and changelog (consolidated in `releases/RELEASES.md`)
 7. Entry-point navigation updates (`README.md`, `docs/README.md`) when docs scope expands
 
@@ -225,7 +225,7 @@ This section defines canonical vs supporting docs to reduce duplication and drif
 | Database support | `docs/configuration.md#database-configuration` (see [ADR 0004](adr/0004-dual-database-support.md)) |
 | Transaction management | `docs/concepts/architecture.md` (see [ADR 0005](adr/0005-context-based-transaction-management.md)) |
 | Runtime env configuration | `docs/configuration.md` |
-| Production security posture | `docs/operations/security/hardening.md` |
+| Production security posture | `docs/operations/deployment/docker-hardened.md` |
 | Release narrative | `docs/releases/vX.Y.Z.md` |
 | Architectural decisions | `docs/adr/*.md` |
 
@@ -297,7 +297,7 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 ### 4) Operations and Runbooks
 
 - Update `docs/getting-started/*` for default/config changes
-- Update `docs/getting-started/troubleshooting.md` for new failure modes
+- Update `docs/operations/troubleshooting/index.md` for new failure modes
 - Update `docs/operations/*` guidance for production impact
 
 ### 5) Changelogs and Navigation
@@ -444,7 +444,7 @@ This section consolidates all documentation improvement initiatives into one pri
 - [Changelog](releases/RELEASES.md)
 - [Local development](getting-started/local-development.md)
 - [Smoke test](getting-started/smoke-test.md)
-- [Troubleshooting](getting-started/troubleshooting.md)
+- [Troubleshooting](operations/troubleshooting/index.md)
 - [Incident response guide](operations/observability/incident-response.md)
 - [API compatibility policy](api/fundamentals.md#compatibility-and-versioning-policy)
 - [Production rollout golden path](operations/deployment/production-rollout.md)

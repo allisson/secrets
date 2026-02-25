@@ -1,6 +1,6 @@
 # 🎫 Tokenization API
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 > Applies to: API v1
 
 The Tokenization API provides format-preserving token generation for sensitive values,
@@ -279,4 +279,4 @@ If data must remain confidential at rest, keep it in encrypted plaintext payload
 - [Policies](../auth/policies.md)
 - [Capability matrix](../fundamentals.md#capability-matrix)
 - [CLI Commands](../../cli-commands.md)
-- [Production operations](../../operations/deployment/production.md)
+- [Production operations](../../operations/deployment/docker-hardened.md)

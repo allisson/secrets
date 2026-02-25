@@ -1,6 +1,6 @@
 # 🧪 Policy Smoke Tests
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 Use this page to quickly validate authorization behavior after policy changes.
 
@@ -217,4 +217,4 @@ echo "policy smoke suite: PASS"
 - [Capability matrix](../../api/fundamentals.md#capability-matrix)
 - [Policies cookbook](../../api/auth/policies.md)
 - [Incident response guide](../observability/incident-response.md)
-- [Troubleshooting](../../getting-started/troubleshooting.md)
+- [Troubleshooting](../../operations/troubleshooting/index.md)

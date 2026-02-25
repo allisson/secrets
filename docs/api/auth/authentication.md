@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.

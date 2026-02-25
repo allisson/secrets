@@ -1,6 +1,6 @@
 # 🏗️ Architecture
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 Secrets follows Clean Architecture with domain-driven boundaries so cryptographic rules stay isolated from transport and storage concerns.
 

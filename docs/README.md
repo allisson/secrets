@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-25
 
 Metadata source for release/API labels: `docs/metadata.json`
 
@@ -11,7 +11,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 - 🐳 [getting-started/docker.md](getting-started/docker.md) (recommended)
 - 💻 [getting-started/local-development.md](getting-started/local-development.md)
 - 🧭 [getting-started/day-0-walkthrough.md](getting-started/day-0-walkthrough.md)
-- 🧰 [getting-started/troubleshooting.md](getting-started/troubleshooting.md)
+- 🧰 [operations/troubleshooting/index.md](operations/troubleshooting/index.md)
 - ✅ [getting-started/smoke-test.md](getting-started/smoke-test.md)
 - 🧪 [cli-commands.md](cli-commands.md)
 
@@ -20,7 +20,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 1. Start with Docker guide: [getting-started/docker.md](getting-started/docker.md)
 2. Validate end-to-end setup: [getting-started/smoke-test.md](getting-started/smoke-test.md)
 3. Follow rollout runbook: [operations/deployment/production-rollout.md](operations/deployment/production-rollout.md)
-4. Apply production hardening checklist: [operations/deployment/production.md](operations/deployment/production.md)
+4. Apply production hardening checklist: [operations/deployment/docker-hardened.md](operations/deployment/docker-hardened.md)
 5. Use runbook hub for rollout and incidents: [operations/runbooks/README.md](operations/runbooks/README.md)
 
 ## 👥 Persona Paths
@@ -45,7 +45,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 **Operations: Security:**
 
-- 🛡️ [operations/security/hardening.md](operations/security/hardening.md) - Includes trusted proxy configuration
+- 🛡️ [operations/deployment/docker-hardened.md](operations/deployment/docker-hardened.md) - Includes trusted proxy configuration
 
 **Operations: Observability:**
 
@@ -55,7 +55,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 **Operations: Deployment:**
 
 - 🚀 [operations/deployment/production-rollout.md](operations/deployment/production-rollout.md)
-- 🏭 [operations/deployment/production.md](operations/deployment/production.md) - Includes known limitations
+- 🏭 [operations/deployment/docker-hardened.md](operations/deployment/docker-hardened.md) - Includes known limitations
 
 **Operations: Runbooks:**
 
@@ -95,13 +95,13 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 - `401 403 429 decision tree incident` -> [operations/observability/incident-response.md](operations/observability/incident-response.md)
 - `first 15 minutes incident playbook` -> [operations/observability/incident-response.md](operations/observability/incident-response.md)
-- `trusted proxy retry-after token 429` -> [operations/security/hardening.md#trusted-proxy-configuration](operations/security/hardening.md#trusted-proxy-configuration)
-- `known limitations` -> [operations/deployment/production.md#known-limitations-and-tradeoffs](operations/deployment/production.md#known-limitations-and-tradeoffs)
+- `trusted proxy retry-after token 429` -> [operations/deployment/docker-hardened.md](operations/deployment/docker-hardened.md)
+- `known limitations` -> [operations/deployment/docker-hardened.md](operations/deployment/docker-hardened.md)
 - `examples` -> [examples/README.md](examples/README.md)
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.12.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.13.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 
@@ -150,4 +150,4 @@ Secrets is inspired by HashiCorp Vault, but it is much simpler and intentionally
 - [Docker getting started](getting-started/docker.md)
 - [Architecture](concepts/architecture.md)
 - [Authentication API](api/auth/authentication.md)
-- [Production operations](operations/deployment/production.md)
+- [Production operations](operations/deployment/docker-hardened.md)

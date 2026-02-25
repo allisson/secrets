@@ -127,6 +127,6 @@ Constrain all SQL to features common to both databases.
 
 - [Configuration](../configuration.md#db_driver)
 - [Local development](../getting-started/local-development.md)
-- [Production deployment](../operations/deployment/production.md)
+- [Production deployment](../operations/deployment/docker-hardened.md)
 - [ADR 0001: Envelope Encryption Model](0001-envelope-encryption-model.md)
 - [ADR 0005: Context-Based Transaction Management](0005-context-based-transaction-management.md)

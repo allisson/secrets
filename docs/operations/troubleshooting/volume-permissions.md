@@ -1,7 +1,7 @@
 # 🔐 Volume Permission Troubleshooting (v0.10.0+)
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: DevOps engineers, SRE teams, container platform operators
 
 ## Table of Contents
@@ -81,7 +81,7 @@ Error: failed to write to /data: permission denied
 When you mount a host directory into a container:
 
 ```bash
-docker run -v /host/path:/container/path allisson/secrets:v0.12.0
+docker run -v /host/path:/container/path allisson/secrets:v0.13.0
 
 ```
 
@@ -130,7 +130,7 @@ docker run -d --name secrets-api \
   -v /path/to/host/data:/data \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.12.0 server
+  allisson/secrets:v0.13.0 server
 
 ```
 
@@ -182,7 +182,7 @@ docker run -d --name secrets-api \
   -v secrets-data:/data \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.12.0 server
+  allisson/secrets:v0.13.0 server
 
 ```
 
@@ -193,7 +193,7 @@ version: '3.8'
 
 services:
   secrets-api:
-    image: allisson/secrets:v0.12.0
+    image: allisson/secrets:v0.13.0
     env_file: .env
     ports:
       - "8080:8080"
@@ -292,7 +292,7 @@ docker run -d --name secrets-api \
   -v /host/path:/data \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.12.0 server
+  allisson/secrets:v0.13.0 server
 
 ```
 
@@ -420,11 +420,11 @@ docker run -d --name secrets-api \
 
 - [v0.10.0 Release Notes](../../releases/RELEASES.md#0100---2026-02-21)
 
-- [Container Security Guide](../security/container-security.md)
+- [Container Security Guide](../deployment/docker-hardened.md)
 
 - [Docker Quick Start](../../getting-started/docker.md)
 
-- [Production Deployment Guide](../deployment/production.md)
+- [Production Deployment Guide](../deployment/docker-hardened.md)
 
 - [Migration Guide](../../releases/RELEASES.md#migration-guide)
 

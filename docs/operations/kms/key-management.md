@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-25
 
 This guide covers master keys and KEK lifecycle operations.
 
@@ -139,11 +139,11 @@ create key -> 409 Conflict: rotate key
 
 ## Related
 
-- 🏭 Production deployment: `docs/operations/deployment/production.md`
+- 🏭 Production deployment: `docs/operations/deployment/docker-hardened.md`
 
 ## See also
 
-- [Production operations](../deployment/production.md)
+- [Production operations](../deployment/docker-hardened.md)
 - [Security model](../../concepts/security-model.md)
 - [Transit API](../../api/data/transit.md)
 - [Environment variables](../../configuration.md)

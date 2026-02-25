@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.

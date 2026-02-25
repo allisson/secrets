@@ -1,7 +1,7 @@
 # 🏷️ OCI Image Labels Reference
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: DevOps engineers, security teams, compliance officers
 
 ## Table of Contents
@@ -239,8 +239,8 @@ grype allisson/secrets:latest
 
 ```bash
 # Build with version metadata
-docker build -t allisson/secrets:v0.12.0 \
-  --build-arg VERSION=v0.12.0 \
+docker build -t allisson/secrets:v0.13.0 \
+  --build-arg VERSION=v0.13.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 
@@ -427,7 +427,7 @@ docker build -t allisson/secrets:latest \
   --build-arg VERSION=$(git describe --tags) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
-# Labels show: version=v0.12.0, created=2026-02-21T10:30:00Z, revision=23d48a1...
+# Labels show: version=v0.13.0, created=2026-02-21T10:30:00Z, revision=23d48a1...
 
 ```
 
@@ -492,7 +492,7 @@ docker history allisson/secrets:latest | grep ARG
 
 # Rebuild with build arguments
 docker build -t allisson/secrets:latest \
-  --build-arg VERSION=v0.12.0 \
+  --build-arg VERSION=v0.13.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 
@@ -531,7 +531,7 @@ docker inspect allisson/secrets:latest \
 
 - [Dockerfile](../../../Dockerfile) - Source of OCI labels
 
-- [Container Security Guide](../security/container-security.md) - Security hardening and verification
+- [Container Security Guide](docker-hardened.md) - Security hardening and verification
 
 - [Security Scanning Guide](../security/scanning.md) - Vulnerability scanning and SBOM generation
 

@@ -1,6 +1,6 @@
 # 🧭 Operator Runbook Index
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-25
 
 Use this page as the single entry point for rollout, validation, and incident runbooks.
 
@@ -9,7 +9,7 @@ Use this page as the single entry point for rollout, validation, and incident ru
 - [Release notes](../../releases/RELEASES.md)
 - [Release compatibility matrix](../../releases/compatibility-matrix.md)
 - [Production rollout golden path](../deployment/production-rollout.md)
-- [Production deployment guide](../deployment/production.md)
+- [Production deployment guide](../deployment/docker-hardened.md)
 - [KMS setup guide](../kms/setup.md)
 
 ## Authorization Policy Validation
@@ -31,7 +31,7 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 - [Disaster Recovery Runbook](disaster-recovery.md) - Complete service restoration procedures
 - [Incident response guide](../observability/incident-response.md)
-- [Troubleshooting](../../getting-started/troubleshooting.md)
+- [Troubleshooting](../../operations/troubleshooting/index.md)
 - [Key management operations](../kms/key-management.md)
 - [Backup and Restore Guide](../deployment/backup-restore.md)
 
@@ -100,8 +100,8 @@ References:
 
 References:
 
-- [Production token throttling runbook](../deployment/production.md#10-token-endpoint-throttling-runbook)
-- [Trusted proxy reference](../security/hardening.md#trusted-proxy-configuration)
+- [Production token throttling runbook](../deployment/docker-hardened.md)
+- [Trusted proxy reference](../deployment/docker-hardened.md)
 
 ### Rollback Triggers
 

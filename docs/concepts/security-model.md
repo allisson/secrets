@@ -1,6 +1,6 @@
 # 🔒 Security Model
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 Secrets is designed for practical defense-in-depth around secret storage and cryptographic operations.
 
@@ -49,7 +49,7 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 - Forward audit logs to SIEM/log aggregation for long-term retention
 - Disable CORS unless browser-based access is explicitly required
 
-For comprehensive production security guidance, see [Security Hardening Guide](../operations/security/hardening.md).
+For comprehensive production security guidance, see [Security Hardening Guide](../operations/deployment/docker-hardened.md).
 
 ## ⚠️ Known limitations
 
@@ -66,8 +66,8 @@ For comprehensive production security guidance, see [Security Hardening Guide](.
 
 ## See also
 
-- [Security hardening guide](../operations/security/hardening.md)
-- [Production deployment](../operations/deployment/production.md)
+- [Security hardening guide](../operations/deployment/docker-hardened.md)
+- [Production deployment](../operations/deployment/docker-hardened.md)
 - [Architecture](architecture.md)
 - [Authentication API](../api/auth/authentication.md)
 - [Policies cookbook](../api/auth/policies.md)

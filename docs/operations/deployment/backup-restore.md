@@ -1,7 +1,7 @@
 # 💾 Backup and Restore Guide
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: Platform engineers, SREs, DBAs
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -604,10 +604,10 @@ aws s3 ls s3://my-backups/secrets/
 
 ## See Also
 
-- [Production Deployment Guide](production.md) - Pre-production checklist includes backup validation
+- [Production Deployment Guide](docker-hardened.md) - Pre-production checklist includes backup validation
 
 - [Disaster Recovery Runbook](../runbooks/disaster-recovery.md) - Full DR procedures
 
 - [Database Scaling Guide](database-scaling.md) - Backup considerations for large databases
 
-- [Security Hardening Guide](../security/hardening.md) - Backup encryption best practices
+- [Security Hardening Guide](docker-hardened.md) - Backup encryption best practices

@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: secrets-postgres
+    env_file:
+      - .env.postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # SSL certificates for TLS connections
+      - ./certs/postgres:/var/lib/postgresql/certs:ro
+    ports:
+      - "127.0.0.1:5432:5432" # Bind to localhost only
+    command: >
+      postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/certs/server.crt -c ssl_key_file=/var/lib/postgresql/certs/server.key -c max_connections=100 -c shared_buffers=256MB
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - secrets-backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+
+  # Secrets API application
+  secrets-api:
+    image: allisson/secrets:v0.13.0
+    container_name: secrets-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.secrets
+    user: "65532:65532" # Run as nonroot user
+    command: [ "server" ]
+    expose:
+      - "8080"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - secrets-backend
+      - secrets-frontend
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=10m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Health check sidecar (distroless has no shell for HEALTHCHECK)
+  healthcheck:
+    image: alpine:3.21
+    container_name: secrets-healthcheck
+    depends_on:
+      - secrets-api
+    command: >
+      sh -c ' while true; do
+        if ! wget --spider -q -t 1 -T 5 http://secrets-api:8080/health; then
+          echo "Health check failed at $$(date)"
+          exit 1
+        fi
+        sleep 30
+      done '
+    networks:
+      - secrets-backend
+    restart: unless-stopped
+
+  # Nginx reverse proxy (TLS termination)
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: secrets-nginx
+    depends_on:
+      - secrets-api
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/nginx:/etc/nginx/certs:ro
+      - nginx-logs:/var/log/nginx
+    networks:
+      - secrets-frontend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+
+volumes:
+  postgres-data:
+    driver: local
+  nginx-logs:
+    driver: local
+
+networks:
+  secrets-backend:
+    driver: bridge
+    internal: true # No external access
+  secrets-frontend:
+    driver: bridge

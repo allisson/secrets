@@ -78,7 +78,7 @@ When deploying Secrets in production, follow these security recommendations:
 - ✅ **Security scanning**: Scan images with Trivy, Grype, or Docker Scout
 - ✅ **Digest pinning**: Use SHA256 digest tags for immutable deployments
 
-See [Container Security Guide](docs/operations/security/container-security.md) for complete details.
+See [Container Security Guide](docs/operations/deployment/docker-hardened.md) for complete details.
 
 ### Secrets Management
 
@@ -88,7 +88,7 @@ See [Container Security Guide](docs/operations/security/container-security.md) f
 - ✅ **Transport security**: Always use TLS/HTTPS in production
 - ✅ **Database encryption**: Enable database encryption at rest
 
-See [Security Hardening Guide](docs/operations/security/hardening.md) for complete details.
+See [Security Hardening Guide](docs/operations/deployment/docker-hardened.md) for complete details.
 
 ### API Authentication
 
