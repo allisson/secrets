@@ -132,7 +132,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 - Transit: `POST /v1/transit/keys`, `POST /v1/transit/keys/:name/rotate`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/transit/keys/:name/decrypt`, `DELETE /v1/transit/keys/:id` ([create vs rotate](docs/api/data/transit.md#create-vs-rotate), [error matrix](docs/api/data/transit.md#endpoint-error-matrix))
 - Tokenization: `POST /v1/tokenization/keys`, `POST /v1/tokenization/keys/:name/rotate`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/keys/:name/tokenize`, `POST /v1/tokenization/detokenize`, `POST /v1/tokenization/validate`, `POST /v1/tokenization/revoke`
 - Audit logs: `GET /v1/audit-logs`
-- Metrics: `GET /metrics` (available when `METRICS_ENABLED=true`)
+- Metrics: `GET :8081/metrics` (prom-compatible, available when `METRICS_ENABLED=true`)
 
 ## 📄 License
 

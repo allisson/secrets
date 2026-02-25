@@ -92,7 +92,8 @@ type Container struct {
 	tokenizationHandler    *tokenizationHTTP.TokenizationHandler
 
 	// Servers and Workers
-	httpServer *http.Server
+	httpServer    *http.Server
+	metricsServer *http.MetricsServer
 
 	// Initialization flags and mutex for thread-safety
 	mu                              sync.Mutex
@@ -137,6 +138,7 @@ type Container struct {
 	tokenizationKeyHandlerInit      sync.Once
 	tokenizationHandlerInit         sync.Once
 	httpServerInit                  sync.Once
+	metricsServerInit               sync.Once
 	initErrors                      map[string]error
 }
 
@@ -363,6 +365,24 @@ func (c *Container) HTTPServer() (*http.Server, error) {
 		return nil, storedErr
 	}
 	return c.httpServer, nil
+}
+
+// MetricsServer returns the Metrics server instance.
+func (c *Container) MetricsServer() (*http.MetricsServer, error) {
+	var err error
+	c.metricsServerInit.Do(func() {
+		c.metricsServer, err = c.initMetricsServer()
+		if err != nil {
+			c.initErrors["metricsServer"] = err
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if storedErr, exists := c.initErrors["metricsServer"]; exists {
+		return nil, storedErr
+	}
+	return c.metricsServer, nil
 }
 
 // SecretService returns the secret service for authentication operations.
@@ -636,6 +656,13 @@ func (c *Container) Shutdown(ctx context.Context) error {
 		}
 	}
 
+	// Shutdown metrics server if initialized
+	if c.metricsServer != nil {
+		if err := c.metricsServer.Shutdown(ctx); err != nil {
+			shutdownErrors = append(shutdownErrors, fmt.Errorf("metrics server shutdown: %w", err))
+		}
+	}
+
 	// Close master key chain if initialized
 	if c.masterKeyChain != nil {
 		c.masterKeyChain.Close()
@@ -759,8 +786,13 @@ func (c *Container) initBusinessMetrics() (metrics.BusinessMetrics, error) {
 // initHTTPServer creates the HTTP server with all its dependencies.
 func (c *Container) initHTTPServer() (*http.Server, error) {
 	logger := c.Logger()
+	db, err := c.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for http server: %w", err)
+	}
 
 	server := http.NewServer(
+		db,
 		c.config.ServerHost,
 		c.config.ServerPort,
 		logger,
@@ -1732,4 +1764,27 @@ func (c *Container) initTokenizationHandler() (*tokenizationHTTP.TokenizationHan
 	logger := c.Logger()
 
 	return tokenizationHTTP.NewTokenizationHandler(tokenizationUseCase, logger), nil
+}
+
+// initMetricsServer creates the Metrics server if metrics are enabled.
+func (c *Container) initMetricsServer() (*http.MetricsServer, error) {
+	if !c.config.MetricsEnabled {
+		return nil, nil
+	}
+
+	logger := c.Logger()
+	// Get metrics provider using existing accessor
+	provider, err := c.MetricsProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
+	}
+
+	server := http.NewMetricsServer(
+		c.config.ServerHost,
+		c.config.MetricsPort,
+		logger,
+		provider,
+	)
+
+	return server, nil
 }

@@ -45,6 +45,7 @@ CORS_ALLOW_ORIGINS=
 # Metrics configuration
 METRICS_ENABLED=true
 METRICS_NAMESPACE=secrets
+METRICS_PORT=8081
 
 # Account lockout
 LOCKOUT_MAX_ATTEMPTS=10
@@ -436,17 +437,23 @@ CORS_ALLOW_ORIGINS=https://app.example.com,https://admin.example.com
 
 Enable OpenTelemetry metrics collection (default: `true`).
 
-- 📊 When enabled, exposes `/metrics` endpoint in Prometheus format
+- 📊 When enabled, exposes `/metrics` endpoint on port `8081` (default) in Prometheus format
 
-- 📉 When disabled, HTTP metrics middleware and `/metrics` route are disabled
+- 📉 When disabled, HTTP metrics middleware and `/metrics` server are disabled
 
-**⚠️ Security Warning:** If metrics are enabled, restrict access to the `/metrics` endpoint using network policies or reverse proxy authentication. Never expose `/metrics` to the public internet.
+- ⚙️ Port can be configured via `METRICS_PORT`
+
+**⚠️ Security Warning:** The `/metrics` endpoint is exposed on a dedicated port to facilitate network-level restriction. Ensure this port is not exposed to the public internet.
 
 ### METRICS_NAMESPACE
 
 Prefix for all metric names (default: `secrets`).
 
 **Example:** With `METRICS_NAMESPACE=secrets`, metrics are named `secrets_http_requests_total`, `secrets_http_request_duration_seconds`, etc.
+
+### METRICS_PORT
+
+Port to bind the metrics HTTP server (default: `8081`).
 
 ## Master key generation
 

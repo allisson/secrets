@@ -18,7 +18,7 @@ services:
 
   # Application
   secrets-api:
-    image: allisson/secrets:v0.13.0
+    image: allisson/secrets:v0.14.0
     depends_on:
       postgres:
         condition: service_healthy
@@ -27,6 +27,7 @@ services:
     command: [ "server" ]
     expose:
       - "8080"
+      - "8081"
     networks:
       - backend
       - frontend

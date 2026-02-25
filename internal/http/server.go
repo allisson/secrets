@@ -10,6 +10,7 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 
 // Server represents the HTTP server.
 type Server struct {
+	db     *sql.DB
 	server *http.Server
 	logger *slog.Logger
 	router *gin.Engine
@@ -39,11 +41,13 @@ type Server struct {
 
 // NewServer creates a new HTTP server.
 func NewServer(
+	db *sql.DB,
 	host string,
 	port int,
 	logger *slog.Logger,
 ) *Server {
 	return &Server{
+		db:     db,
 		logger: logger,
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", host, port),
@@ -95,11 +99,6 @@ func (s *Server) SetupRouter(
 	// Add HTTP metrics middleware if metrics are enabled
 	if metricsProvider != nil {
 		router.Use(metrics.HTTPMetricsMiddleware(metricsProvider.MeterProvider(), metricsNamespace))
-	}
-
-	// Metrics endpoint (Prometheus scrape endpoint, no authentication required)
-	if metricsProvider != nil {
-		router.GET("/metrics", gin.WrapH(metricsProvider.Handler()))
 	}
 
 	// Health and readiness endpoints (outside API versioning)
@@ -345,5 +344,29 @@ func (s *Server) healthHandler(c *gin.Context) {
 
 // readinessHandler returns a simple readiness check response.
 func (s *Server) readinessHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	dbStatus := "ok"
+	httpStatus := http.StatusOK
+
+	if s.db == nil {
+		s.logger.Error("readiness check failed: database not initialized")
+		dbStatus = "error"
+		httpStatus = http.StatusServiceUnavailable
+	} else if err := s.db.PingContext(ctx); err != nil {
+		s.logger.Error("readiness check failed: database ping error", slog.Any("err", err))
+		dbStatus = "error"
+		httpStatus = http.StatusServiceUnavailable
+	}
+
+	c.JSON(httpStatus, gin.H{
+		"status": map[int]string{
+			http.StatusOK:                 "ready",
+			http.StatusServiceUnavailable: "not_ready",
+		}[httpStatus],
+		"components": gin.H{
+			"database": dbStatus,
+		},
+	})
 }

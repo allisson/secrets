@@ -779,7 +779,7 @@ mysql -e "SHOW DATABASES;" # MySQL
 docker run --rm \
   -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="postgresql://secrets:password@postgres:5432/secrets?sslmode=disable" \
-  allisson/secrets:v0.13.0 migrate
+  allisson/secrets:v0.14.0 migrate
 
 ```
 
@@ -818,7 +818,7 @@ ERROR 1146 (42S02): Table 'secrets.clients' doesn't exist
 docker run --rm \
   -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="$DB_CONNECTION_STRING" \
-  allisson/secrets:v0.13.0 migrate
+  allisson/secrets:v0.14.0 migrate
 
 # Docker Compose
 docker compose run --rm secrets-api migrate
@@ -971,25 +971,6 @@ az role assignment create \
 
 ## Container and Runtime Errors
 
-### "permission denied" (volume mounts)
-
-**Error**:
-
-```text
-
-panic: open /data/app.db: permission denied
-
-```
-
-**Causes:**
-v0.10.0+ runs as non-root user (UID 65532), but volume is owned by root or another user.
-
-**Solutions:**
-
-See dedicated guide: [Volume Permission Troubleshooting](volume-permissions.md)
-
----
-
 ### "exec format error" (wrong architecture)
 
 **Error**:
@@ -1008,13 +989,13 @@ Running ARM64 image on x86_64 host (or vice versa) without QEMU emulation.
 ```bash
 
 # Force pull correct architecture
-docker pull --platform linux/amd64 allisson/secrets:v0.13.0
+docker pull --platform linux/amd64 allisson/secrets:v0.14.0
 
 # Or enable QEMU for cross-platform support
 docker run --privileged --rm tonistiigi/binfmt --install all
 
 # Verify architecture
-docker inspect allisson/secrets:v0.13.0 --format='{{.Architecture}}'
+docker inspect allisson/secrets:v0.14.0 --format='{{.Architecture}}'
 
 ```
 
@@ -1191,6 +1172,6 @@ Policy path uses unsupported wildcard pattern.
 - [Troubleshooting Guide](../../operations/troubleshooting/index.md) - Step-by-step troubleshooting workflows
 - [Configuration Reference](../../configuration.md) - All environment variables
 - [API Fundamentals](../../api/fundamentals.md) - API error handling patterns
-- [Volume Permission Troubleshooting](volume-permissions.md) - v0.10.0+ permission issues
+
 - [KMS Setup Guide](../kms/setup.md) - KMS provider configuration
 - [Incident Response Guide](../observability/incident-response.md) - Production incident handling

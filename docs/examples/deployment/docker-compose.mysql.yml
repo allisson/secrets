@@ -22,7 +22,7 @@ services:
       - secrets-net
 
   secrets-api:
-    image: allisson/secrets:v0.13.0
+    image: allisson/secrets:v0.14.0
     container_name: secrets-api
     depends_on:
       mysql:
@@ -36,6 +36,7 @@ services:
       AUDIT_LOG_ENABLED: "true"
     ports:
       - "8080:8080"
+      - "8081:8081"
     command: [ "server" ]
     networks:
       - secrets-net

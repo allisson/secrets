@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.13.0](#0130---2026-02-25)
+**Latest Release**: [v0.14.0](#0140---2026-02-25)
 
 **All Releases**:
+
+- [v0.14.0 (2026-02-25)](#0140---2026-02-25) - Dedicated metrics server
 
 - [v0.13.0 (2026-02-25)](#0130---2026-02-25) - Documentation conciseness refactor
 
@@ -41,6 +43,28 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.14.0] - 2026-02-25
+
+### Dedicated Metrics Server
+
+This release separates the Prometheus `/metrics` endpoint from the main API server. It now runs on a dedicated port (default `8081`), improving security by allowing operators to easily block public access to metrics at the network level.
+
+### Added
+
+- `METRICS_PORT` environment variable (default `8081`) to configure the dedicated metrics server port
+- Built-in metrics server executing in a separate goroutine
+
+### Changed
+
+- The Prometheus `/metrics` endpoint is no longer exposed on the main API port (`8080`)
+- Updated deployment examples (Docker Compose, etc.) and documentation to reflect the new `8081` metrics port
+
+### Security
+
+- Reduces the risk of exposing internal application metrics to the public internet by decoupling it from the main API port
 
 ---
 
@@ -525,16 +549,6 @@ curl http://staging:8080/v1/secrets/test/rollback \
 
 #### Troubleshooting Migration Issues
 
-*### Issue: "permission denied" on mounted volumes**
-
-See comprehensive guide: [Volume Permission Troubleshooting](../operations/troubleshooting/volume-permissions.md)
-
-**Quick fixes**:
-
-- Docker: `sudo chown -R 65532:65532 /path/to/volume` or use named volumes
-
----
-
 *### Issue: Health checks failing after upgrade**
 
 ```bash
@@ -568,8 +582,6 @@ docker run --rm --env-file .env allisson/secrets:v0.12.0 server
 ```
 
 #### Additional Resources
-
-- [Volume Permission Troubleshooting](../operations/troubleshooting/volume-permissions.md) (comprehensive guide)
 
 - [Container Security Guide](../operations/deployment/docker-hardened.md) (security best practices)
 

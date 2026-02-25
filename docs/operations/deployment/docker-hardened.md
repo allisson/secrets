@@ -18,7 +18,7 @@ Secrets uses Google's `distroless/static-debian13` base image for maximum securi
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.13.0
+    image: allisson/secrets:v0.14.0
     user: "65532:65532"
     read_only: true
     cap_drop: ["ALL"]

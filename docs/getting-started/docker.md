@@ -277,30 +277,6 @@ For a full end-to-end check, run `docs/getting-started/smoke-test.sh` (usage in 
 
 ## Common Issues (v0.10.0+)
 
-### Volume Permission Errors
-
-If you encounter permission errors with mounted volumes after upgrading to v0.10.0, this is due to the non-root user (UID 65532) introduced for security.
-
-**Symptoms**:
-
-- Container fails to start with "permission denied" errors
-
-- Application cannot write to mounted directories
-
-- Logs show "EACCES" or "operation not permitted"
-
-**Quick fix** (Docker):
-
-```bash
-# Change host directory ownership to UID 65532
-sudo chown -R 65532:65532 /path/to/host/directory
-
-```
-
-**For comprehensive solutions** (Docker Compose, named volumes), see:
-
-- [Volume Permission Troubleshooting Guide](../operations/troubleshooting/volume-permissions.md)
-
 ### Health Check Configuration
 
 For health check examples (Docker Compose sidecar, external monitoring), see the "Security Features" section above.

@@ -486,7 +486,7 @@ func TestIntegration_Health_BasicChecks(t *testing.T) {
 				resp, body := ctx.makeRequest(t, http.MethodGet, "/ready", nil, false)
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-				var response map[string]string
+				var response map[string]interface{}
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
 				assert.Equal(t, "ready", response["status"])

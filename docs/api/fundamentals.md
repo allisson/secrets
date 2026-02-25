@@ -144,7 +144,7 @@ Rate limiting scope matrix:
 | `POST /v1/token` | Yes | Unauthenticated endpoint, rate-limited per client IP |
 | `GET /health` | No | Liveness checks |
 | `GET /ready` | No | Readiness checks |
-| `GET /metrics` | No | Prometheus scraping |
+| `GET :8081/metrics` | No | Prometheus scraping |
 
 ### Defaults
 

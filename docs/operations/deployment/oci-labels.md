@@ -239,7 +239,7 @@ grype allisson/secrets:latest
 
 ```bash
 # Build with version metadata
-docker build -t allisson/secrets:v0.13.0 \
+docker build -t allisson/secrets:v0.14.0 \
   --build-arg VERSION=v0.13.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .

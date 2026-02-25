@@ -9,7 +9,7 @@
 - [Overview](#overview)
 - [Quick Start (Development)](#quick-start-development)
 - [Production Configuration](#production-configuration)
-- [Volume Permissions (v0.10.0+)](#volume-permissions-v0100)
+
 - [Health Checks](#health-checks)
 - [Monitoring and Logging](#monitoring-and-logging)
 - [Complete Production Stack (All-in-One)](#complete-production-stack-all-in-one)
@@ -31,7 +31,6 @@ This guide provides production-ready Docker Compose configurations for deploying
 - Health check monitoring with sidecar pattern
 - TLS termination with nginx reverse proxy
 - Secrets management with environment files
-- Volume permission handling for non-root user
 
 ---
 
@@ -169,61 +168,6 @@ curl -k https://localhost/health
 
 ---
 
-## Volume Permissions (v0.10.0+)
-
-v0.10.0 runs as non-root user (UID 65532). If using bind mounts, fix permissions:
-
-### Option 1: Use Named Volumes (Recommended)
-
-```yaml
-# docker-compose.yml
-volumes:
-  secrets-data:
-    driver: local
-
-services:
-  secrets-api:
-    volumes:
-      - secrets-data:/data
-```
-
-Docker manages permissions automatically.
-
-### Option 2: Fix Host Directory Permissions
-
-```bash
-# Create directory with correct ownership
-mkdir -p /data/secrets
-sudo chown -R 65532:65532 /data/secrets
-
-# Use in compose
-services:
-  secrets-api:
-    volumes:
-      - /data/secrets:/data
-```
-
-### Option 3: Init Container Pattern
-
-```yaml
-services:
-  secrets-init:
-    image: alpine:3.21
-    command: chown -R 65532:65532 /data
-    volumes:
-      - secrets-data:/data
-
-  secrets-api:
-    depends_on:
-      - secrets-init
-    volumes:
-      - secrets-data:/data
-```
-
-**See also**: [Volume Permission Troubleshooting Guide](../troubleshooting/volume-permissions.md)
-
----
-
 ## Health Checks
 
 ### External Health Check (Sidecar Pattern)
@@ -233,7 +177,7 @@ Since distroless images have no shell, use an external container for health chec
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.13.0
+    image: allisson/secrets:v0.14.0
     # No HEALTHCHECK instruction (distroless has no shell)
 
   healthcheck:
@@ -472,7 +416,6 @@ curl http://localhost:8080/health
 - [ ] **Volumes**:
   - [ ] Named volumes used (not bind mounts)
   - [ ] Volume backups configured
-  - [ ] Volume permissions verified (UID 65532)
 
 ---
 
@@ -502,16 +445,10 @@ curl http://localhost:8080/health
 docker compose exec postgres pg_isready -U secrets
 ```
 
-### Volume Permission Errors
-
-See [Volume Permission Troubleshooting Guide](../troubleshooting/volume-permissions.md).
-
----
-
 ## See Also
 
 - [Docker Quick Start](../../getting-started/docker.md) - Basic Docker usage
 - [Production Deployment Guide](docker-hardened.md) - General production best practices
 - [Health Check Guide](../observability/health-checks.md) - Health check patterns
-- [Volume Permissions Guide](../troubleshooting/volume-permissions.md) - Fix permission issues
+
 - [Container Security Guide](docker-hardened.md) - Security hardening

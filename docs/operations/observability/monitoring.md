@@ -59,7 +59,7 @@ METRICS_NAMESPACE=secrets
 Use this minimal local stack to visualize Secrets metrics quickly:
 
 1. Start Secrets with metrics enabled
-2. Start Prometheus with a scrape config for `http://host.docker.internal:8080/metrics`
+2. Start Prometheus with a scrape config for `http://host.docker.internal:8081/metrics`
 3. Open Grafana and create panels from Prometheus queries
 
 Note: On Linux, replace `host.docker.internal` with the host IP reachable from your Docker network.
@@ -73,7 +73,7 @@ global:
 scrape_configs:
   - job_name: "secrets"
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["host.docker.internal:8081"]
     metrics_path: "/metrics"
 ```
 
@@ -103,7 +103,7 @@ sum(rate(secrets_http_requests_total[5m])) by (method, path)
 The metrics are exposed at the `/metrics` endpoint in Prometheus exposition format:
 
 ```bash
-curl http://localhost:8080/metrics
+curl http://localhost:8081/metrics
 ```
 
 **Key Points:**
@@ -272,7 +272,8 @@ Add the Secrets application to your `prometheus.yml`:
 scrape_configs:
   - job_name: 'secrets'
     static_configs:
-      - targets: ['localhost:8080']
+    static_configs:
+      - targets: ['localhost:8081']
     metrics_path: '/metrics'
     scrape_interval: 15s
 ```
