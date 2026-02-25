@@ -596,6 +596,37 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 		assert.Equal(t, decryptedKey, retrievedKek.Key)
 	})
 
+	t.Run("Error_NoKekFound", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockKekRepo := usecaseMocks.NewMockKekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKeyID := "test-master-key"
+		masterKey := &cryptoDomain.MasterKey{
+			ID:  masterKeyID,
+			Key: make([]byte, 32),
+		}
+		masterKeyChain := createMasterKeyChain(masterKeyID, masterKey)
+		defer masterKeyChain.Close()
+
+		// Setup expectations
+		mockKekRepo.EXPECT().
+			List(ctx).
+			Return([]*cryptoDomain.Kek{}, nil).
+			Once()
+
+		// Execute
+		uc := NewKekUseCase(mockTxManager, mockKekRepo, mockKeyManager)
+		kekChain, err := uc.Unwrap(ctx, masterKeyChain)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, kekChain)
+		assert.ErrorIs(t, err, cryptoDomain.ErrKekNotFound)
+	})
+
 	t.Run("Success_UnwrapMultipleKeks", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)

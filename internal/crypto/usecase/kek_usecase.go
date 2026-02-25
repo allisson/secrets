@@ -95,6 +95,10 @@ func (k *kekUseCase) Unwrap(
 		return nil, err
 	}
 
+	if len(keks) == 0 {
+		return nil, cryptoDomain.ErrKekNotFound
+	}
+
 	for _, kek := range keks {
 		masterKey, err := k.getMasterKey(masterKeyChain, kek.MasterKeyID)
 		if err != nil {

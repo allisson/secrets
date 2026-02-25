@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.14.0](#0140---2026-02-25)
+**Latest Release**: [v0.14.1](#0141---2026-02-25)
 
 **All Releases**:
+
+- [v0.14.1 (2026-02-25)](#0141---2026-02-25) - KEK bug fixes
 
 - [v0.14.0 (2026-02-25)](#0140---2026-02-25) - Dedicated metrics server
 
@@ -43,6 +45,15 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.14.1] - 2026-02-25
+
+### Fixed
+
+- Fixed panic in `NewKekChain` when no KEKs are found
+- Added proper `ErrKekNotFound` error handling in `kekUseCase.Unwrap` when attempting to unwrap with an empty KEK chain
 
 ---
 
