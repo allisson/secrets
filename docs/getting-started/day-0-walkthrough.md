@@ -1,6 +1,6 @@
 # 🧭 Day 0 Walkthrough
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 Choose your onboarding path based on your role:
 
@@ -37,9 +37,9 @@ Use this linear path for first-time operations onboarding.
 
 ### Step 5: Harden production posture
 
-- Read: [Production deployment guide](../operations/deployment/production.md)
-- Read: [Security hardening guide](../operations/security/hardening.md)
-- Check: [Known limitations](../operations/deployment/production.md#known-limitations-and-tradeoffs)
+- Read: [Production deployment guide](../operations/deployment/docker-hardened.md)
+- Read: [Security hardening guide](../operations/deployment/docker-hardened.md)
+- Check: [Known limitations](../operations/deployment/docker-hardened.md)
 
 ### Expected outcomes
 

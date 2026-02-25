@@ -1,6 +1,6 @@
 # 🔁 Release Compatibility Matrix
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 
 Use this page to understand upgrade impact between recent releases.
 
@@ -14,6 +14,7 @@ If you need upgrade guidance for older versions, consult the full release histor
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.12.0 -> v0.13.0` | No schema migration required | Aggressive documentation refactor for conciseness and maintainability | None (documentation only) |
 | `v0.11.0 -> v0.12.0` | No schema migration required | Added `rewrap-deks` CLI command to bulk re-encrypt DEKs, removed localized "What's New" section from root README | None (backward compatible, no runtime changes) |
 | `v0.10.0 -> v0.11.0` | Migration 000004 required (adds `failed_attempts INT NOT NULL DEFAULT 0` and `locked_until TIMESTAMPTZ` columns to `clients` table) | Account lockout enabled by default (10 attempts, 30 min). `POST /v1/token` may return `423 Locked`. Two new env vars: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MINUTES` | Run migration 000004, optionally configure `LOCKOUT_*` vars, verify token issuance still works, monitor for unexpected 423 responses |
 | `v0.9.0 -> v0.10.0` | No schema migration required | Docker base image changed (scratch → distroless), container runs as non-root (UID 65532), read-only filesystem support, multi-arch builds (amd64/arm64) | Update volume permissions for bind mounts ([guide](../operations/troubleshooting/volume-permissions.md)), update health check patterns ([guide](../operations/observability/health-checks.md)), verify rollback to v0.9.0 works |
@@ -27,6 +28,12 @@ If you need upgrade guidance for older versions, consult the full release histor
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.13.0`:
+
+1. All documentation is significantly more concise and reference-oriented
+2. `make docs-lint` passes with no errors
+3. Code examples are centralized in `docs/examples/`
 
 For `v0.12.0`:
 

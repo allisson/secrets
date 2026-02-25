@@ -1,6 +1,6 @@
 # 🚨 Incident Response Guide
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 This guide provides fast incident triage workflows, decision paths, and failure playbooks for common API issues.
 
@@ -65,7 +65,7 @@ Expected:
 
 1. `401`-heavy: credential/token issue → [401 Spike Playbook](#401-spike-unauthorized)
 2. `403`-heavy: policy mismatch → [403 Spike Playbook](#403-spike-policycapability-mismatch) and [Policy smoke tests](../runbooks/policy-smoke-tests.md)
-3. `429` on `/v1/token`: IP throttling/proxy path → [Token throttling runbook](../deployment/production.md#10-token-endpoint-throttling-runbook)
+3. `429` on `/v1/token`: IP throttling/proxy path → [Token throttling runbook](../deployment/docker-hardened.md)
 4. `5xx`/readiness failures: dependency/runtime path → [Production rollout rollback triggers](../deployment/production-rollout.md#rollback-trigger-conditions)
 
 ---
@@ -80,12 +80,12 @@ Use this to route incidents quickly to the right runbook.
    - Yes → infrastructure/runtime path: Follow [First 15 Minutes](#quick-start-first-15-minutes) above
    - No → continue
 2. Is `GET /ready` failing?
-   - Yes → dependencies/migrations/key-load path: [Troubleshooting](../../getting-started/troubleshooting.md)
+   - Yes → dependencies/migrations/key-load path: [Troubleshooting](../../operations/troubleshooting/index.md)
    - No → continue
 3. Identify dominant status code and route group:
    - `401` → [401 Spike Playbook](#401-spike-unauthorized)
    - `403` → [403 Spike Playbook](#403-spike-policycapability-mismatch)
-   - `429` on `/v1/token` → [Token throttling runbook](../deployment/production.md#10-token-endpoint-throttling-runbook)
+   - `429` on `/v1/token` → [Token throttling runbook](../deployment/docker-hardened.md)
    - `429` on authenticated routes → [API rate limiting](../../api/fundamentals.md#rate-limiting)
    - `422` → [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
    - `5xx` → [First 15 Minutes](#quick-start-first-15-minutes)
@@ -225,7 +225,7 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 ## See also
 
 - [Production rollout golden path](../deployment/production-rollout.md)
-- [Troubleshooting](../../getting-started/troubleshooting.md)
+- [Troubleshooting](../../operations/troubleshooting/index.md)
 - [Operator quick card](../runbooks/README.md#operator-quick-card)
 - [Policies cookbook](../../api/auth/policies.md)
 - [Policy smoke tests](../runbooks/policy-smoke-tests.md)
@@ -233,4 +233,4 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 - [Tokenization API](../../api/data/tokenization.md)
 - [API rate limiting](../../api/fundamentals.md#rate-limiting)
 - [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
-- [Production operations](../deployment/production.md)
+- [Production operations](../deployment/docker-hardened.md)

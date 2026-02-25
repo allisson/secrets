@@ -1,6 +1,6 @@
 # 🧩 API Fundamentals
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 > Applies to: API v1
 
 This page consolidates foundational API concepts for quick reference: error triage, capability mapping, rate limiting, and versioning policy.
@@ -232,7 +232,7 @@ Required process for breaking changes:
 
 1. Update `docs/openapi.yaml`
 2. Update affected API docs and examples
-3. Add migration notes in `docs/getting-started/troubleshooting.md` or relevant runbook
+3. Add migration notes in `docs/operations/troubleshooting/index.md` or relevant runbook
 4. Add explicit entry in `releases/RELEASES.md`
 
 ### Non-Breaking Changes
@@ -276,5 +276,5 @@ Non-breaking telemetry examples:
 - [Audit Logs API](observability/audit-logs.md)
 - [Response shapes](observability/response-shapes.md)
 - [Environment variables](../configuration.md)
-- [Troubleshooting](../getting-started/troubleshooting.md)
+- [Troubleshooting](../operations/troubleshooting/index.md)
 - [Contributing guide](../contributing.md)

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: secrets-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: secrets
+      MYSQL_USER: secrets
+      MYSQL_PASSWORD: secrets
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "secrets", "-psecrets" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secrets-net
+
+  secrets-api:
+    image: allisson/secrets:v0.13.0
+    container_name: secrets-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_DRIVER: mysql
+      DB_CONNECTION_STRING: secrets:secrets@tcp(mysql:3306)/secrets?parseTime=true
+      MASTER_KEY_PROVIDER: plaintext
+      MASTER_KEY_PLAINTEXT: cGxlYXNlQ2hhbmdlVGhpc1RvQVJhbmRvbTMyQnl0ZUtleQo=
+      LOG_LEVEL: info
+      AUDIT_LOG_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    command: [ "server" ]
+    networks:
+      - secrets-net
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+
+
+networks:
+  secrets-net:
+    driver: bridge

@@ -1,10 +1,10 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-25
 
 Use this guide for common setup and runtime errors.
 
-**📖 For detailed error messages with causes and solutions**, see the [Error Message Reference](../operations/troubleshooting/error-reference.md).
+**📖 For detailed error messages with causes and solutions**, see the [Error Message Reference](error-reference.md).
 
 ## 🧭 Decision Tree
 
@@ -80,7 +80,7 @@ Use this quick route before diving into detailed sections:
 
 ```bash
 # Check container user
-docker run --rm allisson/secrets:v0.12.0 id
+docker run --rm allisson/secrets:v0.13.0 id
 # uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
 
 # Check host directory ownership
@@ -105,13 +105,13 @@ sudo chown -R 65532:65532 /path/to/host/directory
 
 For detailed solutions with examples, see:
 
-- **[Volume Permission Troubleshooting Guide](../operations/troubleshooting/volume-permissions.md)** (comprehensive)
+- **[Volume Permission Troubleshooting Guide](volume-permissions.md)** (comprehensive)
 
 **Related**:
 
-- [v0.10.0 Release Notes](../releases/RELEASES.md#0100---2026-02-21)
+- [v0.10.0 Release Notes](../../releases/RELEASES.md#0100---2026-02-21)
 
-- [Container Security Guide](../operations/security/container-security.md)
+- [Container Security Guide](../deployment/docker-hardened.md)
 
 ## 401 Unauthorized
 
@@ -225,7 +225,7 @@ Common 422 cases:
 
 3. After unlocking, authenticate with the correct secret — this resets the counter
 
-**Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../api/auth/authentication.md#account-lockout) for behavior details.
+**Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../../api/auth/authentication.md#account-lockout) for behavior details.
 
 ## 429 Too Many Requests
 
@@ -253,7 +253,7 @@ Trusted proxy checks for token endpoint (`POST /v1/token`):
 
 - Compare application logs (`client_ip`) with edge proxy logs to confirm real source-IP propagation
 
-- Use [Trusted proxy reference](../operations/security/hardening.md#trusted-proxy-configuration) for a platform checklist
+- Use [Trusted proxy reference](../deployment/docker-hardened.md) for a platform checklist
 
 Quick note:
 
@@ -431,7 +431,7 @@ Expected patterns:
 
   - rotate/regenerate master key entries if ciphertext was truncated or malformed
 
-  - use provider setup checks in [KMS setup guide](../operations/kms/setup.md)
+  - use provider setup checks in [KMS setup guide](../kms/setup.md)
 
 ## Master key load regression triage (historical v0.5.1 fix)
 
@@ -463,7 +463,7 @@ Historical note:
 
   - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
 
-  - review [v0.5.1 release notes](../releases/RELEASES.md#051---2026-02-19)
+  - review [v0.5.1 release notes](../../releases/RELEASES.md#051---2026-02-19)
 
 ## Missing KEK
 
@@ -557,14 +557,14 @@ Q: Why is wildcard `*` risky for normal service clients?
 
 ## See also
 
-- [Smoke test](smoke-test.md)
+- [Smoke test](../../getting-started/smoke-test.md)
 
-- [Docker getting started](docker.md)
+- [Docker getting started](../../getting-started/docker.md)
 
-- [Local development](local-development.md)
+- [Local development](../../getting-started/local-development.md)
 
-- [Operator runbook index](../operations/runbooks/README.md)
+- [Operator runbook index](../runbooks/README.md)
 
-- [Production operations](../operations/deployment/production.md)
+- [Production operations](../deployment/docker-hardened.md)
 
-- [Trusted proxy reference](../operations/security/hardening.md#trusted-proxy-configuration)
+- [Trusted proxy reference](../deployment/docker-hardened.md)

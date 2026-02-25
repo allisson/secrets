@@ -1,12 +1,12 @@
 # 🐳 Run with Docker (Recommended)
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-25
 
 This is the default way to run Secrets.
 
 This guide uses the latest Docker image (`allisson/secrets`).
 
-**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/security/hardening.md) and [Production Deployment Guide](../operations/deployment/production.md).
+**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Deployment Guide](../operations/deployment/docker-hardened.md).
 
 ## Current Security Defaults
 
@@ -18,7 +18,7 @@ This guide uses the latest Docker image (`allisson/secrets`).
 
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (current: v0.12.0).
+These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (current: v0.13.0).
 
 If upgrading from `v0.6.0`, review [v0.7.0 upgrade guide](../releases/RELEASES.md#070---2026-02-20).
 
@@ -100,9 +100,9 @@ docker run --rm --name secrets-api \
 
 > **Note**: The `--tmpfs /tmp` volume is **optional** because the application doesn't write to the filesystem at runtime (embedded migrations, stateless binary). However, it's recommended for security hardening to support potential temporary file operations.
 
-For comprehensive container security guidance, see [Container Security Guide](../operations/security/container-security.md).
+For comprehensive container security guidance, see [Container Security Guide](../operations/deployment/docker-hardened.md).
 
-For production security hardening, see [Security Hardening Guide](../operations/security/hardening.md).
+For production security hardening, see [Security Hardening Guide](../operations/deployment/docker-hardened.md).
 
 ## ⚡ Quickstart Copy Block
 
@@ -311,7 +311,7 @@ For health check examples (Docker Compose sidecar, external monitoring), see the
 
 - [Smoke test](smoke-test.md)
 
-- [Troubleshooting](troubleshooting.md)
+- [Troubleshooting](../operations/troubleshooting/index.md)
 
 - [Environment variables](../configuration.md)
 

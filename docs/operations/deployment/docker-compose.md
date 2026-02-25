@@ -1,7 +1,7 @@
 # 🐳 Docker Compose Deployment Guide
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
 ## Table of Contents
@@ -39,58 +39,12 @@ This guide provides production-ready Docker Compose configurations for deploying
 
 ### PostgreSQL Stack
 
+See [`examples/deployment/docker-compose.dev.yml`](../../examples/deployment/docker-compose.dev.yml) for the full code.
+
 ```bash
-# 1. Create docker-compose.yml
-cat > docker-compose.yml <<'EOF'
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: secrets-postgres
-    environment:
-      POSTGRES_USER: secrets
-      POSTGRES_PASSWORD: secrets
-      POSTGRES_DB: secrets
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U secrets -d secrets"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - secrets-net
-
-  secrets-api:
-    image: allisson/secrets:v0.12.0
-    container_name: secrets-api
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DB_DRIVER: postgres
-      DB_CONNECTION_STRING: postgresql://secrets:secrets@postgres:5432/secrets?sslmode=disable
-      MASTER_KEY_PROVIDER: plaintext
-      MASTER_KEY_PLAINTEXT: cGxlYXNlQ2hhbmdlVGhpc1RvQVJhbmRvbTMyQnl0ZUtleQo=
-      LOG_LEVEL: info
-      AUDIT_LOG_ENABLED: "true"
-    ports:
-      - "8080:8080"
-    command: ["server"]
-    networks:
-      - secrets-net
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
-
-networks:
-  secrets-net:
-    driver: bridge
-EOF
+# 1. Download the example file
+curl -O https://raw.githubusercontent.com/allisson/secrets/main/docs/examples/deployment/docker-compose.dev.yml
+mv docker-compose.dev.yml docker-compose.yml
 
 # 2. Start stack
 docker compose up -d
@@ -102,61 +56,13 @@ curl http://localhost:8080/health
 
 ### MySQL Stack
 
+See [`examples/deployment/docker-compose.mysql.yml`](../../examples/deployment/docker-compose.mysql.yml) for the full configuration.
+
 ```bash
-# Create docker-compose.mysql.yml
-cat > docker-compose.mysql.yml <<'EOF'
-version: '3.8'
+# 1. Download the example
+curl -O https://raw.githubusercontent.com/allisson/secrets/main/docs/examples/deployment/docker-compose.mysql.yml
 
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: secrets-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: secrets
-      MYSQL_USER: secrets
-      MYSQL_PASSWORD: secrets
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "secrets", "-psecrets"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - secrets-net
-
-  secrets-api:
-    image: allisson/secrets:v0.12.0
-    container_name: secrets-api
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      DB_DRIVER: mysql
-      DB_CONNECTION_STRING: secrets:secrets@tcp(mysql:3306)/secrets?parseTime=true
-      MASTER_KEY_PROVIDER: plaintext
-      MASTER_KEY_PLAINTEXT: cGxlYXNlQ2hhbmdlVGhpc1RvQVJhbmRvbTMyQnl0ZUtleQo=
-      LOG_LEVEL: info
-      AUDIT_LOG_ENABLED: "true"
-    ports:
-      - "8080:8080"
-    command: ["server"]
-    networks:
-      - secrets-net
-    restart: unless-stopped
-
-volumes:
-  mysql-data:
-
-networks:
-  secrets-net:
-    driver: bridge
-EOF
-
-# Start MySQL stack
+# 2. Start MySQL stack
 docker compose -f docker-compose.mysql.yml up -d
 ```
 
@@ -166,149 +72,7 @@ docker compose -f docker-compose.mysql.yml up -d
 
 ### PostgreSQL Production Stack
 
-**File: `docker-compose.prod.yml`**
-
-```yaml
-version: '3.8'
-
-services:
-  # PostgreSQL database
-  postgres:
-    image: postgres:16-alpine
-    container_name: secrets-postgres
-    env_file:
-      - .env.postgres
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      # SSL certificates for TLS connections
-      - ./certs/postgres:/var/lib/postgresql/certs:ro
-    ports:
-      - "127.0.0.1:5432:5432"  # Bind to localhost only
-    command: >
-      postgres
-      -c ssl=on
-      -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
-      -c ssl_key_file=/var/lib/postgresql/certs/server.key
-      -c max_connections=100
-      -c shared_buffers=256MB
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - secrets-backend
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - SETUID
-      - SETGID
-
-  # Secrets API application
-  secrets-api:
-    image: allisson/secrets:v0.12.0
-    container_name: secrets-api
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env.secrets
-    user: "65532:65532"  # Run as nonroot user
-    command: ["server"]
-    expose:
-      - "8080"
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - secrets-backend
-      - secrets-frontend
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=10m
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-
-  # Health check sidecar (distroless has no shell for HEALTHCHECK)
-  healthcheck:
-    image: alpine:3.21
-    container_name: secrets-healthcheck
-    depends_on:
-      - secrets-api
-    command: >
-      sh -c '
-      while true; do
-        if ! wget --spider -q -t 1 -T 5 http://secrets-api:8080/health; then
-          echo "Health check failed at $$(date)"
-          exit 1
-        fi
-        sleep 30
-      done
-      '
-    networks:
-      - secrets-backend
-    restart: unless-stopped
-
-  # Nginx reverse proxy (TLS termination)
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: secrets-nginx
-    depends_on:
-      - secrets-api
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs/nginx:/etc/nginx/certs:ro
-      - nginx-logs:/var/log/nginx
-    networks:
-      - secrets-frontend
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - SETUID
-      - SETGID
-      - NET_BIND_SERVICE
-
-volumes:
-  postgres-data:
-    driver: local
-  nginx-logs:
-    driver: local
-
-networks:
-  secrets-backend:
-    driver: bridge
-    internal: true  # No external access
-  secrets-frontend:
-    driver: bridge
-```
+See [`examples/deployment/docker-compose.prod.yml`](../../examples/deployment/docker-compose.prod.yml).
 
 **File: `.env.postgres`**
 
@@ -364,71 +128,7 @@ RATE_LIMIT_MAX_REQUESTS=10
 RATE_LIMIT_DURATION=60
 ```
 
-**File: `nginx.conf`**
-
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    # Security headers
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-Frame-Options DENY always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # Logging
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    # Upstream
-    upstream secrets_api {
-        server secrets-api:8080;
-    }
-
-    # HTTP -> HTTPS redirect
-    server {
-        listen 80;
-        server_name secrets.example.com;
-        return 301 https://$server_name$request_uri;
-    }
-
-    # HTTPS server
-    server {
-        listen 443 ssl http2;
-        server_name secrets.example.com;
-
-        # TLS configuration
-        ssl_certificate /etc/nginx/certs/server.crt;
-        ssl_certificate_key /etc/nginx/certs/server.key;
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers on;
-
-        # Client body size limit
-        client_max_body_size 1M;
-
-        # Timeouts
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-
-        location / {
-            proxy_pass http://secrets_api;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        # Health check endpoint (no auth)
-        location /health {
-            proxy_pass http://secrets_api/health;
-        }
-    }
-}
-```
+See [`examples/deployment/nginx.conf`](../../examples/deployment/nginx.conf).
 
 ### Deploy Production Stack
 
@@ -533,7 +233,7 @@ Since distroless images have no shell, use an external container for health chec
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.12.0
+    image: allisson/secrets:v0.13.0
     # No HEALTHCHECK instruction (distroless has no shell)
 
   healthcheck:
@@ -666,97 +366,7 @@ services:
 
 ## Complete Production Stack (All-in-One)
 
-**File: `docker-compose.full.yml`**
-
-```yaml
-version: '3.8'
-
-services:
-  # Database
-  postgres:
-    image: postgres:16-alpine
-    env_file: .env.postgres
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # Application
-  secrets-api:
-    image: allisson/secrets:v0.12.0
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file: .env.secrets
-    user: "65532:65532"
-    command: ["server"]
-    expose:
-      - "8080"
-    networks:
-      - backend
-      - frontend
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=10m
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-
-  # Reverse proxy
-  nginx:
-    image: nginx:1.25-alpine
-    depends_on:
-      - secrets-api
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-    networks:
-      - frontend
-    restart: unless-stopped
-
-  # Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    networks:
-      - backend
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-    volumes:
-      - grafana-data:/var/lib/grafana
-    networks:
-      - backend
-
-volumes:
-  postgres-data:
-  prometheus-data:
-  grafana-data:
-
-networks:
-  backend:
-    internal: true
-  frontend:
-```
+See [`examples/deployment/docker-compose.full.yml`](../../examples/deployment/docker-compose.full.yml) for the full all-in-one stack.
 
 ---
 
@@ -901,7 +511,7 @@ See [Volume Permission Troubleshooting Guide](../troubleshooting/volume-permissi
 ## See Also
 
 - [Docker Quick Start](../../getting-started/docker.md) - Basic Docker usage
-- [Production Deployment Guide](production.md) - General production best practices
+- [Production Deployment Guide](docker-hardened.md) - General production best practices
 - [Health Check Guide](../observability/health-checks.md) - Health check patterns
 - [Volume Permissions Guide](../troubleshooting/volume-permissions.md) - Fix permission issues
-- [Container Security Guide](../security/container-security.md) - Security hardening
+- [Container Security Guide](docker-hardened.md) - Security hardening

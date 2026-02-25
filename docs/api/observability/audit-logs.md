@@ -1,6 +1,6 @@
 # 📜 Audit Logs API
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 > Applies to: API v1
 
 Audit logs capture capability checks and access attempts for monitoring and compliance.

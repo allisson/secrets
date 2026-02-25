@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-25
 
 Secrets is configured through environment variables.
 
@@ -88,7 +88,7 @@ DB_CONNECTION_STRING=user:password@tcp(db.example.com:3306)/secrets?tls=custom
 
 ```
 
-See [Security Hardening Guide](operations/security/hardening.md#2-database-security) for complete guidance.
+See [Security Hardening Guide](operations/deployment/docker-hardened.md) for complete guidance.
 
 ### DB_MAX_OPEN_CONNECTIONS
 
@@ -266,7 +266,7 @@ If `KMS_KEY_URI` is exposed (committed to git, leaked in logs, etc.):
 4. **Within 1 week**: Audit all secrets access during exposure window
 5. **Post-incident**: Update runbooks, add pre-commit hooks to prevent future leaks
 
-See [Security Hardening Guide](operations/security/hardening.md) and [KMS Setup Guide](operations/kms/setup.md) for complete guidance.
+See [Security Hardening Guide](operations/deployment/docker-hardened.md) and [KMS Setup Guide](operations/kms/setup.md) for complete guidance.
 
 ### Master key mode selection
 
@@ -398,7 +398,7 @@ LOCKOUT_MAX_ATTEMPTS=10
 LOCKOUT_DURATION_MINUTES=30
 ```
 
-See [Authentication API: account lockout](api/auth/authentication.md#account-lockout) for behavior details and [Troubleshooting: 423 Locked](getting-started/troubleshooting.md#423-locked-account-lockout) for resolution steps.
+See [Authentication API: account lockout](api/auth/authentication.md#account-lockout) for behavior details and [Troubleshooting: 423 Locked](operations/troubleshooting/index.md) for resolution steps.
 
 ## CORS configuration
 
@@ -472,9 +472,9 @@ docker run --rm allisson/secrets create-master-key --id default
 
 ## See also
 
-- [Security hardening guide](operations/security/hardening.md)
+- [Security hardening guide](operations/deployment/docker-hardened.md)
 
-- [Production operations](operations/deployment/production.md)
+- [Production operations](operations/deployment/docker-hardened.md)
 
 - [Monitoring](operations/observability/monitoring.md)
 

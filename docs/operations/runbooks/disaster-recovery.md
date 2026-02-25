@@ -1,7 +1,7 @@
 # 🚨 Disaster Recovery Runbook
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: SRE teams, platform engineers, incident commanders
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -498,7 +498,7 @@ pg_restore --table=audit_logs secrets-backup.dump
 ## See Also
 
 - [Backup and Restore Guide](../deployment/backup-restore.md) - Detailed backup procedures
-- [Production Deployment Guide](../deployment/production.md) - Pre-production disaster recovery checklist
-- [Security Hardening Guide](../security/hardening.md) - Master key security best practices
+- [Production Deployment Guide](../deployment/docker-hardened.md) - Pre-production disaster recovery checklist
+- [Security Hardening Guide](../deployment/docker-hardened.md) - Master key security best practices
 - [Health Check Endpoints](../observability/health-checks.md) - Health validation patterns
 - [Runbooks README](README.md) - All operational runbooks

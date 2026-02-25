@@ -1,6 +1,6 @@
 # ✅ Smoke Test Script
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-25
 
 Run a fast end-to-end validation of a running Secrets instance.
 
@@ -49,7 +49,7 @@ Optional variables:
 - `TOKENIZATION_KEY_NAME` (default: `smoke-test-tokenization-key`)
 
 Expected output includes `Smoke test completed successfully`.
-If transit decrypt fails with `422`, see [Troubleshooting](troubleshooting.md#422-unprocessable-entity).
+If transit decrypt fails with `422`, see [Troubleshooting](../operations/troubleshooting/index.md).
 
 ## Optional: Token Throttling Verification
 
@@ -82,6 +82,6 @@ Expected result under throttling:
 
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
-- [Troubleshooting](troubleshooting.md)
+- [Troubleshooting](../operations/troubleshooting/index.md)
 - [Release notes](../releases/RELEASES.md)
 - [Curl examples](../examples/curl.md)

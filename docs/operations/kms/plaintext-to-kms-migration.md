@@ -1,7 +1,7 @@
 # 🔑 Plaintext to KMS Migration Guide
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: Security engineers, SRE teams, platform engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -907,7 +907,7 @@ docker-compose restart secrets
 
 - [Key Management Guide](key-management.md) - KEK lifecycle and best practices
 
-- [Security Hardening Guide](../security/hardening.md) - Master key security best practices
+- [Security Hardening Guide](../deployment/docker-hardened.md) - Master key security best practices
 
 - [Backup and Restore Guide](../deployment/backup-restore.md) - Backup considerations with KMS
 

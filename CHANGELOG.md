@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-02-25
+
+### Documentation Context
+- Massive refactoring of documentation structure to comply with the Diátaxis framework, significantly reducing text bloat.
+- Extracted large code blocks from narrative configuration guides into centralized `docs/examples/`.
+- Consolidated overlapping operations and security guides into a single `docs/operations/deployment/docker-hardened.md` guide.
+- Pruned `docs/releases/RELEASES.md` into a pure changelog, removing embedded runtime troubleshooting and point-in-time deployment migration steps.
+- Created `docs/operations/upgrades.md` to serve as a universal rollout operation runbook.
+- Centralized `docs/operations/troubleshooting/index.md` as the unified source for FAQ and debugging steps.
+- Pruned CLI tutorial sections from the `docs/operations/kms/setup.md` guide.
+
 ## [0.12.0] - 2026-02-24
 
 ### Added
@@ -42,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.dockerignore` file to reduce build context size by ~90%
 - Explicit non-root user execution (UID 65532: nonroot:nonroot)
 - Read-only filesystem support for enhanced runtime security
-- Container security documentation: `docs/operations/security/container-security.md`
+- Container security documentation: `docs/operations/deployment/docker-hardened.md`
 - Health check endpoint documentation for Kubernetes and Docker Compose
 - GitHub Actions workflow enhancements for build metadata injection
 - Version management guidelines in AGENTS.md for coding agents
@@ -67,14 +78,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image size reduced by 10-20% while improving security posture
 
 ### Documentation
-- Added comprehensive container security guide (`docs/operations/security/container-security.md`) with 10 sections covering base image security, runtime security, network security, secrets management, image scanning, health checks, build security, and deployment best practices
+- Added comprehensive container security guide (`docs/operations/deployment/docker-hardened.md`) with 10 sections covering base image security, runtime security, network security, secrets management, image scanning, health checks, build security, and deployment best practices
 - Added complete health check guide (`docs/operations/observability/health-checks.md`) with platform integrations for Kubernetes, Docker Compose, AWS ECS, Google Cloud Run, and monitoring tools
 - Added security scanning guide (`docs/operations/security/scanning.md`) covering Trivy, Docker Scout, Grype, SBOM generation, and CI/CD integration
 - Added OCI labels reference (`docs/operations/deployment/oci-labels.md`) documenting image metadata schema for security scanning and compliance
 - Added Kubernetes deployment guide (`docs/operations/deployment/kubernetes.md`) with production-ready manifests and security hardening
 - Added Docker Compose deployment guide (`docs/operations/deployment/docker-compose.md`) with development and production configurations
 - Added multi-architecture builds guide (`docs/operations/deployment/multi-arch-builds.md`) for linux/amd64 and linux/arm64
-- Added base image migration guide (`docs/operations/deployment/base-image-migration.md`) for Alpine/scratch to distroless transitions
+- Added base image migration guide (`docs/operations/deployment/docker-hardened.md`) for Alpine/scratch to distroless transitions
 - Added volume permissions troubleshooting guide (`docs/operations/troubleshooting/volume-permissions.md`) for non-root container issues
 - Added error reference guide (`docs/operations/troubleshooting/error-reference.md`) with HTTP, database, KMS, and configuration errors
 - Added comprehensive migration guide in `docs/releases/RELEASES.md` with rollback procedures and validation gates
@@ -179,7 +190,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Per-client rate limiting for authenticated endpoints (default: 10 req/sec, burst 20)
 - Configurable CORS support (disabled by default)
-- Comprehensive security hardening documentation (`docs/operations/security/hardening.md`)
+- Comprehensive security hardening documentation (`docs/operations/deployment/docker-hardened.md`)
 - Rate limiting configuration via `RATE_LIMIT_ENABLED`, `RATE_LIMIT_REQUESTS_PER_SEC`, `RATE_LIMIT_BURST`
 - CORS configuration via `CORS_ENABLED`, `CORS_ALLOW_ORIGINS`
 
@@ -197,7 +208,7 @@ If you rely on the previous default token expiration of 24 hours, explicitly set
 Ensure your client applications handle token refresh before expiration. The shorter default expiration improves security but may require updating client-side token refresh logic if you were relying on the previous 24-hour default.
 
 **Database SSL/TLS:**
-If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in production, this is insecure. Update your `DB_CONNECTION_STRING` to use `sslmode=require` or `sslmode=verify-full` (PostgreSQL) or `tls=true` or `tls=custom` (MySQL). See `docs/operations/security/hardening.md` for guidance.
+If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in production, this is insecure. Update your `DB_CONNECTION_STRING` to use `sslmode=require` or `sslmode=verify-full` (PostgreSQL) or `tls=true` or `tls=custom` (MySQL). See `docs/operations/deployment/docker-hardened.md` for guidance.
 
 ### Security
 - Added database SSL/TLS configuration warnings in documentation
@@ -206,7 +217,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Added metrics endpoint protection recommendations
 
 ### Documentation
-- Added `docs/operations/security/hardening.md` with comprehensive security guidance
+- Added `docs/operations/deployment/docker-hardened.md` with comprehensive security guidance
 - Updated `docs/configuration/environment-variables.md` with new variables and security warnings
 - Updated `.env.example` with security warnings for development-only configurations
 - Updated `docs/getting-started/docker.md` and `docs/getting-started/local-development.md` with security warnings
@@ -292,6 +303,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.13.0]: https://github.com/allisson/secrets/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/allisson/secrets/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/allisson/secrets/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/allisson/secrets/compare/v0.9.0...v0.10.0

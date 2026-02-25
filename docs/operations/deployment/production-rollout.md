@@ -1,7 +1,7 @@
 # 🚀 Production Rollout Golden Path
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -92,7 +92,7 @@ Gate C (policy and observability):
 
 **When to test**:
 
-- Before major version upgrades (e.g., v0.11.0 → v0.12.0)
+- Before major version upgrades (e.g., v0.11.0 → v0.13.0)
 
 - After significant schema changes or breaking changes
 
@@ -142,7 +142,7 @@ Before beginning rollback testing:
 #### Step 1: Capture Baseline Metrics
 
 ```bash
-# Test current version (e.g., v0.12.0)
+# Test current version (e.g., v0.13.0)
 curl -s http://localhost:8080/health | jq .
 curl -s http://localhost:8080/ready | jq .
 
@@ -158,7 +158,7 @@ TOKEN=$(curl -s -X POST http://localhost:8080/v1/token \
 curl -s -X POST http://localhost:8080/v1/secrets \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"test": "rollback-test-v0.12.0"}}' | jq . > test-secret-new.json
+  -d '{"data": {"test": "rollback-test-v0.13.0"}}' | jq . > test-secret-new.json
 
 # Record secret ID
 export SECRET_ID=$(cat test-secret-new.json | jq -r .id)
@@ -186,7 +186,7 @@ docker run -d --name secrets-api \
 
 ```bash
 # Update docker-compose.yml to use previous version
-sed -i.bak 's|allisson/secrets:v0.12.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
+sed -i.bak 's|allisson/secrets:v0.13.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
 
 # Restart service
 docker-compose up -d secrets-api
@@ -239,7 +239,7 @@ docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.12.0 server
+  allisson/secrets:v0.13.0 server
 
 # Verify health and functionality (repeat Step 3 checks)
 
@@ -252,7 +252,7 @@ Record test results in your runbook:
 ```markdown
 ## Rollback Test Results - [Date]
 
-- **Versions tested**: v0.12.0 → v0.11.0 → v0.12.0
+- **Versions tested**: v0.13.0 → v0.11.0 → v0.13.0
 
 - **Environment**: staging/production
 
@@ -329,7 +329,7 @@ For production environments, consider automating rollback testing:
 
 set -e
 
-CURRENT_VERSION="v0.12.0"
+CURRENT_VERSION="v0.13.0"
 PREVIOUS_VERSION="v0.11.0"
 BASE_URL="http://localhost:8080"
 
@@ -382,7 +382,7 @@ After completing rollback testing:
 
 ## See also
 
-- [Production deployment guide](../deployment/production.md)
+- [Production deployment guide](../deployment/docker-hardened.md)
 
 - [Release notes](../../releases/RELEASES.md)
 

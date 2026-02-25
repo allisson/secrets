@@ -1,6 +1,6 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-25
 
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
 
@@ -589,7 +589,7 @@ When disabled:
 
 ## See Also
 
-- [Production Deployment](../deployment/production.md)
+- [Production Deployment](../deployment/docker-hardened.md)
 - [Operator drills](../runbooks/README.md#operator-drills-quarterly)
 - [Incident response guide](../observability/incident-response.md)
 - [API rate limiting](../../api/fundamentals.md#rate-limiting)

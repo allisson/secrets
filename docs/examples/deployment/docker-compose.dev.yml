@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secrets-postgres
+    environment:
+      POSTGRES_USER: secrets
+      POSTGRES_PASSWORD: secrets
+      POSTGRES_DB: secrets
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secrets -d secrets"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - secrets-net
+
+  secrets-api:
+    image: allisson/secrets:v0.13.0
+    container_name: secrets-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_DRIVER: postgres
+      DB_CONNECTION_STRING: postgresql://secrets:secrets@postgres:5432/secrets?sslmode=disable
+      MASTER_KEY_PROVIDER: plaintext
+      MASTER_KEY_PLAINTEXT: cGxlYXNlQ2hhbmdlVGhpc1RvQVJhbmRvbTMyQnl0ZUtleQo=
+      LOG_LEVEL: info
+      AUDIT_LOG_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    command: ["server"]
+    networks:
+      - secrets-net
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  secrets-net:
+    driver: bridge

@@ -1,12 +1,12 @@
 # ❌ Error Message Reference
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: Developers, DevOps engineers, SRE teams troubleshooting Secrets errors
 
 ## Overview
 
-This reference documents all error messages you might encounter when running Secrets, along with their causes and solutions. For step-by-step troubleshooting workflows, see the [Troubleshooting Guide](../../getting-started/troubleshooting.md).
+This reference documents all error messages you might encounter when running Secrets, along with their causes and solutions. For step-by-step troubleshooting workflows, see the [Troubleshooting Guide](../../operations/troubleshooting/index.md).
 
 **How to use this guide:**
 
@@ -779,7 +779,7 @@ mysql -e "SHOW DATABASES;" # MySQL
 docker run --rm \
   -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="postgresql://secrets:password@postgres:5432/secrets?sslmode=disable" \
-  allisson/secrets:v0.12.0 migrate
+  allisson/secrets:v0.13.0 migrate
 
 ```
 
@@ -818,7 +818,7 @@ ERROR 1146 (42S02): Table 'secrets.clients' doesn't exist
 docker run --rm \
   -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="$DB_CONNECTION_STRING" \
-  allisson/secrets:v0.12.0 migrate
+  allisson/secrets:v0.13.0 migrate
 
 # Docker Compose
 docker compose run --rm secrets-api migrate
@@ -1008,13 +1008,13 @@ Running ARM64 image on x86_64 host (or vice versa) without QEMU emulation.
 ```bash
 
 # Force pull correct architecture
-docker pull --platform linux/amd64 allisson/secrets:v0.12.0
+docker pull --platform linux/amd64 allisson/secrets:v0.13.0
 
 # Or enable QEMU for cross-platform support
 docker run --privileged --rm tonistiigi/binfmt --install all
 
 # Verify architecture
-docker inspect allisson/secrets:v0.12.0 --format='{{.Architecture}}'
+docker inspect allisson/secrets:v0.13.0 --format='{{.Architecture}}'
 
 ```
 
@@ -1188,7 +1188,7 @@ Policy path uses unsupported wildcard pattern.
 
 ## See Also
 
-- [Troubleshooting Guide](../../getting-started/troubleshooting.md) - Step-by-step troubleshooting workflows
+- [Troubleshooting Guide](../../operations/troubleshooting/index.md) - Step-by-step troubleshooting workflows
 - [Configuration Reference](../../configuration.md) - All environment variables
 - [API Fundamentals](../../api/fundamentals.md) - API error handling patterns
 - [Volume Permission Troubleshooting](volume-permissions.md) - v0.10.0+ permission issues

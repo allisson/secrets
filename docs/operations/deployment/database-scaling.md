@@ -1,7 +1,7 @@
 # 🗄️ Database Scaling Guide
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: DBAs, SRE teams, platform engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -442,7 +442,7 @@ aws rds modify-db-instance \
 
 ## See Also
 
-- [Production Deployment Guide](production.md) - Production database setup
+- [Production Deployment Guide](docker-hardened.md) - Production database setup
 - [Backup and Restore Guide](backup-restore.md) - Database backup strategies
 - [Monitoring Guide](../observability/monitoring.md) - Database monitoring patterns
 - [Scaling Guide](scaling-guide.md) - Application scaling (complements database scaling)

@@ -1,7 +1,7 @@
 # 📈 Application Scaling Guide
 
-> **Document version**: v0.12.0  
-> Last updated: 2026-02-24  
+> **Document version**: v0.13.0  
+> Last updated: 2026-02-25  
 > **Audience**: Platform engineers, SRE teams, DevOps engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -211,7 +211,7 @@ Use vertical scaling when:
 ```yaml
 services:
   secrets:
-    image: allisson/secrets:v0.12.0
+    image: allisson/secrets:v0.13.0
     deploy:
       resources:
         limits:
@@ -443,5 +443,5 @@ aws elbv2 describe-target-health --target-group-arn <arn>
 - [Database Scaling Guide](database-scaling.md) - Database scaling complements application scaling
 - [Docker Compose Deployment Guide](docker-compose.md) - Docker Compose deployment patterns
 - [Health Check Endpoints](../observability/health-checks.md) - Health check configuration
-- [Production Deployment Guide](production.md) - Production scaling best practices
+- [Production Deployment Guide](docker-hardened.md) - Production scaling best practices
 - [Monitoring Guide](../observability/monitoring.md) - Metrics for scaling decisions
