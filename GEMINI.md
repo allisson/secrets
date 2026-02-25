@@ -57,7 +57,9 @@ Configuration is managed via environment variables (see `internal/config/config.
 
 ### Contribution Guidelines
 - **ADRs:** Major architectural decisions are documented as Architecture Decision Records in `docs/adr/`.
-- **Documentation:** Maintain comprehensive documentation in the `docs/` directory.
+- **Documentation:** Maintain comprehensive documentation in the `docs/` directory. **CRITICAL CI RULES:**
+  1. **Freshness:** Any modified markdown file MUST have its `> Last updated: YYYY-MM-DD` header updated to match `last_docs_refresh` in `metadata.json`.
+  2. **Release Matrix:** Every new version added to `docs/releases/RELEASES.md` MUST also be explicitly added to `docs/releases/compatibility-matrix.md` (both the table and verification checklist).
 - **Migrations:** New database changes must include both `up` and `down` SQL scripts for both MySQL and PostgreSQL.
 
 ### Tooling
