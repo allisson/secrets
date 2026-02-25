@@ -35,5 +35,5 @@ go.work.sum
 bin/app
 bin/mockery
 
-# claude files
-.claude/
+# goreleaser
+dist/

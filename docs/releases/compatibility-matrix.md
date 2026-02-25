@@ -14,6 +14,7 @@ If you need upgrade guidance for older versions, consult the full release histor
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.14.1 -> v0.15.0` | No schema migration required | Added Goreleaser support for automated builds | None (backward compatible, no runtime changes) |
 | `v0.14.0 -> v0.14.1` | No schema migration required | Fixed empty KEK chain bug | None (backward compatible, no runtime changes) |
 | `v0.13.0 -> v0.14.0` | No schema migration required | `/metrics` endpoint moved from port `8080` to `8081`. New `METRICS_PORT` env var (default: `8081`). | Update Prometheus/monitoring scrape configs to use port `8081`. Expose port `8081` in container orchestration if necessary. |
 | `v0.12.0 -> v0.13.0` | No schema migration required | Aggressive documentation refactor for conciseness and maintainability | None (documentation only) |
@@ -30,6 +31,11 @@ If you need upgrade guidance for older versions, consult the full release histor
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.15.0`:
+
+1. `./bin/app --version` shows `v0.15.0`
+2. Goreleaser configurations successfully execute platform builds (no runtime impact)
 
 For `v0.14.1`:
 

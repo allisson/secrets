@@ -202,4 +202,13 @@ dev-stop: ## Stop development databases
 	@docker stop dev-postgres dev-mysql || true
 	@docker rm dev-postgres dev-mysql || true
 
+# Release
+release-snapshot: ## Build snapshot release binaries with GoReleaser
+	@echo "Building snapshot release with GoReleaser..."
+	@goreleaser release --snapshot --clean
+
+release-check: ## Check GoReleaser configuration
+	@echo "Checking GoReleaser configuration..."
+	@goreleaser check
+
 .DEFAULT_GOAL := help
