@@ -21,7 +21,7 @@ Complete code examples for integrating with Secrets APIs across multiple languag
 
 Use this section to quickly identify which example set matches your deployed release.
 
-### Current release (`v0.10.0`)
+### Current release (`v0.12.0`)
 
 - Primary examples:
   - [Curl examples](curl.md)
@@ -29,7 +29,7 @@ Use this section to quickly identify which example set matches your deployed rel
   - [JavaScript examples](javascript.md)
   - [Go examples](go.md)
 - Release context:
-  - [v0.10.0 release notes](../releases/RELEASES.md#0100---2026-02-21)
+  - [v0.12.0 release notes](../releases/RELEASES.md#0120---2026-02-24)
 
 ### Previous release (`v0.7.0`)
 

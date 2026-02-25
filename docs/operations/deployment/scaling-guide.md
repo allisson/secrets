@@ -1,6 +1,6 @@
 # 📈 Application Scaling Guide
 
-> **Document version**: v0.10.0  
+> **Document version**: v0.12.0  
 > Last updated: 2026-02-21  
 > **Audience**: Platform engineers, SRE teams, DevOps engineers
 >
@@ -211,7 +211,7 @@ Use vertical scaling when:
 ```yaml
 services:
   secrets:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     deploy:
       resources:
         limits:

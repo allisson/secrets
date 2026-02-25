@@ -576,3 +576,79 @@ func (_c *MockKeyManager_DecryptKek_Call) RunAndReturn(run func(kek *domain.Kek,
 	_c.Call.Return(run)
 	return _c
 }
+
+// EncryptDek provides a mock function for the type MockKeyManager
+func (_mock *MockKeyManager) EncryptDek(dekKey []byte, kek *domain.Kek) ([]byte, []byte, error) {
+	ret := _mock.Called(dekKey, kek)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EncryptDek")
+	}
+
+	var r0 []byte
+	var r1 []byte
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func([]byte, *domain.Kek) ([]byte, []byte, error)); ok {
+		return returnFunc(dekKey, kek)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte, *domain.Kek) []byte); ok {
+		r0 = returnFunc(dekKey, kek)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte, *domain.Kek) []byte); ok {
+		r1 = returnFunc(dekKey, kek)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(2).(func([]byte, *domain.Kek) error); ok {
+		r2 = returnFunc(dekKey, kek)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockKeyManager_EncryptDek_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EncryptDek'
+type MockKeyManager_EncryptDek_Call struct {
+	*mock.Call
+}
+
+// EncryptDek is a helper method to define mock.On call
+//   - dekKey []byte
+//   - kek *domain.Kek
+func (_e *MockKeyManager_Expecter) EncryptDek(dekKey interface{}, kek interface{}) *MockKeyManager_EncryptDek_Call {
+	return &MockKeyManager_EncryptDek_Call{Call: _e.mock.On("EncryptDek", dekKey, kek)}
+}
+
+func (_c *MockKeyManager_EncryptDek_Call) Run(run func(dekKey []byte, kek *domain.Kek)) *MockKeyManager_EncryptDek_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		var arg1 *domain.Kek
+		if args[1] != nil {
+			arg1 = args[1].(*domain.Kek)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockKeyManager_EncryptDek_Call) Return(ciphertext []byte, nonce []byte, err error) *MockKeyManager_EncryptDek_Call {
+	_c.Call.Return(ciphertext, nonce, err)
+	return _c
+}
+
+func (_c *MockKeyManager_EncryptDek_Call) RunAndReturn(run func(dekKey []byte, kek *domain.Kek) ([]byte, []byte, error)) *MockKeyManager_EncryptDek_Call {
+	_c.Call.Return(run)
+	return _c
+}

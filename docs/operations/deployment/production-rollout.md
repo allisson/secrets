@@ -1,6 +1,7 @@
 # 🚀 Production Rollout Golden Path
 
-> Last updated: 2026-02-23
+> **Document version**: v0.12.0  
+> Last updated: 2026-02-24
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -91,7 +92,7 @@ Gate C (policy and observability):
 
 **When to test**:
 
-- Before major version upgrades (e.g., v0.9.0 → v0.10.0)
+- Before major version upgrades (e.g., v0.11.0 → v0.12.0)
 
 - After significant schema changes or breaking changes
 
@@ -141,7 +142,7 @@ Before beginning rollback testing:
 #### Step 1: Capture Baseline Metrics
 
 ```bash
-# Test current version (e.g., v0.10.0)
+# Test current version (e.g., v0.12.0)
 curl -s http://localhost:8080/health | jq .
 curl -s http://localhost:8080/ready | jq .
 
@@ -157,7 +158,7 @@ TOKEN=$(curl -s -X POST http://localhost:8080/v1/token \
 curl -s -X POST http://localhost:8080/v1/secrets \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"test": "rollback-test-v0.10.0"}}' | jq . > test-secret-new.json
+  -d '{"data": {"test": "rollback-test-v0.12.0"}}' | jq . > test-secret-new.json
 
 # Record secret ID
 export SECRET_ID=$(cat test-secret-new.json | jq -r .id)
@@ -185,7 +186,7 @@ docker run -d --name secrets-api \
 
 ```bash
 # Update docker-compose.yml to use previous version
-sed -i.bak 's|allisson/secrets:v0.11.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
+sed -i.bak 's|allisson/secrets:v0.12.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
 
 # Restart service
 docker-compose up -d secrets-api
@@ -197,7 +198,7 @@ docker-compose up -d secrets-api
 ```bash
 # 1. Verify version rolled back
 docker exec secrets-api /app/secrets --version
-# Expected: Version: v0.9.0
+# Expected: Version: v0.11.0
 
 # 2. Health checks
 curl -s http://localhost:8080/health | jq .
@@ -218,7 +219,7 @@ curl -s -X GET "http://localhost:8080/v1/secrets/${SECRET_ID}" \
 curl -s -X POST http://localhost:8080/v1/secrets \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"test": "rollback-test-v0.9.0"}}' | jq .
+  -d '{"data": {"test": "rollback-test-v0.11.0"}}' | jq .
 # Expected: 201 Created
 
 # 5. Check logs for errors
@@ -238,7 +239,7 @@ docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.11.0 server
+  allisson/secrets:v0.12.0 server
 
 # Verify health and functionality (repeat Step 3 checks)
 
@@ -251,7 +252,7 @@ Record test results in your runbook:
 ```markdown
 ## Rollback Test Results - [Date]
 
-- **Versions tested**: v0.10.0 → v0.9.0 → v0.10.0
+- **Versions tested**: v0.12.0 → v0.11.0 → v0.12.0
 
 - **Environment**: staging/production
 
@@ -328,8 +329,8 @@ For production environments, consider automating rollback testing:
 
 set -e
 
-CURRENT_VERSION="v0.10.0"
-PREVIOUS_VERSION="v0.9.0"
+CURRENT_VERSION="v0.12.0"
+PREVIOUS_VERSION="v0.11.0"
 BASE_URL="http://localhost:8080"
 
 echo "=== Rollback Test: ${CURRENT_VERSION} → ${PREVIOUS_VERSION} ==="

@@ -1,6 +1,6 @@
 # 🚨 Disaster Recovery Runbook
 
-> **Document version**: v0.10.0  
+> **Document version**: v0.12.0  
 > Last updated: 2026-02-21  
 > **Audience**: SRE teams, platform engineers, incident commanders
 >

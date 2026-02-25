@@ -1,6 +1,6 @@
 # 🏥 Health Check Endpoints
 
-> **Document version**: v0.10.0  
+> **Document version**: v0.12.0  
 > Last updated: 2026-02-21  
 > **Audience**: Platform engineers, SRE teams, monitoring specialists
 
@@ -254,7 +254,7 @@ version: '3.8'
 
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     container_name: secrets-api
     ports:
       - "8080:8080"
@@ -329,7 +329,7 @@ Use external tools like:
 # docker-compose.yml
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     # ... config ...
 
   blackbox-exporter:
@@ -405,7 +405,7 @@ version: '3.8'
 
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     deploy:
       replicas: 3
       update_config:
@@ -451,7 +451,7 @@ networks:
   "containerDefinitions": [
     {
       "name": "secrets",
-      "image": "allisson/secrets:v0.10.0",
+      "image": "allisson/secrets:v0.12.0",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -878,7 +878,7 @@ docker stats secrets-api
 ```yaml
 services:
   secrets:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s

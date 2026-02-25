@@ -117,6 +117,27 @@ func (km *KeyManagerService) CreateDek(
 	return dek, nil
 }
 
+// EncryptDek encrypts an existing DEK plaintext key using the provided KEK.
+// Returns the encrypted ciphertext and nonce.
+func (km *KeyManagerService) EncryptDek(
+	dekKey []byte,
+	kek *cryptoDomain.Kek,
+) ([]byte, []byte, error) {
+	// Create cipher using AEADManager with KEK's algorithm
+	aead, err := km.aeadManager.CreateCipher(kek.Key, kek.Algorithm)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Encrypt the DEK with the KEK
+	encryptedKey, nonce, err := aead.Encrypt(dekKey, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encrypt DEK: %w", err)
+	}
+
+	return encryptedKey, nonce, nil
+}
+
 // DecryptDek decrypts a DEK using the KEK.
 // Returns ErrDecryptionFailed if decryption fails due to wrong key or corrupted data.
 func (km *KeyManagerService) DecryptDek(

@@ -371,6 +371,63 @@ func TestKeyManagerService_DecryptDek(t *testing.T) {
 	})
 }
 
+func TestKeyManagerService_EncryptDek(t *testing.T) {
+	aeadManager := NewAEADManager()
+	km := NewKeyManager(aeadManager)
+	masterKeyBytes := make([]byte, 32)
+	_, err := rand.Read(masterKeyBytes)
+	require.NoError(t, err)
+
+	masterKey := &cryptoDomain.MasterKey{
+		ID:  "test-master-key",
+		Key: masterKeyBytes,
+	}
+
+	kek, err := km.CreateKek(masterKey, cryptoDomain.AESGCM)
+	require.NoError(t, err)
+
+	t.Run("encrypt DEK successfully with AES-GCM", func(t *testing.T) {
+		plaintextDek := make([]byte, 32)
+		_, err := rand.Read(plaintextDek)
+		require.NoError(t, err)
+
+		encryptedKey, nonce, err := km.EncryptDek(plaintextDek, &kek)
+		require.NoError(t, err)
+
+		assert.NotNil(t, encryptedKey)
+		assert.NotNil(t, nonce)
+		assert.NotEqual(t, plaintextDek, encryptedKey)
+	})
+
+	t.Run("encrypt DEK successfully with ChaCha20", func(t *testing.T) {
+		chachaKek, err := km.CreateKek(masterKey, cryptoDomain.ChaCha20)
+		require.NoError(t, err)
+
+		plaintextDek := make([]byte, 32)
+		_, err = rand.Read(plaintextDek)
+		require.NoError(t, err)
+
+		encryptedKey, nonce, err := km.EncryptDek(plaintextDek, &chachaKek)
+		require.NoError(t, err)
+
+		assert.NotNil(t, encryptedKey)
+		assert.NotNil(t, nonce)
+		assert.NotEqual(t, plaintextDek, encryptedKey)
+	})
+
+	t.Run("encrypt DEK with invalid KEK key size", func(t *testing.T) {
+		invalidKek := kek
+		invalidKek.Key = make([]byte, 16)
+
+		plaintextDek := make([]byte, 32)
+		_, err = rand.Read(plaintextDek)
+		require.NoError(t, err)
+
+		_, _, err = km.EncryptDek(plaintextDek, &invalidKek)
+		assert.ErrorIs(t, err, cryptoDomain.ErrInvalidKeySize)
+	})
+}
+
 func TestKeyManagerService_EnvelopeEncryption(t *testing.T) {
 	t.Run("full envelope encryption flow", func(t *testing.T) {
 		aeadManager := NewAEADManager()

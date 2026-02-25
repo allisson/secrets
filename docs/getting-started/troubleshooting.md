@@ -80,7 +80,7 @@ Use this quick route before diving into detailed sections:
 
 ```bash
 # Check container user
-docker run --rm allisson/secrets:v0.10.0 id
+docker run --rm allisson/secrets:v0.12.0 id
 # uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
 
 # Check host directory ownership

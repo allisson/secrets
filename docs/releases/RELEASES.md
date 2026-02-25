@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.11.0](#0110---2026-02-23)
+**Latest Release**: [v0.12.0](#0120---2026-02-24)
 
 **All Releases**:
+
+- [v0.12.0 (2026-02-24)](#0120---2026-02-24) - Pre-release preparation
 
 - [v0.11.0 (2026-02-23)](#0110---2026-02-23) - Account lockout
 
@@ -37,6 +39,18 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.12.0] - 2026-02-24
+
+### Rewrap DEKs
+
+This release introduces the `rewrap-deks` CLI command, enabling operators to bulk re-encrypt existing Data Encryption Keys (DEKs) that aren't currently secured with a specific Key Encryption Key (KEK). This allows complete key transitions after a KEK rotation.
+
+### Notes
+
+- Version bump and documentation updates preparing for v0.12.0 release
 
 ---
 
@@ -250,10 +264,10 @@ Complete these steps before upgrading:
 
 ```bash
 # Pull new version
-docker pull allisson/secrets:v0.10.0
+docker pull allisson/secrets:v0.12.0
 
 # Verify version and metadata
-docker run --rm allisson/secrets:v0.10.0 --version
+docker run --rm allisson/secrets:v0.12.0 --version
 # Version:    v0.10.0
 # Build Date: 2026-02-21T...
 # Commit SHA: ...
@@ -279,7 +293,7 @@ docker volume create secrets-data
 docker run -d --name secrets-test \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 # Wait for startup
 sleep 5
@@ -305,7 +319,7 @@ docker run -d --name secrets-api \
   --env-file .env \
   -p 8080:8080 \
   -v secrets-data:/data \
-  allisson/secrets:v0.10.0 server
+  allisson/secrets:v0.12.0 server
 
 # Verify startup
 docker logs -f secrets-api
@@ -321,7 +335,7 @@ version: '3.8'
 
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
     env_file: .env
     ports:
       - "8080:8080"
@@ -427,7 +441,7 @@ docker logs -f secrets-api
 
 ```bash
 # 1. Update image in docker-compose.yml
-#    Change: image: allisson/secrets:v0.10.0
+#    Change: image: allisson/secrets:v0.12.0
 #    To:     image: allisson/secrets:v0.9.0
 
 # 2. Restart services
@@ -486,7 +500,7 @@ After migration, verify everything works:
 
 - [ ] Container runs as UID 65532 (not root): `docker exec secrets-api id`
 
-- [ ] Read-only filesystem works: `docker run --rm --read-only --tmpfs /tmp allisson/secrets:v0.10.0 --version`
+- [ ] Read-only filesystem works: `docker run --rm --read-only --tmpfs /tmp allisson/secrets:v0.12.0 --version`
 
 - [ ] No privilege escalation: Verify container security settings
 
@@ -586,11 +600,11 @@ docker logs secrets-api
 docker logs secrets-api
 
 # Check if running as correct user
-docker run --rm allisson/secrets:v0.10.0 id
+docker run --rm allisson/secrets:v0.12.0 id
 # Should show: uid=65532(nonroot)
 
 # Test without volumes to isolate issue
-docker run --rm --env-file .env allisson/secrets:v0.10.0 server
+docker run --rm --env-file .env allisson/secrets:v0.12.0 server
 
 ```
 
@@ -666,7 +680,7 @@ HEALTHCHECK --interval=30s --timeout=3s \
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.10.0
+    image: allisson/secrets:v0.12.0
   
   healthcheck:
     image: curlimages/curl:latest
@@ -735,7 +749,7 @@ git clone https://github.com/allisson/secrets.git
 cd secrets
 
 # Build for ARM64
-make docker-build-multiarch VERSION=v0.10.0
+make docker-build-multiarch VERSION=v0.12.0
 
 ```
 

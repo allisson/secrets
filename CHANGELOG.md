@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-02-24
+
+### Added
+- `rewrap-deks` CLI command to bulk re-encrypt existing Data Encryption Keys (DEKs) with a specific KEK version
+
+## [0.11.0] - 2026-02-23
+
+### Added
+- Persistent account lockout to prevent brute-force attacks against `POST /v1/token`
+- Account lockout: clients are locked for 30 minutes after 10 consecutive failed authentication attempts
+- `LOCKOUT_MAX_ATTEMPTS` environment variable (default `10`)
+- `LOCKOUT_DURATION_MINUTES` environment variable (default `30`)
+- `423 Locked` HTTP response with `"error": "client_locked"` when a client is locked
+- Database migration `000004_add_account_lockout`
+
+### Changed
+- Failed attempt counter and lock expiry are reset automatically on successful authentication
+
+### Security
+- Complements the existing IP-based rate limiting on `POST /v1/token` with per-client identity lockout
+
+### Documentation
+- Added account lockout behavior to `docs/api/auth/authentication.md`
+- Added configuration reference for lockout to `docs/configuration.md`
+- Added `docs/releases/v0.11.0-upgrade.md` upgrade guide
+
 ## [0.10.0] - 2026-02-21
 
 ### Added
@@ -266,6 +292,8 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.12.0]: https://github.com/allisson/secrets/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/allisson/secrets/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/allisson/secrets/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/allisson/secrets/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/allisson/secrets/compare/v0.7.0...v0.8.0

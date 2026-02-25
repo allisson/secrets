@@ -1,6 +1,6 @@
 # 📦 Base Image Migration Guide
 
-> **Document version**: v0.10.0  
+> **Document version**: v0.12.0  
 > Last updated: 2026-02-21  
 > **Audience**: DevOps engineers, SRE teams, platform engineers migrating to distroless base images
 

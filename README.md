@@ -29,14 +29,6 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
 
-## 🆕 What's New in v0.11.0
-
-- 🔒 Account lockout on `POST /v1/token`: clients locked after 10 consecutive failed attempts
-- 🚫 Locked clients receive `423 Locked` with `"error": "client_locked"`
-- ⚙️ Configurable via `LOCKOUT_MAX_ATTEMPTS` (default `10`) and `LOCKOUT_DURATION_MINUTES` (default `30`)
-- 🗄️ Database migration `000004_add_account_lockout` (additive, zero-downtime)
-- 📘 See [v0.11.0 release notes](docs/releases/RELEASES.md#0110---2026-02-23) and [upgrade guide](docs/releases/v0.11.0-upgrade.md)
-
 Release history:
 
 - All releases: [Release notes](docs/releases/RELEASES.md)
@@ -125,7 +117,7 @@ All detailed guides include practical use cases and copy/paste-ready examples.
 
 - 🗄️ **Dual database support** (PostgreSQL 12+ and MySQL 8.0+) with driver-agnostic migrations
 - 📊 **OpenTelemetry metrics** with Prometheus-compatible `/metrics` export
-- 🧪 **CLI tooling** (`verify-audit-logs`, `rotate-kek`, `create-master-key`, `rotate-master-key`)
+- 🧪 **CLI tooling** (`verify-audit-logs`, `rotate-kek`, `rewrap-deks`, `create-master-key`, `rotate-master-key`)
 - 🌐 **CORS support** (configurable, disabled by default)
 - 🏥 **Health endpoints** (`/health`, `/ready`) for Docker health checks
 - 🧯 **Comprehensive documentation** with [runbooks](docs/operations/runbooks/README.md), [incident response guides](docs/operations/observability/incident-response.md), and [operator drills](docs/operations/runbooks/README.md#operator-drills-quarterly)
