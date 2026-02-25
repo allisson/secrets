@@ -171,6 +171,69 @@ func (p *PostgreSQLTokenizationKeyRepository) GetByNameAndVersion(
 	return &key, nil
 }
 
+// List retrieves tokenization keys ordered by name ascending with pagination.
+// Returns the latest version for each key.
+func (p *PostgreSQLTokenizationKeyRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*tokenizationDomain.TokenizationKey, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `
+		SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.dek_id, tk.created_at, tk.deleted_at 
+		FROM tokenization_keys tk
+		INNER JOIN (
+			SELECT name, MAX(version) as max_version
+			FROM tokenization_keys
+			WHERE deleted_at IS NULL
+			GROUP BY name
+			ORDER BY name ASC
+			LIMIT $1 OFFSET $2
+		) latest ON tk.name = latest.name AND tk.version = latest.max_version
+		ORDER BY tk.name ASC`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list tokenization keys")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var keys []*tokenizationDomain.TokenizationKey
+	for rows.Next() {
+		var key tokenizationDomain.TokenizationKey
+		var formatType string
+
+		err := rows.Scan(
+			&key.ID,
+			&key.Name,
+			&key.Version,
+			&formatType,
+			&key.IsDeterministic,
+			&key.DekID,
+			&key.CreatedAt,
+			&key.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan tokenization key")
+		}
+
+		key.FormatType = tokenizationDomain.FormatType(formatType)
+		keys = append(keys, &key)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating tokenization keys")
+	}
+
+	if keys == nil {
+		keys = make([]*tokenizationDomain.TokenizationKey, 0)
+	}
+
+	return keys, nil
+}
+
 // NewPostgreSQLTokenizationKeyRepository creates a new PostgreSQL tokenization key repository instance.
 func NewPostgreSQLTokenizationKeyRepository(db *sql.DB) *PostgreSQLTokenizationKeyRepository {
 	return &PostgreSQLTokenizationKeyRepository{db: db}

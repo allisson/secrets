@@ -34,6 +34,10 @@ type SecretRepository interface {
 
 	// GetByPathAndVersion retrieves a specific version of a secret. Returns ErrSecretNotFound if not found.
 	GetByPathAndVersion(ctx context.Context, path string, version uint) (*secretsDomain.Secret, error)
+
+	// List retrieves secrets ordered by path ascending with pagination.
+	// Returns the latest version for each secret. Uses offset and limit for pagination.
+	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
 }
 
 // SecretUseCase defines the interface for secret management business logic.
@@ -57,4 +61,8 @@ type SecretUseCase interface {
 	// Delete soft deletes all versions of a secret by path, marking them with DeletedAt timestamp.
 	// Preserves encrypted data for audit purposes while preventing future access.
 	Delete(ctx context.Context, path string) error
+
+	// List retrieves secrets without their values, ordered by path with pagination.
+	// Returns empty slice if no secrets found.
+	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
 }

@@ -133,6 +133,64 @@ func (p *PostgreSQLSecretRepository) Delete(ctx context.Context, secretID uuid.U
 	return nil
 }
 
+// List retrieves secrets ordered by path ascending with pagination.
+func (p *PostgreSQLSecretRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*secretsDomain.Secret, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `
+		SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
+		FROM secrets s
+		INNER JOIN (
+			SELECT path, MAX(version) as max_version
+			FROM secrets
+			WHERE deleted_at IS NULL
+			GROUP BY path
+			ORDER BY path ASC
+			LIMIT $1 OFFSET $2
+		) latest ON s.path = latest.path AND s.version = latest.max_version
+		ORDER BY s.path ASC`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list secrets")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var secrets []*secretsDomain.Secret
+	for rows.Next() {
+		var secret secretsDomain.Secret
+		err := rows.Scan(
+			&secret.ID,
+			&secret.Path,
+			&secret.Version,
+			&secret.DekID,
+			&secret.Ciphertext,
+			&secret.Nonce,
+			&secret.CreatedAt,
+			&secret.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan secret")
+		}
+		secrets = append(secrets, &secret)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating secrets")
+	}
+
+	if secrets == nil {
+		secrets = make([]*secretsDomain.Secret, 0)
+	}
+
+	return secrets, nil
+}
+
 // NewPostgreSQLSecretRepository creates a new PostgreSQL Secret repository instance.
 func NewPostgreSQLSecretRepository(db *sql.DB) *PostgreSQLSecretRepository {
 	return &PostgreSQLSecretRepository{db: db}

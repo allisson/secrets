@@ -440,3 +440,57 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 		assert.Contains(t, response["message"], "path cannot be empty")
 	})
 }
+
+func TestSecretHandler_ListHandler(t *testing.T) {
+	t.Run("Success_ListSecrets", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
+
+		now := time.Now().UTC()
+		expectedSecrets := []*secretsDomain.Secret{
+			{
+				ID:        uuid.Must(uuid.NewV7()),
+				Path:      "a/a",
+				Version:   1,
+				CreatedAt: now,
+			},
+			{
+				ID:        uuid.Must(uuid.NewV7()),
+				Path:      "b/b",
+				Version:   2,
+				CreatedAt: now,
+			},
+		}
+
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 100).
+			Return(expectedSecrets, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/secrets?offset=0&limit=100", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.ListSecretsResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, "a/a", response.Data[0].Path)
+		assert.Equal(t, "b/b", response.Data[1].Path)
+	})
+
+	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/secrets?offset=invalid", nil)
+
+		handler.ListHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
+	})
+}

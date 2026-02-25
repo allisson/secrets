@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.15.0](#0150---2026-02-25)
+**Latest Release**: [v0.16.0](#0160---2026-02-25)
 
 **All Releases**:
+
+- [v0.16.0 (2026-02-25)](#0160---2026-02-25) - Listing Endpoints
 
 - [v0.15.0 (2026-02-25)](#0150---2026-02-25) - Goreleaser support
 
@@ -47,6 +49,16 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.16.0] - 2026-02-25
+
+### Added
+
+- Added `/v1/secrets` endpoint for listing secrets with pagination (does not return secret data)
+- Added `/v1/transit/keys` endpoint for listing transit keys with pagination
+- Added `/v1/tokenization/keys` endpoint for listing tokenization keys with pagination
 
 ---
 

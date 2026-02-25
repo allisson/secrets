@@ -141,6 +141,39 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /v1/secrets:
+    get:
+      tags: [secrets]
+      summary: List secrets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Secrets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SecretWriteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/secrets/{path}:
     parameters:
       - name: path
@@ -219,6 +252,38 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys:
+    get:
+      tags: [transit]
+      summary: List transit keys
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transit keys list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransitKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [transit]
       summary: Create transit key
@@ -360,6 +425,38 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/keys:
+    get:
+      tags: [tokenization]
+      summary: List tokenization keys
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tokenization keys list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TokenizationKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [tokenization]
       summary: Create tokenization key

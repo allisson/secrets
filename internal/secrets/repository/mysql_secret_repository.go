@@ -167,6 +167,75 @@ func (m *MySQLSecretRepository) Delete(ctx context.Context, secretID uuid.UUID) 
 	return nil
 }
 
+// List retrieves secrets ordered by path ascending with pagination.
+func (m *MySQLSecretRepository) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*secretsDomain.Secret, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `
+		SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
+		FROM secrets s
+		INNER JOIN (
+			SELECT path, MAX(version) as max_version
+			FROM secrets
+			WHERE deleted_at IS NULL
+			GROUP BY path
+			ORDER BY path ASC
+			LIMIT ? OFFSET ?
+		) latest ON s.path = latest.path AND s.version = latest.max_version
+		ORDER BY s.path ASC`
+
+	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list secrets")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var secrets []*secretsDomain.Secret
+	for rows.Next() {
+		var secret secretsDomain.Secret
+		var id, dekID []byte
+
+		err := rows.Scan(
+			&id,
+			&secret.Path,
+			&secret.Version,
+			&dekID,
+			&secret.Ciphertext,
+			&secret.Nonce,
+			&secret.CreatedAt,
+			&secret.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan secret")
+		}
+
+		if err := secret.ID.UnmarshalBinary(id); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal secret id")
+		}
+
+		if err := secret.DekID.UnmarshalBinary(dekID); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+		}
+
+		secrets = append(secrets, &secret)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating secrets")
+	}
+
+	if secrets == nil {
+		secrets = make([]*secretsDomain.Secret, 0)
+	}
+
+	return secrets, nil
+}
+
 // NewMySQLSecretRepository creates a new MySQL Secret repository instance.
 func NewMySQLSecretRepository(db *sql.DB) *MySQLSecretRepository {
 	return &MySQLSecretRepository{db: db}

@@ -120,3 +120,22 @@ func (t *transitKeyUseCaseWithMetrics) Decrypt(
 
 	return blob, err
 }
+
+// List records metrics for transit listing operations.
+func (t *transitKeyUseCaseWithMetrics) List(
+	ctx context.Context,
+	offset, limit int,
+) ([]*transitDomain.TransitKey, error) {
+	start := time.Now()
+	keys, err := t.next.List(ctx, offset, limit)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "transit", "transit_key_list", status)
+	t.metrics.RecordDuration(ctx, "transit", "transit_key_list", time.Since(start), status)
+
+	return keys, err
+}

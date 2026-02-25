@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -802,4 +803,59 @@ func createTestDek(t *testing.T, db *sql.DB) uuid.UUID {
 	require.NoError(t, err)
 
 	return dekID
+}
+
+func TestPostgreSQLTransitKeyRepository_List(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTransitKeyRepository(db)
+	ctx := context.Background()
+
+	dekID := createTestDek(t, db)
+
+	// Create a few keys
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Millisecond)
+		key := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      fmt.Sprintf("key-%02d", i),
+			Version:   1,
+			DekID:     dekID,
+			CreatedAt: time.Now().UTC(),
+		}
+		err := repo.Create(ctx, key)
+		require.NoError(t, err)
+
+		time.Sleep(time.Millisecond)
+		keyV2 := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      fmt.Sprintf("key-%02d", i),
+			Version:   2,
+			DekID:     dekID,
+			CreatedAt: time.Now().UTC(),
+		}
+		err = repo.Create(ctx, keyV2)
+		require.NoError(t, err)
+	}
+
+	// Test pagination
+	keys, err := repo.List(ctx, 0, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 3)
+	assert.Equal(t, "key-00", keys[0].Name)
+	assert.Equal(t, uint(2), keys[0].Version)
+	assert.Equal(t, "key-01", keys[1].Name)
+	assert.Equal(t, uint(2), keys[1].Version)
+	assert.Equal(t, "key-02", keys[2].Name)
+	assert.Equal(t, uint(2), keys[2].Version)
+
+	keys, err = repo.List(ctx, 3, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 2)
+	assert.Equal(t, "key-03", keys[0].Name)
+	assert.Equal(t, uint(2), keys[0].Version)
+	assert.Equal(t, "key-04", keys[1].Name)
+	assert.Equal(t, uint(2), keys[1].Version)
 }

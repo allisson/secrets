@@ -199,6 +199,11 @@ func (s *secretUseCase) Delete(ctx context.Context, path string) error {
 	return s.secretRepo.Delete(ctx, secret.ID)
 }
 
+// List retrieves secrets without their values, ordered by path with pagination.
+func (s *secretUseCase) List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error) {
+	return s.secretRepo.List(ctx, offset, limit)
+}
+
 // NewSecretUseCase creates a new secret use case instance with the provided dependencies.
 func NewSecretUseCase(
 	txManager database.TxManager,
