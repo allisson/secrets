@@ -60,6 +60,10 @@ func (k *KekChain) Close() {
 // NewKekChain creates a new KekChain with the first KEK as active.
 // KEKs must be ordered by version descending (newest first) and slice must not be empty.
 func NewKekChain(keks []*Kek) *KekChain {
+	if len(keks) == 0 {
+		return &KekChain{}
+	}
+
 	kc := &KekChain{
 		activeID: keks[0].ID,
 	}
