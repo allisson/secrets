@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-24
 
 Use this guide for common setup and runtime errors.
 

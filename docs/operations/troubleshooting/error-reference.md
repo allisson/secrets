@@ -1,7 +1,7 @@
 # ❌ Error Message Reference
 
 > **Document version**: v0.12.0  
-> Last updated: 2026-02-21  
+> Last updated: 2026-02-24  
 > **Audience**: Developers, DevOps engineers, SRE teams troubleshooting Secrets errors
 
 ## Overview

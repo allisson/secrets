@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-20
+> Last updated: 2026-02-24
 
 This guide covers master keys and KEK lifecycle operations.
 

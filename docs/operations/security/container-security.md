@@ -1,6 +1,6 @@
 # 🐳 Container Security Guide
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-24
 
 This guide covers comprehensive container security best practices for running Secrets in production environments. It focuses on Docker-specific security hardening, image security, runtime protection, and deployment patterns for Docker Standalone and Docker Compose.
 

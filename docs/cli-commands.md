@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-24
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 

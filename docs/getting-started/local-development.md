@@ -1,6 +1,6 @@
 # 💻 Run Locally (Development)
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-24
 
 Use this path if you want to modify the source code and run from your workstation.
 

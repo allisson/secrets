@@ -1,7 +1,7 @@
 # 🔍 Security Scanning Guide
 
 > **Document version**: v0.12.0  
-> Last updated: 2026-02-21  
+> Last updated: 2026-02-24  
 > **Audience**: DevOps engineers, security teams, release managers
 
 ## Table of Contents

@@ -1,6 +1,6 @@
 # 🐳 Run with Docker (Recommended)
 
-> Last updated: 2026-02-21
+> Last updated: 2026-02-24
 
 This is the default way to run Secrets.
 
