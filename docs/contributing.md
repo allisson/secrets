@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use this guide when adding or editing project documentation.
 
@@ -135,7 +135,7 @@ For behavior changes, update all relevant docs in the same PR:
 2. OpenAPI contract updates (`docs/openapi.yaml`) for new/changed request and response shapes
 3. Examples parity (`docs/examples/*.md`) for at least curl and one SDK/runtime path
 4. Monitoring/query updates (`docs/operations/observability/monitoring.md`) when new operations/metrics are introduced
-5. Runbook updates (`docs/operations/*.md` or `docs/operations/troubleshooting/index.md`) for incident/upgrade impact
+5. Runbook updates (`docs/operations/*.md` or `docs/operations/troubleshooting/index.md`) for incident impact
 6. Release notes and changelog (consolidated in `releases/RELEASES.md`)
 7. Entry-point navigation updates (`README.md`, `docs/README.md`) when docs scope expands
 
@@ -280,11 +280,8 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 ### 2) Release Pages
 
 - Add release notes: `docs/releases/vX.Y.Z.md`
-- Add upgrade guide when behavior/defaults change: `docs/releases/vX.Y.Z-upgrade.md`
 - Start from templates:
   - `docs/releases/_template.md`
-  - `docs/releases/_upgrade-template.md`
-- Update release compatibility matrix: `docs/releases/compatibility-matrix.md`
 - Promote new release links in docs indexes and operator runbooks
 
 ### 3) API Contract and Examples

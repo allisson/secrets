@@ -415,6 +415,8 @@ paths:
                 properties:
                   plaintext:
                     type: string
+                  version:
+                    type: integer
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -870,7 +872,7 @@ components:
           type: string
         name:
           type: string
-        algorithm:
+        dek_id:
           type: string
         version:
           type: integer

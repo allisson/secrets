@@ -1,6 +1,6 @@
 # 🧱 API Response Shapes
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 Use these representative response schemas as a stable reference across endpoint docs.
@@ -61,7 +61,8 @@ Transit decrypt:
 
 ```json
 {
-  "plaintext": "YjY0LXBsYWludGV4dA=="
+  "plaintext": "YjY0LXBsYWludGV4dA==",
+  "version": 1
 }
 ```
 
@@ -117,7 +118,7 @@ Audit log list:
 
 ```json
 {
-  "audit_logs": [
+  "data": [
     {
       "id": "0194f4a7-8fbe-7e3b-b7b2-72f3ac8f6ed0",
       "request_id": "0194f4a7-8fbc-73c1-a114-88c1d8682cb7",

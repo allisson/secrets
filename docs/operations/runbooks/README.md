@@ -1,13 +1,12 @@
 # 🧭 Operator Runbook Index
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use this page as the single entry point for rollout, validation, and incident runbooks.
 
 ## Release and Rollout
 
 - [Release notes](../../releases/RELEASES.md)
-- [Release compatibility matrix](../../releases/compatibility-matrix.md)
 - [Production rollout golden path](../deployment/production-rollout.md)
 - [Production deployment guide](../deployment/docker-hardened.md)
 - [KMS setup guide](../kms/setup.md)
@@ -42,7 +41,7 @@ Use this page as the single entry point for rollout, validation, and incident ru
 
 ## Suggested Operator Flow
 
-1. Read release notes for behavior changes and upgrade notes
+1. Read release notes for behavior changes
 2. Apply policy review checklist and rollout changes
 3. Run smoke tests and policy smoke tests before traffic cutover
 4. Verify denied/allowed patterns in audit logs after rollout
@@ -63,7 +62,6 @@ Use this section during rollout and incidents when you need a fast, minimal chec
 Primary references:
 
 - [Production rollout golden path](../deployment/production-rollout.md)
-- [Release compatibility matrix](../../releases/compatibility-matrix.md)
 - [Release notes](../../releases/RELEASES.md)
 
 ### Baseline Verification (before traffic cutover)

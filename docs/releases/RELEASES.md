@@ -1,16 +1,16 @@
 # 🚀 Release Notes
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
-This document contains release notes and upgrade guides for all versions of Secrets.
-
-For the compatibility matrix across versions, see [compatibility-matrix.md](compatibility-matrix.md).
+This document contains release notes for all versions of Secrets.
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.17.0](#0170---2026-02-25)
+**Latest Release**: [v0.18.0](#0180---2026-02-26)
 
 **All Releases**:
+
+- [v0.18.0 (2026-02-26)](#0180---2026-02-26) - Repository layer refactoring
 
 - [v0.17.0 (2026-02-25)](#0170---2026-02-25) - Pagination logic standardization
 
@@ -51,6 +51,14 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.18.0] - 2026-02-26
+
+### Changed
+
+- Refactored repository layer architecture by reorganizing database-specific implementations into dedicated `mysql/` and `postgresql/` subdirectories across all modules (`auth`, `crypto`, `secrets`, `tokenization`, `transit`). This improves code maintainability and enforces clearer separation of concerns.
 
 ---
 
@@ -119,7 +127,6 @@ This release significantly reduces documentation bloat by centralizing code exam
 
 ### Added
 
-- A centralized `upgrades.md` runbook for universal upgrades and rollbacks
 - An `examples/` directory for full repository examples (like `docker-compose`)
 - A single, punchy `docker-hardened.md` guide for production container deployments
 
@@ -261,370 +268,6 @@ This release focuses on comprehensive Docker security enhancements, migrating to
 - Added health check endpoint documentation for orchestration platforms
 
 - Added version management guidelines for AI coding agents
-
-### Migration Guide
-
-⚠️ **BREAKING CHANGE**: v0.10.0 introduces non-root user (UID 65532) which may cause volume permission issues.
-
-**For teams migrating from custom Docker images** (Alpine, scratch, Debian), see the comprehensive [Base Image Migration Guide](../operations/deployment/docker-hardened.md).
-
-#### Pre-Migration Checklist
-
-Complete these steps before upgrading:
-
-- [ ] **Backup database** (test restore in staging environment)
-
-- [ ] **Review breaking changes** (see "Security" section above)
-
-- [ ] **Test in staging** (verify volume permissions and health checks work)
-
-- [ ] **Plan rollback window** (see "Rollback Procedures" below)
-
-- [ ] **Update monitoring** (adjust alerts for potential startup delays)
-
-- [ ] **Review volume mounts** (identify host directories that need permission fixes)
-
-#### Docker Migration
-
-*### Step 1: Update image reference**
-
-```bash
-# Pull new version
-docker pull allisson/secrets:v0.12.0
-
-# Verify version and metadata
-docker run --rm allisson/secrets:v0.12.0 --version
-# Version:    v0.10.0
-# Build Date: 2026-02-21T...
-# Commit SHA: ...
-
-```
-
-**Step 2: Fix volume permissions** (if using host bind mounts)
-
-```bash
-# Option A: Change host directory ownership
-sudo chown -R 65532:65532 /path/to/data
-
-# Option B: Use named volumes (recommended for production)
-docker volume create secrets-data
-# Then use -v secrets-data:/data in docker run
-
-```
-
-*### Step 3: Test health checks**
-
-```bash
-# Run test container
-docker run -d --name secrets-test \
-  --env-file .env \
-  -p 8080:8080 \
-  allisson/secrets:v0.12.0 server
-
-# Wait for startup
-sleep 5
-
-# Verify health endpoints
-curl http://localhost:8080/health  # Should return 200 OK
-curl http://localhost:8080/ready   # Should return 200 OK
-
-# Cleanup
-docker rm -f secrets-test
-
-```
-
-*### Step 4: Update production**
-
-```bash
-# Stop old container
-docker stop secrets-api
-docker rm secrets-api
-
-# Start new container with volume fix
-docker run -d --name secrets-api \
-  --env-file .env \
-  -p 8080:8080 \
-  -v secrets-data:/data \
-  allisson/secrets:v0.12.0 server
-
-# Verify startup
-docker logs -f secrets-api
-
-```
-
-#### Docker Compose Migration
-
-**Full production-ready example** with healthcheck sidecar and named volumes:
-
-```yaml
-version: '3.8'
-
-services:
-  secrets-api:
-    image: allisson/secrets:v0.12.0
-    env_file: .env
-    ports:
-      - "8080:8080"
-
-    volumes:
-      # Use named volume (Docker handles permissions automatically)
-      - secrets-data:/data
-
-    restart: unless-stopped
-    networks:
-      - secrets-net
-
-  # Healthcheck sidecar (distroless has no curl/wget)
-  healthcheck:
-    image: curlimages/curl:latest
-    command: >
-      sh -c 'while true; do
-        curl -f http://secrets-api:8080/health || exit 1;
-        sleep 30;
-      done'
-    depends_on:
-      - secrets-api
-
-    restart: unless-stopped
-    networks:
-      - secrets-net
-
-  # PostgreSQL database
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: secrets
-      POSTGRES_PASSWORD: secrets
-      POSTGRES_DB: secrets
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-
-    restart: unless-stopped
-    networks:
-      - secrets-net
-
-volumes:
-  secrets-data:
-    driver: local
-  postgres-data:
-    driver: local
-
-networks:
-  secrets-net:
-    driver: bridge
-
-```
-
-**Migration steps**:
-
-```bash
-# 1. Update docker-compose.yml with example above
-
-# 2. Pull new images
-docker-compose pull
-
-# 3. Stop old containers
-docker-compose down
-
-# 4. Start with new version
-docker-compose up -d
-
-# 5. Verify health
-curl http://localhost:8080/health
-docker-compose logs -f secrets-api
-
-```
-
-#### Rollback Procedures
-
-If issues occur during or after migration, rollback to v0.9.0:
-
-**Docker**:
-
-```bash
-# 1. Stop v0.10.0 container
-docker stop secrets-api
-docker rm secrets-api
-
-# 2. Revert volume permissions (if you changed them)
-sudo chown -R root:root /path/to/host/data
-# OR use the user/group that owned them before
-
-# 3. Start v0.9.0 container
-docker run -d --name secrets-api \
-  --env-file .env \
-  -p 8080:8080 \
-  -v /path/to/host/data:/data \
-  allisson/secrets:v0.9.0 server
-
-# 4. Verify health
-curl http://localhost:8080/health
-docker logs -f secrets-api
-
-```
-
-**Docker Compose**:
-
-```bash
-# 1. Update image in docker-compose.yml
-#    Change: image: allisson/secrets:v0.12.0
-#    To:     image: allisson/secrets:v0.9.0
-
-# 2. Restart services
-docker-compose down
-docker-compose up -d
-
-# 3. Verify
-curl http://localhost:8080/health
-docker-compose logs -f secrets-api
-
-```
-
-**Database compatibility**: v0.10.0 has **no database schema changes** from v0.9.0. You can rollback without reverting migrations.
-
-**Volume permissions note**: If you changed host directory ownership to UID 65532, revert it after rollback (v0.9.0 runs as root and expects root-owned files).
-
-#### Post-Migration Validation
-
-After migration, verify everything works:
-
-**Application health**:
-
-- [ ] `GET /health` returns 200 OK
-
-- [ ] `GET /ready` returns 200 OK
-
-- [ ] No permission errors in logs
-
-- [ ] Container stays running (not crash-looping)
-
-**Functional tests**:
-
-- [ ] Can authenticate and get token (`POST /v1/token`)
-
-- [ ] Can create secrets (`POST /v1/secrets/...`)
-
-- [ ] Can retrieve secrets (`GET /v1/secrets/...`)
-
-- [ ] Can create transit keys (`POST /v1/transit/keys`)
-
-- [ ] Can encrypt/decrypt with transit (`POST /v1/transit/encrypt/...`)
-
-- [ ] Audit logs are created successfully
-
-**Operational checks**:
-
-- [ ] Metrics are being exported (if enabled)
-
-- [ ] Logs are being forwarded to aggregator
-
-- [ ] Health checks passing in load balancer/orchestrator
-
-- [ ] No increase in error rates (monitor for 15-30 minutes)
-
-**Security validation**:
-
-- [ ] Container runs as UID 65532 (not root): `docker exec secrets-api id`
-
-- [ ] Read-only filesystem works: `docker run --rm --read-only --tmpfs /tmp allisson/secrets:v0.12.0 --version`
-
-- [ ] No privilege escalation: Verify container security settings
-
-#### Rollback Testing (Pre-Production Required)
-
-**⚠️ CRITICAL**: Test rollback procedures in staging BEFORE production deployment.
-
-**Test procedure** (15-30 minutes):
-
-```bash
-# 1. Deploy v0.10.0 to staging (Docker Compose example)
-docker-compose pull
-docker-compose up -d
-
-# 2. Create test data
-TOKEN=$(curl -X POST http://staging:8080/v1/token \
-  -d '{"client_id":"test","client_secret":"test"}' | jq -r '.token')
-
-curl -X POST http://staging:8080/v1/secrets/test/rollback \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"value":"dGVzdA=="}'
-
-# 3. Note secret version and timestamp
-curl http://staging:8080/v1/secrets/test/rollback \
-  -H "Authorization: Bearer $TOKEN"
-
-# 4. Simulate failure and rollback
-# Update docker-compose.yml to use v0.9.0
-docker-compose down
-docker-compose up -d
-
-# 5. Verify data integrity after rollback
-curl http://staging:8080/v1/secrets/test/rollback \
-  -H "Authorization: Bearer $TOKEN"
-# Should return same data
-
-# 6. Deploy v0.10.0 again (forward migration)
-# Update docker-compose.yml back to v0.10.0
-docker-compose down
-docker-compose up -d
-
-# 7. Verify data still accessible
-curl http://staging:8080/v1/secrets/test/rollback \
-  -H "Authorization: Bearer $TOKEN"
-# Should still return same data
-
-# 8. Document rollback time
-# Measure time from "docker-compose down" to "curl succeeds"
-
-```
-
-**Expected rollback time**: 1-3 minutes (depends on container restart time and health check settings)
-
-**Document results**:
-
-- Rollback duration: _____ seconds
-
-- Data integrity: PASS / FAIL
-
-- Issues encountered: _____
-
-- Mitigation required: _____
-
-#### Troubleshooting Migration Issues
-
-*### Issue: Health checks failing after upgrade**
-
-```bash
-# Check logs for errors
-docker logs secrets-api
-
-# Common causes:
-# - Database connection failed (check DB_CONNECTION_STRING)
-
-# - Port 8080 not accessible (check firewall/network policy)
-
-# - Volume permission errors (see above)
-
-```
-
----
-
-*### Issue: Container won't start**
-
-```bash
-# Check container logs
-docker logs secrets-api
-
-# Check if running as correct user
-docker run --rm allisson/secrets:v0.12.0 id
-# Should show: uid=65532(nonroot)
-
-# Test without volumes to isolate issue
-docker run --rm --env-file .env allisson/secrets:v0.12.0 server
-
-```
-
-#### Additional Resources
 
 - [Container Security Guide](../operations/deployment/docker-hardened.md) (security best practices)
 
@@ -874,14 +517,6 @@ If your clients expected 24-hour tokens, explicitly set `AUTH_TOKEN_EXPIRATION_S
 
 - Compatibility targets: PostgreSQL `12+`, MySQL `8.0+`
 
-### Upgrade Notes
-
-- Recommended for all users relying on wildcard policy path matching
-
-- No schema migrations required specifically for this bugfix release
-
-- Existing tokenization, secrets, transit, auth, and audit flows remain API-compatible
-
 ### Policy Migration Note
 
 If existing policies assumed prefix-only behavior, review wildcard paths used for rotate and similar endpoint-specific actions.
@@ -976,33 +611,6 @@ Added tokenization business operations metrics in the `tokenization` domain, inc
 
 - Compatibility targets: PostgreSQL `12+`, MySQL `8.0+`
 
-### Upgrade Notes
-
-- Non-breaking addition: tokenization capability under API v1
-
-- Existing auth, secrets, transit, and audit behavior remain compatible
-
-- Run database migrations before using tokenization endpoints or CLI commands
-
-### Upgrade Checklist
-
-1. Deploy binaries/images with `v0.4.0`
-2. Run DB migrations (`app migrate`) before serving traffic
-3. Verify baseline health (`GET /health`, `GET /ready`)
-4. Create a tokenization key (`create-tokenization-key` or `POST /v1/tokenization/keys`)
-5. Run round-trip check: tokenize -> detokenize -> validate -> revoke
-6. Schedule retention cleanup for expired tokens (`clean-expired-tokens`)
-
-### Rollback Notes
-
-- `000002_add_tokenization` is additive schema migration and is expected to remain applied during app rollback.
-
-- Rolling back binaries/images to pre-`v0.4.0` can leave tokenization tables unused but present.
-
-- Avoid destructive schema rollback in production unless you have a validated backup/restore plan.
-
-- If rollback is required, keep existing data and disable tokenization traffic paths operationally until re-upgrade.
-
 ---
 
 ## [0.3.0] - 2026-02-16
@@ -1050,14 +658,6 @@ Runtime behavior:
 - CI baseline: Go `1.25.5`, PostgreSQL `16-alpine`, MySQL `8.0`
 
 - Compatibility targets: PostgreSQL `12+`, MySQL `8.0+`
-
-### Upgrade Notes
-
-- Non-breaking addition: observability and metrics instrumentation
-
-- Existing API paths and behavior remain compatible under API v1 documentation
-
-- Update your environment configuration if you want custom metric namespace values
 
 Example:
 
@@ -1119,12 +719,6 @@ Example:
 
 ```
 
-### Upgrade Notes
-
-- Non-breaking addition: new CLI command for operations
-
-- Existing API paths and behavior remain compatible under API v1 documentation
-
 ---
 
 ## [0.1.0] - 2026-02-14
@@ -1179,15 +773,9 @@ Example:
 
 - API v1 compatibility policy applies to documented endpoint behavior in API reference docs
 
-### Upgrade Notes
-
-- Initial release: no prior upgrade path required
-
 ---
 
 ## See also
-
-- [Release compatibility matrix](compatibility-matrix.md)
 
 - [Documentation index](../README.md)
 

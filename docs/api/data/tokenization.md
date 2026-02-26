@@ -1,6 +1,6 @@
 # 🎫 Tokenization API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 The Tokenization API provides format-preserving token generation for sensitive values,
@@ -74,7 +74,7 @@ Example response (`200 OK`):
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
       "name": "payment-cards",

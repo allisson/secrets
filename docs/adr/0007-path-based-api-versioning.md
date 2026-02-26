@@ -28,7 +28,7 @@ Adopt URL path-based versioning using `/v1/*` prefix for all API endpoints:
 
 - OpenAPI specification at `docs/openapi.yaml` defines v1 contract baseline
 - Endpoint documentation in `docs/api/*.md` defines full public behavior
-- Breaking changes documented in `releases/RELEASES.md` with migration guides
+- Breaking changes documented in `releases/RELEASES.md`
 
 **Version independence:**
 
@@ -119,7 +119,7 @@ Single evolving API with deprecation warnings for old behavior.
 When breaking changes needed:
 
 1. **Implement** `/v2/*` endpoints with new behavior
-2. **Document** migration guide in `docs/releases/vX.Y.Z-upgrade.md`:
+2. **Document** changes in `docs/releases/vX.Y.Z.md`:
    - What changed (endpoint paths, request/response schemas, status codes)
    - Migration examples (v1 request → v2 request)
    - Deprecation timeline for v1

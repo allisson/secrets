@@ -1,6 +1,6 @@
 # 📜 Audit Logs API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 Audit logs capture capability checks and access attempts for monitoring and compliance.
@@ -46,7 +46,7 @@ Example response (`200 OK`):
 
 ```json
 {
-  "audit_logs": [
+  "data": [
     {
       "id": "0194f4a7-8fbe-7e3b-b7b2-72f3ac8f6ed0",
       "request_id": "0194f4a7-8fbc-73c1-a114-88c1d8682cb7",
@@ -152,7 +152,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "unauthorized",
-  "message": "missing or invalid bearer token"
+  "message": "Authentication is required"
 }
 ```
 
@@ -161,7 +161,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "forbidden",
-  "message": "insufficient capability for path"
+  "message": "You don't have permission to access this resource"
 }
 ```
 

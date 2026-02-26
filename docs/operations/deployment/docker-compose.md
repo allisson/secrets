@@ -1,7 +1,7 @@
 # 🐳 Docker Compose Deployment Guide
 
 > **Document version**: v0.13.0  
-> Last updated: 2026-02-25  
+> Last updated: 2026-02-26  
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
 ## Table of Contents
@@ -348,26 +348,6 @@ docker compose exec secrets-api /app migrate
 
 # 5. Verify
 docker compose ps
-curl http://localhost:8080/health
-```
-
-### Upgrade
-
-```bash
-# 1. Pull new image
-docker compose pull secrets-api
-
-# 2. Stop old version
-docker compose stop secrets-api
-
-# 3. Run migrations (if needed)
-docker compose run --rm secrets-api migrate
-
-# 4. Start new version
-docker compose up -d secrets-api
-
-# 5. Verify
-docker compose logs secrets-api --tail=50
 curl http://localhost:8080/health
 ```
 

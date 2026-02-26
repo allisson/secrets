@@ -1,7 +1,7 @@
 # 🚀 Production Rollout Golden Path
 
 > **Document version**: v0.13.0  
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -95,8 +95,6 @@ Gate C (policy and observability):
 
 **When to test**:
 
-- Before major version upgrades (e.g., v0.11.0 → v0.13.0)
-
 - After significant schema changes or breaking changes
 
 - As part of quarterly disaster recovery drills
@@ -189,7 +187,7 @@ docker run -d --name secrets-api \
 
 ```bash
 # Update docker-compose.yml to use previous version
-sed -i.bak 's|allisson/secrets:v0.17.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
+sed -i.bak 's|allisson/secrets:v0.18.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
 
 # Restart service
 docker-compose up -d secrets-api
@@ -242,7 +240,7 @@ docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.17.0 server
+  allisson/secrets:v0.18.0 server
 
 # Verify health and functionality (repeat Step 3 checks)
 
@@ -390,7 +388,5 @@ After completing rollback testing:
 - [Release notes](../../releases/RELEASES.md)
 
 - [KMS migration checklist](../kms/setup.md#migration-checklist)
-
-- [Release compatibility matrix](../../releases/compatibility-matrix.md)
 
 - [Smoke test guide](../../getting-started/smoke-test.md)

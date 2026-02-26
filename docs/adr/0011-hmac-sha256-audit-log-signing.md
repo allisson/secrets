@@ -365,7 +365,6 @@ if kekChain != nil && auditSigner != nil {
 
 - [Audit Logs API Documentation](../api/observability/audit-logs.md) - API schema with signature fields
 - [CLI Commands - verify-audit-logs](../cli-commands.md#verify-audit-logs) - Verification command usage
-- [v0.9.0 Upgrade Guide](../releases/v0.9.0-upgrade.md) - Migration steps and troubleshooting
 - [AuditSigner Service Implementation](../../internal/auth/service/audit_signer.go) - HKDF + HMAC-SHA256 implementation
 - [AuditLogUseCase Implementation](../../internal/auth/usecase/audit_log_usecase.go) - Automatic signing logic
 - [verify-audit-logs CLI Command](../../cmd/app/commands/verify_audit_logs.go) - CLI verification implementation

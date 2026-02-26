@@ -1,6 +1,6 @@
 # 💻 Run Locally (Development)
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use this path if you want to modify the source code and run from your workstation.
 
@@ -14,8 +14,6 @@ Use this path if you want to modify the source code and run from your workstatio
 - `CORS_ENABLED` default is `false`
 
 These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (current: v0.13.0).
-
-If upgrading from `v0.6.0`, review [v0.7.0 upgrade guide](../releases/RELEASES.md#070---2026-02-20).
 
 ## Prerequisites
 
