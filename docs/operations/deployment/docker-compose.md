@@ -1,6 +1,6 @@
 # 🐳 Docker Compose Deployment Guide
 
-> **Document version**: v0.13.0  
+> **Document version**: v0.x
 > Last updated: 2026-02-26  
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
@@ -177,7 +177,7 @@ Since distroless images have no shell, use an external container for health chec
 ```yaml
 services:
   secrets-api:
-    image: allisson/secrets:v0.14.0
+    image: allisson/secrets:<VERSION>
     # No HEALTHCHECK instruction (distroless has no shell)
 
   healthcheck:

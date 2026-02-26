@@ -1,7 +1,7 @@
 # 🔑 Plaintext to KMS Migration Guide
 
-> **Document version**: v0.13.0  
-> Last updated: 2026-02-25  
+> **Document version**: v0.x
+> Last updated: 2026-02-25
 > **Audience**: Security engineers, SRE teams, platform engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.

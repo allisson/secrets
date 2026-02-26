@@ -19,22 +19,11 @@ Complete code examples for integrating with Secrets APIs across multiple languag
 
 ## Version Compatibility
 
-Use this section to quickly identify which example set matches your deployed release.
+All examples in this directory target the latest stable release (see `docs/metadata.json`).
 
-### Current release (`v0.13.0`)
+For full version-specific behavior changes and compatibility history, please refer to the consolidated release notes:
 
-- Primary examples:
-  - [Curl examples](curl.md)
-  - [Python examples](python.md)
-  - [JavaScript examples](javascript.md)
-  - [Go examples](go.md)
-- Release context:
-  - [v0.13.0 release notes](../releases/RELEASES.md#0120---2026-02-24)
-
-### Previous release (`v0.7.0`)
-
-- Backward context:
-  - [v0.7.0 release notes](../releases/RELEASES.md#070---2026-02-20)
+- 📦 [Full Release History](../releases/RELEASES.md)
 
 ### Compatibility notes
 

@@ -1,7 +1,7 @@
 # 🏷️ OCI Image Labels Reference
 
-> **Document version**: v0.13.0  
-> Last updated: 2026-02-25  
+> **Document version**: v0.x
+> Last updated: 2026-02-25
 > **Audience**: DevOps engineers, security teams, compliance officers
 
 ## Table of Contents
@@ -239,7 +239,7 @@ grype allisson/secrets:latest
 
 ```bash
 # Build with version metadata
-docker build -t allisson/secrets:v0.14.0 \
+docker build -t allisson/secrets:<VERSION> \
   --build-arg VERSION=v0.13.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .

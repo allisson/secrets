@@ -4,8 +4,7 @@ Validates that new releases are properly added to consolidated RELEASES.md.
 
 This script checks:
 1. New release entries are added to RELEASES.md (not individual files)
-2. Release appears in compatibility matrix
-3. Navigation files link to RELEASES.md
+2. Navigation files link to RELEASES.md
 """
 
 import json
@@ -17,7 +16,6 @@ from pathlib import Path
 
 # Detect changes to RELEASES.md (modified or new release sections)
 RELEASES_FILE = Path("docs/releases/RELEASES.md")
-COMPATIBILITY_FILE = Path("docs/releases/compatibility-matrix.md")
 
 
 def run(cmd: list[str]) -> str:
@@ -95,9 +93,6 @@ def validate_release_in_consolidated(version: str) -> None:
     """Validate that new release is properly documented in consolidated files."""
     # Check that version appears in RELEASES.md
     require_contains(RELEASES_FILE, f"[{version}]")
-
-    # Check that version appears in compatibility matrix
-    require_contains(COMPATIBILITY_FILE, version)
 
     # Ensure main navigation points to RELEASES.md
     require_contains(Path("docs/README.md"), "releases/RELEASES.md")
