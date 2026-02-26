@@ -1,7 +1,7 @@
 # 🏥 Health Check Endpoints
 
 > **Document version**: v0.x
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > **Audience**: Platform engineers, SRE teams, monitoring specialists
 
 This guide covers the health check endpoints exposed by Secrets for container orchestration, monitoring, and operational readiness validation.

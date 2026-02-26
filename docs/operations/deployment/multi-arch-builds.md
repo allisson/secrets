@@ -1,7 +1,7 @@
 # 🏗️ Multi-Architecture Build Guide
 
 > **Document version**: v0.x
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > **Audience**: DevOps engineers, release managers, CI/CD maintainers
 
 ## Table of Contents

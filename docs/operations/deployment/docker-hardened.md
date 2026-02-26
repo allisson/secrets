@@ -1,6 +1,6 @@
 # 🛡️ Hardened Docker Deployment
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 This guide covers the mandatory security configurations for deploying Secrets in production environments.
 

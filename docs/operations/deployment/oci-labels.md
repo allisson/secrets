@@ -1,7 +1,7 @@
 # 🏷️ OCI Image Labels Reference
 
 > **Document version**: v0.x
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > **Audience**: DevOps engineers, security teams, compliance officers
 
 ## Table of Contents
