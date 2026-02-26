@@ -197,6 +197,9 @@ message indicating too many token requests from the caller IP.
 
 This section defines compatibility expectations for HTTP API changes.
 
+> [!WARNING]
+> While in versions `v0.x.y`, the API is not yet stable and is subject to many changes.
+
 See [ADR 0007: Path-Based API Versioning](../adr/0007-path-based-api-versioning.md) for the architectural rationale behind this design.
 
 ### Compatibility Contract

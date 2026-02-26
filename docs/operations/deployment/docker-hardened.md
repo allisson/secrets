@@ -4,6 +4,9 @@
 
 This guide covers the mandatory security configurations for deploying Secrets in production environments.
 
+> [!WARNING]
+> While in versions `v0.x.y`, this project is not yet recommended for production deployment. It will only be recommended for production when it reaches version `v1.0.0`.
+
 ## 1. Container Hardening (Distroless)
 
 Secrets uses Google's `distroless/static-debian13` base image for maximum security (zero shell, no package manager). When deploying:

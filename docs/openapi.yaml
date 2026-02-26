@@ -71,7 +71,12 @@ paths:
             application/json:
               schema:
                 type: object
-                additionalProperties: true
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -447,7 +452,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       $ref: "#/components/schemas/TokenizationKeyResponse"
@@ -709,7 +714,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  audit_logs:
+                  data:
                     type: array
                     items:
                       type: object

@@ -6,7 +6,7 @@ import (
 
 // ListTokenizationKeysResponse represents the response for listing tokenization keys.
 type ListTokenizationKeysResponse struct {
-	Items []TokenizationKeyResponse `json:"items"`
+	Data []TokenizationKeyResponse `json:"data"`
 }
 
 // MapTokenizationKeysToListResponse maps a slice of TokenizationKey domain entities to a ListTokenizationKeysResponse DTO.
@@ -20,6 +20,6 @@ func MapTokenizationKeysToListResponse(
 	}
 
 	return ListTokenizationKeysResponse{
-		Items: items,
+		Data: items,
 	}
 }

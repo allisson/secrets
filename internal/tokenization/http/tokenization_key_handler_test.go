@@ -440,8 +440,8 @@ func TestTokenizationKeyHandler_ListHandler(t *testing.T) {
 		var response dto.ListTokenizationKeysResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.Items, 1)
-		assert.Equal(t, "tok-key-1", response.Items[0].Name)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, "tok-key-1", response.Data[0].Name)
 	})
 
 	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {

@@ -136,13 +136,13 @@ func TestMapClientsToListResponse(t *testing.T) {
 
 		response := MapClientsToListResponse(clients)
 
-		assert.Len(t, response.Clients, 2)
-		assert.Equal(t, client1ID.String(), response.Clients[0].ID)
-		assert.Equal(t, "Client 1", response.Clients[0].Name)
-		assert.True(t, response.Clients[0].IsActive)
-		assert.Equal(t, client2ID.String(), response.Clients[1].ID)
-		assert.Equal(t, "Client 2", response.Clients[1].Name)
-		assert.False(t, response.Clients[1].IsActive)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, client1ID.String(), response.Data[0].ID)
+		assert.Equal(t, "Client 1", response.Data[0].Name)
+		assert.True(t, response.Data[0].IsActive)
+		assert.Equal(t, client2ID.String(), response.Data[1].ID)
+		assert.Equal(t, "Client 2", response.Data[1].Name)
+		assert.False(t, response.Data[1].IsActive)
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
@@ -150,8 +150,8 @@ func TestMapClientsToListResponse(t *testing.T) {
 
 		response := MapClientsToListResponse(clients)
 
-		assert.NotNil(t, response.Clients)
-		assert.Empty(t, response.Clients)
+		assert.NotNil(t, response.Data)
+		assert.Empty(t, response.Data)
 	})
 
 	t.Run("Success_SingleClient", func(t *testing.T) {
@@ -171,9 +171,9 @@ func TestMapClientsToListResponse(t *testing.T) {
 
 		response := MapClientsToListResponse(clients)
 
-		assert.Len(t, response.Clients, 1)
-		assert.Equal(t, clientID.String(), response.Clients[0].ID)
-		assert.Equal(t, "Single Client", response.Clients[0].Name)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, clientID.String(), response.Data[0].ID)
+		assert.Equal(t, "Single Client", response.Data[0].Name)
 	})
 }
 
@@ -305,14 +305,14 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 
 		response := MapAuditLogsToListResponse(auditLogs)
 
-		assert.Len(t, response.AuditLogs, 2)
-		assert.Equal(t, id1.String(), response.AuditLogs[0].ID)
-		assert.Equal(t, requestID1.String(), response.AuditLogs[0].RequestID)
-		assert.Equal(t, clientID1.String(), response.AuditLogs[0].ClientID)
-		assert.Equal(t, string(authDomain.ReadCapability), response.AuditLogs[0].Capability)
-		assert.NotNil(t, response.AuditLogs[0].Metadata)
-		assert.Equal(t, id2.String(), response.AuditLogs[1].ID)
-		assert.Nil(t, response.AuditLogs[1].Metadata)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, id1.String(), response.Data[0].ID)
+		assert.Equal(t, requestID1.String(), response.Data[0].RequestID)
+		assert.Equal(t, clientID1.String(), response.Data[0].ClientID)
+		assert.Equal(t, string(authDomain.ReadCapability), response.Data[0].Capability)
+		assert.NotNil(t, response.Data[0].Metadata)
+		assert.Equal(t, id2.String(), response.Data[1].ID)
+		assert.Nil(t, response.Data[1].Metadata)
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
@@ -320,8 +320,8 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 
 		response := MapAuditLogsToListResponse(auditLogs)
 
-		assert.NotNil(t, response.AuditLogs)
-		assert.Empty(t, response.AuditLogs)
+		assert.NotNil(t, response.Data)
+		assert.Empty(t, response.Data)
 	})
 
 	t.Run("Success_SingleAuditLog", func(t *testing.T) {
@@ -344,9 +344,9 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 
 		response := MapAuditLogsToListResponse(auditLogs)
 
-		assert.Len(t, response.AuditLogs, 1)
-		assert.Equal(t, id.String(), response.AuditLogs[0].ID)
-		assert.Equal(t, string(authDomain.EncryptCapability), response.AuditLogs[0].Capability)
-		assert.NotNil(t, response.AuditLogs[0].Metadata)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, id.String(), response.Data[0].ID)
+		assert.Equal(t, string(authDomain.EncryptCapability), response.Data[0].Capability)
+		assert.NotNil(t, response.Data[0].Metadata)
 	})
 }

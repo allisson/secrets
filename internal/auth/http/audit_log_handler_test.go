@@ -81,14 +81,14 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 2)
-		assert.Equal(t, id1.String(), response.AuditLogs[0].ID)
-		assert.Equal(t, requestID1.String(), response.AuditLogs[0].RequestID)
-		assert.Equal(t, clientID1.String(), response.AuditLogs[0].ClientID)
-		assert.Equal(t, string(authDomain.ReadCapability), response.AuditLogs[0].Capability)
-		assert.Equal(t, "/v1/secrets/test", response.AuditLogs[0].Path)
-		assert.NotNil(t, response.AuditLogs[0].Metadata)
-		assert.Equal(t, id2.String(), response.AuditLogs[1].ID)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, id1.String(), response.Data[0].ID)
+		assert.Equal(t, requestID1.String(), response.Data[0].RequestID)
+		assert.Equal(t, clientID1.String(), response.Data[0].ClientID)
+		assert.Equal(t, string(authDomain.ReadCapability), response.Data[0].Capability)
+		assert.Equal(t, "/v1/secrets/test", response.Data[0].Path)
+		assert.NotNil(t, response.Data[0].Metadata)
+		assert.Equal(t, id2.String(), response.Data[1].ID)
 	})
 
 	t.Run("Success_CustomPagination", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 0)
+		assert.Len(t, response.Data, 0)
 	})
 
 	t.Run("Success_MaxLimit", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 0)
+		assert.Len(t, response.Data, 0)
 	})
 
 	t.Run("Success_EmptyResults", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 0)
+		assert.Len(t, response.Data, 0)
 	})
 
 	t.Run("Error_InvalidOffset_Negative", func(t *testing.T) {
@@ -292,8 +292,8 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 1)
-		assert.Equal(t, id.String(), response.AuditLogs[0].ID)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, id.String(), response.Data[0].ID)
 	})
 
 	t.Run("Success_WithCreatedAtToFilter", func(t *testing.T) {
@@ -336,8 +336,8 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 1)
-		assert.Equal(t, id.String(), response.AuditLogs[0].ID)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, id.String(), response.Data[0].ID)
 	})
 
 	t.Run("Success_WithBothFilters", func(t *testing.T) {
@@ -382,8 +382,8 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 1)
-		assert.Equal(t, id.String(), response.AuditLogs[0].ID)
+		assert.Len(t, response.Data, 1)
+		assert.Equal(t, id.String(), response.Data[0].ID)
 	})
 
 	t.Run("Success_WithTimezoneConversion", func(t *testing.T) {
@@ -506,7 +506,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 0)
+		assert.Len(t, response.Data, 0)
 	})
 
 	t.Run("Success_WithFiltersAndPagination", func(t *testing.T) {
@@ -535,6 +535,6 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response dto.ListAuditLogsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.AuditLogs, 0)
+		assert.Len(t, response.Data, 0)
 	})
 }

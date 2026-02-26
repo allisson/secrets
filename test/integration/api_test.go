@@ -635,8 +635,8 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 				var response authDTO.ListClientsResponse
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
-				assert.NotEmpty(t, response.Clients)
-				assert.GreaterOrEqual(t, len(response.Clients), 2, "should have at least root + new client")
+				assert.NotEmpty(t, response.Data)
+				assert.GreaterOrEqual(t, len(response.Data), 2, "should have at least root + new client")
 			})
 
 			// [6/8] Test GET /v1/audit-logs - List audit logs
@@ -647,13 +647,13 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 				var response authDTO.ListAuditLogsResponse
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
-				assert.NotEmpty(t, response.AuditLogs)
+				assert.NotEmpty(t, response.Data)
 
 				// Verify some audit log entries exist for our operations
-				assert.GreaterOrEqual(t, len(response.AuditLogs), 5, "should have multiple audit log entries")
+				assert.GreaterOrEqual(t, len(response.Data), 5, "should have multiple audit log entries")
 
 				// Verify audit log structure
-				firstLog := response.AuditLogs[0]
+				firstLog := response.Data[0]
 				assert.NotEmpty(t, firstLog.ID)
 				assert.NotEmpty(t, firstLog.ClientID)
 				assert.NotEmpty(t, firstLog.Capability)
