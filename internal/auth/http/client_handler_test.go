@@ -602,13 +602,13 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response dto.ListClientsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Len(t, response.Clients, 2)
-		assert.Equal(t, client1ID.String(), response.Clients[0].ID)
-		assert.Equal(t, "Client 1", response.Clients[0].Name)
-		assert.True(t, response.Clients[0].IsActive)
-		assert.Equal(t, client2ID.String(), response.Clients[1].ID)
-		assert.Equal(t, "Client 2", response.Clients[1].Name)
-		assert.False(t, response.Clients[1].IsActive)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, client1ID.String(), response.Data[0].ID)
+		assert.Equal(t, "Client 1", response.Data[0].Name)
+		assert.True(t, response.Data[0].IsActive)
+		assert.Equal(t, client2ID.String(), response.Data[1].ID)
+		assert.Equal(t, "Client 2", response.Data[1].Name)
+		assert.False(t, response.Data[1].IsActive)
 	})
 
 	t.Run("Success_CustomPagination", func(t *testing.T) {
@@ -630,8 +630,8 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response dto.ListClientsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Empty(t, response.Clients)
-		assert.NotNil(t, response.Clients)
+		assert.Empty(t, response.Data)
+		assert.NotNil(t, response.Data)
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
@@ -651,7 +651,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response dto.ListClientsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Empty(t, response.Clients)
+		assert.Empty(t, response.Data)
 	})
 
 	t.Run("Error_InvalidOffset_Negative", func(t *testing.T) {

@@ -8,9 +8,11 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.16.0](#0160---2026-02-25)
+**Latest Release**: [v0.17.0](#0170---2026-02-25)
 
 **All Releases**:
+
+- [v0.17.0 (2026-02-25)](#0170---2026-02-25) - Pagination logic standardization
 
 - [v0.16.0 (2026-02-25)](#0160---2026-02-25) - Listing Endpoints
 
@@ -49,6 +51,14 @@ For the compatibility matrix across versions, see [compatibility-matrix.md](comp
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.17.0] - 2026-02-25
+
+### Changed
+
+- Standardized pagination logic (`offset`, `limit`) across all listing endpoints using a centralized parser in `httputil`
 
 ---
 

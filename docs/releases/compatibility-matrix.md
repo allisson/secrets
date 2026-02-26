@@ -14,6 +14,7 @@ If you need upgrade guidance for older versions, consult the full release histor
 
 | From -> To | Schema migration impact | Runtime/default changes | Required operator action |
 | --- | --- | --- | --- |
+| `v0.16.0 -> v0.17.0` | No schema migration required | Standardized pagination logic across listing endpoints | None (backward compatible, no runtime changes) |
 | `v0.15.0 -> v0.16.0` | No schema migration required | Added list endpoints for secrets, transit keys, and tokenization keys | Verify capability mapping for read-only roles |
 | `v0.14.1 -> v0.15.0` | No schema migration required | Added Goreleaser support for automated builds | None (backward compatible, no runtime changes) |
 | `v0.14.0 -> v0.14.1` | No schema migration required | Fixed empty KEK chain bug | None (backward compatible, no runtime changes) |
@@ -32,6 +33,11 @@ If you need upgrade guidance for older versions, consult the full release histor
 | `v0.4.x -> v0.5.0` | No new destructive schema migration required for core features | Token TTL default `24h -> 4h`; rate limiting enabled by default; CORS config introduced (disabled by default) | Set explicit `AUTH_TOKEN_EXPIRATION_SECONDS`, review `RATE_LIMIT_*`, configure `CORS_*` only if browser access is required |
 
 ## Upgrade verification by target
+
+For `v0.17.0`:
+
+1. `./bin/app --version` shows `v0.17.0`
+2. `GET /v1/secrets`, `GET /v1/transit/keys`, and `GET /v1/tokenization/keys` correctly evaluate offset and limit limits and format standard 400 Bad Request if invalid.
 
 For `v0.16.0`:
 

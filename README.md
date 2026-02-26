@@ -8,6 +8,9 @@
 
 Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **much simpler** and was **not designed to compete with Vault**.
 
+> [!WARNING]
+> While in versions `v0.x.y`, this project is not yet recommended for production deployment and the API is not yet stable and is subject to many changes. It will only be recommended for production when it reaches version `v1.0.0`.
+
 ## 🚀 Quick Start (Docker-first)
 
 The default way to run Secrets is the published Docker image:

@@ -4,6 +4,9 @@
 
 Metadata source for release/API labels: `docs/metadata.json`
 
+> [!WARNING]
+> While in versions `v0.x.y`, this project is not yet recommended for production deployment and the API is not yet stable and is subject to many changes. It will only be recommended for production when it reaches version `v1.0.0`.
+
 Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 ## 🧭 Start Here
@@ -101,7 +104,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.16.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.17.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 

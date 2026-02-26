@@ -14,7 +14,7 @@ import (
 
 // Build-time version information (injected via ldflags during build).
 var (
-	version   = "v0.16.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
+	version   = "v0.17.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
 	buildDate = "unknown" // ISO 8601 build timestamp
 	commitSHA = "unknown" // Git commit SHA
 )
@@ -28,8 +28,8 @@ func main() {
 	}
 
 	cmd := &cli.Command{
-		Name:    "app",
-		Usage:   "Go project template application",
+		Name:    "secrets",
+		Usage:   "A lightweight secrets manager designed for simplicity and security",
 		Version: version,
 		Commands: []*cli.Command{
 			{

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -204,23 +203,10 @@ func (h *ClientHandler) UnlockHandler(c *gin.Context) {
 // GET /v1/clients?offset=0&limit=50 - Requires ReadCapability on path /v1/clients.
 // Returns 200 OK with paginated client list.
 func (h *ClientHandler) ListHandler(c *gin.Context) {
-	// Parse offset query parameter (default: 0)
-	offsetStr := c.DefaultQuery("offset", "0")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		httputil.HandleValidationErrorGin(c,
-			fmt.Errorf("invalid offset parameter: must be a non-negative integer"),
-			h.logger)
-		return
-	}
-
-	// Parse limit query parameter (default: 50, max: 100)
-	limitStr := c.DefaultQuery("limit", "50")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 100 {
-		httputil.HandleValidationErrorGin(c,
-			fmt.Errorf("invalid limit parameter: must be between 1 and 100"),
-			h.logger)
+	// Parse offset and limit query parameters
+	offset, limit, err := httputil.ParsePagination(c)
+	if err != nil {
+		httputil.HandleValidationErrorGin(c, err, h.logger)
 		return
 	}
 

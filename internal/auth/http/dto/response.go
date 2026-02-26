@@ -36,7 +36,7 @@ func MapClientToResponse(client *authDomain.Client) ClientResponse {
 
 // ListClientsResponse represents a paginated list of clients in API responses.
 type ListClientsResponse struct {
-	Clients []ClientResponse `json:"clients"`
+	Data []ClientResponse `json:"data"`
 }
 
 // MapClientsToListResponse converts a slice of domain clients to a list API response.
@@ -46,7 +46,7 @@ func MapClientsToListResponse(clients []*authDomain.Client) ListClientsResponse 
 		clientResponses = append(clientResponses, MapClientToResponse(client))
 	}
 	return ListClientsResponse{
-		Clients: clientResponses,
+		Data: clientResponses,
 	}
 }
 
@@ -83,7 +83,7 @@ func MapAuditLogToResponse(auditLog *authDomain.AuditLog) AuditLogResponse {
 
 // ListAuditLogsResponse represents a paginated list of audit logs in API responses.
 type ListAuditLogsResponse struct {
-	AuditLogs []AuditLogResponse `json:"audit_logs"`
+	Data []AuditLogResponse `json:"data"`
 }
 
 // MapAuditLogsToListResponse converts a slice of domain audit logs to a list API response.
@@ -93,6 +93,6 @@ func MapAuditLogsToListResponse(auditLogs []*authDomain.AuditLog) ListAuditLogsR
 		auditLogResponses = append(auditLogResponses, MapAuditLogToResponse(auditLog))
 	}
 	return ListAuditLogsResponse{
-		AuditLogs: auditLogResponses,
+		Data: auditLogResponses,
 	}
 }

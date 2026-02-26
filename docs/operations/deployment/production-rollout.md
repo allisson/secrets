@@ -5,6 +5,9 @@
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
+> [!WARNING]
+> While in versions `v0.x.y`, this project is not yet recommended for production deployment. It will only be recommended for production when it reaches version `v1.0.0`.
+
 ## Scope
 
 - Deploy target: Secrets (latest)
@@ -186,7 +189,7 @@ docker run -d --name secrets-api \
 
 ```bash
 # Update docker-compose.yml to use previous version
-sed -i.bak 's|allisson/secrets:v0.16.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
+sed -i.bak 's|allisson/secrets:v0.17.0|allisson/secrets:v<PREVIOUS_VERSION>|' docker-compose.yml
 
 # Restart service
 docker-compose up -d secrets-api
@@ -239,7 +242,7 @@ docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
   -p 8080:8080 \
-  allisson/secrets:v0.16.0 server
+  allisson/secrets:v0.17.0 server
 
 # Verify health and functionality (repeat Step 3 checks)
 
