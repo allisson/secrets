@@ -10,25 +10,30 @@ import (
 	"sync"
 
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
-	authRepository "github.com/allisson/secrets/internal/auth/repository"
+	authMySQL "github.com/allisson/secrets/internal/auth/repository/mysql"
+	authPostgreSQL "github.com/allisson/secrets/internal/auth/repository/postgresql"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
+	cryptoMySQL "github.com/allisson/secrets/internal/crypto/repository/mysql"
+	cryptoPostgreSQL "github.com/allisson/secrets/internal/crypto/repository/postgresql"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
 	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
-	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
+	secretsMySQL "github.com/allisson/secrets/internal/secrets/repository/mysql"
+	secretsPostgreSQL "github.com/allisson/secrets/internal/secrets/repository/postgresql"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
-	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
+	tokenizationMySQL "github.com/allisson/secrets/internal/tokenization/repository/mysql"
+	tokenizationPostgreSQL "github.com/allisson/secrets/internal/tokenization/repository/postgresql"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
-	transitRepository "github.com/allisson/secrets/internal/transit/repository"
+	transitMySQL "github.com/allisson/secrets/internal/transit/repository/mysql"
+	transitPostgreSQL "github.com/allisson/secrets/internal/transit/repository/postgresql"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
@@ -903,9 +908,9 @@ func (c *Container) initKekRepository() (cryptoUseCase.KekRepository, error) {
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return cryptoRepository.NewPostgreSQLKekRepository(db), nil
+		return cryptoPostgreSQL.NewPostgreSQLKekRepository(db), nil
 	case "mysql":
-		return cryptoRepository.NewMySQLKekRepository(db), nil
+		return cryptoMySQL.NewMySQLKekRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -942,9 +947,9 @@ func (c *Container) initClientRepository() (authUseCase.ClientRepository, error)
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return authRepository.NewPostgreSQLClientRepository(db), nil
+		return authPostgreSQL.NewPostgreSQLClientRepository(db), nil
 	case "mysql":
-		return authRepository.NewMySQLClientRepository(db), nil
+		return authMySQL.NewMySQLClientRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -992,9 +997,9 @@ func (c *Container) initTokenRepository() (authUseCase.TokenRepository, error) {
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return authRepository.NewPostgreSQLTokenRepository(db), nil
+		return authPostgreSQL.NewPostgreSQLTokenRepository(db), nil
 	case "mysql":
-		return authRepository.NewMySQLTokenRepository(db), nil
+		return authMySQL.NewMySQLTokenRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1009,9 +1014,9 @@ func (c *Container) initAuditLogRepository() (authUseCase.AuditLogRepository, er
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return authRepository.NewPostgreSQLAuditLogRepository(db), nil
+		return authPostgreSQL.NewPostgreSQLAuditLogRepository(db), nil
 	case "mysql":
-		return authRepository.NewMySQLAuditLogRepository(db), nil
+		return authMySQL.NewMySQLAuditLogRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1132,9 +1137,9 @@ func (c *Container) initCryptoDekRepository() (cryptoUseCase.DekRepository, erro
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
 	case "mysql":
-		return cryptoRepository.NewMySQLDekRepository(db), nil
+		return cryptoMySQL.NewMySQLDekRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1166,9 +1171,9 @@ func (c *Container) initDekRepository() (secretsUseCase.DekRepository, error) {
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
 	case "mysql":
-		return cryptoRepository.NewMySQLDekRepository(db), nil
+		return cryptoMySQL.NewMySQLDekRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1183,9 +1188,9 @@ func (c *Container) initSecretRepository() (secretsUseCase.SecretRepository, err
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return secretsRepository.NewPostgreSQLSecretRepository(db), nil
+		return secretsPostgreSQL.NewPostgreSQLSecretRepository(db), nil
 	case "mysql":
-		return secretsRepository.NewMySQLSecretRepository(db), nil
+		return secretsMySQL.NewMySQLSecretRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1375,9 +1380,9 @@ func (c *Container) initTransitKeyRepository() (transitUseCase.TransitKeyReposit
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return transitRepository.NewPostgreSQLTransitKeyRepository(db), nil
+		return transitPostgreSQL.NewPostgreSQLTransitKeyRepository(db), nil
 	case "mysql":
-		return transitRepository.NewMySQLTransitKeyRepository(db), nil
+		return transitMySQL.NewMySQLTransitKeyRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1392,9 +1397,9 @@ func (c *Container) initTransitDekRepository() (transitUseCase.DekRepository, er
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
 	case "mysql":
-		return cryptoRepository.NewMySQLDekRepository(db), nil
+		return cryptoMySQL.NewMySQLDekRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1594,9 +1599,9 @@ func (c *Container) initTokenizationKeyRepository() (tokenizationUseCase.Tokeniz
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return tokenizationRepository.NewPostgreSQLTokenizationKeyRepository(db), nil
+		return tokenizationPostgreSQL.NewPostgreSQLTokenizationKeyRepository(db), nil
 	case "mysql":
-		return tokenizationRepository.NewMySQLTokenizationKeyRepository(db), nil
+		return tokenizationMySQL.NewMySQLTokenizationKeyRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1611,9 +1616,9 @@ func (c *Container) initTokenizationTokenRepository() (tokenizationUseCase.Token
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return tokenizationRepository.NewPostgreSQLTokenRepository(db), nil
+		return tokenizationPostgreSQL.NewPostgreSQLTokenRepository(db), nil
 	case "mysql":
-		return tokenizationRepository.NewMySQLTokenRepository(db), nil
+		return tokenizationMySQL.NewMySQLTokenRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}
@@ -1628,9 +1633,9 @@ func (c *Container) initTokenizationDekRepository() (tokenizationUseCase.DekRepo
 
 	switch c.config.DBDriver {
 	case "postgres":
-		return cryptoRepository.NewPostgreSQLDekRepository(db), nil
+		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
 	case "mysql":
-		return cryptoRepository.NewMySQLDekRepository(db), nil
+		return cryptoMySQL.NewMySQLDekRepository(db), nil
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
 	}

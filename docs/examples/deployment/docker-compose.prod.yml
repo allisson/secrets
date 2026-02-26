@@ -36,7 +36,7 @@ services:
 
   # Secrets API application
   secrets-api:
-    image: allisson/secrets:v0.14.0
+    image: allisson/secrets:<VERSION>
     container_name: secrets-api
     depends_on:
       postgres:

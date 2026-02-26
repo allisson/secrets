@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-02-26
+
+### Changed
+- Refactored repository layer architecture by reorganizing database-specific implementations into dedicated `mysql/` and `postgresql/` subdirectories across all modules (`auth`, `crypto`, `secrets`, `tokenization`, `transit`). This improves code maintainability and enforces clearer separation of concerns.
+
 ## [0.17.0] - 2026-02-25
 
 ### Changed
@@ -46,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted large code blocks from narrative configuration guides into centralized `docs/examples/`.
 - Consolidated overlapping operations and security guides into a single `docs/operations/deployment/docker-hardened.md` guide.
 - Pruned `docs/releases/RELEASES.md` into a pure changelog, removing embedded runtime troubleshooting and point-in-time deployment migration steps.
-- Created `docs/operations/upgrades.md` to serve as a universal rollout operation runbook.
 - Centralized `docs/operations/troubleshooting/index.md` as the unified source for FAQ and debugging steps.
 - Pruned CLI tutorial sections from the `docs/operations/kms/setup.md` guide.
 
@@ -74,7 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Added account lockout behavior to `docs/api/auth/authentication.md`
 - Added configuration reference for lockout to `docs/configuration.md`
-- Added `docs/releases/v0.11.0-upgrade.md` upgrade guide
 
 ## [0.10.0] - 2026-02-21
 
@@ -115,17 +118,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive container security guide (`docs/operations/deployment/docker-hardened.md`) with 10 sections covering base image security, runtime security, network security, secrets management, image scanning, health checks, build security, and deployment best practices
 - Added complete health check guide (`docs/operations/observability/health-checks.md`) with platform integrations for Kubernetes, Docker Compose, AWS ECS, Google Cloud Run, and monitoring tools
 - Added security scanning guide (`docs/operations/security/scanning.md`) covering Trivy, Docker Scout, Grype, SBOM generation, and CI/CD integration
-- Added OCI labels reference (`docs/operations/deployment/oci-labels.md`) documenting image metadata schema for security scanning and compliance
-- Added Kubernetes deployment guide (`docs/operations/deployment/kubernetes.md`) with production-ready manifests and security hardening
-- Added Docker Compose deployment guide (`docs/operations/deployment/docker-compose.md`) with development and production configurations
+- Added oci labels reference (`docs/operations/deployment/oci-labels.md`) documenting image metadata schema for security scanning and compliance
+- Added kubernetes deployment guide (`docs/operations/deployment/kubernetes.md`) with production-ready manifests and security hardening
+- Added docker compose deployment guide (`docs/operations/deployment/docker-compose.md`) with development and production configurations
 - Added multi-architecture builds guide (`docs/operations/deployment/multi-arch-builds.md`) for linux/amd64 and linux/arm64
-- Added base image migration guide (`docs/operations/deployment/docker-hardened.md`) for Alpine/scratch to distroless transitions
+- Added base image migration guide (`docs/operations/deployment/docker-hardened.md`) for alpine/scratch to distroless transitions
 - Added volume permissions troubleshooting guide (`docs/operations/troubleshooting/volume-permissions.md`) for non-root container issues
-- Added error reference guide (`docs/operations/troubleshooting/error-reference.md`) with HTTP, database, KMS, and configuration errors
-- Added comprehensive migration guide in `docs/releases/RELEASES.md` with rollback procedures and validation gates
-- Added known issues section to `docs/releases/RELEASES.md` documenting ARM64 builds, health checks, and volume permissions
-- Added rollback testing guidance to `docs/operations/deployment/production-rollout.md`
-- Enhanced KMS security warnings in `docs/configuration.md` and `docs/operations/kms/setup.md`
+- Added error reference guide (`docs/operations/troubleshooting/error-reference.md`) with http, database, kms, and configuration errors
+- Pruned `docs/releases/RELEASES.md` to remove embedded runtime troubleshooting and point-in-time deployment migration steps.
 - Updated Docker quick start guide with security features overview and health check examples
 - Updated Dockerfile with comprehensive inline documentation (~180 comment lines)
 - Added version management guidelines in AGENTS.md for AI coding agents
@@ -154,7 +154,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforced data integrity with FK constraints preventing orphaned client/KEK references
 
 ### Documentation
-- Added `docs/releases/v0.9.0-upgrade.md` upgrade guide with pre/post-migration checks
 - Updated `docs/cli-commands.md` with `verify-audit-logs` command
 - Updated `docs/api/observability/audit-logs.md` with signature field documentation
 - Added AGENTS.md guidelines for audit signer architecture and FK testing patterns
@@ -182,7 +181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened token issuance path against credential stuffing and brute-force request bursts
 
 ### Documentation
-- Added `docs/releases/v0.7.0.md` release notes and `docs/releases/v0.7.0-upgrade.md` upgrade guide
 - Updated docs for token endpoint throttling behavior, configuration, and troubleshooting guidance
 
 ## [0.6.0] - 2026-02-19
@@ -201,7 +199,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added startup validation and error paths for incomplete KMS configuration and decryption failures
 
 ### Documentation
-- Added `docs/releases/v0.6.0.md` release notes and `docs/releases/v0.6.0-upgrade.md` upgrade guide
 - Added KMS operations guide: `docs/operations/kms/setup.md`
 - Updated CLI and environment variable docs for KMS configuration and master key rotation workflows
 
@@ -216,7 +213,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added regression tests for key usability-after-load and key zeroing-on-close behavior
 
 ### Documentation
-- Added `docs/releases/v0.5.1.md` release notes and `docs/releases/v0.5.1-upgrade.md` upgrade guide
 - Updated current release references and pinned examples to `v0.5.1`
 
 ## [0.5.0] - 2026-02-19

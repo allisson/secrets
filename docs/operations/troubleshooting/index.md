@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use this guide for common setup and runtime errors.
 
@@ -19,7 +19,7 @@ Use this quick route before diving into detailed sections:
 7. After rotating keys behavior is stale -> go to `Rotation completed but server still uses old key context`
 8. Startup fails with key config errors -> go to `Missing or Invalid Master Keys` and `KMS configuration mismatch`
 9. Monitoring data is missing -> go to `Metrics Troubleshooting Matrix`
-10. Tokenization endpoints fail after upgrade -> go to `Tokenization migration verification`
+10. Tokenization endpoints fail -> go to `Tokenization migration verification`
 11. Master key loads but key-dependent crypto fails after mixed-version rollout -> go to `Master key load regression triage (historical v0.5.1 fix)`
 
 ## 📑 Table of Contents
@@ -394,7 +394,7 @@ Historical note:
 
 - This section is retained for mixed-version or rollback investigations involving pre-`v0.5.1` builds.
 
-- For current rollouts, prioritize KMS mode diagnostics and recent upgrade paths.
+- For current rollouts, prioritize KMS mode diagnostics.
 
 - Symptom: startup succeeds, but key-dependent operations fail unexpectedly after a recent rollout
 
@@ -412,7 +412,7 @@ Historical note:
 
 - Fix:
 
-  - upgrade all instances to the latest version (v0.8.0 or at minimum `v0.5.1+`)
+  - update all instances to the latest version (v0.8.0 or at minimum `v0.5.1+`)
 
   - restart API instances after deploy
 
@@ -445,7 +445,7 @@ Historical note:
 
 ## Tokenization migration verification
 
-- Symptom: tokenization endpoints return `404`/`500` after upgrading to `v0.4.x`
+- Symptom: tokenization endpoints return `404`/`500`
 
 - Likely cause: tokenization migration (`000002_add_tokenization`) not applied or partially applied
 

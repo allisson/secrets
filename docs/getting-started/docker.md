@@ -1,6 +1,6 @@
 # 🐳 Run with Docker (Recommended)
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 This is the default way to run Secrets.
 
@@ -18,9 +18,7 @@ This guide uses the latest Docker image (`allisson/secrets`).
 
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (current: v0.13.0).
-
-If upgrading from `v0.6.0`, review [v0.7.0 upgrade guide](../releases/RELEASES.md#070---2026-02-20).
+These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (see `docs/metadata.json` for latest).
 
 ## 🔒 Security Features (v0.10.0+)
 

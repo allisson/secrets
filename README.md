@@ -46,7 +46,6 @@ Release history:
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli-commands.md](docs/cli-commands.md)
 - 📦 **All release notes**: [docs/releases/RELEASES.md](docs/releases/RELEASES.md)
-- 🔁 **Release compatibility matrix**: [docs/releases/compatibility-matrix.md](docs/releases/compatibility-matrix.md)
 
 - **By Topic**
   - ⚙️ **Environment variables**: [docs/configuration.md](docs/configuration.md)

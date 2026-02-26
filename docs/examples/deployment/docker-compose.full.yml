@@ -18,7 +18,7 @@ services:
 
   # Application
   secrets-api:
-    image: allisson/secrets:v0.14.0
+    image: allisson/secrets:<VERSION>
     depends_on:
       postgres:
         condition: service_healthy

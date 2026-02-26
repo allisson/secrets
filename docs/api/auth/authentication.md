@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -146,7 +146,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "unauthorized",
-  "message": "invalid client credentials"
+  "message": "Authentication is required"
 }
 ```
 
@@ -155,7 +155,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "forbidden",
-  "message": "client is inactive"
+  "message": "You don't have permission to access this resource"
 }
 ```
 

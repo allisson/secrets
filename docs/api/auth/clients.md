@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -100,7 +100,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "unauthorized",
-  "message": "missing or invalid bearer token"
+  "message": "Authentication is required"
 }
 ```
 
@@ -109,7 +109,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "forbidden",
-  "message": "insufficient capability for path"
+  "message": "You don't have permission to access this resource"
 }
 ```
 

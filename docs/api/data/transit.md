@@ -1,6 +1,6 @@
 # 🚄 Transit API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 Transit API encrypts/decrypts data without storing your application payload.
@@ -72,12 +72,12 @@ Example response (`200 OK`):
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
       "name": "payment-data",
-      "algorithm": "aes-gcm",
       "version": 2,
+      "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
       "created_at": "2026-02-15T10:30:00Z"
     }
   ]
@@ -108,8 +108,8 @@ Example response (`201 Created`):
 {
   "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
   "name": "payment-data",
-  "algorithm": "aes-gcm",
   "version": 1,
+  "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
   "created_at": "2026-02-14T18:30:00Z"
 }
 ```
@@ -126,7 +126,9 @@ If a key with the same `name` already exists at version `1`, create returns
 
 ```bash
 curl -X POST http://localhost:8080/v1/transit/keys/payment-data/rotate \
-  -H "Authorization: Bearer <token>"
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"algorithm":"aes-gcm"}'
 ```
 
 Rotation creates a new active version for encryption while old versions remain valid for decryption.
@@ -181,7 +183,8 @@ Example decrypt response (`200 OK`):
 
 ```json
 {
-  "plaintext": "c2Vuc2l0aXZlLWRhdGE="
+  "plaintext": "c2Vuc2l0aXZlLWRhdGE=",
+  "version": 1
 }
 ```
 
@@ -213,7 +216,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "unauthorized",
-  "message": "missing or invalid bearer token"
+  "message": "Authentication is required"
 }
 ```
 
@@ -222,7 +225,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "forbidden",
-  "message": "insufficient capability for path"
+  "message": "You don't have permission to access this resource"
 }
 ```
 

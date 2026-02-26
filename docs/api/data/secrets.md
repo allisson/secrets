@@ -1,6 +1,6 @@
 # 📦 Secrets API
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 > Applies to: API v1
 
 Secrets are versioned by path and encrypted with envelope encryption.
@@ -88,7 +88,7 @@ Example response (`200 OK`):
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
       "path": "/app/prod/database-password",
@@ -127,7 +127,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "unauthorized",
-  "message": "missing or invalid bearer token"
+  "message": "Authentication is required"
 }
 ```
 
@@ -136,7 +136,7 @@ Representative error payloads (exact messages may vary):
 ```json
 {
   "error": "forbidden",
-  "message": "insufficient capability for path"
+  "message": "You don't have permission to access this resource"
 }
 ```
 
