@@ -1,5 +1,12 @@
 # GEMINI.md
 
+## Interactive Planning Protocol
+Whenever I request a complex task or code change:
+1. Do not write the code immediately.
+2. Enter Plan Mode and present a technical summary of what you intend to do.
+3. Required refinement: If the task can be done in different ways, stop and ask 2 or 3 strategic questions to validate the approach (e.g. "Should we use NATS or PostgreSQL for this event?"), use the ask_user tool if available.
+4. Wait for my confirmation or adjustment before proceeding with the implementation.
+
 ## Project Overview
 **Secrets** is a lightweight secrets manager designed for simplicity and security. It provides envelope encryption, transit encryption, API authentication, and cryptographic audit logs. While inspired by HashiCorp Vault, it is intentionally simpler and focuses on ease of use and deployment.
 
