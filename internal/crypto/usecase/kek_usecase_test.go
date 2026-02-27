@@ -2,16 +2,21 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"log/slog"
 	"os"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gocloud.dev/secrets"
 
+	"github.com/allisson/secrets/internal/config"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	serviceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
 	usecaseMocks "github.com/allisson/secrets/internal/crypto/usecase/mocks"
 	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
@@ -109,30 +114,6 @@ func TestKekUseCase_Create(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-	})
-
-	t.Run("Error_MasterKeyNotFound", func(t *testing.T) {
-		// Create a master key
-		masterKeyID := "test-master-key"
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  masterKeyID,
-			Key: make([]byte, 32),
-		}
-
-		// Set up environment with keys, but activeID points to non-existent key
-		encodedKey := base64.StdEncoding.EncodeToString(masterKey.Key)
-		err := os.Setenv("MASTER_KEYS", masterKeyID+":"+encodedKey)
-		assert.NoError(t, err)
-		err = os.Setenv("ACTIVE_MASTER_KEY_ID", "non-existent-key")
-		assert.NoError(t, err)
-
-		// This should fail because active master key doesn't exist in the chain
-		masterKeyChain, err := cryptoDomain.LoadMasterKeyChainFromEnv()
-
-		// Assert - should fail during chain creation
-		assert.Error(t, err)
-		assert.Nil(t, masterKeyChain)
-		assert.Contains(t, err.Error(), "active master key not found")
 	})
 
 	t.Run("Error_KeyManagerCreateKekFails", func(t *testing.T) {
@@ -348,30 +329,6 @@ func TestKekUseCase_Rotate(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-	})
-
-	t.Run("Error_MasterKeyNotFound", func(t *testing.T) {
-		// Create a master key
-		masterKeyID := "test-master-key"
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  masterKeyID,
-			Key: make([]byte, 32),
-		}
-
-		// Set up environment with keys, but activeID points to non-existent key
-		encodedKey := base64.StdEncoding.EncodeToString(masterKey.Key)
-		err := os.Setenv("MASTER_KEYS", masterKeyID+":"+encodedKey)
-		assert.NoError(t, err)
-		err = os.Setenv("ACTIVE_MASTER_KEY_ID", "non-existent-key")
-		assert.NoError(t, err)
-
-		// This should fail because active master key doesn't exist in the chain
-		masterKeyChain, err := cryptoDomain.LoadMasterKeyChainFromEnv()
-
-		// Assert - should fail during chain creation
-		assert.Error(t, err)
-		assert.Nil(t, masterKeyChain)
-		assert.Contains(t, err.Error(), "active master key not found")
 	})
 
 	t.Run("Error_ListKeksFails", func(t *testing.T) {
@@ -821,25 +778,65 @@ func TestKekUseCase_Unwrap(t *testing.T) {
 }
 
 // createMasterKeyChain is a helper function to create a MasterKeyChain for testing.
-// It uses environment variables to create a real MasterKeyChain instance.
+// It uses the localsecrets KMS provider to create a properly encrypted master key chain.
 func createMasterKeyChain(activeID string, masterKey *cryptoDomain.MasterKey) *cryptoDomain.MasterKeyChain {
-	// Encode the master key to base64
-	encodedKey := base64.StdEncoding.EncodeToString(masterKey.Key)
+	ctx := context.Background()
+
+	// Generate a random KMS key for localsecrets provider
+	kmsKey := make([]byte, 32)
+	if _, err := rand.Read(kmsKey); err != nil {
+		panic("failed to generate KMS key: " + err.Error())
+	}
+	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
+
+	// Open KMS keeper
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	if err != nil {
+		panic("failed to open KMS keeper: " + err.Error())
+	}
+	defer func() {
+		_ = keeperInterface.Close()
+	}()
+
+	// Type assert to get Encrypt method
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	if !ok {
+		panic("keeper should be *secrets.Keeper")
+	}
+
+	// Encrypt master key with KMS
+	ciphertext, err := keeper.Encrypt(ctx, masterKey.Key)
+	if err != nil {
+		panic("failed to encrypt master key with KMS: " + err.Error())
+	}
+
+	// Encode ciphertext to base64
+	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
 
 	// Set environment variables
-	err := os.Setenv("MASTER_KEYS", masterKey.ID+":"+encodedKey)
-	if err != nil {
-		panic("failed to set MASTER_KEYS env var: " + err.Error())
+	if err := os.Setenv("MASTER_KEYS", masterKey.ID+":"+encodedCiphertext); err != nil {
+		panic("failed to set MASTER_KEYS env: " + err.Error())
 	}
-	err = os.Setenv("ACTIVE_MASTER_KEY_ID", activeID)
-	if err != nil {
-		panic("failed to set ACTIVE_MASTER_KEY_ID env var: " + err.Error())
+	if err := os.Setenv("ACTIVE_MASTER_KEY_ID", activeID); err != nil {
+		panic("failed to set ACTIVE_MASTER_KEY_ID env: " + err.Error())
+	}
+	if err := os.Setenv("KMS_PROVIDER", "localsecrets"); err != nil {
+		panic("failed to set KMS_PROVIDER env: " + err.Error())
+	}
+	if err := os.Setenv("KMS_KEY_URI", kmsKeyURI); err != nil {
+		panic("failed to set KMS_KEY_URI env: " + err.Error())
 	}
 
-	// Load the master key chain from environment
-	mkc, err := cryptoDomain.LoadMasterKeyChainFromEnv()
+	// Load master key chain using KMS
+	cfg := &config.Config{
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	mkc, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
 	if err != nil {
-		panic("failed to create master key chain for testing: " + err.Error())
+		panic("failed to load master key chain: " + err.Error())
 	}
 
 	return mkc

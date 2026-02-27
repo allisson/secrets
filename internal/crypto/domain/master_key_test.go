@@ -113,242 +113,6 @@ func TestMasterKeyChain_CloseZerosKeys(t *testing.T) {
 	assert.False(t, found2)
 }
 
-func TestLoadMasterKeyChainFromEnv(t *testing.T) {
-	// Generate valid 32-byte keys encoded in base64
-	key1 := base64.StdEncoding.EncodeToString(make([]byte, 32))
-	key2 := base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012"))
-
-	tests := []struct {
-		name              string
-		masterKeys        string
-		activeMasterKeyID string
-		wantErr           error
-		errMsg            string
-		validateFunc      func(*testing.T, *MasterKeyChain)
-	}{
-		{
-			name:              "valid single key",
-			masterKeys:        "key1:" + key1,
-			activeMasterKeyID: "key1",
-			validateFunc: func(t *testing.T, mkc *MasterKeyChain) {
-				assert.Equal(t, "key1", mkc.ActiveMasterKeyID())
-				mk, found := mkc.Get("key1")
-				assert.True(t, found)
-				assert.Equal(t, "key1", mk.ID)
-				assert.Len(t, mk.Key, 32)
-			},
-		},
-		{
-			name:              "valid multiple keys",
-			masterKeys:        "key1:" + key1 + ",key2:" + key2,
-			activeMasterKeyID: "key2",
-			validateFunc: func(t *testing.T, mkc *MasterKeyChain) {
-				assert.Equal(t, "key2", mkc.ActiveMasterKeyID())
-
-				mk1, found1 := mkc.Get("key1")
-				assert.True(t, found1)
-				assert.Equal(t, "key1", mk1.ID)
-				assert.Len(t, mk1.Key, 32)
-
-				mk2, found2 := mkc.Get("key2")
-				assert.True(t, found2)
-				assert.Equal(t, "key2", mk2.ID)
-				assert.Len(t, mk2.Key, 32)
-			},
-		},
-		{
-			name:              "valid keys with whitespace",
-			masterKeys:        " key1:" + key1 + " , key2:" + key2 + " ",
-			activeMasterKeyID: "key1",
-			validateFunc: func(t *testing.T, mkc *MasterKeyChain) {
-				assert.Equal(t, "key1", mkc.ActiveMasterKeyID())
-				_, found1 := mkc.Get("key1")
-				_, found2 := mkc.Get("key2")
-				assert.True(t, found1)
-				assert.True(t, found2)
-			},
-		},
-		{
-			name:              "MASTER_KEYS not set",
-			masterKeys:        "",
-			activeMasterKeyID: "key1",
-			wantErr:           ErrMasterKeysNotSet,
-			errMsg:            "MASTER_KEYS not set",
-		},
-		{
-			name:              "ACTIVE_MASTER_KEY_ID not set",
-			masterKeys:        "key1:" + key1,
-			activeMasterKeyID: "",
-			wantErr:           ErrActiveMasterKeyIDNotSet,
-			errMsg:            "ACTIVE_MASTER_KEY_ID not set",
-		},
-		{
-			name:              "invalid format - missing colon",
-			masterKeys:        "key1" + key1,
-			activeMasterKeyID: "key1",
-			wantErr:           ErrInvalidMasterKeysFormat,
-			errMsg:            "invalid MASTER_KEYS format",
-		},
-		{
-			name:              "invalid format - too many colons",
-			masterKeys:        "key1:part1:part2",
-			activeMasterKeyID: "key1",
-			wantErr:           ErrInvalidMasterKeyBase64,
-			errMsg:            "invalid master key base64",
-		},
-		{
-			name:              "invalid base64",
-			masterKeys:        "key1:not-valid-base64!!!",
-			activeMasterKeyID: "key1",
-			wantErr:           ErrInvalidMasterKeyBase64,
-			errMsg:            "invalid master key base64",
-		},
-		{
-			name:              "key too short",
-			masterKeys:        "key1:" + base64.StdEncoding.EncodeToString(make([]byte, 16)),
-			activeMasterKeyID: "key1",
-			wantErr:           ErrInvalidKeySize,
-			errMsg:            "invalid key size",
-		},
-		{
-			name:              "key too long",
-			masterKeys:        "key1:" + base64.StdEncoding.EncodeToString(make([]byte, 64)),
-			activeMasterKeyID: "key1",
-			wantErr:           ErrInvalidKeySize,
-			errMsg:            "invalid key size",
-		},
-		{
-			name:              "active key not in keychain",
-			masterKeys:        "key1:" + key1,
-			activeMasterKeyID: "key2",
-			wantErr:           ErrActiveMasterKeyNotFound,
-			errMsg:            "active master key not found",
-		},
-		{
-			name:              "empty key ID",
-			masterKeys:        ":" + key1,
-			activeMasterKeyID: "",
-			wantErr:           ErrActiveMasterKeyIDNotSet,
-			errMsg:            "ACTIVE_MASTER_KEY_ID not set",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup environment
-			if tt.masterKeys == "" {
-				require.NoError(t, os.Unsetenv("MASTER_KEYS"))
-			} else {
-				require.NoError(t, os.Setenv("MASTER_KEYS", tt.masterKeys))
-			}
-
-			if tt.activeMasterKeyID == "" {
-				require.NoError(t, os.Unsetenv("ACTIVE_MASTER_KEY_ID"))
-			} else {
-				require.NoError(t, os.Setenv("ACTIVE_MASTER_KEY_ID", tt.activeMasterKeyID))
-			}
-
-			// Cleanup
-			defer func() { require.NoError(t, os.Unsetenv("MASTER_KEYS")) }()
-			defer func() { require.NoError(t, os.Unsetenv("ACTIVE_MASTER_KEY_ID")) }()
-
-			// Test
-			mkc, err := LoadMasterKeyChainFromEnv()
-
-			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
-				assert.Contains(t, err.Error(), tt.errMsg)
-				assert.Nil(t, mkc)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, mkc)
-				if tt.validateFunc != nil {
-					tt.validateFunc(t, mkc)
-				}
-				// Cleanup the keychain
-				mkc.Close()
-			}
-		})
-	}
-}
-
-func TestLoadMasterKeyChainFromEnv_KeysAreUsable(t *testing.T) {
-	// Verify that loaded master keys contain valid key material and are usable
-	key1Data := []byte("12345678901234567890123456789012")
-	key1 := base64.StdEncoding.EncodeToString(key1Data)
-
-	require.NoError(t, os.Setenv("MASTER_KEYS", "key1:"+key1))
-	require.NoError(t, os.Setenv("ACTIVE_MASTER_KEY_ID", "key1"))
-	defer func() { require.NoError(t, os.Unsetenv("MASTER_KEYS")) }()
-	defer func() { require.NoError(t, os.Unsetenv("ACTIVE_MASTER_KEY_ID")) }()
-
-	mkc, err := LoadMasterKeyChainFromEnv()
-	assert.NoError(t, err)
-	assert.NotNil(t, mkc)
-	defer mkc.Close()
-
-	// Get the key from the keychain
-	mk, found := mkc.Get("key1")
-	assert.True(t, found)
-	assert.NotNil(t, mk)
-	assert.Len(t, mk.Key, 32)
-
-	// Keys should contain the actual key material, not zeros
-	assert.Equal(t, key1Data, mk.Key, "Master key should contain actual key data")
-
-	// Verify key is not all zeros
-	allZeros := true
-	for _, b := range mk.Key {
-		if b != 0 {
-			allZeros = false
-			break
-		}
-	}
-	assert.False(t, allZeros, "Master key should not be zeroed after loading")
-}
-
-func TestLoadMasterKeyChainFromEnv_CloseOnError(t *testing.T) {
-	// Generate a valid key and an invalid key
-	validKey := base64.StdEncoding.EncodeToString(make([]byte, 32))
-	invalidKey := base64.StdEncoding.EncodeToString(make([]byte, 16)) // Too short
-
-	tests := []struct {
-		name              string
-		masterKeys        string
-		activeMasterKeyID string
-		errMsg            string
-	}{
-		{
-			name:              "invalid key after valid key",
-			masterKeys:        "key1:" + validKey + ",key2:" + invalidKey,
-			activeMasterKeyID: "key1",
-			errMsg:            "must be 32 bytes",
-		},
-		{
-			name:              "invalid base64 after valid key",
-			masterKeys:        "key1:" + validKey + ",key2:invalid!!!",
-			activeMasterKeyID: "key1",
-			errMsg:            "invalid master key base64",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, os.Setenv("MASTER_KEYS", tt.masterKeys))
-			require.NoError(t, os.Setenv("ACTIVE_MASTER_KEY_ID", tt.activeMasterKeyID))
-			defer func() { require.NoError(t, os.Unsetenv("MASTER_KEYS")) }()
-			defer func() { require.NoError(t, os.Unsetenv("ACTIVE_MASTER_KEY_ID")) }()
-
-			mkc, err := LoadMasterKeyChainFromEnv()
-
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tt.errMsg)
-			assert.Nil(t, mkc)
-		})
-	}
-}
-
 // Mock implementations for KMS testing
 
 type mockKMSKeeper struct {
@@ -462,15 +226,22 @@ func TestLoadMasterKeyChain_ValidationErrors(t *testing.T) {
 			name:        "KMS_PROVIDER set but KMS_KEY_URI empty",
 			kmsProvider: "gcpkms",
 			kmsKeyURI:   "",
-			wantErr:     ErrKMSProviderNotSet,
-			errMsg:      "KMS_PROVIDER is set but KMS_KEY_URI is not configured",
+			wantErr:     ErrKMSKeyURINotSet,
+			errMsg:      "KMS_KEY_URI is required",
 		},
 		{
 			name:        "KMS_KEY_URI set but KMS_PROVIDER empty",
 			kmsProvider: "",
 			kmsKeyURI:   "gcpkms://projects/test/locations/us/keyRings/test/cryptoKeys/test",
-			wantErr:     ErrKMSKeyURINotSet,
-			errMsg:      "KMS_KEY_URI is set but KMS_PROVIDER is not configured",
+			wantErr:     ErrKMSProviderNotSet,
+			errMsg:      "KMS_PROVIDER is required",
+		},
+		{
+			name:        "Both KMS_PROVIDER and KMS_KEY_URI empty",
+			kmsProvider: "",
+			kmsKeyURI:   "",
+			wantErr:     ErrKMSProviderNotSet,
+			errMsg:      "KMS_PROVIDER is required",
 		},
 	}
 
@@ -488,34 +259,6 @@ func TestLoadMasterKeyChain_ValidationErrors(t *testing.T) {
 			assert.Nil(t, mkc)
 		})
 	}
-}
-
-func TestLoadMasterKeyChain_LegacyMode(t *testing.T) {
-	ctx := context.Background()
-	logger := slog.Default()
-
-	key1Data := []byte("12345678901234567890123456789012")
-	key1 := base64.StdEncoding.EncodeToString(key1Data)
-
-	require.NoError(t, os.Setenv("MASTER_KEYS", "key1:"+key1))
-	require.NoError(t, os.Setenv("ACTIVE_MASTER_KEY_ID", "key1"))
-	defer func() { require.NoError(t, os.Unsetenv("MASTER_KEYS")) }()
-	defer func() { require.NoError(t, os.Unsetenv("ACTIVE_MASTER_KEY_ID")) }()
-
-	cfg := &config.Config{
-		KMSProvider: "",
-		KMSKeyURI:   "",
-	}
-
-	mkc, err := LoadMasterKeyChain(ctx, cfg, nil, logger)
-	assert.NoError(t, err)
-	assert.NotNil(t, mkc)
-	defer mkc.Close()
-
-	assert.Equal(t, "key1", mkc.ActiveMasterKeyID())
-	mk, found := mkc.Get("key1")
-	assert.True(t, found)
-	assert.Equal(t, key1Data, mk.Key)
 }
 
 func TestLoadMasterKeyChain_KMSMode_Success(t *testing.T) {

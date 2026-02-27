@@ -54,63 +54,6 @@ func (m *MasterKeyChain) Close() {
 	m.keys.Clear()
 }
 
-// LoadMasterKeyChainFromEnv loads master keys from MASTER_KEYS and ACTIVE_MASTER_KEY_ID environment variables.
-// Keys must be in format "id:base64key" (comma-separated) and exactly 32 bytes when decoded.
-// Returns ErrMasterKeysNotSet, ErrActiveMasterKeyIDNotSet, ErrInvalidKeySize, or ErrActiveMasterKeyNotFound on failure.
-func LoadMasterKeyChainFromEnv() (*MasterKeyChain, error) {
-	raw := os.Getenv("MASTER_KEYS")
-	if raw == "" {
-		return nil, ErrMasterKeysNotSet
-	}
-
-	active := os.Getenv("ACTIVE_MASTER_KEY_ID")
-	if active == "" {
-		return nil, ErrActiveMasterKeyIDNotSet
-	}
-
-	mkc := &MasterKeyChain{activeID: active}
-
-	parts := strings.SplitSeq(raw, ",")
-	for part := range parts {
-		p := strings.SplitN(strings.TrimSpace(part), ":", 2)
-		if len(p) != 2 {
-			mkc.Close()
-			return nil, fmt.Errorf("%w: %q", ErrInvalidMasterKeysFormat, part)
-		}
-		id := p[0]
-		key, err := base64.StdEncoding.DecodeString(p[1])
-		if err != nil {
-			mkc.Close()
-			return nil, fmt.Errorf("%w for %s: %v", ErrInvalidMasterKeyBase64, id, err)
-		}
-		if len(key) != 32 {
-			Zero(key)
-			mkc.Close()
-			return nil, fmt.Errorf(
-				"%w: master key %s must be 32 bytes, got %d",
-				ErrInvalidKeySize,
-				id,
-				len(key),
-			)
-		}
-		// Make a copy of the key data before storing to prevent premature zeroing.
-		// The original 'key' slice will be zeroed for security, but the keychain
-		// needs its own copy to remain functional.
-		keyCopy := make([]byte, len(key))
-		copy(keyCopy, key)
-		mkc.keys.Store(id, &MasterKey{ID: id, Key: keyCopy})
-		// Zero the original decoded key to prevent memory dumps
-		Zero(key)
-	}
-
-	if _, ok := mkc.Get(active); !ok {
-		mkc.Close()
-		return nil, fmt.Errorf("%w: ACTIVE_MASTER_KEY_ID=%s", ErrActiveMasterKeyNotFound, active)
-	}
-
-	return mkc, nil
-}
-
 // KMSService defines the interface for KMS operations required by LoadMasterKeyChain.
 // This interface is implemented by crypto/service.KMSService.
 type KMSService interface {
@@ -284,32 +227,27 @@ func loadMasterKeyChainFromKMS(
 	return mkc, nil
 }
 
-// LoadMasterKeyChain loads master keys from environment variables with auto-detection for KMS or legacy mode.
-// If KMS_PROVIDER is set, decrypts keys using KMS. Otherwise, uses plaintext base64-encoded keys.
-// Validates that both KMS_PROVIDER and KMS_KEY_URI are set together or both empty.
-// Returns ErrKMSProviderNotSet, ErrKMSKeyURINotSet, or errors from loadMasterKeyChainFromKMS/LoadMasterKeyChainFromEnv.
+// LoadMasterKeyChain loads master keys from environment variables using KMS for decryption.
+// Both KMS_PROVIDER and KMS_KEY_URI environment variables must be set.
+// Master keys in MASTER_KEYS must be KMS-encrypted ciphertext (not plaintext).
+// For local development, use the localsecrets provider with KMS_PROVIDER=localsecrets.
+// Returns ErrKMSProviderNotSet, ErrKMSKeyURINotSet, or errors from loadMasterKeyChainFromKMS.
 func LoadMasterKeyChain(
 	ctx context.Context,
 	cfg *config.Config,
 	kmsService KMSService,
 	logger *slog.Logger,
 ) (*MasterKeyChain, error) {
-	// Validate KMS configuration consistency
-	if cfg.KMSProvider != "" && cfg.KMSKeyURI == "" {
+	// Validate KMS configuration is provided
+	if cfg.KMSProvider == "" {
 		return nil, ErrKMSProviderNotSet
 	}
-	if cfg.KMSKeyURI != "" && cfg.KMSProvider == "" {
+	if cfg.KMSKeyURI == "" {
 		return nil, ErrKMSKeyURINotSet
 	}
 
-	// Auto-detect mode based on KMS_PROVIDER
-	if cfg.KMSProvider != "" {
-		logger.Info("loading master key chain in KMS mode",
-			slog.String("kms_provider", cfg.KMSProvider),
-		)
-		return loadMasterKeyChainFromKMS(ctx, cfg, kmsService, logger)
-	}
-
-	logger.Info("loading master key chain in legacy mode (plaintext)")
-	return LoadMasterKeyChainFromEnv()
+	logger.Info("loading master key chain with KMS",
+		slog.String("kms_provider", cfg.KMSProvider),
+	)
+	return loadMasterKeyChainFromKMS(ctx, cfg, kmsService, logger)
 }

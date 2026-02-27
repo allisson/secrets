@@ -6,9 +6,11 @@ This document contains release notes for all versions of Secrets.
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.18.0](#0180---2026-02-26)
+**Latest Release**: [v0.19.0](#0190---2026-02-26)
 
 **All Releases**:
+
+- [v0.19.0 (2026-02-26)](#0190---2026-02-26) - ⚠️ **Breaking Change**: KMS mode required
 
 - [v0.18.0 (2026-02-26)](#0180---2026-02-26) - Repository layer refactoring
 
@@ -51,6 +53,84 @@ This document contains release notes for all versions of Secrets.
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.19.0] - 2026-02-26
+
+### ⚠️ BREAKING CHANGES
+
+**KMS mode is now required**. This is a breaking change that removes support for legacy plaintext master keys.
+
+#### What Changed
+
+- Legacy plaintext master key mode has been completely removed
+- `create-master-key` command now requires `--kms-provider` and `--kms-key-uri` flags
+- All deployments must use a KMS provider: `localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, or `hashivault`
+
+#### Why This Change
+
+- Enforces security best practices by requiring encrypted master keys at rest
+- Simplifies codebase by removing dual-mode complexity
+- Aligns with compliance requirements (PCI-DSS, HIPAA) that mandate encrypted key storage
+
+#### Migration Required
+
+If you are currently using legacy plaintext master keys (v0.18.0 or earlier), you **must** migrate to KMS mode before upgrading to v0.19.0.
+
+**For local development:**
+
+```bash
+# Generate a KMS key
+openssl rand -base64 32
+
+# Create master key using localsecrets provider
+./bin/app create-master-key \
+  --id default \
+  --kms-provider localsecrets \
+  --kms-key-uri "base64key://YOUR_BASE64_KEY_HERE"
+```
+
+**For production:**
+
+Use cloud KMS providers (`gcpkms`, `awskms`, `azurekeyvault`) or HashiCorp Vault (`hashivault`). See `docs/operations/kms/setup.md` for detailed setup instructions.
+
+#### Configuration Changes
+
+**Old configuration (v0.18.0 - no longer supported):**
+
+```bash
+MASTER_KEYS=default:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y=
+ACTIVE_MASTER_KEY_ID=default
+```
+
+**New configuration (v0.19.0 - required):**
+
+```bash
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://YOUR_BASE64_KEY_HERE
+MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQ... # KMS-encrypted ciphertext
+ACTIVE_MASTER_KEY_ID=default
+```
+
+### Removed
+
+- Removed `LoadMasterKeyChainFromEnv` function from `internal/crypto/domain/master_key.go`
+- Removed `docs/operations/kms/plaintext-to-kms-migration.md` (no longer applicable)
+
+### Changed
+
+- Updated all documentation to reflect KMS-only mode
+- `.env.example` now defaults to `localsecrets` provider for local development with commented production examples
+- Error messages updated to indicate KMS configuration is required
+- Updated `docs/operations/kms/setup.md` to replace "Migration from Legacy Mode" with "Migrating Between KMS Providers"
+
+### Documentation
+
+- Updated `docs/configuration.md` to mark `KMS_PROVIDER` and `KMS_KEY_URI` as required
+- Updated `docs/getting-started/local-development.md` with KMS setup instructions
+- Updated `docs/getting-started/docker.md` with KMS quickstart examples
+- Updated `docs/cli-commands.md` to reflect required KMS flags
 
 ---
 

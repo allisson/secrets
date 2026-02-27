@@ -36,17 +36,34 @@ make build
 
 ## 3) Generate master key and set `.env`
 
+KMS mode is required as of v0.19.0. For local development, use the `localsecrets` provider:
+
 ```bash
-./bin/app create-master-key --id default
+# Generate a KMS encryption key (32 random bytes, base64-encoded)
+KMS_KEY=$(openssl rand -base64 32)
+
+# Create master key with KMS encryption
+./bin/app create-master-key --id default \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://${KMS_KEY}"
+
+# Copy example environment file
 cp .env.example .env
 ```
 
-Paste generated `MASTER_KEYS` and `ACTIVE_MASTER_KEY_ID` into `.env`.
+The command output will include:
 
-For production-oriented local parity testing, use KMS mode:
+- `KMS_PROVIDER` and `KMS_KEY_URI` (already set if you used the command above)
+- `MASTER_KEYS` - paste this into your `.env` file
+- `ACTIVE_MASTER_KEY_ID` - paste this into your `.env` file
 
-```bash
-./bin/app create-master-key --id default --kms-provider=localsecrets --kms-key-uri="base64key://<base64-32-byte-key>"
+Your `.env` file should look like:
+
+```dotenv
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://<generated-key>
+MASTER_KEYS=default:<kms-encrypted-value>
+ACTIVE_MASTER_KEY_ID=default
 ```
 
 ## 4) Start PostgreSQL

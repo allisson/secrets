@@ -116,8 +116,13 @@ docker run -d --name secrets-postgres --network secrets-net \
   -e POSTGRES_DB=mydb \
   postgres:16-alpine
 
-docker run --rm allisson/secrets create-master-key --id default
-# copy generated MASTER_KEYS and ACTIVE_MASTER_KEY_ID into .env
+# Generate KMS key and master key (KMS required in v0.19.0+)
+KMS_KEY=$(openssl rand -base64 32)
+docker run --rm allisson/secrets create-master-key \
+  --id default \
+  --kms-provider localsecrets \
+  --kms-key-uri "base64key://$KMS_KEY"
+# copy generated values and KMS_KEY into .env with KMS_PROVIDER=localsecrets
 
 docker run --rm --network secrets-net --env-file .env allisson/secrets migrate
 docker run --rm --network secrets-net --env-file .env allisson/secrets create-kek --algorithm aes-gcm
@@ -148,8 +153,17 @@ docker run -d --name secrets-postgres --network secrets-net \
 
 ## 3) Generate a master key
 
+KMS mode is required in v0.19.0+. For local development, use the `localsecrets` provider:
+
 ```bash
-docker run --rm allisson/secrets create-master-key --id default
+# Generate a 32-byte base64 key for localsecrets
+openssl rand -base64 32
+
+# Create master key using localsecrets KMS provider
+docker run --rm allisson/secrets create-master-key \
+  --id default \
+  --kms-provider localsecrets \
+  --kms-key-uri "base64key://YOUR_BASE64_KEY_HERE"
 
 ```
 
@@ -169,7 +183,12 @@ SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 LOG_LEVEL=info
 
-MASTER_KEYS=default:REPLACE_WITH_BASE64_32_BYTE_KEY
+# KMS Configuration (required in v0.19.0+)
+# For local development, use localsecrets provider
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://YOUR_BASE64_KEY_HERE
+
+MASTER_KEYS=default:REPLACE_WITH_ENCRYPTED_MASTER_KEY_FROM_STEP_3
 ACTIVE_MASTER_KEY_ID=default
 
 AUTH_TOKEN_EXPIRATION_SECONDS=14400

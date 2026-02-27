@@ -104,7 +104,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.18.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.19.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 
