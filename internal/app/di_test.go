@@ -2,12 +2,16 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"os"
 	"testing"
 	"time"
 
+	"gocloud.dev/secrets"
+
 	"github.com/allisson/secrets/internal/config"
+	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 )
 
 // TestNewContainer verifies that a new container can be created with a valid configuration.
@@ -266,15 +270,51 @@ func TestContainerCryptoDekUseCaseErrors(t *testing.T) {
 
 // TestContainerMasterKeyChain verifies that the master key chain can be retrieved from the container.
 func TestContainerMasterKeyChain(t *testing.T) {
-	// Generate valid 32-byte key encoded in base64
-	key1 := base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012"))
+	ctx := context.Background()
 
-	// Set up environment variables for master keys
-	t.Setenv("MASTER_KEYS", "test-key-1:"+key1)
+	// Generate KMS key for localsecrets provider
+	kmsKey := make([]byte, 32)
+	_, err := rand.Read(kmsKey)
+	if err != nil {
+		t.Fatalf("failed to generate KMS key: %v", err)
+	}
+	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
+
+	// Generate master key
+	masterKeyBytes := []byte("12345678901234567890123456789012") // 32 bytes
+
+	// Encrypt master key with KMS
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	if err != nil {
+		t.Fatalf("failed to open KMS keeper: %v", err)
+	}
+	defer func() {
+		_ = keeperInterface.Close()
+	}()
+
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	if !ok {
+		t.Fatal("keeper should be *secrets.Keeper")
+	}
+
+	ciphertext, err := keeper.Encrypt(ctx, masterKeyBytes)
+	if err != nil {
+		t.Fatalf("failed to encrypt master key: %v", err)
+	}
+
+	encryptedKey := base64.StdEncoding.EncodeToString(ciphertext)
+
+	// Set up environment variables for master keys with KMS
+	t.Setenv("MASTER_KEYS", "test-key-1:"+encryptedKey)
 	t.Setenv("ACTIVE_MASTER_KEY_ID", "test-key-1")
+	t.Setenv("KMS_PROVIDER", "localsecrets")
+	t.Setenv("KMS_KEY_URI", kmsKeyURI)
 
 	cfg := &config.Config{
-		LogLevel: "info",
+		LogLevel:    "info",
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
 	}
 
 	container := NewContainer(cfg)
@@ -341,16 +381,57 @@ func TestContainerMasterKeyChainErrors(t *testing.T) {
 
 // TestContainerMasterKeyChainMultipleKeys verifies that multiple master keys can be loaded.
 func TestContainerMasterKeyChainMultipleKeys(t *testing.T) {
-	// Generate valid 32-byte keys encoded in base64
-	key1 := base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012"))
-	key2 := base64.StdEncoding.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
+	ctx := context.Background()
 
-	// Set up environment variables for multiple master keys
-	t.Setenv("MASTER_KEYS", "key1:"+key1+",key2:"+key2)
+	// Generate KMS key for localsecrets provider
+	kmsKey := make([]byte, 32)
+	_, err := rand.Read(kmsKey)
+	if err != nil {
+		t.Fatalf("failed to generate KMS key: %v", err)
+	}
+	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
+
+	// Generate master keys
+	key1Bytes := []byte("12345678901234567890123456789012") // 32 bytes
+	key2Bytes := []byte("abcdefghijklmnopqrstuvwxyz123456") // 32 bytes
+
+	// Encrypt master keys with KMS
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	if err != nil {
+		t.Fatalf("failed to open KMS keeper: %v", err)
+	}
+	defer func() {
+		_ = keeperInterface.Close()
+	}()
+
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	if !ok {
+		t.Fatal("keeper should be *secrets.Keeper")
+	}
+
+	ciphertext1, err := keeper.Encrypt(ctx, key1Bytes)
+	if err != nil {
+		t.Fatalf("failed to encrypt key1: %v", err)
+	}
+	encryptedKey1 := base64.StdEncoding.EncodeToString(ciphertext1)
+
+	ciphertext2, err := keeper.Encrypt(ctx, key2Bytes)
+	if err != nil {
+		t.Fatalf("failed to encrypt key2: %v", err)
+	}
+	encryptedKey2 := base64.StdEncoding.EncodeToString(ciphertext2)
+
+	// Set up environment variables for multiple master keys with KMS
+	t.Setenv("MASTER_KEYS", "key1:"+encryptedKey1+",key2:"+encryptedKey2)
 	t.Setenv("ACTIVE_MASTER_KEY_ID", "key2")
+	t.Setenv("KMS_PROVIDER", "localsecrets")
+	t.Setenv("KMS_KEY_URI", kmsKeyURI)
 
 	cfg := &config.Config{
-		LogLevel: "info",
+		LogLevel:    "info",
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
 	}
 
 	container := NewContainer(cfg)
@@ -389,15 +470,51 @@ func TestContainerMasterKeyChainMultipleKeys(t *testing.T) {
 
 // TestContainerShutdownWithMasterKeyChain verifies that shutdown properly closes the master key chain.
 func TestContainerShutdownWithMasterKeyChain(t *testing.T) {
-	// Generate valid 32-byte key encoded in base64
-	key1 := base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012"))
+	ctx := context.Background()
 
-	// Set up environment variables for master keys
-	t.Setenv("MASTER_KEYS", "test-key-1:"+key1)
+	// Generate KMS key for localsecrets provider
+	kmsKey := make([]byte, 32)
+	_, err := rand.Read(kmsKey)
+	if err != nil {
+		t.Fatalf("failed to generate KMS key: %v", err)
+	}
+	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
+
+	// Generate master key
+	masterKeyBytes := []byte("12345678901234567890123456789012") // 32 bytes
+
+	// Encrypt master key with KMS
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	if err != nil {
+		t.Fatalf("failed to open KMS keeper: %v", err)
+	}
+	defer func() {
+		_ = keeperInterface.Close()
+	}()
+
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	if !ok {
+		t.Fatal("keeper should be *secrets.Keeper")
+	}
+
+	ciphertext, err := keeper.Encrypt(ctx, masterKeyBytes)
+	if err != nil {
+		t.Fatalf("failed to encrypt master key: %v", err)
+	}
+
+	encryptedKey := base64.StdEncoding.EncodeToString(ciphertext)
+
+	// Set up environment variables for master keys with KMS
+	t.Setenv("MASTER_KEYS", "test-key-1:"+encryptedKey)
 	t.Setenv("ACTIVE_MASTER_KEY_ID", "test-key-1")
+	t.Setenv("KMS_PROVIDER", "localsecrets")
+	t.Setenv("KMS_KEY_URI", kmsKeyURI)
 
 	cfg := &config.Config{
-		LogLevel: "info",
+		LogLevel:    "info",
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
 	}
 
 	container := NewContainer(cfg)
@@ -412,8 +529,11 @@ func TestContainerShutdownWithMasterKeyChain(t *testing.T) {
 		t.Fatal("expected non-nil master key chain")
 	}
 
-	// Shutdown should close the master key chain
-	if err := container.Shutdown(context.TODO()); err != nil {
+	// Shutdown should close the master key chain without error
+	if err := container.Shutdown(ctx); err != nil {
 		t.Errorf("unexpected error during shutdown: %v", err)
 	}
+
+	// After shutdown, the key chain should be closed (keys should be zeroed)
+	// We can't directly verify that keys are zeroed, but we verify that Shutdown ran without panic
 }

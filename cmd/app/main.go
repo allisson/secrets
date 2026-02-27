@@ -14,7 +14,7 @@ import (
 
 // Build-time version information (injected via ldflags during build).
 var (
-	version   = "v0.18.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
+	version   = "v0.19.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
 	buildDate = "unknown" // ISO 8601 build timestamp
 	commitSHA = "unknown" // Git commit SHA
 )

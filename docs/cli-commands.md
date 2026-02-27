@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -57,20 +57,21 @@ docker run --rm --network secrets-net --env-file .env allisson/secrets migrate
 ### `create-master-key`
 
 Generates a new 32-byte master key and prints `MASTER_KEYS` / `ACTIVE_MASTER_KEY_ID` values.
-Supports legacy plaintext mode and KMS mode for encrypted-at-rest master keys.
+KMS mode is **required** in v0.19.0+ (breaking change).
 
-Flags:
+Required Flags:
 
 - `--id`, `-i`: master key ID
 - `--kms-provider`: KMS provider (`localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, `hashivault`)
 - `--kms-key-uri`: KMS key URI
 
-Local:
+For local development, use `localsecrets` provider:
 
 ```bash
-./bin/app create-master-key --id default
+# Generate a KMS key first
+openssl rand -base64 32
 
-# KMS mode example (recommended for production)
+# Create master key
 ./bin/app create-master-key --id default \
   --kms-provider=localsecrets \
   --kms-key-uri="base64key://<base64-32-byte-key>"
@@ -79,7 +80,10 @@ Local:
 Docker:
 
 ```bash
-docker run --rm allisson/secrets create-master-key --id default
+docker run --rm allisson/secrets create-master-key \
+  --id default \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 ### `rotate-master-key`

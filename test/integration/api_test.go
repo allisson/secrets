@@ -103,20 +103,65 @@ func generateMasterKey() *cryptoDomain.MasterKey {
 	}
 }
 
-// createMasterKeyChain creates a master key chain with a single master key.
+// createMasterKeyChain creates a master key chain with KMS encryption using localsecrets provider.
 func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.MasterKeyChain {
-	// Use environment variable format to create the chain
-	keyBase64 := base64.StdEncoding.EncodeToString(masterKey.Key)
-	if err := os.Setenv("MASTER_KEYS", fmt.Sprintf("%s:%s", masterKey.ID, keyBase64)); err != nil {
+	ctx := context.Background()
+
+	// Generate a random KMS key for localsecrets provider
+	kmsKey := make([]byte, 32)
+	if _, err := rand.Read(kmsKey); err != nil {
+		panic(fmt.Sprintf("failed to generate KMS key: %v", err))
+	}
+	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
+
+	// Open KMS keeper
+	kmsService := cryptoService.NewKMSService()
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	if err != nil {
+		panic(fmt.Sprintf("failed to open KMS keeper: %v", err))
+	}
+	defer func() {
+		_ = keeperInterface.Close()
+	}()
+
+	// Type assert to get Encrypt method
+	keeper, ok := keeperInterface.(*secrets.Keeper)
+	if !ok {
+		panic("keeper should be *secrets.Keeper")
+	}
+
+	// Encrypt master key with KMS
+	ciphertext, err := keeper.Encrypt(ctx, masterKey.Key)
+	if err != nil {
+		panic(fmt.Sprintf("failed to encrypt master key with KMS: %v", err))
+	}
+
+	// Encode ciphertext to base64
+	encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
+
+	// Set environment variables
+	if err := os.Setenv("MASTER_KEYS", fmt.Sprintf("%s:%s", masterKey.ID, encodedCiphertext)); err != nil {
 		panic(fmt.Sprintf("failed to set MASTER_KEYS env: %v", err))
 	}
 	if err := os.Setenv("ACTIVE_MASTER_KEY_ID", masterKey.ID); err != nil {
 		panic(fmt.Sprintf("failed to set ACTIVE_MASTER_KEY_ID env: %v", err))
 	}
+	if err := os.Setenv("KMS_PROVIDER", "localsecrets"); err != nil {
+		panic(fmt.Sprintf("failed to set KMS_PROVIDER env: %v", err))
+	}
+	if err := os.Setenv("KMS_KEY_URI", kmsKeyURI); err != nil {
+		panic(fmt.Sprintf("failed to set KMS_KEY_URI env: %v", err))
+	}
 
-	chain, err := cryptoDomain.LoadMasterKeyChainFromEnv()
+	// Load master key chain using KMS
+	cfg := &config.Config{
+		KMSProvider: "localsecrets",
+		KMSKeyURI:   kmsKeyURI,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create master key chain: %v", err))
+		panic(fmt.Sprintf("failed to load master key chain: %v", err))
 	}
 
 	return chain
@@ -314,11 +359,12 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		dsn = testutil.MySQLTestDSN
 	}
 
-	// Generate ephemeral master key for testing
+	// Generate KMS key URI and ephemeral master key for testing
+	kmsKeyURI := generateLocalSecretsKMSKey(t)
 	masterKey := generateMasterKey()
-	masterKeyChain := createMasterKeyChain(masterKey)
+	masterKeyChain := createMasterKeyChainWithKMS(context.Background(), t, masterKey, kmsKeyURI)
 
-	// Create configuration
+	// Create configuration with KMS settings
 	cfg := &config.Config{
 		DBDriver:             dbDriver,
 		DBConnectionString:   dsn,
@@ -329,6 +375,8 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		ServerPort:           8080,
 		LogLevel:             "error",
 		AuthTokenExpiration:  time.Hour,
+		KMSProvider:          "localsecrets",
+		KMSKeyURI:            kmsKeyURI,
 	}
 
 	// Create DI container
@@ -394,7 +442,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	// Create test server with the handler
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s (client_id=%s)", dbDriver, rootClient.ID)
+	t.Logf("Integration test setup complete for %s with KMS (client_id=%s)", dbDriver, rootClient.ID)
 
 	return &integrationTestContext{
 		container:      container,
@@ -405,6 +453,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
 		dbDriver:       dbDriver,
+		kmsKeyURI:      kmsKeyURI,
 	}
 }
 
@@ -1731,11 +1780,12 @@ func setupIntegrationTestWithLockout(
 		dsn = testutil.MySQLTestDSN
 	}
 
-	// Generate ephemeral master key for testing
+	// Generate KMS key URI and ephemeral master key for testing
+	kmsKeyURI := generateLocalSecretsKMSKey(t)
 	masterKey := generateMasterKey()
-	masterKeyChain := createMasterKeyChain(masterKey)
+	masterKeyChain := createMasterKeyChainWithKMS(context.Background(), t, masterKey, kmsKeyURI)
 
-	// Create configuration with lockout settings
+	// Create configuration with lockout settings and KMS
 	cfg := &config.Config{
 		DBDriver:             dbDriver,
 		DBConnectionString:   dsn,
@@ -1748,6 +1798,8 @@ func setupIntegrationTestWithLockout(
 		AuthTokenExpiration:  time.Hour,
 		LockoutMaxAttempts:   maxAttempts,
 		LockoutDuration:      lockoutDuration,
+		KMSProvider:          "localsecrets",
+		KMSKeyURI:            kmsKeyURI,
 	}
 
 	// Create DI container
@@ -1809,7 +1861,7 @@ func setupIntegrationTestWithLockout(
 
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s with lockout (max_attempts=%d, client_id=%s)",
+	t.Logf("Integration test setup complete for %s with lockout and KMS (max_attempts=%d, client_id=%s)",
 		dbDriver, maxAttempts, rootClient.ID)
 
 	return &integrationTestContext{
@@ -1821,6 +1873,7 @@ func setupIntegrationTestWithLockout(
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
 		dbDriver:       dbDriver,
+		kmsKeyURI:      kmsKeyURI,
 	}
 }
 

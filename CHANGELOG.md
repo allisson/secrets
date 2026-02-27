@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-02-26
+
+### ⚠️ BREAKING CHANGES
+- **KMS mode is now required**. Legacy plaintext master key mode has been removed. All deployments must use a KMS provider (`localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, or `hashivault`).
+- `create-master-key` command now requires `--kms-provider` and `--kms-key-uri` flags (previously optional).
+- For local development, use `localsecrets` provider with `base64key://` URIs.
+
+### Removed
+- Removed legacy plaintext master key loading (`LoadMasterKeyChainFromEnv` function)
+- Removed `docs/operations/kms/plaintext-to-kms-migration.md` (no longer applicable)
+
+### Changed
+- Updated all documentation to reflect KMS-only mode
+- `.env.example` now defaults to `localsecrets` provider for local development
+- Error messages updated to indicate KMS is required
+
+### Migration Guide
+- Existing users on v0.18.0 with plaintext master keys must migrate to KMS mode before upgrading
+- See `docs/operations/kms/setup.md` for KMS setup instructions
+- For local development: generate a KMS key with `openssl rand -base64 32` and use `localsecrets` provider
+
 ## [0.18.0] - 2026-02-26
 
 ### Changed

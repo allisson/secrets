@@ -1,8 +1,8 @@
 # KMS Setup Guide
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
-This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode provides an additional security layer by ensuring master keys are never stored in plaintext.
+This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode is **required** in v0.19.0+ (breaking change from v0.18.0 which supported optional legacy plaintext mode).
 
 ## Table of Contents
 
@@ -22,13 +22,13 @@ This guide covers setting up Key Management Service (KMS) integration for encryp
 
 - [Runtime Injection Examples](#runtime-injection-examples)
 
-- [Migration from Legacy Mode](#migration-from-legacy-mode)
+- [Migrating Between KMS Providers](#migrating-between-kms-providers)
 
 - [Key Rotation](#key-rotation)
 
 ## Overview
 
-**KMS Mode** encrypts master keys using external Key Management Services before storing them in environment variables. This provides:
+**KMS Mode** (required in v0.19.0+) encrypts master keys using external Key Management Services before storing them in environment variables. This provides:
 
 - **Defense in Depth**: Master keys encrypted at rest, even if environment variables are compromised
 
@@ -38,7 +38,7 @@ This guide covers setting up Key Management Service (KMS) integration for encryp
 
 - **Centralized Management**: KMS keys managed separately from application secrets
 
-**Legacy Mode** stores master keys as plaintext base64-encoded values. This is **only suitable for development and testing**.
+For local development, use the `localsecrets` provider with `base64key://` URIs.
 
 ### Architecture
 
@@ -661,56 +661,59 @@ services:
 
 ```
 
-## Migration from Legacy Mode
+## Migrating Between KMS Providers
 
-To migrate from plaintext master keys to KMS mode:
+To migrate master keys from one KMS provider to another (e.g., from `localsecrets` to `gcpkms` for production, or between cloud providers):
 
-### Step 1: Set Up KMS Provider
+### Step 1: Set Up New KMS Provider
 
-Follow provider-specific setup instructions above.
+Follow provider-specific setup instructions above for your target KMS provider.
 
 ### Step 2: Generate New KMS-Encrypted Master Key
 
 ```bash
 ./bin/app create-master-key \
-  --id=master-key-kms-2026 \
-  --kms-provider=<provider> \
-  --kms-key-uri=<uri>
+  --id=master-key-new-provider-2026 \
+  --kms-provider=<new-provider> \
+  --kms-key-uri=<new-provider-uri>
 
 ```
 
-### Step 3: Re-encode Existing Master Keys for KMS
+### Step 3: Re-encrypt Existing Master Keys with New Provider
 
-Do not mix plaintext and KMS-encrypted entries in `MASTER_KEYS` when KMS mode is enabled.
+You cannot mix master keys encrypted with different KMS providers in `MASTER_KEYS`. All entries must use the same `KMS_PROVIDER` and `KMS_KEY_URI`.
 
-Unsupported (do not use):
+To re-encrypt an existing master key with a new provider:
+
+#### Step 3a: Decrypt existing master key using old provider
+
+First, extract the existing encrypted master key from your current `MASTER_KEYS`:
 
 ```bash
-MASTER_KEYS=old-plaintext-key:<plaintext-base64>,new-key:<kms-ciphertext>
-
+# Example: old-key:ARiEeAASDiXKAxzOQCw2NxQ...
+OLD_KEY_ID="old-key"
+OLD_KEY_CIPHERTEXT="ARiEeAASDiXKAxzOQCw2NxQ..."
 ```
 
-Supported KMS mode input: all entries must be KMS-encrypted ciphertext.
+Manually decrypt using the old KMS provider (requires old `KMS_KEY_URI` access):
+
+**For localsecrets:**
 
 ```bash
-# Example shape (all values are KMS-encrypted ciphertext)
-MASTER_KEYS=old-key:<kms-ciphertext-for-old-key>,master-key-kms-2026:<kms-ciphertext-for-new-key>
-ACTIVE_MASTER_KEY_ID=old-key
-KMS_PROVIDER=<provider>
-KMS_KEY_URI=<uri>
-
+# Decrypt using tink-gcpkms-cli or equivalent tooling
+# (Application-specific decryption required)
 ```
 
-To produce `<kms-ciphertext-for-old-key>`, use your provider's native encrypt API with the
-existing plaintext 32-byte key material.
+**For cloud providers:**
+Use provider CLI to decrypt the ciphertext and obtain the 32-byte plaintext master key.
 
-Provider examples for re-encoding an existing plaintext key:
+#### Step 3b: Encrypt plaintext key with new provider
+
+Once you have the plaintext 32-byte master key:
 
 ```bash
-# Input: old plaintext key as base64 string (from legacy MASTER_KEYS value)
-OLD_KEY_B64="bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y="
-printf '%s' "$OLD_KEY_B64" | base64 --decode > /tmp/old-master-key.bin
-
+# Save plaintext key to temporary file
+printf '%s' "$OLD_KEY_PLAINTEXT_B64" | base64 --decode > /tmp/old-master-key.bin
 ```
 
 Google Cloud KMS:
@@ -724,85 +727,78 @@ gcloud kms encrypt \
   --plaintext-file="/tmp/old-master-key.bin" \
   --ciphertext-file="/tmp/old-master-key.cipher"
 
-OLD_KEY_KMS_CIPHERTEXT="$(base64 < /tmp/old-master-key.cipher | tr -d '\n')"
-
+OLD_KEY_NEW_KMS_CIPHERTEXT="$(base64 < /tmp/old-master-key.cipher | tr -d '\n')"
 ```
 
 AWS KMS:
 
 ```bash
-OLD_KEY_KMS_CIPHERTEXT="$(aws kms encrypt \
+OLD_KEY_NEW_KMS_CIPHERTEXT="$(aws kms encrypt \
   --key-id alias/secrets-master-key \
   --plaintext fileb:///tmp/old-master-key.bin \
   --query CiphertextBlob \
   --output text)"
-
 ```
 
 Azure Key Vault:
 
 ```bash
-OLD_KEY_KMS_CIPHERTEXT="$(az keyvault key encrypt \
+OLD_KEY_NEW_KMS_CIPHERTEXT="$(az keyvault key encrypt \
   --vault-name secrets-kv-unique \
   --name master-key-encryption \
   --algorithm RSA-OAEP-256 \
   --file /tmp/old-master-key.bin \
   --query result \
   --output tsv)"
-
 ```
 
 HashiCorp Vault Transit:
 
 ```bash
-OLD_KEY_KMS_CIPHERTEXT="$(vault write -field=ciphertext transit/encrypt/master-key-encryption \
-  plaintext="$OLD_KEY_B64")"
-
+OLD_KEY_PLAINTEXT_B64="$(cat /tmp/old-master-key.bin | base64 | tr -d '\n')"
+OLD_KEY_NEW_KMS_CIPHERTEXT="$(vault write -field=ciphertext transit/encrypt/master-key-encryption \
+  plaintext="$OLD_KEY_PLAINTEXT_B64")"
 ```
 
-Then build your KMS-only chain:
+Clean up temporary files:
 
 ```bash
-MASTER_KEYS="old-key:${OLD_KEY_KMS_CIPHERTEXT},master-key-kms-2026:<kms-ciphertext-for-new-key>"
-
+rm -f /tmp/old-master-key.bin /tmp/old-master-key.cipher
 ```
 
-### Step 4: Update Environment (Encrypted-Only Chain)
+### Step 4: Update Environment with New Provider
 
-Update environment with only KMS-encrypted `MASTER_KEYS` entries:
+Update environment with new KMS provider and re-encrypted master keys:
 
 ```bash
-KMS_PROVIDER=<provider>
-KMS_KEY_URI=<uri>
-MASTER_KEYS=old-key:<kms-ciphertext-for-old-key>,master-key-kms-2026:<kms-ciphertext-for-new-key>
+KMS_PROVIDER=<new-provider>
+KMS_KEY_URI=<new-provider-uri>
+MASTER_KEYS=old-key:<re-encrypted-with-new-provider>,master-key-new-provider-2026:<new-key-ciphertext>
 ACTIVE_MASTER_KEY_ID=old-key
-
 ```
 
 ### Step 5: Restart Application
 
-Verify both keys are loaded:
+Verify both keys are loaded with the new provider:
 
 ```text
 INFO KMS mode enabled provider=gcpkms
 INFO master key decrypted via KMS key_id=old-key
-INFO master key decrypted via KMS key_id=master-key-kms-2026
+INFO master key decrypted via KMS key_id=master-key-new-provider-2026
 INFO master key chain loaded active_master_key_id=old-key total_keys=2
-
 ```
 
 ### Step 6: Rotate KEKs to New Master Key
 
 ```bash
-# Switch active master key to KMS version
-export ACTIVE_MASTER_KEY_ID=master-key-kms-2026
+# Switch active master key to new provider's key
+export ACTIVE_MASTER_KEY_ID=master-key-new-provider-2026
 
 # Restart application
 ./bin/app server
 
 # Rotate all KEKs (re-encrypts with new master key)
 ./bin/app rotate-kek --algorithm aes-gcm
-
 ```
 
 ### Step 7: Remove Old Master Key
@@ -811,57 +807,44 @@ After verifying all KEKs are encrypted with the new master key:
 
 ```bash
 # Remove old key from MASTER_KEYS
-MASTER_KEYS=master-key-kms-2026:<kms-encrypted-ciphertext>
-ACTIVE_MASTER_KEY_ID=master-key-kms-2026
-
+MASTER_KEYS=master-key-new-provider-2026:<kms-encrypted-ciphertext>
+ACTIVE_MASTER_KEY_ID=master-key-new-provider-2026
 ```
 
 ### Migration Checklist
 
-Use this checklist for migrating from legacy plaintext master keys to KMS mode.
+Use this checklist for migrating between KMS providers.
 
 #### 1) Precheck
 
-- [ ] Confirm target release is v0.8.0 or newer
-
+- [ ] Confirm target provider credentials and permissions are available
 - [ ] Back up current environment configuration
-
 - [ ] Confirm rollback owner and change window
+- [ ] Confirm new KMS provider encrypt/decrypt permissions are granted
+- [ ] Test new KMS provider connectivity (preflight validation)
 
-- [ ] Confirm KMS provider credentials are available in runtime
+#### 2) Build new KMS key chain
 
-- [ ] Confirm KMS encrypt/decrypt permissions are granted
-
-#### 2) Build KMS key chain
-
-- [ ] Generate new KMS-encrypted key with `create-master-key --kms-provider ... --kms-key-uri ...`
-
-- [ ] Re-encode existing legacy plaintext keys into KMS ciphertext
-
-- [ ] Build `MASTER_KEYS` with only KMS ciphertext entries (no plaintext mix)
-
+- [ ] Generate new master key with `create-master-key --kms-provider <new> --kms-key-uri <new-uri>`
+- [ ] Decrypt existing master keys using old provider
+- [ ] Re-encrypt existing master keys using new provider
+- [ ] Build `MASTER_KEYS` with all keys encrypted by new provider
 - [ ] Set `KMS_PROVIDER`, `KMS_KEY_URI`, and `ACTIVE_MASTER_KEY_ID`
 
 #### 3) Rollout
 
 - [ ] Restart API instances (rolling)
-
-- [ ] Verify startup logs show KMS mode and key decrypt lines
-
+- [ ] Verify startup logs show new KMS provider and key decrypt lines
 - [ ] Run baseline checks: `GET /health`, `GET /ready`
-
 - [ ] Run key-dependent smoke checks: token issuance, secrets, transit
 
 Reference: [Production rollout golden path](../deployment/production-rollout.md)
 
 #### 4) Rotation and cleanup
 
-- [ ] Rotate KEK after switching to KMS key chain
-
+- [ ] Rotate KEK after switching to new KMS provider
 - [ ] Verify reads/decrypt for existing data still succeed
-
 - [ ] Remove old key entries from `MASTER_KEYS` only after verification
-
 - [ ] Restart API instances again after key-chain cleanup
 
 Reference: [Key management operations](../kms/key-management.md)
@@ -869,14 +852,11 @@ Reference: [Key management operations](../kms/key-management.md)
 #### 5) Rollback readiness
 
 - [ ] Keep previous image tag available
-
-- [ ] Keep pre-change env snapshot available
-
+- [ ] Keep pre-change env snapshot (including old KMS credentials)
 - [ ] If rollback needed, revert app version first
-
 - [ ] Re-validate health and smoke checks after rollback
 
-Reference: [Release notes](../../releases/RELEASES.md#070---2026-02-20)
+Reference: [Release notes](../../releases/RELEASES.md)
 
 ## Key Rotation
 

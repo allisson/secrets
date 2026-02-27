@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-26
 
 Secrets is configured through environment variables.
 
@@ -19,10 +19,10 @@ SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
 LOG_LEVEL=info
 
-# Master key configuration
-KMS_PROVIDER=
-KMS_KEY_URI=
-MASTER_KEYS=default:BASE64_32_BYTE_KEY
+# Master key configuration (KMS mode required as of v0.19.0)
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+MASTER_KEYS=default:BASE64_KMS_ENCRYPTED_KEY
 ACTIVE_MASTER_KEY_ID=default
 
 # Authentication configuration
@@ -50,7 +50,6 @@ METRICS_PORT=8081
 # Account lockout
 LOCKOUT_MAX_ATTEMPTS=10
 LOCKOUT_DURATION_MINUTES=30
-
 ```
 
 ## Database configuration
@@ -123,23 +122,18 @@ Logging level. Supported values: `debug`, `info`, `warn`, `error` (default: `inf
 
 Comma-separated list of master keys in format `id1:value1,id2:value2`.
 
-Value format depends on mode:
+**All master keys must be encrypted with KMS** - plaintext keys are no longer supported (as of v0.19.0).
 
-- Legacy mode: plaintext base64-encoded 32-byte keys
+Value format: base64-encoded KMS ciphertext for each 32-byte master key
 
-- KMS mode: base64-encoded KMS ciphertext for each 32-byte master key
-
-- 📏 Each master key must represent exactly 32 bytes (256 bits)
-
+- 📏 Each master key must represent exactly 32 bytes (256 bits) before encryption
 - 🔐 Store in secrets manager, never commit to source control
-
 - 🔄 After changing `MASTER_KEYS`, restart API servers to load new values
 
 **Example:**
 
 ```dotenv
 MASTER_KEYS=default:A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6==
-
 ```
 
 ### ACTIVE_MASTER_KEY_ID
@@ -147,39 +141,30 @@ MASTER_KEYS=default:A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6==
 ID of the master key to use for encrypting new KEKs (default: `default`).
 
 - ⭐ Must match one of the IDs in `MASTER_KEYS`
-
 - 🔄 After changing `ACTIVE_MASTER_KEY_ID`, restart API servers to load new value
 
 ### KMS_PROVIDER
 
-Optional KMS provider for master key decryption at startup.
+**Required.** KMS provider for master key decryption at startup.
 
 Supported values:
 
-- `localsecrets`
-
-- `gcpkms`
-
-- `awskms`
-
-- `azurekeyvault`
-
-- `hashivault`
+- `localsecrets` - Local development ONLY (⚠️ DO NOT use in production)
+- `gcpkms` - Google Cloud KMS
+- `awskms` - AWS KMS
+- `azurekeyvault` - Azure Key Vault
+- `hashivault` - HashiCorp Vault
 
 ### KMS_KEY_URI
 
-KMS key URI for the selected `KMS_PROVIDER`.
+**Required.** KMS key URI for the selected `KMS_PROVIDER`.
 
 Examples:
 
-- `base64key://<base64-32-byte-key>`
-
+- `base64key://<base64-32-byte-key>` (localsecrets only)
 - `gcpkms://projects/<project>/locations/<location>/keyRings/<ring>/cryptoKeys/<key>`
-
 - `awskms:///<key-id-or-alias>`
-
 - `azurekeyvault://<vault-name>.vault.azure.net/keys/<key-name>`
-
 - `hashivault:///<transit-key-path>`
 
 **🔒 SECURITY WARNING:**
@@ -190,71 +175,53 @@ The `KMS_KEY_URI` variable contains **highly sensitive information** that contro
 
 1. **NEVER commit `KMS_KEY_URI` to source control**
    - Use secrets management (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault)
-
    - Use environment-specific `.env` files excluded from git (`.env` is in `.gitignore`)
-
    - Use CI/CD secrets for automated deployments
 
 2. **Restrict access using least privilege**
    - Limit access to personnel with operational requirements only
-
    - Use role-based access control (RBAC) in your secrets manager
-
    - Audit access to `KMS_KEY_URI` quarterly
 
 3. **Use KMS provider authentication securely**
    - **GCP KMS**: Use Workload Identity (GKE) or service account keys with rotation
-
    - **AWS KMS**: Use IAM roles (ECS/EKS) or IAM users with MFA and rotation
-
    - **Azure Key Vault**: Use Managed Identity (AKS) or service principals with rotation
-
    - **HashiCorp Vault**: Use AppRole or token auth, never root tokens
 
 4. **Rotate KMS keys regularly**
    - Follow your organization's key rotation policy (typically 90-365 days)
-
    - Test rotation procedures in staging before production
-
    - See [KMS setup guide](operations/kms/setup.md#key-rotation) for rotation workflow
 
 5. **Monitor and audit KMS access**
    - Enable CloudTrail (AWS), Cloud Audit Logs (GCP), Azure Monitor (Azure)
-
    - Alert on unusual KMS key access patterns
-
    - Review KMS access logs monthly
 
 6. **Use `base64key://` provider ONLY for local development**
    - The `base64key://` provider embeds the encryption key directly in `KMS_KEY_URI`
-
    - **NEVER use `base64key://` in staging or production environments**
-
    - Use cloud KMS providers (`gcpkms://`, `awskms://`, `azurekeyvault://`) for production
 
 **Example of insecure vs secure configuration:**
 
 ```dotenv
 # ❌ INSECURE - Never do this
-
 KMS_PROVIDER=localsecrets
 KMS_KEY_URI=base64key://A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6==  # PRODUCTION - DO NOT USE
 
 # ✅ SECURE - Production example (GCP)
-
 KMS_PROVIDER=gcpkms
 KMS_KEY_URI=gcpkms://projects/my-prod-project/locations/us-central1/keyRings/secrets-keyring/cryptoKeys/secrets-master-key
 
 # ✅ SECURE - Production example (AWS)
-
 KMS_PROVIDER=awskms
 KMS_KEY_URI=awskms:///alias/secrets-master-key
 
 # ✅ SECURE - Production example (Azure)
-
 KMS_PROVIDER=azurekeyvault
 KMS_KEY_URI=azurekeyvault://my-prod-vault.vault.azure.net/keys/secrets-master-key
-
 ```
 
 **Incident response:**
@@ -269,29 +236,17 @@ If `KMS_KEY_URI` is exposed (committed to git, leaked in logs, etc.):
 
 See [Security Hardening Guide](operations/deployment/docker-hardened.md) and [KMS Setup Guide](operations/kms/setup.md) for complete guidance.
 
-### Master key mode selection
-
-- KMS mode: set both `KMS_PROVIDER` and `KMS_KEY_URI`
-
-- Legacy mode: leave both unset/empty
-
-- Invalid configuration: setting only one of the two variables fails startup
-
-For provider setup and migration workflow, see [KMS setup guide](operations/kms/setup.md).
-
 ### KMS preflight checklist
 
 Run this checklist before rolling to production:
 
-1. `KMS_PROVIDER` and `KMS_KEY_URI` are both set (or both unset for legacy mode)
-2. `MASTER_KEYS` entries match the selected mode:
-   - KMS mode: all entries are KMS ciphertext
-
-   - Legacy mode: all entries are plaintext base64 32-byte keys
-
+1. Both `KMS_PROVIDER` and `KMS_KEY_URI` are set (both are required as of v0.19.0)
+2. All `MASTER_KEYS` entries are KMS-encrypted ciphertext (base64-encoded)
 3. `ACTIVE_MASTER_KEY_ID` exists in `MASTER_KEYS`
 4. Runtime credentials for provider are present and valid
 5. Startup logs show successful key loading before traffic cutover
+
+**Breaking change in v0.19.0:** Plaintext master keys are no longer supported. All deployments must use KMS mode. For local development without cloud KMS, use the `localsecrets` provider. See the [v0.19.0 release notes](releases/RELEASES.md#0190---2026-02-26) for migration guidance.
 
 ## Authentication configuration
 
@@ -458,23 +413,27 @@ Port to bind the metrics HTTP server (default: `8081`).
 ## Master key generation
 
 ```bash
-./bin/app create-master-key --id default
-
-# KMS mode (recommended for production)
+# KMS mode is required as of v0.19.0
+# For local development, use localsecrets provider
 ./bin/app create-master-key --id default \
   --kms-provider=localsecrets \
   --kms-key-uri="base64key://<base64-32-byte-key>"
 
+# For production, use a cloud KMS provider (GCP, AWS, Azure, HashiCorp Vault)
+./bin/app create-master-key --id default \
+  --kms-provider=gcpkms \
+  --kms-key-uri="gcpkms://projects/my-project/locations/us-central1/keyRings/my-ring/cryptoKeys/my-key"
+
 # Rotate master key (combines with existing MASTER_KEYS)
 ./bin/app rotate-master-key --id master-key-2026-08
-
 ```
 
 Or with Docker image:
 
 ```bash
-docker run --rm allisson/secrets create-master-key --id default
-
+docker run --rm allisson/secrets create-master-key --id default \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 ## See also
