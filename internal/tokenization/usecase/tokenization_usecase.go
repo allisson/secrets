@@ -18,6 +18,32 @@ import (
 	tokenizationService "github.com/allisson/secrets/internal/tokenization/service"
 )
 
+// validateTokenLength checks if the plaintext length is valid for the token format type.
+func validateTokenLength(formatType tokenizationDomain.FormatType, length int) error {
+	// UUID format ignores length parameter
+	if formatType == tokenizationDomain.FormatUUID {
+		return nil
+	}
+
+	// Luhn format requires at least 2 characters
+	if formatType == tokenizationDomain.FormatLuhnPreserving &&
+		length < tokenizationDomain.MinLuhnTokenLength {
+		return tokenizationDomain.ErrTokenLengthInvalid
+	}
+
+	// All format-preserving tokens have max length constraint
+	if length > tokenizationDomain.MaxTokenLength {
+		return tokenizationDomain.ErrTokenLengthInvalid
+	}
+
+	// Minimum length is 1 for numeric/alphanumeric
+	if length < 1 {
+		return tokenizationDomain.ErrTokenLengthInvalid
+	}
+
+	return nil
+}
+
 // tokenizationUseCase implements TokenizationUseCase for managing tokenization operations.
 type tokenizationUseCase struct {
 	txManager        database.TxManager
@@ -30,18 +56,13 @@ type tokenizationUseCase struct {
 	kekChain         *cryptoDomain.KekChain
 }
 
-// getKek retrieves a KEK from the chain by its ID.
-func (t *tokenizationUseCase) getKek(kekID uuid.UUID) (*cryptoDomain.Kek, error) {
-	kek, ok := t.kekChain.Get(kekID)
-	if !ok {
-		return nil, cryptoDomain.ErrKekNotFound
-	}
-	return kek, nil
-}
-
 // Tokenize generates a token for the given plaintext value using the latest version of the named key.
 // In deterministic mode, returns the existing token if the value has been tokenized before.
 // Metadata is optional display data (e.g., last 4 digits) stored unencrypted.
+//
+// Rate Limiting: Production systems should implement rate limiting on this method to prevent abuse.
+// Recommended: 100 requests per minute per user/API key for standard use cases.
+// Adjust based on your specific security requirements and usage patterns.
 func (t *tokenizationUseCase) Tokenize(
 	ctx context.Context,
 	keyName string,
@@ -49,10 +70,18 @@ func (t *tokenizationUseCase) Tokenize(
 	metadata map[string]any,
 	expiresAt *time.Time,
 ) (*tokenizationDomain.Token, error) {
+	// Validate plaintext size
+	if len(plaintext) == 0 {
+		return nil, tokenizationDomain.ErrPlaintextEmpty
+	}
+	if len(plaintext) > tokenizationDomain.MaxPlaintextSize {
+		return nil, tokenizationDomain.ErrPlaintextTooLarge
+	}
+
 	// Get latest tokenization key version
 	tokenizationKey, err := t.tokenizationRepo.GetByName(ctx, keyName)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to get tokenization key by name")
 	}
 
 	// In deterministic mode, check if token already exists for this value
@@ -60,7 +89,7 @@ func (t *tokenizationUseCase) Tokenize(
 		valueHash := t.hashService.Hash(plaintext)
 		existingToken, err := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
 		if err != nil && !apperrors.Is(err, tokenizationDomain.ErrTokenNotFound) {
-			return nil, err
+			return nil, apperrors.Wrap(err, "failed to check existing token in deterministic mode")
 		}
 		if existingToken != nil {
 			// Return existing valid token
@@ -74,26 +103,26 @@ func (t *tokenizationUseCase) Tokenize(
 	// Get DEK by tokenization key's DekID
 	dek, err := t.dekRepo.Get(ctx, tokenizationKey.DekID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to get DEK")
 	}
 
 	// Get KEK for decrypting DEK
-	kek, err := t.getKek(dek.KekID)
+	kek, err := getKek(t.kekChain, dek.KekID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to get KEK")
 	}
 
 	// Decrypt DEK with KEK
 	dekKey, err := t.keyManager.DecryptDek(dek, kek)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to decrypt DEK")
 	}
 	defer cryptoDomain.Zero(dekKey)
 
 	// Create AEAD cipher with decrypted DEK
 	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to create cipher")
 	}
 
 	// Encrypt plaintext
@@ -110,14 +139,24 @@ func (t *tokenizationUseCase) Tokenize(
 
 	// For format-preserving tokens, use plaintext length as hint
 	tokenLength := len(plaintext)
+
+	// Validate token length matches format requirements
+	if err := validateTokenLength(tokenizationKey.FormatType, tokenLength); err != nil {
+		return nil, err
+	}
+
 	tokenValue, err := generator.Generate(tokenLength)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to generate token")
 	}
 
 	// Create token record
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to generate UUID for token")
+	}
 	token := &tokenizationDomain.Token{
-		ID:                uuid.Must(uuid.NewV7()),
+		ID:                tokenID,
 		TokenizationKeyID: tokenizationKey.ID,
 		Token:             tokenValue,
 		ValueHash:         nil,
@@ -137,7 +176,21 @@ func (t *tokenizationUseCase) Tokenize(
 
 	// Persist token
 	if err := t.tokenRepo.Create(ctx, token); err != nil {
-		return nil, err
+		// In deterministic mode, handle race condition where another goroutine
+		// created the same token between our check and insert
+		if tokenizationKey.IsDeterministic && apperrors.Is(err, apperrors.ErrConflict) {
+			// Race detected: another concurrent request inserted this token
+			// Query again to get the token that was inserted
+			valueHash := t.hashService.Hash(plaintext)
+			existingToken, queryErr := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
+			if queryErr != nil {
+				// If query fails, return original create error
+				return nil, apperrors.Wrap(err, "failed to create token")
+			}
+			// Return the token created by the concurrent request
+			return existingToken, nil
+		}
+		return nil, apperrors.Wrap(err, "failed to create token")
 	}
 
 	return token, nil
@@ -153,7 +206,7 @@ func (t *tokenizationUseCase) Detokenize(
 	// Get token record
 	tokenRecord, err := t.tokenRepo.GetByToken(ctx, token)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to get token")
 	}
 
 	// Validate token is not expired
@@ -169,38 +222,41 @@ func (t *tokenizationUseCase) Detokenize(
 	// Get tokenization key to retrieve its DekID
 	tokenizationKey, err := t.tokenizationRepo.Get(ctx, tokenRecord.TokenizationKeyID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to get tokenization key")
 	}
 
 	// Get DEK
 	dek, err := t.dekRepo.Get(ctx, tokenizationKey.DekID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to get DEK")
 	}
 
 	// Get KEK for decrypting DEK
-	kek, err := t.getKek(dek.KekID)
+	kek, err := getKek(t.kekChain, dek.KekID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to get KEK")
 	}
 
 	// Decrypt DEK with KEK
 	dekKey, err := t.keyManager.DecryptDek(dek, kek)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to decrypt DEK")
 	}
 	defer cryptoDomain.Zero(dekKey)
 
 	// Create AEAD cipher with decrypted DEK
 	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, apperrors.Wrap(err, "failed to create cipher")
 	}
 
 	// Decrypt ciphertext with nonce
 	plaintext, err = cipher.Decrypt(tokenRecord.Ciphertext, tokenRecord.Nonce, nil)
 	if err != nil {
-		return nil, nil, cryptoDomain.ErrDecryptionFailed
+		return nil, nil, apperrors.Wrap(
+			cryptoDomain.ErrDecryptionFailed,
+			"failed to decrypt token ciphertext",
+		)
 	}
 
 	return plaintext, tokenRecord.Metadata, nil
@@ -214,7 +270,7 @@ func (t *tokenizationUseCase) Validate(ctx context.Context, token string) (bool,
 		if apperrors.Is(err, tokenizationDomain.ErrTokenNotFound) {
 			return false, nil
 		}
-		return false, err
+		return false, apperrors.Wrap(err, "failed to validate token")
 	}
 
 	// Check if token is valid
@@ -226,11 +282,15 @@ func (t *tokenizationUseCase) Revoke(ctx context.Context, token string) error {
 	// Verify token exists first
 	_, err := t.tokenRepo.GetByToken(ctx, token)
 	if err != nil {
-		return err
+		return apperrors.Wrap(err, "failed to get token for revocation")
 	}
 
 	// Revoke the token
-	return t.tokenRepo.Revoke(ctx, token)
+	err = t.tokenRepo.Revoke(ctx, token)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to revoke token")
+	}
+	return nil
 }
 
 // CleanupExpired deletes tokens that expired more than the specified number of days ago.

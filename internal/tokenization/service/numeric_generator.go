@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
 type numericGenerator struct{}
@@ -21,7 +23,7 @@ func (g *numericGenerator) Generate(length int) (string, error) {
 	if length < 1 {
 		return "", errors.New("length must be at least 1")
 	}
-	if length > 255 {
+	if length > tokenizationDomain.MaxTokenLength {
 		return "", errors.New("length must not exceed 255")
 	}
 

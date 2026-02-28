@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/httputil"
 	"github.com/allisson/secrets/internal/transit/http/dto"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
@@ -19,20 +18,17 @@ import (
 // TransitKeyHandler handles HTTP requests for transit key management operations.
 // It coordinates authentication, authorization, and audit logging with the TransitKeyUseCase.
 type TransitKeyHandler struct {
-	transitKeyUseCase transitUseCase.TransitKeyUseCase
-	auditLogUseCase   authUseCase.AuditLogUseCase
-	logger            *slog.Logger
+	transitKeyUseCase transitUseCase.TransitKeyUseCase // Business logic for transit key lifecycle operations
+	logger            *slog.Logger                     // Structured logger for request handling and error reporting
 }
 
 // NewTransitKeyHandler creates a new transit key handler with required dependencies.
 func NewTransitKeyHandler(
 	transitKeyUseCase transitUseCase.TransitKeyUseCase,
-	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 ) *TransitKeyHandler {
 	return &TransitKeyHandler{
 		transitKeyUseCase: transitKeyUseCase,
-		auditLogUseCase:   auditLogUseCase,
 		logger:            logger,
 	}
 }

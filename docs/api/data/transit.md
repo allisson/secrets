@@ -201,7 +201,7 @@ Example decrypt response (`200 OK`):
 
 | Endpoint | 401 | 403 | 404 | 409 | 422 | 429 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `POST /v1/transit/keys` | missing/invalid token | missing `write` capability | - | key name already initialized (`version=1`) | invalid create payload | per-client rate limit exceeded |
+| `POST /v1/transit/keys` | missing/invalid token | missing `write` capability | - | key name already initialized (`version=1`) | invalid create payload (e.g., `name` exceeds `MaxTransitKeyNameLength` constraint) | per-client rate limit exceeded |
 | `POST /v1/transit/keys/:name/rotate` | missing/invalid token | missing `rotate` capability | key name not found | - | invalid rotate payload | per-client rate limit exceeded |
 | `POST /v1/transit/keys/:name/encrypt` | missing/invalid token | missing `encrypt` capability | key name not found | - | `plaintext` missing/invalid base64 | per-client rate limit exceeded |
 | `POST /v1/transit/keys/:name/decrypt` | missing/invalid token | missing `decrypt` capability | key/version not found | - | malformed `<version>:<base64-ciphertext>` | per-client rate limit exceeded |

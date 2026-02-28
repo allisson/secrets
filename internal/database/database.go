@@ -12,14 +12,15 @@ import (
 
 // Config holds database configuration settings.
 type Config struct {
-	Driver             string
-	ConnectionString   string
-	MaxOpenConnections int
-	MaxIdleConnections int
-	ConnMaxLifetime    time.Duration
+	Driver             string        // Database driver name (e.g., "postgres", "mysql").
+	ConnectionString   string        // Connection string for the database.
+	MaxOpenConnections int           // Maximum number of open connections to the database.
+	MaxIdleConnections int           // Maximum number of idle connections in the pool.
+	ConnMaxLifetime    time.Duration // Maximum amount of time a connection may be reused.
 }
 
 // Connect establishes a database connection with the given configuration.
+// It sets connection pool settings and verifies the connection with a ping.
 func Connect(cfg Config) (*sql.DB, error) {
 	db, err := sql.Open(cfg.Driver, cfg.ConnectionString)
 	if err != nil {

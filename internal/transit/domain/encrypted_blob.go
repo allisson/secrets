@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,9 +11,9 @@ import (
 // EncryptedBlob represents an encrypted data blob with version and ciphertext.
 // Format: "version:ciphertext-base64"
 type EncryptedBlob struct {
-	Version    uint   // Transit key version used for encryption
-	Ciphertext []byte // Encrypted data
-	Plaintext  []byte // In memory only
+	Version    uint   // Transit key version used for this encryption/decryption operation
+	Ciphertext []byte // Encrypted data with nonce prepended (empty after decryption)
+	Plaintext  []byte // Decrypted data (only populated after decryption, should be zeroed after use)
 }
 
 // NewEncryptedBlob creates an EncryptedBlob from string format "version:ciphertext-base64".
@@ -50,4 +51,19 @@ func NewEncryptedBlob(content string) (EncryptedBlob, error) {
 func (eb EncryptedBlob) String() string {
 	encodedCiphertext := base64.StdEncoding.EncodeToString(eb.Ciphertext)
 	return fmt.Sprintf("%d:%s", eb.Version, encodedCiphertext)
+}
+
+// Validate checks if the encrypted blob contains valid data.
+// Returns an error if any field violates domain constraints.
+func (eb *EncryptedBlob) Validate() error {
+	if eb.Version == 0 {
+		return errors.New("encrypted blob version must be greater than 0")
+	}
+
+	// Must have either ciphertext (for encryption result) or plaintext (for decryption result)
+	if len(eb.Ciphertext) == 0 && len(eb.Plaintext) == 0 {
+		return errors.New("encrypted blob must contain either ciphertext or plaintext")
+	}
+
+	return nil
 }

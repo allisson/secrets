@@ -37,7 +37,9 @@ func setupTestHandler(t *testing.T) (*SecretHandler, *mocks.MockSecretUseCase) {
 }
 
 func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("Success_ValidRequest", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		secretID := uuid.Must(uuid.NewV7())
@@ -78,6 +80,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Success_NestedPath", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		secretID := uuid.Must(uuid.NewV7())
@@ -116,6 +119,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodPost, "/v1/secrets/database/password", nil)
@@ -133,6 +137,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_EmptyValue", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateOrUpdateSecretRequest{
@@ -153,6 +158,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidBase64", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateOrUpdateSecretRequest{
@@ -173,6 +179,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_EmptyPath", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateOrUpdateSecretRequest{
@@ -194,6 +201,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		path := "database/password"
@@ -223,7 +231,9 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 }
 
 func TestSecretHandler_GetHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("Success_GetLatestVersion", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		secretID := uuid.Must(uuid.NewV7())
@@ -262,6 +272,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Success_GetSpecificVersion", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		secretID := uuid.Must(uuid.NewV7())
@@ -302,6 +313,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidVersionParameter", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		path := "database/password"
@@ -322,6 +334,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Error_NotFound", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		path := "nonexistent/secret"
@@ -345,6 +358,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Error_EmptyPath", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodGet, "/v1/secrets/", nil)
@@ -363,7 +377,9 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 }
 
 func TestSecretHandler_DeleteHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("Success_DeleteSecret", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		path := "database/password"
@@ -383,6 +399,7 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 	})
 
 	t.Run("Success_NestedPath", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		path := "my/nested/secret/path"
@@ -401,6 +418,7 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 	})
 
 	t.Run("Error_NotFound", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		path := "nonexistent/secret"
@@ -424,6 +442,7 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 	})
 
 	t.Run("Error_EmptyPath", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodDelete, "/v1/secrets/", nil)
@@ -442,7 +461,9 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 }
 
 func TestSecretHandler_ListHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("Success_ListSecrets", func(t *testing.T) {
+		t.Parallel()
 		handler, mockUseCase := setupTestHandler(t)
 
 		now := time.Now().UTC()
@@ -481,6 +502,7 @@ func TestSecretHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
+		t.Parallel()
 		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodGet, "/v1/secrets?offset=invalid", nil)

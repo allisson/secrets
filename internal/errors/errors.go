@@ -40,6 +40,15 @@ func Wrap(err error, message string) error {
 	return fmt.Errorf("%s: %w", message, err)
 }
 
+// Wrapf wraps an error with additional context using a format string.
+func Wrapf(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	message := fmt.Sprintf(format, args...)
+	return fmt.Errorf("%s: %w", message, err)
+}
+
 // Is reports whether any error in err's tree matches target.
 func Is(err, target error) bool {
 	return errors.Is(err, target)

@@ -27,6 +27,7 @@ func NewMetricsServer(
 ) *MetricsServer {
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(CustomLoggerMiddleware(logger))
 
 	if metricsProvider != nil {
 		router.GET("/metrics", gin.WrapH(metricsProvider.Handler()))
@@ -42,6 +43,11 @@ func NewMetricsServer(
 		},
 		logger: logger,
 	}
+}
+
+// GetHandler returns the http.Handler for testing purposes.
+func (s *MetricsServer) GetHandler() http.Handler {
+	return s.server.Handler
 }
 
 // Start starts the metrics HTTP server.

@@ -26,8 +26,8 @@ type SecretRepository interface {
 	// Create stores a new secret in the repository using transaction support from context.
 	Create(ctx context.Context, secret *secretsDomain.Secret) error
 
-	// Delete soft deletes a secret by marking it with DeletedAt timestamp.
-	Delete(ctx context.Context, secretID uuid.UUID) error
+	// Delete soft deletes all versions of a secret by path, marking them with DeletedAt timestamp.
+	Delete(ctx context.Context, path string) error
 
 	// GetByPath retrieves the latest version of a secret by its path. Returns ErrSecretNotFound if not found.
 	GetByPath(ctx context.Context, path string) (*secretsDomain.Secret, error)

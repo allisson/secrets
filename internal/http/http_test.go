@@ -271,24 +271,10 @@ func TestMetricsServer_Endpoints(t *testing.T) {
 	metricsServer := NewMetricsServer("localhost", 8081, logger, provider)
 	require.NotNil(t, metricsServer)
 
-	// We need to test the handler directly since we can't easily start the http.Server in a test without binding ports
-	// The internal router is not exposed, but we can verify the behavior by creating a similar router
-	// or by trusting that NewMetricsServer uses the same logic.
-	// However, for unit testing the logic inside NewMetricsServer, we can just recreate the router logic here
-	// or relies on integration tests.
-	// Better approach: Test NewMetricsServer initialization and ensure it doesn't panic.
-	// But we want to test that /metrics is registered.
-	// Let's modify NewMetricsServer to allow accessing the handler for testing or just test the router construction.
-
-	// Since we cannot access the router inside metricsServer (it's private in http.Server),
-	// we will replicate the router construction logic effectively testing the configuration.
-	router := gin.New()
-	router.Use(gin.Recovery())
-	router.GET("/metrics", gin.WrapH(provider.Handler()))
-
+	// Test the handler from metricsServer exactly as it's configured
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	router.ServeHTTP(w, req)
+	metricsServer.GetHandler().ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Header().Get("Content-Type"), "text/plain")

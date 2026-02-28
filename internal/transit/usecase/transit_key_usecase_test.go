@@ -1196,6 +1196,11 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 			Return(mockCipher, nil).
 			Once()
 
+		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
+
 		// Execute
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,

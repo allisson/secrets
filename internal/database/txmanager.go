@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 // txKey is a context key type for storing database transactions.
@@ -38,16 +39,30 @@ func (m *sqlTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) 
 		return err
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			_ = tx.Rollback()
+			panic(r)
+		}
+	}()
+
 	ctx = context.WithValue(ctx, txKey{}, tx)
 
 	if err := fn(ctx); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return rbErr
+			return fmt.Errorf("error executing function (original error: %v): %w", err, rbErr)
 		}
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("error committing transaction (commit error: %v): %w", err, rbErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // GetTx retrieves a transaction from context, or returns the DB connection.

@@ -10,9 +10,9 @@ import (
 
 // CreateClientRequest contains the parameters for creating a new authentication client.
 type CreateClientRequest struct {
-	Name     string                      `json:"name"`
-	IsActive bool                        `json:"is_active"`
-	Policies []authDomain.PolicyDocument `json:"policies"`
+	Name     string                      `json:"name"`      // Unique name for the client
+	IsActive bool                        `json:"is_active"` // Whether the client is active
+	Policies []authDomain.PolicyDocument `json:"policies"`  // Access control policies
 }
 
 // Validate checks if the create client request is valid.
@@ -32,9 +32,9 @@ func (r *CreateClientRequest) Validate() error {
 
 // UpdateClientRequest contains the parameters for updating an existing client.
 type UpdateClientRequest struct {
-	Name     string                      `json:"name"`
-	IsActive bool                        `json:"is_active"`
-	Policies []authDomain.PolicyDocument `json:"policies"`
+	Name     string                      `json:"name"`      // New unique name for the client
+	IsActive bool                        `json:"is_active"` // New active status
+	Policies []authDomain.PolicyDocument `json:"policies"`  // New access control policies
 }
 
 // Validate checks if the update client request is valid.
@@ -74,7 +74,7 @@ func validatePolicyDocument(value interface{}) error {
 
 // IssueTokenRequest contains the parameters for issuing an authentication token.
 type IssueTokenRequest struct {
-	ClientID     string `json:"client_id"`
+	ClientID     string `json:"client_id"`     // Client ID (UUID)
 	ClientSecret string `json:"client_secret"` //nolint:gosec // API authentication field
 }
 

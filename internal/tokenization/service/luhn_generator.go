@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
 type luhnGenerator struct{}
@@ -18,10 +20,10 @@ func NewLuhnGenerator() TokenGenerator {
 // Generate creates a Luhn algorithm compliant numeric token of the specified length.
 // The last digit is calculated as the Luhn check digit. Returns an error if length is less than 2.
 func (g *luhnGenerator) Generate(length int) (string, error) {
-	if length < 2 {
+	if length < tokenizationDomain.MinLuhnTokenLength {
 		return "", errors.New("length must be at least 2 for Luhn tokens")
 	}
-	if length > 255 {
+	if length > tokenizationDomain.MaxTokenLength {
 		return "", errors.New("length must not exceed 255")
 	}
 
@@ -73,6 +75,10 @@ func (g *luhnGenerator) Validate(token string) error {
 // calculateLuhnCheckDigit calculates the Luhn check digit for the given digits.
 // The digits slice should NOT include the check digit position.
 func calculateLuhnCheckDigit(digits []int) int {
+	if len(digits) == 0 {
+		return 0 // Return 0 for empty input
+	}
+
 	sum := 0
 	length := len(digits)
 

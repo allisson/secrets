@@ -28,4 +28,28 @@ var (
 
 	// ErrValueTooLong indicates the value exceeds the maximum allowed length.
 	ErrValueTooLong = errors.Wrap(errors.ErrInvalidInput, "value exceeds maximum length")
+
+	// ErrPlaintextTooLarge indicates the plaintext exceeds maximum allowed size.
+	ErrPlaintextTooLarge = errors.Wrap(errors.ErrInvalidInput, "plaintext exceeds maximum size of 64KB")
+
+	// ErrPlaintextEmpty indicates the plaintext is empty.
+	ErrPlaintextEmpty = errors.Wrap(errors.ErrInvalidInput, "plaintext cannot be empty")
+
+	// ErrTokenLengthInvalid indicates the token length is invalid for the format.
+	ErrTokenLengthInvalid = errors.Wrap(errors.ErrInvalidInput, "token length invalid for format type")
+
+	// ErrTokenizationKeyNameEmpty indicates the tokenization key name is empty.
+	ErrTokenizationKeyNameEmpty = errors.Wrap(errors.ErrInvalidInput, "tokenization key name cannot be empty")
+
+	// ErrTokenizationKeyVersionInvalid indicates the version is invalid (must be > 0).
+	ErrTokenizationKeyVersionInvalid = errors.Wrap(
+		errors.ErrInvalidInput,
+		"tokenization key version must be greater than 0",
+	)
+
+	// ErrTokenizationKeyDekIDInvalid indicates the DEK ID is invalid (nil UUID).
+	ErrTokenizationKeyDekIDInvalid = errors.Wrap(
+		errors.ErrInvalidInput,
+		"tokenization key DEK ID cannot be nil",
+	)
 )

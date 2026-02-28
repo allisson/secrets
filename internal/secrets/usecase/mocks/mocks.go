@@ -250,16 +250,16 @@ func (_c *MockSecretRepository_Create_Call) RunAndReturn(run func(ctx context.Co
 }
 
 // Delete provides a mock function for the type MockSecretRepository
-func (_mock *MockSecretRepository) Delete(ctx context.Context, secretID uuid.UUID) error {
-	ret := _mock.Called(ctx, secretID)
+func (_mock *MockSecretRepository) Delete(ctx context.Context, path string) error {
+	ret := _mock.Called(ctx, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, secretID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, path)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -273,20 +273,20 @@ type MockSecretRepository_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - secretID uuid.UUID
-func (_e *MockSecretRepository_Expecter) Delete(ctx interface{}, secretID interface{}) *MockSecretRepository_Delete_Call {
-	return &MockSecretRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, secretID)}
+//   - path string
+func (_e *MockSecretRepository_Expecter) Delete(ctx interface{}, path interface{}) *MockSecretRepository_Delete_Call {
+	return &MockSecretRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, path)}
 }
 
-func (_c *MockSecretRepository_Delete_Call) Run(run func(ctx context.Context, secretID uuid.UUID)) *MockSecretRepository_Delete_Call {
+func (_c *MockSecretRepository_Delete_Call) Run(run func(ctx context.Context, path string)) *MockSecretRepository_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -301,7 +301,7 @@ func (_c *MockSecretRepository_Delete_Call) Return(err error) *MockSecretReposit
 	return _c
 }
 
-func (_c *MockSecretRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, secretID uuid.UUID) error) *MockSecretRepository_Delete_Call {
+func (_c *MockSecretRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, path string) error) *MockSecretRepository_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }

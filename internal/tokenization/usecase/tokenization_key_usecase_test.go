@@ -13,37 +13,9 @@ import (
 	cryptoServiceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
 	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
+	tokenizationTesting "github.com/allisson/secrets/internal/tokenization/testing"
 	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
 )
-
-// createKekChain creates a test KEK chain for tokenization key tests.
-func createKekChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.KekChain {
-	// Create a test KEK with plaintext key populated
-	kek := &cryptoDomain.Kek{
-		ID:           uuid.Must(uuid.NewV7()),
-		MasterKeyID:  masterKey.ID,
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: make([]byte, 32),
-		Key:          make([]byte, 32), // Plaintext KEK key for testing
-		Nonce:        make([]byte, 12),
-		Version:      1,
-	}
-
-	// Create KEK chain with the test KEK (newest first)
-	kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{kek})
-
-	return kekChain
-}
-
-// getActiveKek is a helper to get the active KEK from a chain.
-func getActiveKek(kekChain *cryptoDomain.KekChain) *cryptoDomain.Kek {
-	activeID := kekChain.ActiveKekID()
-	kek, ok := kekChain.Get(activeID)
-	if !ok {
-		panic("active KEK not found in chain")
-	}
-	return kek
-}
 
 // TestTokenizationKeyUseCase_Create tests the Create method.
 func TestTokenizationKeyUseCase_Create(t *testing.T) {
@@ -57,14 +29,11 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -79,20 +48,29 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(nil).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(activeKek, cryptoDomain.AESGCM).
 			Return(dek, nil).
 			Once()
 
 		mockDekRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(d *cryptoDomain.Dek) bool {
+			Create(mock.Anything, mock.MatchedBy(func(d *cryptoDomain.Dek) bool {
 				return d.ID == dek.ID && d.KekID == dek.KekID
 			})).
 			Return(nil).
 			Once()
 
 		mockTokenizationKeyRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(key *tokenizationDomain.TokenizationKey) bool {
+			Create(mock.Anything, mock.MatchedBy(func(key *tokenizationDomain.TokenizationKey) bool {
 				return key.Name == "test-key" &&
 					key.FormatType == tokenizationDomain.FormatUUID &&
 					key.Version == 1 &&
@@ -129,14 +107,11 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -151,18 +126,27 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(nil).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(activeKek, cryptoDomain.ChaCha20).
 			Return(dek, nil).
 			Once()
 
 		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
+			Create(mock.Anything, mock.Anything).
 			Return(nil).
 			Once()
 
 		mockTokenizationKeyRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(key *tokenizationDomain.TokenizationKey) bool {
+			Create(mock.Anything, mock.MatchedBy(func(key *tokenizationDomain.TokenizationKey) bool {
 				return key.Name == "payment-cards" &&
 					key.FormatType == tokenizationDomain.FormatLuhnPreserving &&
 					key.Version == 1 &&
@@ -203,11 +187,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		expectedError := errors.New("key manager error")
@@ -216,6 +197,15 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockTokenizationKeyRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
+			Once()
+
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(expectedError).
 			Once()
 
 		mockKeyManager.EXPECT().
@@ -236,7 +226,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, key)
-		assert.Equal(t, expectedError, err)
+		assert.True(t, errors.Is(err, expectedError))
+		assert.Contains(t, err.Error(), "failed to create tokenization key")
 	})
 
 	t.Run("Error_DekRepositoryCreateFails", func(t *testing.T) {
@@ -247,14 +238,11 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -271,13 +259,22 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(expectedError).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(mock.Anything, mock.Anything).
 			Return(dek, nil).
 			Once()
 
 		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
+			Create(mock.Anything, mock.Anything).
 			Return(expectedError).
 			Once()
 
@@ -294,7 +291,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, key)
-		assert.Equal(t, expectedError, err)
+		assert.True(t, errors.Is(err, expectedError))
+		assert.Contains(t, err.Error(), "failed to create tokenization key")
 	})
 
 	t.Run("Error_TokenizationKeyRepositoryCreateFails", func(t *testing.T) {
@@ -305,14 +303,11 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -329,18 +324,27 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				// Execute the transaction function
+				_ = fn(ctx)
+			}).
+			Return(expectedError).
+			Once()
+
 		mockKeyManager.EXPECT().
 			CreateDek(mock.Anything, mock.Anything).
 			Return(dek, nil).
 			Once()
 
 		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
+			Create(mock.Anything, mock.Anything).
 			Return(nil).
 			Once()
 
 		mockTokenizationKeyRepo.EXPECT().
-			Create(ctx, mock.Anything).
+			Create(mock.Anything, mock.Anything).
 			Return(expectedError).
 			Once()
 
@@ -357,7 +361,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, key)
-		assert.Equal(t, expectedError, err)
+		assert.True(t, errors.Is(err, expectedError))
+		assert.Contains(t, err.Error(), "failed to create tokenization key")
 	})
 }
 
@@ -373,11 +378,8 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		existingKey := &tokenizationDomain.TokenizationKey{
@@ -389,7 +391,7 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 			DekID:           uuid.Must(uuid.NewV7()),
 		}
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -459,14 +461,11 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dek := cryptoDomain.Dek{
 			ID:           uuid.Must(uuid.NewV7()),
 			KekID:        activeKek.ID,
@@ -490,12 +489,7 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
-		// Expectations for Create() call within transaction
-		mockTokenizationKeyRepo.EXPECT().
-			GetByNameAndVersion(mock.Anything, "new-key", uint(1)).
-			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
-			Once()
-
+		// Expectations for createTokenizationKey() call within transaction
 		mockKeyManager.EXPECT().
 			CreateDek(activeKek, cryptoDomain.AESGCM).
 			Return(dek, nil).
@@ -545,11 +539,8 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		keyID := uuid.Must(uuid.NewV7())
@@ -582,11 +573,8 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		keyID := uuid.Must(uuid.NewV7())
@@ -610,7 +598,8 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 
 		// Assert
 		assert.Error(t, err)
-		assert.Equal(t, expectedError, err)
+		assert.True(t, errors.Is(err, expectedError))
+		assert.Contains(t, err.Error(), "failed to delete tokenization key")
 	})
 }
 
@@ -697,6 +686,7 @@ func TestTokenizationKeyUseCase_List(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, keys)
-		assert.Equal(t, expectedErr, err)
+		assert.True(t, errors.Is(err, expectedErr))
+		assert.Contains(t, err.Error(), "failed to list tokenization keys")
 	})
 }
