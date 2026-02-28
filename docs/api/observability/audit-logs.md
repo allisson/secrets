@@ -1,6 +1,6 @@
 # 📜 Audit Logs API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Audit logs capture capability checks and access attempts for monitoring and compliance.
@@ -38,7 +38,7 @@ Query parameters:
 ## Example
 
 ```bash
-curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-13T00:00:00Z&limit=20" \
+curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-27T00:00:00Z&limit=20" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -58,10 +58,10 @@ Example response (`200 OK`):
         "ip": "192.168.1.10",
         "user_agent": "curl/8.7.1"
       },
-      "signature": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODkwYWJjZGVmZ2hp",
+      "signature": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
       "kek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
       "is_signed": true,
-      "created_at": "2026-02-14T18:35:12Z"
+      "created_at": "2026-02-27T18:35:12Z"
     }
   ]
 }
@@ -110,10 +110,10 @@ Example response (`200 OK`):
 
 ```bash
 # Verify audit log integrity for a date range
-./bin/app verify-audit-logs --start-date "2026-02-20" --end-date "2026-02-20"
+./bin/app verify-audit-logs --start-date "2026-02-27" --end-date "2026-02-28"
 
 # JSON output for automation
-./bin/app verify-audit-logs --start-date "2026-02-20" --end-date "2026-02-20" --format json
+./bin/app verify-audit-logs --start-date "2026-02-27" --end-date "2026-02-28" --format json
 ```
 
 See [CLI commands](../../cli-commands.md#verify-audit-logs) for verification details.
@@ -182,11 +182,11 @@ curl -i "http://localhost:8080/v1/audit-logs?limit=10&offset=0" \
   -H "Authorization: Bearer <token>"
 
 # 2) Query a time window
-curl -i "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-14T00:00:00Z&limit=10" \
+curl -i "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-27T00:00:00Z&limit=10" \
   -H "Authorization: Bearer <token>"
 ```
 
-Expected result: both requests return `200 OK` with `audit_logs` array.
+Expected result: both requests return `200 OK` with `data` array.
 
 ## Quick Analysis Examples
 
@@ -194,14 +194,14 @@ Denied requests:
 
 ```bash
 curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
-  -H "Authorization: Bearer <token>" | jq '.audit_logs[] | select(.metadata.allowed == false)'
+  -H "Authorization: Bearer <token>" | jq '.data[] | select(.metadata.allowed == false)'
 ```
 
 Operations by capability:
 
 ```bash
 curl -s "http://localhost:8080/v1/audit-logs?limit=100" \
-  -H "Authorization: Bearer <token>" | jq '[.audit_logs[].capability] | group_by(.) | map({capability: .[0], count: length})'
+  -H "Authorization: Bearer <token>" | jq '[.data[].capability] | group_by(.) | map({capability: .[0], count: length})'
 ```
 
 ## Related Examples

@@ -1,6 +1,6 @@
 # 🧭 Day 0 Walkthrough
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 
 Choose your onboarding path based on your role:
 

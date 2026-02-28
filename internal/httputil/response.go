@@ -92,7 +92,21 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	c.JSON(statusCode, errorResponse)
 }
 
-// HandleValidationErrorGin writes a 400 Bad Request response for validation errors using Gin.
+// HandleBadRequestGin writes a 400 Bad Request response for malformed JSON or parameters using Gin.
+func HandleBadRequestGin(c *gin.Context, err error, logger *slog.Logger) {
+	if logger != nil {
+		logger.Warn("bad request", slog.Any("error", err))
+	}
+
+	errorResponse := ErrorResponse{
+		Error:   "bad_request",
+		Message: err.Error(),
+	}
+
+	c.JSON(http.StatusBadRequest, errorResponse)
+}
+
+// HandleValidationErrorGin writes a 422 Unprocessable Entity response for validation errors using Gin.
 func HandleValidationErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	if logger != nil {
 		logger.Warn("validation failed", slog.Any("error", err))
@@ -103,5 +117,5 @@ func HandleValidationErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 		Message: err.Error(),
 	}
 
-	c.JSON(http.StatusBadRequest, errorResponse)
+	c.JSON(http.StatusUnprocessableEntity, errorResponse)
 }

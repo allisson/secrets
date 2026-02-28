@@ -1,7 +1,7 @@
 # 🏗️ Multi-Architecture Build Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: DevOps engineers, release managers, CI/CD maintainers
 
 ## Table of Contents
@@ -222,8 +222,8 @@ make docker-build-multiarch DOCKER_REGISTRY=myregistry.io/myorg
 
 ```text
 Building multi-platform Docker image...
-  Version: v0.10.0
-  Build Date: 2026-02-21T10:30:00Z
+  Version: v0.19.0
+  Build Date: 2026-02-27T10:30:00Z
   Commit SHA: abc123def456...
   Platforms: linux/amd64, linux/arm64
 [+] Building 45.2s (24/24) FINISHED
@@ -240,7 +240,7 @@ For advanced use cases, use `docker buildx` directly:
 # Build and push multi-arch images
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --build-arg VERSION=v0.13.0 \
+  --build-arg VERSION=v0.19.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) \
   -t allisson/secrets:<VERSION> \
@@ -284,16 +284,16 @@ For air-gapped environments or offline builds:
 # Step 1: Build multi-arch images to local cache
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  --build-arg VERSION=v0.13.0 \
+  --build-arg VERSION=v0.19.0 \
   -t allisson/secrets:<VERSION> \
-  --output type=oci,dest=secrets-v0.13.0.tar \
+  --output type=oci,dest=secrets-v0.19.0.tar \
   .
 
 # Step 2: Transfer OCI archive to target environment (USB, network copy, etc.)
-# secrets-v0.13.0.tar contains all platform images
+# secrets-v0.19.0.tar contains all platform images
 
 # Step 3: Load and push from target environment
-docker load < secrets-v0.13.0.tar
+docker load < secrets-v0.19.0.tar
 docker push allisson/secrets:<VERSION>
 
 ```
@@ -386,7 +386,7 @@ docker run --rm --platform linux/arm64 allisson/secrets:<VERSION> uname -m
 # Verify application works on both platforms
 docker run --rm --platform linux/amd64 allisson/secrets:<VERSION> --version
 docker run --rm --platform linux/arm64 allisson/secrets:<VERSION> --version
-# Both should output: Version: v0.10.0
+# Both should output: Version: v0.19.0
 
 ```
 
@@ -400,8 +400,8 @@ docker pull --platform linux/arm64 allisson/secrets:<VERSION>
 # Compare sizes
 docker images allisson/secrets:<VERSION>
 # REPOSITORY         TAG       IMAGE ID       CREATED        SIZE
-# allisson/secrets   v0.10.0   abc123...      2 hours ago    12.5 MB (amd64)
-# allisson/secrets   v0.10.0   def456...      2 hours ago    12.3 MB (arm64)
+# allisson/secrets   v0.19.0   abc123...      2 hours ago    12.5 MB (amd64)
+# allisson/secrets   v0.19.0   def456...      2 hours ago    12.3 MB (arm64)
 
 ```
 
@@ -483,7 +483,7 @@ jobs:
 
 - ✅ Multi-arch manifest published automatically
 
-- ✅ Semantic versioning tags (`:latest`, `:v0.10.0`, `:v0.10`, `:v0`)
+- ✅ Semantic versioning tags (`:latest`, `:v0.19.0`, `:v0.19`, `:v0`)
 
 - ✅ Build caching (GitHub Actions cache) reduces build time by 50-80%
 

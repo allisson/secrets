@@ -1,7 +1,7 @@
 # 🏷️ OCI Image Labels Reference
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: DevOps engineers, security teams, compliance officers
 
 ## Table of Contents
@@ -62,8 +62,8 @@ The image uses the standard `org.opencontainers.image.*` namespace defined by th
 
 | Label | Description | Example Value | Source |
 |-------|-------------|---------------|--------|
-| `org.opencontainers.image.version` | Application version | `v0.10.0` | Build arg (`VERSION`) |
-| `org.opencontainers.image.created` | ISO 8601 build timestamp | `2026-02-21T10:30:00Z` | Build arg (`BUILD_DATE`) |
+| `org.opencontainers.image.version` | Application version | `v0.19.0` | Build arg (`VERSION`) |
+| `org.opencontainers.image.created` | ISO 8601 build timestamp | `2026-02-27T10:30:00Z` | Build arg (`BUILD_DATE`) |
 | `org.opencontainers.image.revision` | Git commit hash | `23d48a137821f9428304e9929cf470adf8c3dee6` | Build arg (`COMMIT_SHA`) |
 
 **Note**: These labels are injected at build time via Docker build arguments. Local builds without build args will show default values (`version=dev`, `created` and `revision` empty).
@@ -240,7 +240,7 @@ grype allisson/secrets:latest
 ```bash
 # Build with version metadata
 docker build -t allisson/secrets:<VERSION> \
-  --build-arg VERSION=v0.13.0 \
+  --build-arg VERSION=v0.19.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 
@@ -427,7 +427,7 @@ docker build -t allisson/secrets:latest \
   --build-arg VERSION=$(git describe --tags) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
-# Labels show: version=v0.13.0, created=2026-02-21T10:30:00Z, revision=23d48a1...
+# Labels show: version=v0.19.0, created=2026-02-27T10:30:00Z, revision=23d48a1...
 
 ```
 
@@ -492,7 +492,7 @@ docker history allisson/secrets:latest | grep ARG
 
 # Rebuild with build arguments
 docker build -t allisson/secrets:latest \
-  --build-arg VERSION=v0.13.0 \
+  --build-arg VERSION=v0.19.0 \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
   --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 

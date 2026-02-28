@@ -1,7 +1,7 @@
 # 🚀 Production Rollout Golden Path
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -27,7 +27,7 @@ Use this runbook for a standard production rollout with verification and rollbac
 
 ## Copy/Paste Rollout Commands
 
-> Command status: verified on 2026-02-20
+> Command status: verified on 2026-02-27
 
 ```bash
 # 1) Pull target release
@@ -143,7 +143,7 @@ Before beginning rollback testing:
 #### Step 1: Capture Baseline Metrics
 
 ```bash
-# Test current version (e.g., v0.18.0)
+# Test current version (e.g., v0.19.0)
 curl -s http://localhost:8080/health | jq .
 curl -s http://localhost:8080/ready | jq .
 
@@ -159,7 +159,7 @@ TOKEN=$(curl -s -X POST http://localhost:8080/v1/token \
 curl -s -X POST http://localhost:8080/v1/secrets \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"test": "rollback-test-v0.18.0"}}' | jq . > test-secret-new.json
+  -d '{"data": {"test": "rollback-test-v0.19.0"}}' | jq . > test-secret-new.json
 
 # Record secret ID
 export SECRET_ID=$(cat test-secret-new.json | jq -r .id)
@@ -174,7 +174,7 @@ export SECRET_ID=$(cat test-secret-new.json | jq -r .id)
 # Stop current version
 docker stop secrets-api
 
-# Start previous version (e.g., v0.9.0 - use actual previous version)
+# Start previous version (e.g., v0.18.0 - use actual previous version)
 docker run -d --name secrets-api \
   --network secrets-net \
   --env-file .env \
@@ -199,7 +199,7 @@ docker-compose up -d secrets-api
 ```bash
 # 1. Verify version rolled back
 docker exec secrets-api /app/secrets --version
-# Expected: Version: v0.11.0
+# Expected: Version: v0.18.0
 
 # 2. Health checks
 curl -s http://localhost:8080/health | jq .
@@ -220,7 +220,7 @@ curl -s -X GET "http://localhost:8080/v1/secrets/${SECRET_ID}" \
 curl -s -X POST http://localhost:8080/v1/secrets \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"test": "rollback-test-v0.11.0"}}' | jq .
+  -d '{"data": {"test": "rollback-test-v0.18.0"}}' | jq .
 # Expected: 201 Created
 
 # 5. Check logs for errors
@@ -253,7 +253,7 @@ Record test results in your runbook:
 ```markdown
 ## Rollback Test Results - [Date]
 
-- **Versions tested**: v0.18.0 → v0.17.0 → v0.18.0
+- **Versions tested**: v0.19.0 → v0.18.0 → v0.19.0
 
 - **Environment**: staging/production
 
@@ -290,11 +290,19 @@ Record test results in your runbook:
 |-------|-------|----------|
 | Container fails to start (v0.10.0 → v0.9.0) | Volume permissions (v0.10.0 runs as UID 65532) | Remove volume or `chown 65532:65532` on host directory |
 | Database migrations incompatible | Forward-only migrations applied | Restore database from backup before rollback |
-| Secrets unreadable after rollback | KEK rotation or KMS key change | Verify `MASTER_KEY_*` env vars match original config |
+| Secrets unreadable after rollback | KEK rotation or KMS key change | Verify `KMS_* / MASTER_KEYS` env vars match original config |
 | 500 errors on `/v1/secrets` | Database connection failure | Check `DB_CONNECTION_STRING`, network connectivity |
 | Authentication failures | Client secret hash format changed | Recreate clients or use backup `.env` |
 
 ### Version-Specific Notes
+
+**v0.19.0 → v0.18.0 Rollback**:
+
+- ⚠️ **BREAKING CHANGE**: v0.19.0 requires KMS mode. v0.18.0 supports both KMS and legacy plaintext modes.
+
+- ⚠️ **KMS configuration**: Ensure `KMS_PROVIDER` and `KMS_KEY_URI` remain set if rolling back to v0.18.0 when it was already using KMS mode.
+
+- ✅ **Safe**: No database migrations in v0.19.0, rollback is data-safe.
 
 **v0.10.0 → v0.9.0 Rollback**:
 
@@ -314,7 +322,7 @@ Record test results in your runbook:
 
 - **Database migrations**: Keep applied unless documented rollback procedure exists
 
-- **KMS keys**: Never change `MASTER_KEY_*` config during rollback
+- **KMS keys**: Never change `KMS_PROVIDER`, `KMS_KEY_URI` or `MASTER_KEYS` config during rollback
 
 - **Environment variables**: Use same `.env` for both versions (additive changes only)
 
@@ -330,8 +338,8 @@ For production environments, consider automating rollback testing:
 
 set -e
 
-CURRENT_VERSION="v0.18.0"
-PREVIOUS_VERSION="v0.11.0"
+CURRENT_VERSION="v0.19.0"
+PREVIOUS_VERSION="v0.18.0"
 BASE_URL="http://localhost:8080"
 
 echo "=== Rollback Test: ${CURRENT_VERSION} → ${PREVIOUS_VERSION} ==="

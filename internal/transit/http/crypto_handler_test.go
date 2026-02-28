@@ -80,6 +80,11 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		handler.EncryptHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
@@ -92,6 +97,11 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		handler.EncryptHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_EmptyPlaintext", func(t *testing.T) {
@@ -106,7 +116,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 
 		handler.EncryptHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -126,7 +136,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 
 		handler.EncryptHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -209,6 +219,11 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		handler.DecryptHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
@@ -221,6 +236,11 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		handler.DecryptHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_EmptyCiphertext", func(t *testing.T) {
@@ -235,7 +255,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 
 		handler.DecryptHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)

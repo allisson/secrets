@@ -44,7 +44,7 @@ func (h *TokenizationHandler) TokenizeHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *TokenizationHandler) TokenizeHandler(c *gin.Context) {
 	// Get key name from URL parameter
 	keyName := c.Param("name")
 	if keyName == "" {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("key name is required in URL path"),
 			h.logger)
 		return
@@ -66,7 +66,7 @@ func (h *TokenizationHandler) TokenizeHandler(c *gin.Context) {
 	// Decode base64 plaintext
 	plaintext, err := base64.StdEncoding.DecodeString(req.Plaintext)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("plaintext must be valid base64"),
 			h.logger)
 		return
@@ -105,7 +105,7 @@ func (h *TokenizationHandler) DetokenizeHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -146,7 +146,7 @@ func (h *TokenizationHandler) ValidateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -181,7 +181,7 @@ func (h *TokenizationHandler) RevokeHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

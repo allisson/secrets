@@ -1,7 +1,7 @@
 # ❌ Error Message Reference
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: Developers, DevOps engineers, SRE teams troubleshooting Secrets errors
 
 ## Overview
@@ -606,12 +606,12 @@ ERROR: failed to decrypt master key: kms: failed to call Decrypt: RequestError: 
 ```bash
 
 # Check KMS provider configuration
-echo $KMS_PROVIDER  # aws-kms, gcp-kms, azure-kv
-echo $KMS_KEY_URI   # arn:aws:kms:..., projects/.../keys/..., https://...
+echo $KMS_PROVIDER  # awskms, gcpkms, azurekeyvault
+echo $KMS_KEY_URI   # awskms:///..., gcpkms://..., azurekeyvault://...
 
 # Verify network connectivity to KMS
 # AWS KMS
-aws kms describe-key --key-id $KMS_KEY_URI
+aws kms describe-key --key-id alias/secrets-master-key
 
 # GCP KMS
 gcloud kms keys describe ... --location=... --keyring=...
@@ -855,13 +855,13 @@ mysql -D secrets -e "SHOW TABLES;"
 
 ```text
 
-FATAL: master key not configured: MASTER_KEY_PROVIDER must be set
+application error error="failed to initialize HTTP server: failed to load kek chain for secret use case: failed to get master key chain: failed to load master key chain: KMS_PROVIDER is required but not configured (use 'localsecrets' for local development)"
 
 ```
 
 **Causes:**
 
-1. `MASTER_KEY_PROVIDER` environment variable not set
+1. `KMS_PROVIDER` environment variable not set
 2. Wrong provider name (typo)
 
 **Solutions:**
@@ -869,19 +869,20 @@ FATAL: master key not configured: MASTER_KEY_PROVIDER must be set
 ```bash
 
 # Set provider (choose one)
-MASTER_KEY_PROVIDER=plaintext         # Development only, NOT for production
-MASTER_KEY_PROVIDER=aws-kms           # AWS KMS
-MASTER_KEY_PROVIDER=gcp-kms           # Google Cloud KMS
-MASTER_KEY_PROVIDER=azure-kv          # Azure Key Vault
+KMS_PROVIDER=localsecrets             # Development only, NOT for production
+KMS_PROVIDER=awskms                   # AWS KMS
+KMS_PROVIDER=gcpkms                   # Google Cloud KMS
+KMS_PROVIDER=azurekeyvault            # Azure Key Vault
 
-# For plaintext provider (development)
-MASTER_KEY_PLAINTEXT=$(openssl rand -base64 32)
+# For localsecrets provider (development), set KMS_KEY_URI
+KMS_KEY_URI="base64key://\$(openssl rand -base64 32)"
 
 # For cloud providers, set KMS_KEY_URI
-KMS_KEY_URI="arn:aws:kms:us-east-1:123456789012:key/abc-123..."  # AWS
-KMS_KEY_URI="projects/my-project/locations/us/keyRings/secrets/cryptoKeys/master"  # GCP
-KMS_KEY_URI="https://my-vault.vault.azure.net/keys/master-key/abc123..."  # Azure
+KMS_KEY_URI="awskms:///alias/secrets-master-key"                                    # AWS
+KMS_KEY_URI="gcpkms://projects/my-project/locations/us/keyRings/secrets/cryptoKeys/master" # GCP
+KMS_KEY_URI="azurekeyvault://my-vault.vault.azure.net/keys/master-key"                # Azure
 
+# Ensure MASTER_KEYS and ACTIVE_MASTER_KEY_ID are also set
 # Restart application
 docker restart secrets-api
 
@@ -1059,7 +1060,7 @@ See [Configuration Reference](../../configuration.md) for all valid environment 
 
 - `LOG_LEVL` → `LOG_LEVEL`
 - `DB_CONNNECTION_STRING` → `DB_CONNECTION_STRING`
-- `MASTER_KEY_PROVIDOR` → `MASTER_KEY_PROVIDER`
+- `KMS_PROVIDOR` → `KMS_PROVIDER`
 
 ---
 

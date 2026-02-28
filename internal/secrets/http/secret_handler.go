@@ -49,7 +49,7 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
 	path := strings.TrimPrefix(c.Param("path"), "/")
 	if path == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("path cannot be empty"),
 			h.logger,
@@ -61,7 +61,7 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 	// Decode base64 value
 	value, err := base64.StdEncoding.DecodeString(req.Value)
 	if err != nil {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("invalid base64 value: %w", err),
 			h.logger,
@@ -101,7 +101,7 @@ func (h *SecretHandler) GetHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
 	path := strings.TrimPrefix(c.Param("path"), "/")
 	if path == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("path cannot be empty"),
 			h.logger,
@@ -117,7 +117,7 @@ func (h *SecretHandler) GetHandler(c *gin.Context) {
 	if versionStr != "" {
 		version, parseErr := strconv.ParseUint(versionStr, 10, 32)
 		if parseErr != nil {
-			httputil.HandleValidationErrorGin(
+			httputil.HandleBadRequestGin(
 				c,
 				fmt.Errorf("invalid version parameter: must be a positive integer"),
 				h.logger,
@@ -149,7 +149,7 @@ func (h *SecretHandler) DeleteHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
 	path := strings.TrimPrefix(c.Param("path"), "/")
 	if path == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("path cannot be empty"),
 			h.logger,
@@ -174,7 +174,7 @@ func (h *SecretHandler) ListHandler(c *gin.Context) {
 	// Parse offset and limit query parameters
 	offset, limit, err := httputil.ParsePagination(c)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

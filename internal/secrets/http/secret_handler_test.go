@@ -129,7 +129,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_EmptyValue", func(t *testing.T) {
@@ -144,7 +144,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 
 		handler.CreateOrUpdateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -164,7 +164,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 
 		handler.CreateOrUpdateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -189,7 +189,7 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "path cannot be empty")
 	})
 
@@ -317,7 +317,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "invalid version parameter")
 	})
 
@@ -357,7 +357,7 @@ func TestSecretHandler_GetHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "path cannot be empty")
 	})
 }
@@ -436,7 +436,7 @@ func TestSecretHandler_DeleteHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "path cannot be empty")
 	})
 }
@@ -491,6 +491,6 @@ func TestSecretHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 }

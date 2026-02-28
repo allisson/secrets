@@ -1,6 +1,6 @@
 # 📘 Authorization Policy Cookbook
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Ready-to-use policy templates for common service roles.

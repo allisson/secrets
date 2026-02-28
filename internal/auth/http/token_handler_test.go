@@ -89,7 +89,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_MissingClientID", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 
 		handler.IssueTokenHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -125,7 +125,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 
 		handler.IssueTokenHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -150,7 +150,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_BlankClientSecret", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 
 		handler.IssueTokenHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)

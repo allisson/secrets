@@ -1,6 +1,6 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Metadata source for release/API labels: `docs/metadata.json`
 
@@ -43,7 +43,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 **Operations: KMS & Key Management:**
 
-- ☁️ [operations/kms/setup.md](operations/kms/setup.md) - KMS setup and migration
+- ☁️ [operations/kms/setup.md](operations/kms/setup.md) - KMS configuration and provider migration
 - 🔑 [operations/kms/key-management.md](operations/kms/key-management.md)
 
 **Operations: Security:**
@@ -104,7 +104,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.19.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.20.0, see `docs/metadata.json`)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 
@@ -132,7 +132,7 @@ This section documents key architectural decisions with their context, rationale
 
 - ✅ Linux and macOS environments for local development and operations
 - ✅ Docker-based runtime recommended for all environments
-- ✅ CI validates with Go `1.25.5`, PostgreSQL `16-alpine`, and MySQL `8.0`
+- ✅ CI validates with Go `1.26.0`, PostgreSQL `16-alpine`, and MySQL `8.0`
 - ℹ️ Project compatibility targets include PostgreSQL `12+` and MySQL `8.0+`
 
 ## 💡 Practical Examples

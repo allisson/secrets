@@ -45,7 +45,7 @@ func (h *CryptoHandler) EncryptHandler(c *gin.Context) {
 	// Extract and validate name from URL parameter
 	name := c.Param("name")
 	if name == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("transit key name cannot be empty"),
 			h.logger,
@@ -57,7 +57,7 @@ func (h *CryptoHandler) EncryptHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -70,7 +70,7 @@ func (h *CryptoHandler) EncryptHandler(c *gin.Context) {
 	// Decode base64 plaintext
 	plaintext, err := base64.StdEncoding.DecodeString(req.Plaintext)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, fmt.Errorf("invalid base64 plaintext: %w", err), h.logger)
+		httputil.HandleBadRequestGin(c, fmt.Errorf("invalid base64 plaintext: %w", err), h.logger)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 	// Extract and validate name from URL parameter
 	name := c.Param("name")
 	if name == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("transit key name cannot be empty"),
 			h.logger,
@@ -108,7 +108,7 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

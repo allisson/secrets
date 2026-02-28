@@ -1,7 +1,7 @@
 # 🗄️ Database Scaling Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: DBAs, SRE teams, platform engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -48,10 +48,9 @@ Secrets uses `database/sql` connection pooling (Go standard library):
 
 ```bash
 # Environment variables for connection pooling
-DB_MAX_OPEN_CONNS=25        # Max connections to database (default: 25)
-DB_MAX_IDLE_CONNS=10        # Max idle connections in pool (default: 10)
-DB_CONN_MAX_LIFETIME=3600   # Max connection lifetime in seconds (default: 1 hour)
-DB_CONN_MAX_IDLE_TIME=1800  # Max idle connection time in seconds (default: 30 min)
+DB_MAX_OPEN_CONNECTIONS=25  # Max connections to database (default: 25)
+DB_MAX_IDLE_CONNECTIONS=5   # Max idle connections in pool (default: 5)
+DB_CONN_MAX_LIFETIME=5      # Max connection lifetime in minutes (default: 5 min)
 ```
 
 ### Tuning Guidelines
@@ -59,33 +58,33 @@ DB_CONN_MAX_IDLE_TIME=1800  # Max idle connection time in seconds (default: 30 m
 **Small deployment** (< 1000 req/min):
 
 ```bash
-DB_MAX_OPEN_CONNS=10
-DB_MAX_IDLE_CONNS=5
+DB_MAX_OPEN_CONNECTIONS=10
+DB_MAX_IDLE_CONNECTIONS=5
 ```
 
 **Medium deployment** (1000-10000 req/min):
 
 ```bash
-DB_MAX_OPEN_CONNS=50
-DB_MAX_IDLE_CONNS=25
+DB_MAX_OPEN_CONNECTIONS=50
+DB_MAX_IDLE_CONNECTIONS=25
 ```
 
 **Large deployment** (> 10000 req/min):
 
 ```bash
-DB_MAX_OPEN_CONNS=100
-DB_MAX_IDLE_CONNS=50
+DB_MAX_OPEN_CONNECTIONS=100
+DB_MAX_IDLE_CONNECTIONS=50
 ```
 
 **Formula**:
 
 ```text
-DB_MAX_OPEN_CONNS = (number of application instances) × (connections per instance)
+DB_MAX_OPEN_CONNECTIONS = (number of application instances) × (connections per instance)
 
 Example:
 - 5 application instances
 - 20 connections per instance
-- DB_MAX_OPEN_CONNS = 5 × 20 = 100
+- DB_MAX_OPEN_CONNECTIONS = 5 × 20 = 100
 ```
 
 ### Database Max Connections
@@ -315,18 +314,18 @@ LIMIT 10;
 
 ```sql
 -- Secrets uses foreign keys but may need additional indexes
-CREATE INDEX idx_secrets_kek_id ON secrets(kek_id);
-CREATE INDEX idx_transit_key_versions_key_id ON transit_key_versions(transit_key_id);
+CREATE INDEX idx_secrets_dek_id ON secrets(dek_id);
+CREATE INDEX idx_transit_keys_dek_id ON transit_keys(dek_id);
 ```
 
 **Pattern 2: Analyze query plans**:
 
 ```sql
 -- PostgreSQL
-EXPLAIN ANALYZE SELECT * FROM secrets WHERE kek_id = 'uuid';
+EXPLAIN ANALYZE SELECT * FROM secrets WHERE dek_id = 'uuid';
 
 -- MySQL
-EXPLAIN SELECT * FROM secrets WHERE kek_id = 'uuid';
+EXPLAIN SELECT * FROM secrets WHERE dek_id = 'uuid';
 ```
 
 **Pattern 3: Use LIMIT on large result sets**:
@@ -391,7 +390,7 @@ ERROR: pq: sorry, too many clients already
 
 ```bash
 # Increase application connection pool
-DB_MAX_OPEN_CONNS=50
+DB_MAX_OPEN_CONNECTIONS=50
 
 # Or increase database max_connections
 ALTER SYSTEM SET max_connections = 200;

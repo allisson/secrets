@@ -45,7 +45,7 @@ func (h *ClientHandler) CreateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *ClientHandler) GetHandler(c *gin.Context) {
 	// Parse and validate UUID
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid client ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -109,7 +109,7 @@ func (h *ClientHandler) UpdateHandler(c *gin.Context) {
 	// Parse and validate UUID
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid client ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -119,7 +119,7 @@ func (h *ClientHandler) UpdateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (h *ClientHandler) DeleteHandler(c *gin.Context) {
 	// Parse and validate UUID
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid client ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -182,7 +182,7 @@ func (h *ClientHandler) DeleteHandler(c *gin.Context) {
 func (h *ClientHandler) UnlockHandler(c *gin.Context) {
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid client ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -206,7 +206,7 @@ func (h *ClientHandler) ListHandler(c *gin.Context) {
 	// Parse offset and limit query parameters
 	offset, limit, err := httputil.ParsePagination(c)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

@@ -15,7 +15,7 @@
 #
 # Build Command:
 #   docker build -t allisson/secrets:latest \
-#     --build-arg VERSION=v0.12.0 \
+#     --build-arg VERSION=v0.19.0 \
 #     --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 #     --build-arg COMMIT_SHA=$(git rev-parse HEAD) .
 #
@@ -33,13 +33,13 @@
 # ==============================================================================
 
 # Go version for builder stage (matches go.mod)
-ARG GO_VERSION=1.25.5
+ARG GO_VERSION=1.26.0
 
 # ==============================================================================
 # Stage 1: Builder
 # ==============================================================================
 # Purpose: Compile the Go application into a static binary
-# Base: golang:1.25.5-trixie (Debian 13 Trixie for glibc version consistency)
+# Base: golang:1.26.0-trixie (Debian 13 Trixie for glibc version consistency)
 # Output: /app/bin/app (static binary with version metadata injected)
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-trixie AS builder
@@ -50,7 +50,7 @@ ARG TARGETOS      # Target OS (e.g., linux)
 ARG TARGETARCH    # Target architecture (e.g., amd64, arm64)
 
 # Version metadata (injected at build time via ldflags)
-ARG VERSION=dev         # Application version (e.g., v0.10.0, or "dev" for local builds)
+ARG VERSION=dev         # Application version (e.g., v0.19.0, or "dev" for local builds)
 ARG BUILD_DATE          # ISO 8601 build timestamp (e.g., 2026-02-21T10:30:00Z)
 ARG COMMIT_SHA          # Full git commit hash (e.g., abc123def456...)
 
@@ -99,11 +99,6 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # Base: gcr.io/distroless/static-debian13 (Google Distroless - Debian 13 Trixie)
 # Size: ~2-3 MB (base) + ~15-20 MB (binary) = ~17-23 MB total
 # Security: No shell, package manager, or system utilities (minimal attack surface)
-
-# Distroless static image (Debian 13 Trixie) pinned by SHA256 digest
-# Digest pinning ensures immutable builds and prevents supply chain attacks
-# To update digest: docker pull gcr.io/distroless/static-debian13:latest && docker inspect
-FROM gcr.io/distroless/static-debian13@sha256:d90359c7a3ad67b3c11ca44fd5f3f5208cbef546f2e692b0dc3410a869de46bf
 
 # Distroless static image (Debian 13 Trixie) pinned by SHA256 digest
 # Digest pinning ensures immutable builds and prevents supply chain attacks

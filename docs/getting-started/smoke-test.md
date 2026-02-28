@@ -1,6 +1,6 @@
 # ✅ Smoke Test Script
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 
 Run a fast end-to-end validation of a running Secrets instance.
 
@@ -33,7 +33,7 @@ For transit decrypt, pass `ciphertext` exactly as returned by encrypt (`<version
 
 ## Usage
 
-> Command status: verified on 2026-02-20
+> Command status: verified on 2026-02-27
 
 ```bash
 CLIENT_ID="<client-id>" \
@@ -53,7 +53,7 @@ If transit decrypt fails with `422`, see [Troubleshooting](../operations/trouble
 
 ## Optional: Token Throttling Verification
 
-> Command status: verified on 2026-02-20
+> Command status: verified on 2026-02-27
 
 Use this only in non-production environments to verify token endpoint `429` behavior:
 

@@ -42,7 +42,7 @@ func (h *TokenHandler) IssueTokenHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *TokenHandler) IssueTokenHandler(c *gin.Context) {
 	// Parse client ID as UUID
 	clientID, err := uuid.Parse(req.ClientID)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid client_id format: must be a valid UUID"),
 			h.logger)
 		return

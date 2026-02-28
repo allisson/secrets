@@ -1,6 +1,6 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
@@ -61,9 +61,12 @@ KMS mode is **required** in v0.19.0+ (breaking change).
 
 Required Flags:
 
-- `--id`, `-i`: master key ID
 - `--kms-provider`: KMS provider (`localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, `hashivault`)
 - `--kms-key-uri`: KMS key URI
+
+Flags:
+
+- `--id`, `-i`: master key ID (optional, defaults to `master-key-YYYY-MM-DD`)
 
 For local development, use `localsecrets` provider:
 
@@ -88,22 +91,38 @@ docker run --rm allisson/secrets create-master-key \
 
 ### `rotate-master-key`
 
-Generates a new master key, combines it with existing `MASTER_KEYS`, and sets the new key as active.
+Generates a new master key and combines it with existing `MASTER_KEYS`. The command outputs the updated environment variables that must be manually applied.
 
-Flags:
+**Requirements:**
 
-- `--id`, `-i`: new master key ID
+- Existing `MASTER_KEYS` and `ACTIVE_MASTER_KEY_ID` must be set in the environment (or `.env` file).
+- KMS mode is **required** in v0.19.0+ (breaking change).
+
+**Required Flags:**
+
+- `--kms-provider`: KMS provider (`localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, `hashivault`)
+- `--kms-key-uri`: KMS key URI
+
+**Flags:**
+
+- `--id`, `-i`: new master key ID (optional, defaults to `master-key-YYYY-MM-DD`)
 
 Local:
 
 ```bash
-./bin/app rotate-master-key --id master-key-2026-08
+# Ensure existing keys are loaded (from .env or exported)
+./bin/app rotate-master-key --id master-key-2026-02-27 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 Docker:
 
 ```bash
-docker run --rm --env-file .env allisson/secrets rotate-master-key --id master-key-2026-08
+docker run --rm --env-file .env allisson/secrets rotate-master-key \
+  --id master-key-2026-02-27 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 ### `create-kek`
@@ -172,7 +191,9 @@ After master key or KEK rotation, restart API server instances so they load upda
 Master key rotation quick sequence:
 
 ```bash
-./bin/app rotate-master-key --id master-key-2026-08
+./bin/app rotate-master-key --id master-key-2026-02-27 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 # update env vars from output
 # rolling restart API instances
 ./bin/app rotate-kek --algorithm aes-gcm
@@ -188,29 +209,35 @@ Verifies cryptographic integrity of audit logs within a time range. Validates HM
 - Database migrated to version 000003 (signature columns)
 - KEK chain loaded (for verifying signed logs)
 
-Flags:
+**Required Flags:**
 
 - `--start-date`, `-s`: start date (format: `YYYY-MM-DD` or `YYYY-MM-DD HH:MM:SS`)
 - `--end-date`, `-e`: end date (format: `YYYY-MM-DD` or `YYYY-MM-DD HH:MM:SS`)
+
+**Flags:**
+
 - `--format`, `-f`: output format (`text` or `json`, default: `text`)
 
 Local:
 
 ```bash
 # Verify today's audit logs (text output)
+# Note: end-date must be strictly AFTER start-date
 TODAY=$(date +%Y-%m-%d)
-./bin/app verify-audit-logs --start-date "$TODAY" --end-date "$TODAY"
+TOMORROW=$(date -v+1d +%Y-%m-%d) # macOS/BSD
+# TOMORROW=$(date -d "tomorrow" +%Y-%m-%d) # Linux/GNU
+./bin/app verify-audit-logs --start-date "$TODAY" --end-date "$TOMORROW"
+
+# Verify with datetime precision for exact day coverage
+./bin/app verify-audit-logs \
+  --start-date "2026-02-27 00:00:00" \
+  --end-date "2026-02-27 23:59:59"
 
 # Verify date range (JSON output for automation)
 ./bin/app verify-audit-logs \
   --start-date "2026-02-01" \
-  --end-date "2026-02-20" \
+  --end-date "2026-02-27" \
   --format json
-
-# Verify with datetime precision
-./bin/app verify-audit-logs \
-  --start-date "2026-02-20 00:00:00" \
-  --end-date "2026-02-20 23:59:59"
 ```
 
 Docker:
@@ -218,8 +245,8 @@ Docker:
 ```bash
 docker run --rm --env-file .env allisson/secrets \
   verify-audit-logs \
-  --start-date "2026-02-20" \
-  --end-date "2026-02-20" \
+  --start-date "2026-02-27" \
+  --end-date "2026-02-28" \
   --format text
 ```
 
@@ -229,7 +256,7 @@ Output (text format):
 Audit Log Integrity Verification
 =================================
 
-Time Range: 2026-02-20 00:00:00 to 2026-02-20 23:59:59
+Time Range: 2026-02-27 00:00:00 to 2026-02-27 23:59:59
 
 Total Checked:  150
 Signed:         120
@@ -260,20 +287,22 @@ Output (failed verification):
 Audit Log Integrity Verification
 =================================
 
-Time Range: 2026-02-15 00:00:00 to 2026-02-15 23:59:59
+Time Range: 2026-02-27 00:00:00 to 2026-02-27 23:59:59
 
 Total Checked:  100
 Signed:         100
-Unsigned:       0
+Unsigned:       0 (legacy)
 Valid:          95
 Invalid:        5
 
-Status: FAILED ✗
+WARNING: 5 log(s) failed integrity check!
 
-Details:
-- 5 audit logs with invalid signatures detected
-- KEK chain may be missing historical KEKs
-- Use --format json to identify specific failed log IDs
+Invalid Log IDs:
+  - 0194f4a6-7ec7-78e6-9fe7-5ca35fef48db
+  - 0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc
+  ...
+
+Status: FAILED ❌
 ```
 
 Exit Codes:

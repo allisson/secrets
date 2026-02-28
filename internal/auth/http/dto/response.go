@@ -2,6 +2,7 @@
 package dto
 
 import (
+	"encoding/base64"
 	"time"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
@@ -65,11 +66,26 @@ type AuditLogResponse struct {
 	Capability string         `json:"capability"`
 	Path       string         `json:"path"`
 	Metadata   map[string]any `json:"metadata,omitempty"`
+	Signature  *string        `json:"signature,omitempty"`
+	KekID      *string        `json:"kek_id,omitempty"`
+	IsSigned   bool           `json:"is_signed"`
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
 // MapAuditLogToResponse converts a domain audit log to an API response.
 func MapAuditLogToResponse(auditLog *authDomain.AuditLog) AuditLogResponse {
+	var signature *string
+	if len(auditLog.Signature) > 0 {
+		s := base64.StdEncoding.EncodeToString(auditLog.Signature)
+		signature = &s
+	}
+
+	var kekID *string
+	if auditLog.KekID != nil {
+		k := auditLog.KekID.String()
+		kekID = &k
+	}
+
 	return AuditLogResponse{
 		ID:         auditLog.ID.String(),
 		RequestID:  auditLog.RequestID.String(),
@@ -77,6 +93,9 @@ func MapAuditLogToResponse(auditLog *authDomain.AuditLog) AuditLogResponse {
 		Capability: string(auditLog.Capability),
 		Path:       auditLog.Path,
 		Metadata:   auditLog.Metadata,
+		Signature:  signature,
+		KekID:      kekID,
+		IsSigned:   auditLog.IsSigned,
 		CreatedAt:  auditLog.CreatedAt,
 	}
 }

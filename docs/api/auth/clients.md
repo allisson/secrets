@@ -1,6 +1,6 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -60,6 +60,15 @@ curl -X POST http://localhost:8080/v1/clients \
 
 Response includes `id` and one-time `secret`.
 
+Example response (`201 Created`):
+
+```json
+{
+  "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+  "secret": "s3cr3t-v4lu3-th4t-sh0uld-b3-s4v3d"
+}
+```
+
 Example success status: `201 Created`.
 
 ## List Clients
@@ -69,7 +78,52 @@ curl "http://localhost:8080/v1/clients?offset=0&limit=20" \
   -H "Authorization: Bearer <token>"
 ```
 
+Example response (`200 OK`):
+
+```json
+{
+  "data": [
+    {
+      "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+      "name": "payments-api",
+      "is_active": true,
+      "policies": [
+        {
+          "path": "/v1/secrets/*",
+          "capabilities": ["decrypt"]
+        }
+      ],
+      "created_at": "2026-02-27T18:35:12Z"
+    }
+  ]
+}
+```
+
 Example success status: `200 OK`.
+
+## Get Client
+
+```bash
+curl http://localhost:8080/v1/clients/0194f4a6-7ec7-78e6-9fe7-5ca35fef48db \
+  -H "Authorization: Bearer <token>"
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+  "name": "payments-api",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/secrets/*",
+      "capabilities": ["decrypt"]
+    }
+  ],
+  "created_at": "2026-02-27T18:35:12Z"
+}
+```
 
 ## Unlock Client
 
@@ -81,6 +135,23 @@ curl -X POST http://localhost:8080/v1/clients/<id>/unlock \
 ```
 
 Returns `200 OK` with the updated client object.
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+  "name": "payments-api",
+  "is_active": true,
+  "policies": [
+    {
+      "path": "/v1/secrets/*",
+      "capabilities": ["decrypt"]
+    }
+  ],
+  "created_at": "2026-02-27T18:35:12Z"
+}
+```
 
 ## Common Errors
 

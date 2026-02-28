@@ -1,6 +1,6 @@
 module github.com/allisson/secrets
 
-go 1.25
+go 1.26.0
 
 require (
 	github.com/allisson/go-env v0.6.0

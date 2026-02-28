@@ -1,6 +1,6 @@
 # 🧪 Code Examples
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Complete code examples for integrating with Secrets APIs across multiple languages and releases.
 

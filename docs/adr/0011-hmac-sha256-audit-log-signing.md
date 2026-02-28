@@ -118,14 +118,18 @@ err := auditLogUseCase.Create(ctx, auditLog) // Signed if KEK chain available
 
 // CLI verification
 $ ./bin/app verify-audit-logs --start-date 2026-02-01 --end-date 2026-02-28
-Verification Report (2026-02-01 to 2026-02-28)
-Total Logs Checked: 1,234
-  Signed Logs: 1,200
-  Unsigned Logs: 34
-  Valid Signatures: 1,200
-  Invalid Signatures: 0
+Audit Log Integrity Verification
+=================================
 
-Status: ✓ All signed logs verified successfully
+Time Range: 2026-02-01 00:00:00 to 2026-02-28 00:00:00
+
+Total Checked:  1234
+Signed:         1200
+Unsigned:       34 (legacy)
+Valid:          1200
+Invalid:        0
+
+Status: PASSED ✓
 ```
 
 **Backward compatibility:**

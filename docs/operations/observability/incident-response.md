@@ -1,6 +1,6 @@
 # 🚨 Incident Response Guide
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 
 This guide provides fast incident triage workflows, decision paths, and failure playbooks for common API issues.
 
@@ -218,7 +218,7 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 
 ## Command Status Markers
 
-> Command status: verified on 2026-02-20
+> Command status: verified on 2026-02-27
 
 ---
 

@@ -1,5 +1,7 @@
 # 🔐 Secrets
 
+> Last updated: 2026-02-28
+>
 > A lightweight secrets manager with envelope encryption, transit encryption, API auth, and audit logs.
 
 [![CI](https://github.com/allisson/secrets/workflows/CI/badge.svg)](https://github.com/allisson/secrets/actions)

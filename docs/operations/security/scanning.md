@@ -1,7 +1,7 @@
 # 🔍 Security Scanning Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: DevOps engineers, security teams, release managers
 
 ## Table of Contents
@@ -79,7 +79,7 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
 # Scan for HIGH and CRITICAL vulnerabilities
 trivy image --severity HIGH,CRITICAL allisson/secrets:<VERSION>
 
-# Expected output for v0.10.0 (distroless base):
+# Expected output for v0.19.0 (distroless base):
 # allisson/secrets:<VERSION> (debian 13)
 # Total: 0 (HIGH: 0, CRITICAL: 0)
 
@@ -206,7 +206,7 @@ docker login
 docker scout cves allisson/secrets:<VERSION>
 
 # Compare with previous version
-docker scout compare --to allisson/secrets:v0.9.0 allisson/secrets:<VERSION>
+docker scout compare --to allisson/secrets:v0.18.0 allisson/secrets:<VERSION>
 
 # Get recommendations
 docker scout recommendations allisson/secrets:<VERSION>
@@ -754,10 +754,10 @@ trivy image --ignore-policy .trivyignore allisson/secrets:<VERSION>
 
 ```bash
 # Build patched image
-docker build -t allisson/secrets:v0.10.1 .
+docker build -t allisson/secrets:v0.19.1 .
 
 # Verify vulnerability is fixed
-trivy image --severity HIGH,CRITICAL allisson/secrets:v0.10.1
+trivy image --severity HIGH,CRITICAL allisson/secrets:v0.19.1
 # Total: 0 (HIGH: 0, CRITICAL: 0)
 
 # Deploy to production with Docker Compose
@@ -815,14 +815,14 @@ FROM gcr.io/distroless/static-debian13:nonroot@sha256:d90359c7...
 
 ```bash
 # Generate SBOM during build
-trivy image --format cyclonedx -o sbom-v0.10.0.json allisson/secrets:<VERSION>
+trivy image --format cyclonedx -o sbom-v0.19.0.json allisson/secrets:<VERSION>
 
 # Store SBOM in artifact repository
 # Upload to GitHub release
-gh release upload v0.10.0 sbom-v0.10.0.json
+gh release upload v0.19.0 sbom-v0.19.0.json
 
 # Scan SBOM regularly for new CVEs
-trivy sbom sbom-v0.10.0.json
+trivy sbom sbom-v0.19.0.json
 
 ```
 

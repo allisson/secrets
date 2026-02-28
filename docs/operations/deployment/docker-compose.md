@@ -1,7 +1,7 @@
 # 🐳 Docker Compose Deployment Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26  
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
 ## Table of Contents
@@ -45,10 +45,14 @@ See [`examples/deployment/docker-compose.dev.yml`](../../examples/deployment/doc
 curl -O https://raw.githubusercontent.com/allisson/secrets/main/docs/examples/deployment/docker-compose.dev.yml
 mv docker-compose.dev.yml docker-compose.yml
 
-# 2. Start stack
+# 2. Update the image tag
+# Replace <VERSION> with the desired version tag (e.g., latest or v0.19.0)
+# in the docker-compose.yml file.
+
+# 3. Start stack
 docker compose up -d
 
-# 3. Verify
+# 4. Verify
 docker compose ps
 curl http://localhost:8080/health
 ```
@@ -92,16 +96,18 @@ POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=en_US.UTF-8
 DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgresql://secrets:<CHANGE_ME>@postgres:5432/secrets?sslmode=require
 
-# Master key provider (PRODUCTION: use KMS, not plaintext)
-MASTER_KEY_PROVIDER=aws-kms
-KMS_KEY_URI=arn:aws:kms:us-east-1:123456789012:key/abc-123...
+# Master key configuration (KMS mode required as of v0.19.0)
+KMS_PROVIDER=awskms
+KMS_KEY_URI=awskms:///alias/secrets-master-key
+MASTER_KEYS=default:<KMS_ENCRYPTED_MASTER_KEY_CIPHERTEXT>
+ACTIVE_MASTER_KEY_ID=default
 
 # Alternative KMS providers:
-# MASTER_KEY_PROVIDER=gcp-kms
-# KMS_KEY_URI=projects/my-project/locations/us/keyRings/secrets/cryptoKeys/master
+# KMS_PROVIDER=gcpkms
+# KMS_KEY_URI=gcpkms://projects/my-project/locations/us/keyRings/secrets/cryptoKeys/master
 #
-# MASTER_KEY_PROVIDER=azure-kv
-# KMS_KEY_URI=https://my-vault.vault.azure.net/keys/master-key/version
+# KMS_PROVIDER=azurekeyvault
+# KMS_KEY_URI=azurekeyvault://my-vault.vault.azure.net/keys/master-key
 
 # Server configuration
 SERVER_ADDRESS=0.0.0.0:8080
@@ -267,7 +273,7 @@ global:
 scrape_configs:
   - job_name: 'secrets-api'
     static_configs:
-      - targets: ['secrets-api:8080']
+      - targets: ['secrets-api:8081']
 ```
 
 ### Grafana Dashboards
@@ -332,8 +338,10 @@ EOF
 cat > .env.secrets <<EOF
 DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgresql://secrets:\$(grep POSTGRES_PASSWORD .env.postgres | cut -d= -f2)@postgres:5432/secrets?sslmode=disable
-MASTER_KEY_PROVIDER=plaintext
-MASTER_KEY_PLAINTEXT=$(openssl rand -base64 32)
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://\$(openssl rand -base64 32)
+MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04
+ACTIVE_MASTER_KEY_ID=default
 LOG_LEVEL=info
 AUDIT_LOG_ENABLED=true
 EOF
@@ -376,7 +384,8 @@ curl http://localhost:8080/health
 - [ ] **Security**:
   - [ ] `.env` files have 600 permissions
   - [ ] Strong passwords generated (use `openssl rand -base64 32`)
-  - [ ] KMS provider configured (not plaintext)
+  - [ ] KMS mode configured (KMS_PROVIDER and KMS_KEY_URI set)
+  - [ ] All MASTER_KEYS are KMS-encrypted ciphertext
   - [ ] TLS certificates configured (not self-signed)
   - [ ] Security options enabled (`no-new-privileges`, `cap_drop: ALL`)
   - [ ] Read-only filesystem enabled

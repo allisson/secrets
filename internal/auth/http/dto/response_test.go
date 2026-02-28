@@ -182,7 +182,9 @@ func TestMapAuditLogToResponse(t *testing.T) {
 		id := uuid.Must(uuid.NewV7())
 		requestID := uuid.Must(uuid.NewV7())
 		clientID := uuid.Must(uuid.NewV7())
+		kekID := uuid.Must(uuid.NewV7())
 		now := time.Now().UTC()
+		signature := []byte("01234567890123456789012345678901")
 
 		auditLog := &authDomain.AuditLog{
 			ID:         id,
@@ -191,6 +193,9 @@ func TestMapAuditLogToResponse(t *testing.T) {
 			Capability: authDomain.ReadCapability,
 			Path:       "/v1/secrets/test",
 			Metadata:   map[string]any{"key": "value", "count": 42},
+			Signature:  signature,
+			KekID:      &kekID,
+			IsSigned:   true,
 			CreatedAt:  now,
 		}
 
@@ -204,7 +209,36 @@ func TestMapAuditLogToResponse(t *testing.T) {
 		assert.NotNil(t, response.Metadata)
 		assert.Equal(t, "value", response.Metadata["key"])
 		assert.Equal(t, 42, response.Metadata["count"])
+		assert.Equal(t, "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=", *response.Signature)
+		assert.Equal(t, kekID.String(), *response.KekID)
+		assert.True(t, response.IsSigned)
 		assert.Equal(t, now, response.CreatedAt)
+	})
+
+	t.Run("Success_LegacyUnsignedLog", func(t *testing.T) {
+		id := uuid.Must(uuid.NewV7())
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := uuid.Must(uuid.NewV7())
+		now := time.Now().UTC()
+
+		auditLog := &authDomain.AuditLog{
+			ID:         id,
+			RequestID:  requestID,
+			ClientID:   clientID,
+			Capability: authDomain.ReadCapability,
+			Path:       "/v1/secrets/test",
+			Metadata:   nil,
+			Signature:  nil,
+			KekID:      nil,
+			IsSigned:   false,
+			CreatedAt:  now,
+		}
+
+		response := MapAuditLogToResponse(auditLog)
+
+		assert.Nil(t, response.Signature)
+		assert.Nil(t, response.KekID)
+		assert.False(t, response.IsSigned)
 	})
 
 	t.Run("Success_NilMetadata", func(t *testing.T) {

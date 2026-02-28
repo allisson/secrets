@@ -1,6 +1,6 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
 
@@ -71,7 +71,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: "secrets"
+  - job_name: "secrets-api"
     static_configs:
       - targets: ["host.docker.internal:8081"]
     metrics_path: "/metrics"
@@ -270,8 +270,7 @@ Add the Secrets application to your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: 'secrets'
-    static_configs:
+  - job_name: 'secrets-api'
     static_configs:
       - targets: ['localhost:8081']
     metrics_path: '/metrics'
@@ -574,6 +573,7 @@ When disabled:
 ### Metrics endpoint returns 404
 
 - Check that `METRICS_ENABLED=true` in your environment
+- Verify that you are accessing the correct port (default is `8081`, e.g., `http://localhost:8081/metrics`)
 - Verify the server is running and accessible
 
 ### Missing metrics

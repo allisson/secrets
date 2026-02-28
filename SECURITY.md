@@ -1,5 +1,7 @@
 # Security Policy
 
+> Last updated: 2026-02-28
+
 ## Supported Versions
 
 We release patches for security vulnerabilities in the following versions:

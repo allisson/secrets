@@ -1,8 +1,8 @@
 # KMS Setup Guide
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
-This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode is **required** in v0.19.0+ (breaking change from v0.18.0 which supported optional legacy plaintext mode).
+This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode is **required** in v0.19.0+ (breaking change).
 
 ## Table of Contents
 
@@ -206,7 +206,7 @@ Prefer cloud-native authentication over static credentials:
 | **Azure** | Managed Identity | Service principal passwords |
 | **HashiCorp Vault** | AppRole | Root tokens, long-lived tokens |
 
-*### Example: GCP Workload Identity**
+### Example: GCP Workload Identity
 
 ```bash
 # Bind service account to GCP service account
@@ -217,7 +217,7 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 ```
 
-*### Example: AWS IAM Roles**
+### Example: AWS IAM Roles
 
 ```bash
 # Associate IAM role with application
@@ -473,8 +473,8 @@ Output:
 # Master Key Configuration (KMS Mode)
 KMS_PROVIDER="localsecrets"
 KMS_KEY_URI="base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4="
-MASTER_KEYS="master-key-2026-02-19:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04"
-ACTIVE_MASTER_KEY_ID="master-key-2026-02-19"
+MASTER_KEYS="master-key-2026-02-27:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04"
+ACTIVE_MASTER_KEY_ID="master-key-2026-02-27"
 
 ```
 
@@ -485,8 +485,8 @@ Add to `.env`:
 ```bash
 KMS_PROVIDER=localsecrets
 KMS_KEY_URI=base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
-MASTER_KEYS=master-key-2026-02-19:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04
-ACTIVE_MASTER_KEY_ID=master-key-2026-02-19
+MASTER_KEYS=master-key-2026-02-27:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04
+ACTIVE_MASTER_KEY_ID=master-key-2026-02-27
 
 ```
 
@@ -501,8 +501,8 @@ Check logs for successful KMS initialization:
 
 ```text
 INFO KMS mode enabled provider=localsecrets
-INFO master key decrypted via KMS key_id=master-key-2026-02-19
-INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_keys=1
+INFO master key decrypted via KMS key_id=master-key-2026-02-27
+INFO master key chain loaded active_master_key_id=master-key-2026-02-27 total_keys=1
 
 ```
 
@@ -512,7 +512,6 @@ INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_ke
 
 | Provider | URI format | Required auth | Minimum permission |
 | --- | --- | --- | --- |
-
 | `localsecrets` | `base64key://<base64-32-byte-key>` | none | local key only |
 | `gcpkms` | `gcpkms://projects/<project>/locations/<location>/keyRings/<ring>/cryptoKeys/<key>` | `GOOGLE_APPLICATION_CREDENTIALS` | encrypt + decrypt |
 | `awskms` | `awskms:///<key-id-or-alias>` | AWS SDK default chain (`AWS_ACCESS_KEY_ID`/role) | `kms:Encrypt`, `kms:Decrypt` |
@@ -525,9 +524,9 @@ INFO master key chain loaded active_master_key_id=master-key-2026-02-19 total_ke
 
 - `<uri>`: provider-specific KMS URI shown in the matrix above
 
-- `<generated-encrypted-key>`: full `id:ciphertext` output from `create-master-key`
+- `<generated-encrypted-key>`: full `ID:CIPHERTEXT` output from `create-master-key`
 
-- `<kms-ciphertext-for-old-key>`: ciphertext produced by encrypting an existing legacy key with your KMS
+- `<kms-ciphertext-for-old-key>`: ciphertext produced by encrypting an existing legacy key with your KMS provider.
 
 Treat placeholders as templates only; replace with exact runtime values before applying.
 
@@ -545,7 +544,7 @@ Treat placeholders as templates only; replace with exact runtime values before a
 
   provider documentation requires it.
 
-- Never mix plaintext legacy values and KMS ciphertext values in `MASTER_KEYS` when KMS mode is enabled.
+- Never use plaintext values in `MASTER_KEYS` - as of v0.19.0, all values must be KMS-encrypted ciphertext.
 
 ### Provider Preflight Validation
 
@@ -685,7 +684,7 @@ You cannot mix master keys encrypted with different KMS providers in `MASTER_KEY
 
 To re-encrypt an existing master key with a new provider:
 
-#### Step 3a: Decrypt existing master key using old provider
+#### Step 3a: Decrypt Existing Master Key Using Old Provider
 
 First, extract the existing encrypted master key from your current `MASTER_KEYS`:
 
@@ -700,14 +699,14 @@ Manually decrypt using the old KMS provider (requires old `KMS_KEY_URI` access):
 **For localsecrets:**
 
 ```bash
-# Decrypt using tink-gcpkms-cli or equivalent tooling
+# Decrypt using provider-specific CLI or equivalent tooling
 # (Application-specific decryption required)
 ```
 
 **For cloud providers:**
 Use provider CLI to decrypt the ciphertext and obtain the 32-byte plaintext master key.
 
-#### Step 3b: Encrypt plaintext key with new provider
+#### Step 3b: Encrypt Plaintext Key With New Provider
 
 Once you have the plaintext 32-byte master key:
 
@@ -823,7 +822,7 @@ Use this checklist for migrating between KMS providers.
 - [ ] Confirm new KMS provider encrypt/decrypt permissions are granted
 - [ ] Test new KMS provider connectivity (preflight validation)
 
-#### 2) Build new KMS key chain
+#### 2) Build New KMS Key Chain
 
 - [ ] Generate new master key with `create-master-key --kms-provider <new> --kms-key-uri <new-uri>`
 - [ ] Decrypt existing master keys using old provider
@@ -840,7 +839,7 @@ Use this checklist for migrating between KMS providers.
 
 Reference: [Production rollout golden path](../deployment/production-rollout.md)
 
-#### 4) Rotation and cleanup
+#### 4) Rotation and Cleanup
 
 - [ ] Rotate KEK after switching to new KMS provider
 - [ ] Verify reads/decrypt for existing data still succeed
@@ -849,7 +848,7 @@ Reference: [Production rollout golden path](../deployment/production-rollout.md)
 
 Reference: [Key management operations](../kms/key-management.md)
 
-#### 5) Rollback readiness
+#### 5) Rollback Readiness
 
 - [ ] Keep previous image tag available
 - [ ] Keep pre-change env snapshot (including old KMS credentials)
@@ -865,7 +864,9 @@ Rotate master keys regularly (recommended: every 90-180 days).
 ### Generate New Master Key
 
 ```bash
-./bin/app rotate-master-key --id=master-key-2026-08
+./bin/app rotate-master-key --id=master-key-2026-02-27 \
+  --kms-provider=gcpkms \
+  --kms-key-uri="gcpkms://..."
 
 ```
 
@@ -874,8 +875,8 @@ Output includes combined configuration:
 ```bash
 KMS_PROVIDER=gcpkms
 KMS_KEY_URI=gcpkms://...
-MASTER_KEYS=old-key:<old-ciphertext>,master-key-2026-08:<new-ciphertext>
-ACTIVE_MASTER_KEY_ID=master-key-2026-08
+MASTER_KEYS=old-key:<old-ciphertext>,master-key-2026-02-27:<new-ciphertext>
+ACTIVE_MASTER_KEY_ID=master-key-2026-02-27
 
 ```
 
@@ -893,8 +894,8 @@ ACTIVE_MASTER_KEY_ID=master-key-2026-08
 ./bin/app rotate-kek --algorithm aes-gcm
 
 # 5. After KEK rotation complete, remove old master key
-MASTER_KEYS=master-key-2026-08:<new-ciphertext>
-ACTIVE_MASTER_KEY_ID=master-key-2026-08
+MASTER_KEYS=master-key-2026-02-27:<new-ciphertext>
+ACTIVE_MASTER_KEY_ID=master-key-2026-02-27
 
 # 6. Restart application
 ./bin/app server
