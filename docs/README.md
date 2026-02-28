@@ -12,6 +12,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 ## 🧭 Start Here
 
 - 🐳 [getting-started/docker.md](getting-started/docker.md) (recommended)
+- 💾 [getting-started/installation.md](getting-started/installation.md)
 - 💻 [getting-started/local-development.md](getting-started/local-development.md)
 - 🧭 [getting-started/day-0-walkthrough.md](getting-started/day-0-walkthrough.md)
 - 🧰 [operations/troubleshooting/index.md](operations/troubleshooting/index.md)
@@ -150,6 +151,7 @@ Secrets is inspired by HashiCorp Vault, but it is much simpler and intentionally
 ## See also
 
 - [Docker getting started](getting-started/docker.md)
+- [Pre-compiled binaries](getting-started/installation.md)
 - [Architecture](concepts/architecture.md)
 - [Authentication API](api/auth/authentication.md)
 - [Production operations](operations/deployment/docker-hardened.md)

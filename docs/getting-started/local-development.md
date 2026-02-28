@@ -2,7 +2,7 @@
 
 > Last updated: 2026-02-28
 
-Use this path if you want to modify the source code and run from your workstation.
+Use this path if you want to modify the source code and run from your workstation. For a faster alternative, see the [Pre-compiled Binaries (Recommended for quick runs)](installation.md) guide.
 
 **⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Rollout Guide](../operations/deployment/production-rollout.md).
 
