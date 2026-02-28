@@ -27,6 +27,11 @@ type MasterKeyChain struct {
 	keys     sync.Map // Thread-safe map of master key ID to MasterKey instances
 }
 
+// NewMasterKeyChain creates a new MasterKeyChain with the specified active key ID.
+func NewMasterKeyChain(activeID string) *MasterKeyChain {
+	return &MasterKeyChain{activeID: activeID}
+}
+
 // ActiveMasterKeyID returns the ID of the currently active master key.
 func (m *MasterKeyChain) ActiveMasterKeyID() string {
 	return m.activeID

@@ -5,57 +5,33 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"os"
+	"io"
+	"log/slog"
 	"time"
 
-	"github.com/allisson/secrets/internal/config"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 )
 
-// RunRotateMasterKey generates a new master key and combines it with existing keys for rotation.
-// Reads current MASTER_KEYS from environment, generates a new key, and outputs the combined
-// configuration with the new key set as active. The old keys remain accessible for decrypting
-// existing KEKs.
-//
-// KMS mode is required. This command encrypts the new key with the configured KMS provider.
-//
-// Key Rotation Workflow:
-//  1. Run this command to generate new master key configuration
-//  2. Update environment variables (MASTER_KEYS, ACTIVE_MASTER_KEY_ID)
-//  3. Restart application (automatically decrypts KEKs with new master key chain)
-//  4. Rotate KEKs: `app rotate-kek --algorithm aes-gcm`
-//  5. After all KEKs rotated, remove old master key from MASTER_KEYS
-//
-// Requirements: MASTER_KEYS, ACTIVE_MASTER_KEY_ID, KMS_PROVIDER, and KMS_KEY_URI must be set in environment.
-func RunRotateMasterKey(ctx context.Context, keyID, kmsProvider, kmsKeyURI string) error {
-	// Load configuration to get KMS settings
-	cfg := config.Load()
-
-	// Override KMS configuration if flags are provided
-	if kmsProvider != "" {
-		cfg.KMSProvider = kmsProvider
-	}
-	if kmsKeyURI != "" {
-		cfg.KMSKeyURI = kmsKeyURI
-	}
-
+func RunRotateMasterKey(
+	ctx context.Context,
+	kmsService cryptoService.KMSService,
+	logger *slog.Logger,
+	writer io.Writer,
+	keyID, kmsProvider, kmsKeyURI, existingMasterKeys, existingActiveKeyID string,
+) error {
 	// Validate required KMS parameters
-	if cfg.KMSProvider == "" || cfg.KMSKeyURI == "" {
+	if kmsProvider == "" || kmsKeyURI == "" {
 		return fmt.Errorf(
-			"KMS_PROVIDER and KMS_KEY_URI environment variables are required for master key rotation\n\nFor local development, use:\n  KMS_PROVIDER=localsecrets\n  KMS_KEY_URI=\"base64key://<32-byte-base64-key>\"",
+			"KMS_PROVIDER and KMS_KEY_URI are required for master key rotation\n\nFor local development, use:\n  KMS_PROVIDER=localsecrets\n  KMS_KEY_URI=\"base64key://<32-byte-base64-key>\"",
 		)
 	}
 
-	// Get existing master keys from environment
-	existingMasterKeys := os.Getenv("MASTER_KEYS")
-	existingActiveKeyID := os.Getenv("ACTIVE_MASTER_KEY_ID")
-
 	// Validate existing configuration
 	if existingMasterKeys == "" {
-		return fmt.Errorf("MASTER_KEYS environment variable is not set - cannot rotate without existing keys")
+		return fmt.Errorf("MASTER_KEYS is not set - cannot rotate without existing keys")
 	}
 	if existingActiveKeyID == "" {
-		return fmt.Errorf("ACTIVE_MASTER_KEY_ID environment variable is not set")
+		return fmt.Errorf("ACTIVE_MASTER_KEY_ID is not set")
 	}
 
 	// Generate default key ID if not provided
@@ -79,19 +55,18 @@ func RunRotateMasterKey(ctx context.Context, keyID, kmsProvider, kmsKeyURI strin
 	var newMasterKeys string
 
 	// KMS mode: encrypt new key
-	fmt.Println("# KMS Mode: Encrypting new master key with KMS")
-	fmt.Printf("# KMS Provider: %s\n", cfg.KMSProvider)
-	fmt.Println()
+	_, _ = fmt.Fprintln(writer, "# KMS Mode: Encrypting new master key with KMS")
+	_, _ = fmt.Fprintf(writer, "# KMS Provider: %s\n", kmsProvider)
+	_, _ = fmt.Fprintln(writer)
 
 	// Create KMS service and open keeper
-	kmsService := cryptoService.NewKMSService()
-	keeperInterface, err := kmsService.OpenKeeper(ctx, cfg.KMSKeyURI)
+	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		return fmt.Errorf("failed to open KMS keeper: %w", err)
 	}
 	defer func() {
 		if closeErr := keeperInterface.Close(); closeErr != nil {
-			fmt.Printf("Warning: failed to close KMS keeper: %v\n", closeErr)
+			_, _ = fmt.Fprintf(writer, "Warning: failed to close KMS keeper: %v\n", closeErr)
 		}
 	}()
 
@@ -116,19 +91,19 @@ func RunRotateMasterKey(ctx context.Context, keyID, kmsProvider, kmsKeyURI strin
 	newMasterKeys = fmt.Sprintf("%s,%s:%s", existingMasterKeys, keyID, encodedKey)
 
 	// Print KMS configuration
-	fmt.Println("# Master Key Rotation (KMS Mode)")
-	fmt.Println("# Update these environment variables in your .env file or secrets manager")
-	fmt.Println()
-	fmt.Printf("KMS_PROVIDER=\"%s\"\n", cfg.KMSProvider)
-	fmt.Printf("KMS_KEY_URI=\"%s\"\n", cfg.KMSKeyURI)
-	fmt.Printf("MASTER_KEYS=\"%s\"\n", newMasterKeys)
-	fmt.Printf("ACTIVE_MASTER_KEY_ID=\"%s\"\n", keyID)
-	fmt.Println()
-	fmt.Println("# Rotation Workflow:")
-	fmt.Println("# 1. Update the above environment variables")
-	fmt.Println("# 2. Restart the application")
-	fmt.Println("# 3. Rotate KEKs: app rotate-kek --algorithm aes-gcm")
-	fmt.Printf(
+	_, _ = fmt.Fprintln(writer, "# Master Key Rotation (KMS Mode)")
+	_, _ = fmt.Fprintln(writer, "# Update these environment variables in your .env file or secrets manager")
+	_, _ = fmt.Fprintln(writer)
+	_, _ = fmt.Fprintf(writer, "KMS_PROVIDER=\"%s\"\n", kmsProvider)
+	_, _ = fmt.Fprintf(writer, "KMS_KEY_URI=\"%s\"\n", kmsKeyURI)
+	_, _ = fmt.Fprintf(writer, "MASTER_KEYS=\"%s\"\n", newMasterKeys)
+	_, _ = fmt.Fprintf(writer, "ACTIVE_MASTER_KEY_ID=\"%s\"\n", keyID)
+	_, _ = fmt.Fprintln(writer)
+	_, _ = fmt.Fprintln(writer, "# Rotation Workflow:")
+	_, _ = fmt.Fprintln(writer, "# 1. Update the above environment variables")
+	_, _ = fmt.Fprintln(writer, "# 2. Restart the application")
+	_, _ = fmt.Fprintln(writer, "# 3. Rotate KEKs: app rotate-kek --algorithm aes-gcm")
+	_, _ = fmt.Fprintf(writer,
 		"# 4. After all KEKs rotated, remove old master key: MASTER_KEYS=\"%s:%s\"\n",
 		keyID,
 		encodedKey,

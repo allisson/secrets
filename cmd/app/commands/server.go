@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -87,10 +88,30 @@ func RunServer(ctx context.Context, version string) error {
 		}
 
 		if len(shutdownErrors) > 0 {
-			return fmt.Errorf("shutdown errors: %v", shutdownErrors)
+			return errors.Join(shutdownErrors...)
 		}
 	case err := <-serverErr:
-		return err
+		// Attempt graceful shutdown if one server fails
+		logger.Error("server error, initiating shutdown", slog.Any("error", err))
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.DBConnMaxLifetime)
+		defer shutdownCancel()
+
+		var shutdownErrors []error
+		shutdownErrors = append(shutdownErrors, err)
+
+		if server != nil {
+			if shutErr := server.Shutdown(shutdownCtx); shutErr != nil {
+				shutdownErrors = append(shutdownErrors, fmt.Errorf("api server shutdown: %w", shutErr))
+			}
+		}
+
+		if metricsServer != nil {
+			if shutErr := metricsServer.Shutdown(shutdownCtx); shutErr != nil {
+				shutdownErrors = append(shutdownErrors, fmt.Errorf("metrics server shutdown: %w", shutErr))
+			}
+		}
+
+		return errors.Join(shutdownErrors...)
 	}
 
 	return nil

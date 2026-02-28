@@ -15,7 +15,7 @@ type Secret struct {
 	Version    uint
 	DekID      uuid.UUID
 	Ciphertext []byte
-	Plaintext  []byte // In memory only
+	Plaintext  []byte `json:"-"` // In memory only
 	Nonce      []byte
 	CreatedAt  time.Time
 	DeletedAt  *time.Time

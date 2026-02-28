@@ -4,44 +4,30 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
-	"os"
 
-	"github.com/allisson/secrets/internal/app"
-	"github.com/allisson/secrets/internal/config"
+	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
-// RunCleanExpiredTokens deletes expired tokens older than the specified number of days.
-// Supports dry-run mode to preview deletion count and both text/JSON output formats.
-//
-// Requirements: Database must be migrated and accessible.
-func RunCleanExpiredTokens(ctx context.Context, days int, dryRun bool, format string) error {
+func RunCleanExpiredTokens(
+	ctx context.Context,
+	tokenizationUseCase tokenizationUseCase.TokenizationUseCase,
+	logger *slog.Logger,
+	writer io.Writer,
+	days int,
+	dryRun bool,
+	format string,
+) error {
 	// Validate days parameter
 	if days < 0 {
 		return fmt.Errorf("days must be a positive number, got: %d", days)
 	}
 
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
 	logger.Info("cleaning expired tokens",
 		slog.Int("days", days),
 		slog.Bool("dry_run", dryRun),
 	)
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
-
-	// Get tokenization use case from container
-	tokenizationUseCase, err := container.TokenizationUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize tokenization use case: %w", err)
-	}
 
 	// Execute deletion or count operation
 	count, err := tokenizationUseCase.CleanupExpired(ctx, days, dryRun)
@@ -51,9 +37,9 @@ func RunCleanExpiredTokens(ctx context.Context, days int, dryRun bool, format st
 
 	// Output result based on format
 	if format == "json" {
-		outputCleanExpiredJSON(count, days, dryRun)
+		outputCleanExpiredJSON(writer, count, days, dryRun)
 	} else {
-		outputCleanExpiredText(count, days, dryRun)
+		outputCleanExpiredText(writer, count, days, dryRun)
 	}
 
 	logger.Info("cleanup completed",
@@ -66,16 +52,26 @@ func RunCleanExpiredTokens(ctx context.Context, days int, dryRun bool, format st
 }
 
 // outputCleanExpiredText outputs the result in human-readable text format.
-func outputCleanExpiredText(count int64, days int, dryRun bool) {
+func outputCleanExpiredText(writer io.Writer, count int64, days int, dryRun bool) {
 	if dryRun {
-		fmt.Printf("Dry-run mode: Would delete %d expired token(s) older than %d day(s)\n", count, days)
+		_, _ = fmt.Fprintf(
+			writer,
+			"Dry-run mode: Would delete %d expired token(s) older than %d day(s)\n",
+			count,
+			days,
+		)
 	} else {
-		fmt.Printf("Successfully deleted %d expired token(s) older than %d day(s)\n", count, days)
+		_, _ = fmt.Fprintf(
+			writer,
+			"Successfully deleted %d expired token(s) older than %d day(s)\n",
+			count,
+			days,
+		)
 	}
 }
 
 // outputCleanExpiredJSON outputs the result in JSON format for machine consumption.
-func outputCleanExpiredJSON(count int64, days int, dryRun bool) {
+func outputCleanExpiredJSON(writer io.Writer, count int64, days int, dryRun bool) {
 	result := map[string]interface{}{
 		"count":   count,
 		"days":    days,
@@ -84,9 +80,8 @@ func outputCleanExpiredJSON(count int64, days int, dryRun bool) {
 
 	jsonBytes, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal JSON: %v\n", err)
 		return
 	}
 
-	fmt.Println(string(jsonBytes))
+	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 }

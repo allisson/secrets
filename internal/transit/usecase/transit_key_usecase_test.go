@@ -728,6 +728,11 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 			Once()
 
 		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
+
+		mockCipher.EXPECT().
 			Encrypt(plaintext, mock.Anything).
 			Return(ciphertext, nonce, nil).
 			Once()
@@ -906,6 +911,11 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 			Once()
 
 		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
+
+		mockCipher.EXPECT().
 			Encrypt(plaintext, mock.Anything).
 			Return(nil, nil, expectedError).
 			Once()
@@ -978,6 +988,11 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 			Once()
 
 		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
+
+		mockCipher.EXPECT().
 			Decrypt(ciphertext, nonce, mock.Anything).
 			Return(plaintext, nil).
 			Once()
@@ -1046,6 +1061,11 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 			CreateCipher(dekKey, dek.Algorithm).
 			Return(mockCipher, nil).
 			Once()
+
+		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
 
 		mockCipher.EXPECT().
 			Decrypt(ciphertext, nonce, mock.Anything).
@@ -1237,6 +1257,11 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 			CreateCipher(dekKey, dek.Algorithm).
 			Return(mockCipher, nil).
 			Once()
+
+		mockCipher.EXPECT().
+			NonceSize().
+			Return(12).
+			Maybe()
 
 		mockCipher.EXPECT().
 			Decrypt(ciphertext, nonce, mock.Anything).

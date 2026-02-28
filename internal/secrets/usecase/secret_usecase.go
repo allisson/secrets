@@ -13,7 +13,6 @@ import (
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	"github.com/allisson/secrets/internal/database"
-	apperrors "github.com/allisson/secrets/internal/errors"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
 
@@ -53,7 +52,7 @@ func (s *secretUseCase) createOrUpdateSecret(
 
 	// Check if secret already exists to determine the version
 	existingSecret, err := s.secretRepo.GetByPath(ctx, path)
-	if err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+	if err != nil && !errors.Is(err, secretsDomain.ErrSecretNotFound) {
 		return nil, err
 	}
 	if existingSecret != nil {

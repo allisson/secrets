@@ -12,6 +12,7 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 ## 🧭 Start Here
 
 - 🐳 [getting-started/docker.md](getting-started/docker.md) (recommended)
+- 📦 [getting-started/binary.md](getting-started/binary.md)
 - 💻 [getting-started/local-development.md](getting-started/local-development.md)
 - 🧭 [getting-started/day-0-walkthrough.md](getting-started/day-0-walkthrough.md)
 - 🧰 [operations/troubleshooting/index.md](operations/troubleshooting/index.md)
