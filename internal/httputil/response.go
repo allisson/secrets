@@ -10,15 +10,14 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// ErrorResponse represents a structured error response.
+// ErrorResponse represents a structured error response returned by the API.
 type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-	Code    string `json:"code,omitempty"`
+	Error   string `json:"error"`             // Machine-readable error code
+	Message string `json:"message,omitempty"` // Human-readable error message
+	Code    string `json:"code,omitempty"`    // Additional error details (optional)
 }
 
 // HandleErrorGin maps domain errors to HTTP status codes and returns a JSON response using Gin.
-// This is an adapter for Gin's context that maintains the same error handling logic.
 func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	if err == nil {
 		return
@@ -27,7 +26,7 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	var statusCode int
 	var errorResponse ErrorResponse
 
-	// Map domain errors to HTTP status codes (same logic as HandleError)
+	// Map domain errors to HTTP status codes based on apperrors.
 	switch {
 	case apperrors.Is(err, apperrors.ErrNotFound):
 		statusCode = http.StatusNotFound

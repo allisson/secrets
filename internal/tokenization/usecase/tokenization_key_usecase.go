@@ -22,13 +22,59 @@ type tokenizationKeyUseCase struct {
 	kekChain            *cryptoDomain.KekChain
 }
 
-// getKek retrieves a KEK from the chain by its ID.
-func (t *tokenizationKeyUseCase) getKek(kekID uuid.UUID) (*cryptoDomain.Kek, error) {
-	kek, ok := t.kekChain.Get(kekID)
-	if !ok {
-		return nil, cryptoDomain.ErrKekNotFound
+// createTokenizationKey is a helper that creates a tokenization key within an existing transaction context.
+// It does NOT create its own transaction - the caller must handle transaction management.
+func (t *tokenizationKeyUseCase) createTokenizationKey(
+	ctx context.Context,
+	name string,
+	version uint,
+	formatType tokenizationDomain.FormatType,
+	isDeterministic bool,
+	alg cryptoDomain.Algorithm,
+) (*tokenizationDomain.TokenizationKey, error) {
+	// Get active KEK from chain
+	activeKek, err := getKek(t.kekChain, t.kekChain.ActiveKekID())
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to get active KEK")
 	}
-	return kek, nil
+
+	// Create DEK encrypted with active KEK
+	dek, err := t.keyManager.CreateDek(activeKek, alg)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to create DEK")
+	}
+
+	// Persist DEK to database
+	if err := t.dekRepo.Create(ctx, &dek); err != nil {
+		return nil, apperrors.Wrap(err, "failed to persist DEK")
+	}
+
+	// Create tokenization key
+	keyID, err := uuid.NewV7()
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to generate UUID for tokenization key")
+	}
+	tokenizationKey := &tokenizationDomain.TokenizationKey{
+		ID:              keyID,
+		Name:            name,
+		Version:         version,
+		FormatType:      formatType,
+		IsDeterministic: isDeterministic,
+		DekID:           dek.ID,
+		CreatedAt:       time.Now().UTC(),
+	}
+
+	// Validate tokenization key fields
+	if err := tokenizationKey.Validate(); err != nil {
+		return nil, apperrors.Wrap(err, "tokenization key validation failed")
+	}
+
+	// Persist tokenization key
+	if err := t.tokenizationKeyRepo.Create(ctx, tokenizationKey); err != nil {
+		return nil, apperrors.Wrap(err, "failed to persist tokenization key")
+	}
+
+	return tokenizationKey, nil
 }
 
 // Create generates and persists a new tokenization key with version 1.
@@ -48,43 +94,22 @@ func (t *tokenizationKeyUseCase) Create(
 	// Check if tokenization key with version 1 already exists
 	existingKey, err := t.tokenizationKeyRepo.GetByNameAndVersion(ctx, name, 1)
 	if err != nil && !apperrors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound) {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to check for existing tokenization key")
 	}
 	if existingKey != nil {
 		return nil, tokenizationDomain.ErrTokenizationKeyAlreadyExists
 	}
 
-	// Get active KEK from chain
-	activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+	var tokenizationKey *tokenizationDomain.TokenizationKey
+
+	// Wrap DEK and tokenization key creation in a transaction
+	err = t.txManager.WithTx(ctx, func(txCtx context.Context) error {
+		tokenizationKey, err = t.createTokenizationKey(txCtx, name, 1, formatType, isDeterministic, alg)
+		return err
+	})
+
 	if err != nil {
-		return nil, err
-	}
-
-	// Create DEK encrypted with active KEK
-	dek, err := t.keyManager.CreateDek(activeKek, alg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Persist DEK to database
-	if err := t.dekRepo.Create(ctx, &dek); err != nil {
-		return nil, err
-	}
-
-	// Create tokenization key with version 1
-	tokenizationKey := &tokenizationDomain.TokenizationKey{
-		ID:              uuid.Must(uuid.NewV7()),
-		Name:            name,
-		Version:         1,
-		FormatType:      formatType,
-		IsDeterministic: isDeterministic,
-		DekID:           dek.ID,
-		CreatedAt:       time.Now().UTC(),
-	}
-
-	// Persist tokenization key
-	if err := t.tokenizationKeyRepo.Create(ctx, tokenizationKey); err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to create tokenization key")
 	}
 
 	return tokenizationKey, nil
@@ -111,32 +136,36 @@ func (t *tokenizationKeyUseCase) Rotate(
 		if err != nil {
 			// If key doesn't exist, create first version
 			if apperrors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound) {
-				newKey, err = t.Create(txCtx, name, formatType, isDeterministic, alg)
+				newKey, err = t.createTokenizationKey(txCtx, name, 1, formatType, isDeterministic, alg)
 				return err
 			}
-			return err
+			return apperrors.Wrap(err, "failed to get current tokenization key")
 		}
 
 		// Get active KEK from chain
-		activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+		activeKek, err := getKek(t.kekChain, t.kekChain.ActiveKekID())
 		if err != nil {
-			return err
+			return apperrors.Wrap(err, "failed to get active KEK")
 		}
 
 		// Create new DEK encrypted with active KEK
 		dek, err := t.keyManager.CreateDek(activeKek, alg)
 		if err != nil {
-			return err
+			return apperrors.Wrap(err, "failed to create DEK")
 		}
 
 		// Persist new DEK
 		if err := t.dekRepo.Create(txCtx, &dek); err != nil {
-			return err
+			return apperrors.Wrap(err, "failed to persist DEK")
 		}
 
 		// Create new tokenization key with incremented version
+		keyID, err := uuid.NewV7()
+		if err != nil {
+			return apperrors.Wrap(err, "failed to generate UUID for tokenization key")
+		}
 		newKey = &tokenizationDomain.TokenizationKey{
-			ID:              uuid.Must(uuid.NewV7()),
+			ID:              keyID,
 			Name:            name,
 			Version:         currentKey.Version + 1,
 			FormatType:      formatType,
@@ -145,12 +174,20 @@ func (t *tokenizationKeyUseCase) Rotate(
 			CreatedAt:       time.Now().UTC(),
 		}
 
+		// Validate tokenization key fields
+		if err := newKey.Validate(); err != nil {
+			return apperrors.Wrap(err, "tokenization key validation failed")
+		}
+
 		// Persist new tokenization key
-		return t.tokenizationKeyRepo.Create(txCtx, newKey)
+		if err := t.tokenizationKeyRepo.Create(txCtx, newKey); err != nil {
+			return apperrors.Wrap(err, "failed to persist rotated tokenization key")
+		}
+		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Wrap(err, "failed to rotate tokenization key")
 	}
 
 	return newKey, nil
@@ -158,7 +195,11 @@ func (t *tokenizationKeyUseCase) Rotate(
 
 // Delete soft-deletes a tokenization key by setting its deleted_at timestamp.
 func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) error {
-	return t.tokenizationKeyRepo.Delete(ctx, keyID)
+	err := t.tokenizationKeyRepo.Delete(ctx, keyID)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to delete tokenization key")
+	}
+	return nil
 }
 
 // List retrieves tokenization keys ordered by name ascending with pagination.
@@ -166,7 +207,11 @@ func (t *tokenizationKeyUseCase) List(
 	ctx context.Context,
 	offset, limit int,
 ) ([]*tokenizationDomain.TokenizationKey, error) {
-	return t.tokenizationKeyRepo.List(ctx, offset, limit)
+	keys, err := t.tokenizationKeyRepo.List(ctx, offset, limit)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list tokenization keys")
+	}
+	return keys, nil
 }
 
 // NewTokenizationKeyUseCase creates a new tokenization key use case instance.

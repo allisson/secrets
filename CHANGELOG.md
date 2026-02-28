@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-02-28
+
+### Added
+- Added `MaxTransitKeyNameLength` (255 characters) constraint for transit key names to ensure database compatibility.
+- Added metrics decoration for `transit` and `tokenization` usecases for improved observability.
+- New internal testing helpers and DSN getter functions in the integration test suite.
+
+### Changed
+- Refactored `tokenization` domain models, repositories, and generators (Alphanumeric, Luhn, Numeric) for better maintainability and performance.
+- Reorganized `transit` domain models and added comprehensive unit tests for `TransitKey`.
+- Updated Go version to 1.26.0 in CI workflows and documentation.
+
+### Fixed
+- Corrected `rotate-master-key` CLI flags and documentation in scaling guides.
+- Improved error handling in `transit` cryptographic operations.
+
 ## [0.21.0] - 2026-02-28
 
 ### Added

@@ -11,17 +11,17 @@ import (
 // CreateClientResponse contains the result of creating a new client.
 // SECURITY: The secret is only returned once and must be saved securely.
 type CreateClientResponse struct {
-	ID     string `json:"id"`
+	ID     string `json:"id"`     // Unique identifier (UUID)
 	Secret string `json:"secret"` //nolint:gosec // returned once on creation
 }
 
 // ClientResponse represents a client in API responses (excludes secret).
 type ClientResponse struct {
-	ID        string                      `json:"id"`
-	Name      string                      `json:"name"`
-	IsActive  bool                        `json:"is_active"`
-	Policies  []authDomain.PolicyDocument `json:"policies"`
-	CreatedAt time.Time                   `json:"created_at"`
+	ID        string                      `json:"id"`         // Unique identifier (UUID)
+	Name      string                      `json:"name"`       // Unique name
+	IsActive  bool                        `json:"is_active"`  // Whether the client is active
+	Policies  []authDomain.PolicyDocument `json:"policies"`   // Access control policies
+	CreatedAt time.Time                   `json:"created_at"` // Creation timestamp
 }
 
 // MapClientToResponse converts a domain client to an API response.
@@ -54,8 +54,8 @@ func MapClientsToListResponse(clients []*authDomain.Client) ListClientsResponse 
 // IssueTokenResponse contains the result of issuing a token.
 // SECURITY: The token is only returned once and must be saved securely.
 type IssueTokenResponse struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Token     string    `json:"token"`      // Authentication token string
+	ExpiresAt time.Time `json:"expires_at"` // Token expiration timestamp
 }
 
 // AuditLogResponse represents an audit log entry in API responses.

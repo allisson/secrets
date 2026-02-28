@@ -14,6 +14,7 @@ import (
 	cryptoServiceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
 	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
+	tokenizationTesting "github.com/allisson/secrets/internal/tokenization/testing"
 	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
 )
 
@@ -32,14 +33,11 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
 
@@ -146,14 +144,11 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
 
@@ -273,11 +268,8 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
@@ -356,14 +348,11 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
 		plaintext := []byte("test-value")
@@ -490,11 +479,8 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -520,7 +506,9 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Assert
 		assert.Nil(t, token)
-		assert.Equal(t, tokenizationDomain.ErrTokenizationKeyNotFound, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound))
+		assert.Contains(t, err.Error(), "failed to get tokenization key by name")
 	})
 
 	t.Run("Error_DekNotFound", func(t *testing.T) {
@@ -533,11 +521,8 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		dekID := uuid.Must(uuid.NewV7())
@@ -578,7 +563,9 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Assert
 		assert.Nil(t, token)
-		assert.Equal(t, cryptoDomain.ErrDekNotFound, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, cryptoDomain.ErrDekNotFound))
+		assert.Contains(t, err.Error(), "failed to get DEK")
 	})
 
 	t.Run("Error_KekNotFound", func(t *testing.T) {
@@ -591,11 +578,8 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		dekID := uuid.Must(uuid.NewV7())
@@ -646,7 +630,9 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Assert
 		assert.Nil(t, token)
-		assert.Equal(t, cryptoDomain.ErrKekNotFound, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, cryptoDomain.ErrKekNotFound))
+		assert.Contains(t, err.Error(), "failed to get KEK")
 	})
 
 	t.Run("Error_EncryptionFails", func(t *testing.T) {
@@ -659,14 +645,11 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 
 		tokenizationKey := &tokenizationDomain.TokenizationKey{
@@ -755,14 +738,11 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
 		// Create test data
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
 		tokenValue := "test-token-123"
@@ -865,11 +845,8 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -896,7 +873,8 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		// Assert
 		assert.Nil(t, plaintext)
 		assert.Nil(t, metadata)
-		assert.Equal(t, tokenizationDomain.ErrTokenNotFound, err)
+		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenNotFound))
+		assert.Contains(t, err.Error(), "failed to get token")
 	})
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
@@ -909,11 +887,8 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
@@ -967,11 +942,8 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		revokedTime := time.Now().UTC().Add(-30 * time.Minute)
@@ -1025,14 +997,11 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		activeKek := getActiveKek(kekChain)
+		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
 		tokenValue := "test-token"
@@ -1118,7 +1087,8 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		// Assert
 		assert.Nil(t, plaintext)
 		assert.Nil(t, metadata)
-		assert.Equal(t, cryptoDomain.ErrDecryptionFailed, err)
+		assert.True(t, errors.Is(err, cryptoDomain.ErrDecryptionFailed))
+		assert.Contains(t, err.Error(), "failed to decrypt token ciphertext")
 	})
 }
 
@@ -1136,11 +1106,8 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		tokenValue := "valid-token"
@@ -1191,11 +1158,8 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
@@ -1247,11 +1211,8 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -1290,11 +1251,8 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		dbError := errors.New("database error")
@@ -1322,7 +1280,9 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 		// Assert
 		assert.False(t, isValid)
-		assert.Equal(t, dbError, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, dbError))
+		assert.Contains(t, err.Error(), "failed to validate token")
 	})
 }
 
@@ -1340,11 +1300,8 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		tokenValue := "token-to-revoke"
@@ -1399,11 +1356,8 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -1428,7 +1382,9 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 		err := uc.Revoke(ctx, "nonexistent-token")
 
 		// Assert
-		assert.Equal(t, tokenizationDomain.ErrTokenNotFound, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenNotFound))
+		assert.Contains(t, err.Error(), "failed to get token for revocation")
 	})
 
 	t.Run("Error_RevokeFails", func(t *testing.T) {
@@ -1441,11 +1397,8 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		tokenValue := "test-token"
@@ -1489,7 +1442,9 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 		err := uc.Revoke(ctx, tokenValue)
 
 		// Assert
-		assert.Equal(t, dbError, err)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, dbError))
+		assert.Contains(t, err.Error(), "failed to revoke token")
 	})
 }
 
@@ -1507,11 +1462,8 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -1556,11 +1508,8 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Setup expectations
@@ -1605,11 +1554,8 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		// Create use case
@@ -1643,11 +1589,8 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
 		mockHashService := tokenizationMocks.NewMockHashService(t)
 
-		masterKey := &cryptoDomain.MasterKey{
-			ID:  "test-master-key",
-			Key: make([]byte, 32),
-		}
-		kekChain := createKekChain(masterKey)
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
 		dbError := errors.New("database error")

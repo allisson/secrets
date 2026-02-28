@@ -489,7 +489,7 @@ func TestMySQLSecretRepository_Delete(t *testing.T) {
 	assert.Nil(t, deletedAt, "secret should not be deleted initially")
 
 	// Delete the secret (soft delete)
-	err = repo.Delete(ctx, secret.ID)
+	err = repo.Delete(ctx, secret.Path)
 	require.NoError(t, err)
 
 	// Verify the secret still exists but has deleted_at set
@@ -514,10 +514,8 @@ func TestMySQLSecretRepository_Delete_NonExistent(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to delete a non-existent secret
-	nonExistentID := uuid.Must(uuid.NewV7())
-
 	// Delete should not return an error even if no rows are affected
-	err := repo.Delete(ctx, nonExistentID)
+	err := repo.Delete(ctx, "/nonexistent/path")
 	assert.NoError(t, err)
 }
 
@@ -546,7 +544,7 @@ func TestMySQLSecretRepository_Delete_AlreadyDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete the secret first time
-	err = repo.Delete(ctx, secret.ID)
+	err = repo.Delete(ctx, secret.Path)
 	require.NoError(t, err)
 
 	// Get the first deletion timestamp
@@ -560,8 +558,8 @@ func TestMySQLSecretRepository_Delete_AlreadyDeleted(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	// Delete the secret second time (should update deleted_at)
-	err = repo.Delete(ctx, secret.ID)
+	// Delete the secret second time (should be idempotent - no timestamp update)
+	err = repo.Delete(ctx, secret.Path)
 	require.NoError(t, err)
 
 	// Get the second deletion timestamp
@@ -570,8 +568,13 @@ func TestMySQLSecretRepository_Delete_AlreadyDeleted(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, secondDeletedAt)
 
-	// The second deletion should have a newer timestamp
-	assert.True(t, secondDeletedAt.After(*firstDeletedAt), "second delete should update timestamp")
+	// The second deletion should NOT update the timestamp (idempotent behavior)
+	assert.Equal(
+		t,
+		firstDeletedAt.Unix(),
+		secondDeletedAt.Unix(),
+		"second delete should not update timestamp (idempotent)",
+	)
 }
 
 func TestMySQLSecretRepository_Delete_MultipleSecrets(t *testing.T) {
@@ -604,10 +607,10 @@ func TestMySQLSecretRepository_Delete_MultipleSecrets(t *testing.T) {
 	}
 
 	// Delete only the first and third secrets
-	err := repo.Delete(ctx, secretIDs[0])
+	err := repo.Delete(ctx, "/app/secret-0")
 	require.NoError(t, err)
 
-	err = repo.Delete(ctx, secretIDs[2])
+	err = repo.Delete(ctx, "/app/secret-2")
 	require.NoError(t, err)
 
 	// Verify deletion status
@@ -898,7 +901,7 @@ func TestMySQLSecretRepository_GetByPath_WithDeletedSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete the secret
-	err = repo.Delete(ctx, secret.ID)
+	err = repo.Delete(ctx, secret.Path)
 	require.NoError(t, err)
 
 	// GetByPath should return ErrNotFound for deleted secrets
@@ -908,72 +911,8 @@ func TestMySQLSecretRepository_GetByPath_WithDeletedSecret(t *testing.T) {
 	assert.ErrorIs(t, err, apperrors.ErrNotFound)
 }
 
-func TestMySQLSecretRepository_GetByPath_MultipleVersions_LatestDeleted(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	repo := NewMySQLSecretRepository(db)
-	ctx := context.Background()
-
-	_, dekID := createMySQLKekAndDek(t, db)
-
-	path := "/app/versioned-secret"
-
-	// Create version 1
-	secret1 := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       path,
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-v1"),
-		Nonce:      []byte("nonce-v1"),
-		CreatedAt:  time.Now().UTC(),
-	}
-	err := repo.Create(ctx, secret1)
-	require.NoError(t, err)
-
-	// Create version 2
-	time.Sleep(time.Millisecond)
-	secret2 := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       path,
-		Version:    2,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-v2"),
-		Nonce:      []byte("nonce-v2"),
-		CreatedAt:  time.Now().UTC(),
-	}
-	err = repo.Create(ctx, secret2)
-	require.NoError(t, err)
-
-	// Create version 3
-	time.Sleep(time.Millisecond)
-	secret3 := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       path,
-		Version:    3,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-v3"),
-		Nonce:      []byte("nonce-v3"),
-		CreatedAt:  time.Now().UTC(),
-	}
-	err = repo.Create(ctx, secret3)
-	require.NoError(t, err)
-
-	// Delete version 3 (the latest)
-	err = repo.Delete(ctx, secret3.ID)
-	require.NoError(t, err)
-
-	// GetByPath should return version 2 (the latest non-deleted version)
-	retrievedSecret, err := repo.GetByPath(ctx, path)
-	require.NoError(t, err)
-	assert.NotNil(t, retrievedSecret)
-	assert.Equal(t, secret2.ID, retrievedSecret.ID)
-	assert.Equal(t, uint(2), retrievedSecret.Version)
-	assert.Equal(t, []byte("encrypted-v2"), retrievedSecret.Ciphertext)
-	assert.Nil(t, retrievedSecret.DeletedAt, "returned secret should not be deleted")
-}
+// Note: TestMySQLSecretRepository_GetByPath_MultipleVersions_LatestDeleted was removed
+// because Delete now deletes ALL versions by path (Issue #2), not individual versions.
 
 func TestMySQLSecretRepository_GetByPath_MultipleVersions_AllDeleted(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
@@ -1015,9 +954,9 @@ func TestMySQLSecretRepository_GetByPath_MultipleVersions_AllDeleted(t *testing.
 	require.NoError(t, err)
 
 	// Delete both versions
-	err = repo.Delete(ctx, secret1.ID)
+	err = repo.Delete(ctx, secret1.Path)
 	require.NoError(t, err)
-	err = repo.Delete(ctx, secret2.ID)
+	err = repo.Delete(ctx, secret2.Path)
 	require.NoError(t, err)
 
 	// GetByPath should return ErrNotFound when all versions are deleted
@@ -1244,7 +1183,7 @@ func TestMySQLSecretRepository_GetByPathAndVersion_DeletedSecret(t *testing.T) {
 	assert.NotNil(t, retrievedSecret)
 
 	// Delete the secret
-	err = repo.Delete(ctx, secret.ID)
+	err = repo.Delete(ctx, secret.Path)
 	require.NoError(t, err)
 
 	// GetByPathAndVersion should return ErrNotFound for deleted secrets
@@ -1254,57 +1193,8 @@ func TestMySQLSecretRepository_GetByPathAndVersion_DeletedSecret(t *testing.T) {
 	assert.ErrorIs(t, err, apperrors.ErrNotFound)
 }
 
-func TestMySQLSecretRepository_GetByPathAndVersion_MultipleVersions_OneDeleted(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	repo := NewMySQLSecretRepository(db)
-	ctx := context.Background()
-
-	_, dekID := createMySQLKekAndDek(t, db)
-
-	path := "/app/mixed-versions"
-
-	// Create versions 1, 2, and 3
-	secrets := make([]*secretsDomain.Secret, 3)
-	for i := uint(0); i < 3; i++ {
-		time.Sleep(time.Millisecond)
-		secrets[i] = &secretsDomain.Secret{
-			ID:         uuid.Must(uuid.NewV7()),
-			Path:       path,
-			Version:    i + 1,
-			DekID:      dekID,
-			Ciphertext: []byte(fmt.Sprintf("encrypted-v%d", i+1)),
-			Nonce:      []byte(fmt.Sprintf("nonce-v%d", i+1)),
-			CreatedAt:  time.Now().UTC(),
-		}
-		err := repo.Create(ctx, secrets[i])
-		require.NoError(t, err)
-	}
-
-	// Delete version 2
-	err := repo.Delete(ctx, secrets[1].ID)
-	require.NoError(t, err)
-
-	// Version 1 should still be accessible
-	v1, err := repo.GetByPathAndVersion(ctx, path, 1)
-	require.NoError(t, err)
-	assert.NotNil(t, v1)
-	assert.Equal(t, uint(1), v1.Version)
-
-	// Version 2 should not be accessible (deleted)
-	v2, err := repo.GetByPathAndVersion(ctx, path, 2)
-	assert.Error(t, err)
-	assert.Nil(t, v2)
-	assert.ErrorIs(t, err, apperrors.ErrNotFound)
-
-	// Version 3 should still be accessible
-	v3, err := repo.GetByPathAndVersion(ctx, path, 3)
-	require.NoError(t, err)
-	assert.NotNil(t, v3)
-	assert.Equal(t, uint(3), v3.Version)
-}
+// Note: TestMySQLSecretRepository_GetByPathAndVersion_MultipleVersions_OneDeleted was removed
+// because Delete now deletes ALL versions by path (Issue #2), not individual versions.
 
 func TestMySQLSecretRepository_GetByPathAndVersion_WithTransaction(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)

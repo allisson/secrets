@@ -6,10 +6,13 @@ This document contains release notes for all versions of Secrets.
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.19.0](#0190---2026-02-27)
+**Latest Release**: [v0.22.0](#0220---2026-02-28)
 
 **All Releases**:
 
+- [v0.22.0 (2026-02-28)](#0220---2026-02-28) - Metrics, Transit and Tokenization improvements
+- [v0.21.0 (2026-02-28)](#0210---2026-02-28) - CLI command structure refactor
+- [v0.20.0 (2026-02-28)](#0200---2026-02-28) - Go 1.26.0 and doc fixes
 - [v0.19.0 (2026-02-27)](#0190---2026-02-27) - ⚠️ **Breaking Change**: KMS mode required
 
 - [v0.18.0 (2026-02-27)](#0180---2026-02-27) - Repository layer refactoring
@@ -53,6 +56,53 @@ This document contains release notes for all versions of Secrets.
 - [v0.2.0 (2026-02-14)](#020---2026-02-14) - Audit log cleanup command
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
+
+---
+
+## [0.22.0] - 2026-02-28
+
+### Added
+
+- Added `MaxTransitKeyNameLength` (255 characters) constraint for transit key names to ensure database compatibility.
+- Added metrics decoration for `transit` and `tokenization` usecases for improved observability.
+- New internal testing helpers and DSN getter functions in the integration test suite.
+
+### Changed
+
+- Refactored `tokenization` domain models, repositories, and generators (Alphanumeric, Luhn, Numeric) for better maintainability and performance.
+- Reorganized `transit` domain models and added comprehensive unit tests for `TransitKey`.
+- Updated Go version to 1.26.0 in CI workflows and documentation.
+
+### Fixed
+
+- Corrected `rotate-master-key` CLI flags and documentation in scaling guides.
+- Improved error handling in `transit` cryptographic operations.
+
+---
+
+## [0.21.0] - 2026-02-28
+
+### Added
+
+- Binary releases are now officially supported as a primary installation method.
+
+### Changed
+
+- Refactored CLI command structure: individual command files moved to `cmd/app/commands/` for better maintainability.
+
+---
+
+## [0.20.0] - 2026-02-28
+
+### Added
+
+- Upgraded to Go 1.26.0
+
+### Fixed
+
+- Corrected `verify-audit-logs` CLI documentation for time range validation and output format consistency
+- Fixed documentation for master key rotation to clarify environment variable update workflow
+- Corrected outdated environment variable names and default values in scaling guides
 
 ---
 

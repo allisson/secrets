@@ -93,3 +93,16 @@ func TestGetTx_WithoutTransaction(t *testing.T) {
 	assert.NotNil(t, querier)
 	assert.Equal(t, db, querier)
 }
+func TestWithTx_Panic(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+
+	txManager := NewTxManager(db)
+	ctx := context.Background()
+
+	assert.Panics(t, func() {
+		_ = txManager.WithTx(ctx, func(ctx context.Context) error {
+			panic("something went wrong")
+		})
+	})
+}

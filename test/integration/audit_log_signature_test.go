@@ -34,12 +34,12 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		{
 			name:   "PostgreSQL",
 			driver: "postgres",
-			dsn:    testutil.PostgresTestDSN,
+			dsn:    testutil.GetPostgresTestDSN(),
 		},
 		{
 			name:   "MySQL",
 			driver: "mysql",
-			dsn:    testutil.MySQLTestDSN,
+			dsn:    testutil.GetMySQLTestDSN(),
 		},
 	}
 

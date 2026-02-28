@@ -2,11 +2,7 @@ openapi: 3.0.3
 info:
   title: Secrets API
   version: v1
-  description: >-
-    Baseline OpenAPI specification for Secrets API v1. This is intentionally concise
-    and focuses on high-traffic endpoints and common payloads. OpenAPI path templates
-    use `{param}` syntax while runtime router/metrics labels may expose `:param` or
-    wildcard forms such as `*path`.
+  description: Lightweight secrets manager for simplicity and security.
 servers:
   - url: http://localhost:8080
     description: Local development

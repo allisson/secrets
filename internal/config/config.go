@@ -12,49 +12,63 @@ import (
 
 // Config holds all application configuration.
 type Config struct {
-	// Server configuration
+	// ServerHost is the host address the server will bind to.
 	ServerHost string
+	// ServerPort is the port number the server will listen on.
 	ServerPort int
 
-	// Database configuration
-	DBDriver             string
-	DBConnectionString   string
+	// DBDriver is the database driver to use (e.g., "postgres", "mysql").
+	DBDriver string
+	// DBConnectionString is the connection string for the database.
+	DBConnectionString string
+	// DBMaxOpenConnections is the maximum number of open connections to the database.
 	DBMaxOpenConnections int
+	// DBMaxIdleConnections is the maximum number of idle connections in the database pool.
 	DBMaxIdleConnections int
-	DBConnMaxLifetime    time.Duration
+	// DBConnMaxLifetime is the maximum amount of time a connection may be reused.
+	DBConnMaxLifetime time.Duration
 
-	// Logging
+	// LogLevel is the logging level (e.g., "debug", "info", "warn", "error").
 	LogLevel string
 
-	// Auth
+	// AuthTokenExpiration is the duration after which an authentication token expires.
 	AuthTokenExpiration time.Duration
 
-	// Rate Limiting (authenticated endpoints)
-	RateLimitEnabled        bool
+	// RateLimitEnabled indicates whether rate limiting for authenticated endpoints is enabled.
+	RateLimitEnabled bool
+	// RateLimitRequestsPerSec is the number of requests allowed per second for authenticated endpoints.
 	RateLimitRequestsPerSec float64
-	RateLimitBurst          int
+	// RateLimitBurst is the burst size for authenticated endpoints rate limiting.
+	RateLimitBurst int
 
-	// Rate Limiting for Token Endpoint (IP-based, unauthenticated)
-	RateLimitTokenEnabled        bool
+	// RateLimitTokenEnabled indicates whether rate limiting for the token endpoint is enabled.
+	RateLimitTokenEnabled bool
+	// RateLimitTokenRequestsPerSec is the number of requests allowed per second for the token endpoint.
 	RateLimitTokenRequestsPerSec float64
-	RateLimitTokenBurst          int
+	// RateLimitTokenBurst is the burst size for the token endpoint rate limiting.
+	RateLimitTokenBurst int
 
-	// CORS
-	CORSEnabled      bool
+	// CORSEnabled indicates whether CORS is enabled.
+	CORSEnabled bool
+	// CORSAllowOrigins is a comma-separated list of allowed origins for CORS.
 	CORSAllowOrigins string
 
-	// Metrics
-	MetricsEnabled   bool
+	// MetricsEnabled indicates whether metrics collection is enabled.
+	MetricsEnabled bool
+	// MetricsNamespace is the namespace for the application metrics.
 	MetricsNamespace string
-	MetricsPort      int
+	// MetricsPort is the port number for the metrics server.
+	MetricsPort int
 
-	// KMS configuration
+	// KMSProvider is the KMS provider to use (e.g., "google", "aws", "azure").
 	KMSProvider string
-	KMSKeyURI   string
+	// KMSKeyURI is the URI for the master key in the KMS.
+	KMSKeyURI string
 
-	// Account Lockout
+	// LockoutMaxAttempts is the maximum number of failed login attempts before a lockout.
 	LockoutMaxAttempts int
-	LockoutDuration    time.Duration
+	// LockoutDuration is the duration for which an account is locked out after maximum attempts.
+	LockoutDuration time.Duration
 }
 
 // Load loads configuration from environment variables and .env file.

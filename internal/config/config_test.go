@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -116,10 +117,51 @@ func TestLoad(t *testing.T) {
 			envVars: map[string]string{
 				"METRICS_ENABLED":   "false",
 				"METRICS_NAMESPACE": "custom",
+				"METRICS_PORT":      "9091",
 			},
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, false, cfg.MetricsEnabled)
 				assert.Equal(t, "custom", cfg.MetricsNamespace)
+				assert.Equal(t, 9091, cfg.MetricsPort)
+			},
+		},
+		{
+			name: "load custom rate limit token configuration",
+			envVars: map[string]string{
+				"RATE_LIMIT_TOKEN_ENABLED":          "false",
+				"RATE_LIMIT_TOKEN_REQUESTS_PER_SEC": "2.5",
+				"RATE_LIMIT_TOKEN_BURST":            "5",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, false, cfg.RateLimitTokenEnabled)
+				assert.Equal(t, 2.5, cfg.RateLimitTokenRequestsPerSec)
+				assert.Equal(t, 5, cfg.RateLimitTokenBurst)
+			},
+		},
+		{
+			name: "load custom KMS configuration",
+			envVars: map[string]string{
+				"KMS_PROVIDER": "google",
+				"KMS_KEY_URI":  "gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, "google", cfg.KMSProvider)
+				assert.Equal(
+					t,
+					"gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
+					cfg.KMSKeyURI,
+				)
+			},
+		},
+		{
+			name: "load custom lockout configuration",
+			envVars: map[string]string{
+				"LOCKOUT_MAX_ATTEMPTS":     "5",
+				"LOCKOUT_DURATION_MINUTES": "15",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, 5, cfg.LockoutMaxAttempts)
+				assert.Equal(t, 15*time.Minute, cfg.LockoutDuration)
 			},
 		},
 	}
@@ -142,4 +184,63 @@ func TestLoad(t *testing.T) {
 			tt.validate(t, cfg)
 		})
 	}
+}
+
+func TestGetGinMode(t *testing.T) {
+	tests := []struct {
+		logLevel string
+		expected string
+	}{
+		{"debug", "debug"},
+		{"info", "release"},
+		{"warn", "release"},
+		{"error", "release"},
+		{"fatal", "release"},
+		{"panic", "release"},
+		{"unknown", "release"},
+		{"", "release"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.logLevel, func(t *testing.T) {
+			cfg := &Config{LogLevel: tt.logLevel}
+			assert.Equal(t, tt.expected, cfg.GetGinMode())
+		})
+	}
+}
+
+func TestLoadDotEnv(t *testing.T) {
+	// Create a temporary directory structure
+	tmpDir, err := os.MkdirTemp("", "config_test")
+	require.NoError(t, err)
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	// Create a .env file in the temp root
+	err = os.WriteFile(filepath.Join(tmpDir, ".env"), []byte("TEST_ENV_VAR=found"), 0600)
+	require.NoError(t, err)
+
+	// Create a child directory
+	childDir := filepath.Join(tmpDir, "child", "grandchild")
+	err = os.MkdirAll(childDir, 0700)
+	require.NoError(t, err)
+
+	// Change working directory to childDir
+	oldCwd, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() {
+		_ = os.Chdir(oldCwd)
+	}()
+
+	err = os.Chdir(childDir)
+	require.NoError(t, err)
+
+	// Load .env
+	loadDotEnv()
+
+	// Verify the env var was loaded
+	assert.Equal(t, "found", os.Getenv("TEST_ENV_VAR"))
+	err = os.Unsetenv("TEST_ENV_VAR")
+	require.NoError(t, err)
 }

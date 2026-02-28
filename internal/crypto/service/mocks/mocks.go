@@ -21,8 +21,6 @@ func NewMockAEAD(t interface {
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 
-	mock.EXPECT().NonceSize().Return(12).Maybe()
-
 	return mock
 }
 
@@ -67,24 +65,6 @@ func (_mock *MockAEAD) Decrypt(ciphertext []byte, nonce []byte, aad []byte) ([]b
 	return r0, r1
 }
 
-// NonceSize provides a mock function for the type MockAEAD
-func (_mock *MockAEAD) NonceSize() int {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		return 12
-	}
-
-	var r0 int
-	if returnFunc, ok := ret.Get(0).(func() int); ok {
-		r0 = returnFunc()
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	return r0
-}
-
 // MockAEAD_Decrypt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Decrypt'
 type MockAEAD_Decrypt_Call struct {
 	*mock.Call
@@ -96,33 +76,6 @@ type MockAEAD_Decrypt_Call struct {
 //   - aad []byte
 func (_e *MockAEAD_Expecter) Decrypt(ciphertext interface{}, nonce interface{}, aad interface{}) *MockAEAD_Decrypt_Call {
 	return &MockAEAD_Decrypt_Call{Call: _e.mock.On("Decrypt", ciphertext, nonce, aad)}
-}
-
-// NonceSize is a helper method to define mock.On call
-func (_e *MockAEAD_Expecter) NonceSize() *MockAEAD_NonceSize_Call {
-	return &MockAEAD_NonceSize_Call{Call: _e.mock.On("NonceSize")}
-}
-
-// MockAEAD_NonceSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NonceSize'
-type MockAEAD_NonceSize_Call struct {
-	*mock.Call
-}
-
-func (_c *MockAEAD_NonceSize_Call) Run(run func()) *MockAEAD_NonceSize_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockAEAD_NonceSize_Call) Return(_a0 int) *MockAEAD_NonceSize_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockAEAD_NonceSize_Call) RunAndReturn(run func() int) *MockAEAD_NonceSize_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 func (_c *MockAEAD_Decrypt_Call) Run(run func(ciphertext []byte, nonce []byte, aad []byte)) *MockAEAD_Decrypt_Call {
@@ -230,6 +183,50 @@ func (_c *MockAEAD_Encrypt_Call) Return(ciphertext []byte, nonce []byte, err err
 }
 
 func (_c *MockAEAD_Encrypt_Call) RunAndReturn(run func(plaintext []byte, aad []byte) ([]byte, []byte, error)) *MockAEAD_Encrypt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NonceSize provides a mock function for the type MockAEAD
+func (_mock *MockAEAD) NonceSize() int {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NonceSize")
+	}
+
+	var r0 int
+	if returnFunc, ok := ret.Get(0).(func() int); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	return r0
+}
+
+// MockAEAD_NonceSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NonceSize'
+type MockAEAD_NonceSize_Call struct {
+	*mock.Call
+}
+
+// NonceSize is a helper method to define mock.On call
+func (_e *MockAEAD_Expecter) NonceSize() *MockAEAD_NonceSize_Call {
+	return &MockAEAD_NonceSize_Call{Call: _e.mock.On("NonceSize")}
+}
+
+func (_c *MockAEAD_NonceSize_Call) Run(run func()) *MockAEAD_NonceSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAEAD_NonceSize_Call) Return(n int) *MockAEAD_NonceSize_Call {
+	_c.Call.Return(n)
+	return _c
+}
+
+func (_c *MockAEAD_NonceSize_Call) RunAndReturn(run func() int) *MockAEAD_NonceSize_Call {
 	_c.Call.Return(run)
 	return _c
 }

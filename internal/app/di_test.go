@@ -537,3 +537,136 @@ func TestContainerShutdownWithMasterKeyChain(t *testing.T) {
 	// After shutdown, the key chain should be closed (keys should be zeroed)
 	// We can't directly verify that keys are zeroed, but we verify that Shutdown ran without panic
 }
+
+// TestContainerAuthComponents verifies that auth components can be retrieved from the container.
+func TestContainerAuthComponents(t *testing.T) {
+	cfg := &config.Config{
+		LogLevel: "info",
+	}
+
+	container := NewContainer(cfg)
+
+	// SecretService
+	secretService := container.SecretService()
+	if secretService == nil {
+		t.Error("expected non-nil secret service")
+	}
+
+	// TokenService
+	tokenService := container.TokenService()
+	if tokenService == nil {
+		t.Error("expected non-nil token service")
+	}
+}
+
+// TestContainerSecretsComponents verifies that secrets components can be retrieved from the container.
+func TestContainerSecretsComponents(t *testing.T) {
+	cfg := &config.Config{
+		LogLevel: "info",
+	}
+
+	container := NewContainer(cfg)
+
+	// Since repositories need a DB, we expect errors if DB is not and cannot be connected
+	cfg.DBDriver = "invalid"
+
+	_, err := container.DekRepository()
+	if err == nil {
+		t.Error("expected error for dek repository with invalid db config")
+	}
+
+	_, err = container.SecretRepository()
+	if err == nil {
+		t.Error("expected error for secret repository with invalid db config")
+	}
+
+	_, err = container.SecretUseCase()
+	if err == nil {
+		t.Error("expected error for secret use case with invalid db config")
+	}
+
+	_, err = container.SecretHandler()
+	if err == nil {
+		t.Error("expected error for secret handler with invalid db config")
+	}
+}
+
+// TestContainerTransitComponents verifies that transit components can be retrieved from the container.
+func TestContainerTransitComponents(t *testing.T) {
+	cfg := &config.Config{
+		LogLevel: "info",
+		DBDriver: "invalid",
+	}
+
+	container := NewContainer(cfg)
+
+	_, err := container.TransitKeyRepository()
+	if err == nil {
+		t.Error("expected error for transit key repository with invalid db config")
+	}
+
+	_, err = container.TransitDekRepository()
+	if err == nil {
+		t.Error("expected error for transit dek repository with invalid db config")
+	}
+
+	_, err = container.TransitKeyUseCase()
+	if err == nil {
+		t.Error("expected error for transit key use case with invalid db config")
+	}
+
+	_, err = container.TransitKeyHandler()
+	if err == nil {
+		t.Error("expected error for transit key handler with invalid db config")
+	}
+
+	_, err = container.CryptoHandler()
+	if err == nil {
+		t.Error("expected error for crypto handler with invalid db config")
+	}
+}
+
+// TestContainerTokenizationComponents verifies that tokenization components can be retrieved from the container.
+func TestContainerTokenizationComponents(t *testing.T) {
+	cfg := &config.Config{
+		LogLevel: "info",
+		DBDriver: "invalid",
+	}
+
+	container := NewContainer(cfg)
+
+	_, err := container.TokenizationKeyRepository()
+	if err == nil {
+		t.Error("expected error for tokenization key repository with invalid db config")
+	}
+
+	_, err = container.TokenizationTokenRepository()
+	if err == nil {
+		t.Error("expected error for tokenization token repository with invalid db config")
+	}
+
+	_, err = container.TokenizationDekRepository()
+	if err == nil {
+		t.Error("expected error for tokenization dek repository with invalid db config")
+	}
+
+	_, err = container.TokenizationKeyUseCase()
+	if err == nil {
+		t.Error("expected error for tokenization key use case with invalid db config")
+	}
+
+	_, err = container.TokenizationUseCase()
+	if err == nil {
+		t.Error("expected error for tokenization use case with invalid db config")
+	}
+
+	_, err = container.TokenizationKeyHandler()
+	if err == nil {
+		t.Error("expected error for tokenization key handler with invalid db config")
+	}
+
+	_, err = container.TokenizationHandler()
+	if err == nil {
+		t.Error("expected error for tokenization handler with invalid db config")
+	}
+}

@@ -75,7 +75,9 @@ func (p *PostgreSQLKekRepository) Update(ctx context.Context, kek *cryptoDomain.
 func (p *PostgreSQLKekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT * FROM keks ORDER BY version DESC`
+	query := `SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, created_at 
+			  FROM keks 
+			  ORDER BY version DESC`
 
 	rows, err := querier.QueryContext(ctx, query)
 	if err != nil {

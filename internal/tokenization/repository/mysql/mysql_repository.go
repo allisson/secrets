@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 
 	"github.com/allisson/secrets/internal/database"
@@ -344,6 +345,11 @@ func (m *MySQLTokenRepository) Create(
 		token.RevokedAt,
 	)
 	if err != nil {
+		// Check for duplicate entry error (MySQL error number 1062)
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return apperrors.ErrConflict
+		}
 		return apperrors.Wrap(err, "failed to create token")
 	}
 	return nil

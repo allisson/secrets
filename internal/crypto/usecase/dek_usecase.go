@@ -10,6 +10,8 @@ import (
 	"github.com/allisson/secrets/internal/database"
 )
 
+// dekUseCase implements business logic for Data Encryption Key management.
+// Orchestrates DEK rewrapping during KEK rotation.
 type dekUseCase struct {
 	txManager  database.TxManager
 	dekRepo    DekRepository

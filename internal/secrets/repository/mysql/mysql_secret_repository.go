@@ -1,11 +1,12 @@
+// Package mysql implements secret persistence for MySQL databases.
+// It uses binary UUID marshalling for MySQL compatibility.
 package mysql
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -80,7 +81,7 @@ func (m *MySQLSecretRepository) GetByPath(
 		&secret.DeletedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, secretsDomain.ErrSecretNotFound
 		}
 		return nil, apperrors.Wrap(err, "failed to get secret by path")
@@ -124,7 +125,7 @@ func (m *MySQLSecretRepository) GetByPathAndVersion(
 		&secret.DeletedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, secretsDomain.ErrSecretNotFound
 		}
 		return nil, apperrors.Wrap(err, "failed to get secret by path and version")
@@ -141,29 +142,26 @@ func (m *MySQLSecretRepository) GetByPathAndVersion(
 	return &secret, nil
 }
 
-// Delete performs a soft delete on a secret by setting the DeletedAt timestamp.
-func (m *MySQLSecretRepository) Delete(ctx context.Context, secretID uuid.UUID) error {
+// Delete performs a soft delete on all versions of a secret by path.
+func (m *MySQLSecretRepository) Delete(ctx context.Context, path string) error {
 	querier := database.GetTx(ctx, m.db)
 
 	query := `UPDATE secrets 
 			  SET deleted_at = ?
-			  WHERE id = ?`
+			  WHERE path = ? AND deleted_at IS NULL`
 
-	id, err := secretID.MarshalBinary()
-	if err != nil {
-		return apperrors.Wrap(err, "failed to marshal secret id")
-	}
-
-	_, err = querier.ExecContext(
+	_, err := querier.ExecContext(
 		ctx,
 		query,
 		time.Now().UTC(),
-		id,
+		path,
 	)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete secret")
 	}
 
+	// Note: We intentionally don't check rowsAffected to make Delete idempotent.
+	// Deleting a non-existent or already-deleted secret is not an error.
 	return nil
 }
 

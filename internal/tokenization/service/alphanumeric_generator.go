@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
 const alphanumericChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -23,7 +25,7 @@ func (g *alphanumericGenerator) Generate(length int) (string, error) {
 	if length < 1 {
 		return "", errors.New("length must be at least 1")
 	}
-	if length > 255 {
+	if length > tokenizationDomain.MaxTokenLength {
 		return "", errors.New("length must not exceed 255")
 	}
 

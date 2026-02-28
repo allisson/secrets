@@ -241,10 +241,10 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 	var dsn string
 	if dbDriver == "postgres" {
 		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.PostgresTestDSN
+		dsn = testutil.GetPostgresTestDSN()
 	} else {
 		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.MySQLTestDSN
+		dsn = testutil.GetMySQLTestDSN()
 	}
 
 	// Generate KMS key URI and ephemeral master key
@@ -353,10 +353,10 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	var dsn string
 	if dbDriver == "postgres" {
 		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.PostgresTestDSN
+		dsn = testutil.GetPostgresTestDSN()
 	} else {
 		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.MySQLTestDSN
+		dsn = testutil.GetMySQLTestDSN()
 	}
 
 	// Generate KMS key URI and ephemeral master key for testing
@@ -1774,10 +1774,10 @@ func setupIntegrationTestWithLockout(
 	var dsn string
 	if dbDriver == "postgres" {
 		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.PostgresTestDSN
+		dsn = testutil.GetPostgresTestDSN()
 	} else {
 		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.MySQLTestDSN
+		dsn = testutil.GetMySQLTestDSN()
 	}
 
 	// Generate KMS key URI and ephemeral master key for testing

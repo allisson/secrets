@@ -20,9 +20,11 @@ import (
 
 // TestSecretUseCase_CreateOrUpdate tests the CreateOrUpdate method of secretUseCase.
 func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("Success_CreateNewSecret", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -132,6 +134,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 	})
 
 	t.Run("Success_UpdateExistingSecret", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -251,6 +254,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 	})
 
 	t.Run("Error_ActiveKekNotFound", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -284,6 +288,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 	})
 
 	t.Run("Error_SecretRepoGetByPathFails", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -310,6 +315,13 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		expectedError := errors.New("database error")
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockSecretRepo.EXPECT().
 			GetByPath(mock.Anything, path).
 			Return(nil, expectedError).
@@ -334,6 +346,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 	})
 
 	t.Run("Error_CreateDekFails", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -399,9 +412,11 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 
 // TestSecretUseCase_Get tests the Get method of secretUseCase.
 func TestSecretUseCase_Get(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("Success_GetAndDecryptSecret", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -498,6 +513,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 	})
 
 	t.Run("Error_SecretNotFound", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -546,6 +562,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 	})
 
 	t.Run("Error_DekNotFound", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -610,6 +627,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 	})
 
 	t.Run("Error_KekNotFound", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -684,6 +702,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 	})
 
 	t.Run("Error_DecryptionFailed", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -780,9 +799,11 @@ func TestSecretUseCase_Get(t *testing.T) {
 
 // TestSecretUseCase_Delete tests the Delete method of secretUseCase.
 func TestSecretUseCase_Delete(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("Success_DeleteSecret", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -805,26 +826,10 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		defer kekChain.Close()
 
 		path := "/app/api-key"
-		secretID := uuid.Must(uuid.NewV7())
-
-		secret := &secretsDomain.Secret{
-			ID:         secretID,
-			Path:       path,
-			Version:    1,
-			DekID:      uuid.Must(uuid.NewV7()),
-			Ciphertext: []byte("encrypted-secret"),
-			Nonce:      []byte("secret-nonce"),
-			CreatedAt:  time.Now().UTC(),
-		}
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
-			GetByPath(ctx, path).
-			Return(secret, nil).
-			Once()
-
-		mockSecretRepo.EXPECT().
-			Delete(ctx, secretID).
+			Delete(ctx, path).
 			Return(nil).
 			Once()
 
@@ -845,6 +850,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 	})
 
 	t.Run("Error_SecretNotFound", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -870,8 +876,8 @@ func TestSecretUseCase_Delete(t *testing.T) {
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
-			GetByPath(ctx, path).
-			Return(nil, secretsDomain.ErrSecretNotFound).
+			Delete(ctx, path).
+			Return(secretsDomain.ErrSecretNotFound).
 			Once()
 
 		// Execute
@@ -892,6 +898,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 	})
 
 	t.Run("Error_DeleteFails", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -914,27 +921,11 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		defer kekChain.Close()
 
 		path := "/app/api-key"
-		secretID := uuid.Must(uuid.NewV7())
 		expectedError := errors.New("database error")
-
-		secret := &secretsDomain.Secret{
-			ID:         secretID,
-			Path:       path,
-			Version:    1,
-			DekID:      uuid.Must(uuid.NewV7()),
-			Ciphertext: []byte("encrypted-secret"),
-			Nonce:      []byte("secret-nonce"),
-			CreatedAt:  time.Now().UTC(),
-		}
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
-			GetByPath(ctx, path).
-			Return(secret, nil).
-			Once()
-
-		mockSecretRepo.EXPECT().
-			Delete(ctx, secretID).
+			Delete(ctx, path).
 			Return(expectedError).
 			Once()
 
@@ -956,11 +947,405 @@ func TestSecretUseCase_Delete(t *testing.T) {
 	})
 }
 
+// TestSecretUseCase_GetByVersion tests the GetByVersion method of secretUseCase.
+func TestSecretUseCase_GetByVersion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("Success_GetSpecificVersion", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
+
+		// Create test data
+		kekID := uuid.Must(uuid.NewV7())
+		kek := &cryptoDomain.Kek{
+			ID:           kekID,
+			MasterKeyID:  "test-master-key",
+			Algorithm:    cryptoDomain.AESGCM,
+			Key:          make([]byte, 32),
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("kek-nonce"),
+			Version:      1,
+			CreatedAt:    time.Now().UTC(),
+		}
+		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
+		defer kekChain.Close()
+
+		path := "/app/api-key"
+		version := uint(2)
+		dekID := uuid.Must(uuid.NewV7())
+		ciphertext := []byte("encrypted-secret")
+		nonce := []byte("secret-nonce")
+		plaintext := []byte("secret-value")
+
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    version,
+			DekID:      dekID,
+			Ciphertext: ciphertext,
+			Nonce:      nonce,
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		dek := &cryptoDomain.Dek{
+			ID:           dekID,
+			KekID:        kekID,
+			Algorithm:    cryptoDomain.AESGCM,
+			EncryptedKey: []byte("encrypted-dek"),
+			Nonce:        []byte("dek-nonce"),
+			CreatedAt:    time.Now().UTC(),
+		}
+
+		dekKey := make([]byte, 32)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			GetByPathAndVersion(ctx, path, version).
+			Return(secret, nil).
+			Once()
+
+		mockDekRepo.EXPECT().
+			Get(ctx, dekID).
+			Return(dek, nil).
+			Once()
+
+		mockKeyManager.EXPECT().
+			DecryptDek(dek, kek).
+			Return(dekKey, nil).
+			Once()
+
+		mockAEADManager.EXPECT().
+			CreateCipher(dekKey, cryptoDomain.AESGCM).
+			Return(mockCipher, nil).
+			Once()
+
+		mockCipher.EXPECT().
+			Decrypt(ciphertext, nonce, mock.Anything).
+			Return(plaintext, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		result, err := uc.GetByVersion(ctx, path, version)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, path, result.Path)
+		assert.Equal(t, version, result.Version)
+		assert.Equal(t, plaintext, result.Plaintext)
+	})
+
+	t.Run("Error_SecretNotFound", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekID := uuid.Must(uuid.NewV7())
+		kek := &cryptoDomain.Kek{
+			ID:           kekID,
+			MasterKeyID:  "test-master-key",
+			Algorithm:    cryptoDomain.AESGCM,
+			Key:          make([]byte, 32),
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("kek-nonce"),
+			Version:      1,
+			CreatedAt:    time.Now().UTC(),
+		}
+		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
+		defer kekChain.Close()
+
+		path := "/app/nonexistent"
+		version := uint(1)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			GetByPathAndVersion(ctx, path, version).
+			Return(nil, secretsDomain.ErrSecretNotFound).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		result, err := uc.GetByVersion(ctx, path, version)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
+	})
+
+	t.Run("Error_DecryptionFailed", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
+
+		kekID := uuid.Must(uuid.NewV7())
+		kek := &cryptoDomain.Kek{
+			ID:           kekID,
+			MasterKeyID:  "test-master-key",
+			Algorithm:    cryptoDomain.AESGCM,
+			Key:          make([]byte, 32),
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("kek-nonce"),
+			Version:      1,
+			CreatedAt:    time.Now().UTC(),
+		}
+		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
+		defer kekChain.Close()
+
+		path := "/app/api-key"
+		version := uint(1)
+		dekID := uuid.Must(uuid.NewV7())
+		ciphertext := []byte("encrypted-secret")
+		nonce := []byte("secret-nonce")
+
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    version,
+			DekID:      dekID,
+			Ciphertext: ciphertext,
+			Nonce:      nonce,
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		dek := &cryptoDomain.Dek{
+			ID:           dekID,
+			KekID:        kekID,
+			Algorithm:    cryptoDomain.AESGCM,
+			EncryptedKey: []byte("encrypted-dek"),
+			Nonce:        []byte("dek-nonce"),
+			CreatedAt:    time.Now().UTC(),
+		}
+
+		dekKey := make([]byte, 32)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			GetByPathAndVersion(ctx, path, version).
+			Return(secret, nil).
+			Once()
+
+		mockDekRepo.EXPECT().
+			Get(ctx, dekID).
+			Return(dek, nil).
+			Once()
+
+		mockKeyManager.EXPECT().
+			DecryptDek(dek, kek).
+			Return(dekKey, nil).
+			Once()
+
+		mockAEADManager.EXPECT().
+			CreateCipher(dekKey, cryptoDomain.AESGCM).
+			Return(mockCipher, nil).
+			Once()
+
+		mockCipher.EXPECT().
+			Decrypt(ciphertext, nonce, mock.Anything).
+			Return(nil, errors.New("decryption failed")).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		result, err := uc.GetByVersion(ctx, path, version)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, cryptoDomain.ErrDecryptionFailed))
+	})
+
+	t.Run("Error_DekNotFound", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekID := uuid.Must(uuid.NewV7())
+		kek := &cryptoDomain.Kek{
+			ID:           kekID,
+			MasterKeyID:  "test-master-key",
+			Algorithm:    cryptoDomain.AESGCM,
+			Key:          make([]byte, 32),
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("kek-nonce"),
+			Version:      1,
+			CreatedAt:    time.Now().UTC(),
+		}
+		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
+		defer kekChain.Close()
+
+		path := "/app/api-key"
+		version := uint(1)
+		dekID := uuid.Must(uuid.NewV7())
+
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    version,
+			DekID:      dekID,
+			Ciphertext: []byte("encrypted-secret"),
+			Nonce:      []byte("secret-nonce"),
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			GetByPathAndVersion(ctx, path, version).
+			Return(secret, nil).
+			Once()
+
+		mockDekRepo.EXPECT().
+			Get(ctx, dekID).
+			Return(nil, cryptoDomain.ErrDekNotFound).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		result, err := uc.GetByVersion(ctx, path, version)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
+	})
+
+	t.Run("Error_KekNotFound", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekID := uuid.Must(uuid.NewV7())
+		kek := &cryptoDomain.Kek{
+			ID:           kekID,
+			MasterKeyID:  "test-master-key",
+			Algorithm:    cryptoDomain.AESGCM,
+			Key:          make([]byte, 32),
+			EncryptedKey: []byte("encrypted-kek"),
+			Nonce:        []byte("kek-nonce"),
+			Version:      1,
+			CreatedAt:    time.Now().UTC(),
+		}
+		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
+		defer kekChain.Close()
+
+		path := "/app/api-key"
+		version := uint(1)
+		dekID := uuid.Must(uuid.NewV7())
+		differentKekID := uuid.Must(uuid.NewV7()) // Different KEK ID
+
+		secret := &secretsDomain.Secret{
+			ID:         uuid.Must(uuid.NewV7()),
+			Path:       path,
+			Version:    version,
+			DekID:      dekID,
+			Ciphertext: []byte("encrypted-secret"),
+			Nonce:      []byte("secret-nonce"),
+			CreatedAt:  time.Now().UTC(),
+		}
+
+		dek := &cryptoDomain.Dek{
+			ID:           dekID,
+			KekID:        differentKekID, // KEK not in chain
+			Algorithm:    cryptoDomain.AESGCM,
+			EncryptedKey: []byte("encrypted-dek"),
+			Nonce:        []byte("dek-nonce"),
+			CreatedAt:    time.Now().UTC(),
+		}
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			GetByPathAndVersion(ctx, path, version).
+			Return(secret, nil).
+			Once()
+
+		mockDekRepo.EXPECT().
+			Get(ctx, dekID).
+			Return(dek, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		result, err := uc.GetByVersion(ctx, path, version)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, cryptoDomain.ErrKekNotFound))
+	})
+}
+
 // TestSecretUseCase_List tests the List method of secretUseCase.
 func TestSecretUseCase_List(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("Success_ListSecrets", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -1012,6 +1397,7 @@ func TestSecretUseCase_List(t *testing.T) {
 	})
 
 	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		t.Parallel()
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
@@ -1051,9 +1437,5 @@ func TestSecretUseCase_List(t *testing.T) {
 
 // createKekChain is a helper function to create a KEK chain for testing.
 func createKekChain(keks []*cryptoDomain.Kek) *cryptoDomain.KekChain {
-	if len(keks) == 0 {
-		// Create a dummy KEK chain with a nil active ID
-		return &cryptoDomain.KekChain{}
-	}
 	return cryptoDomain.NewKekChain(keks)
 }

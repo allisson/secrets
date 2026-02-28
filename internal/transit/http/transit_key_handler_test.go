@@ -31,7 +31,7 @@ func setupTestTransitKeyHandler(t *testing.T) (*TransitKeyHandler, *mocks.MockTr
 	mockTransitKeyUseCase := mocks.NewMockTransitKeyUseCase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	handler := NewTransitKeyHandler(mockTransitKeyUseCase, nil, logger)
+	handler := NewTransitKeyHandler(mockTransitKeyUseCase, logger)
 
 	return handler, mockTransitKeyUseCase
 }

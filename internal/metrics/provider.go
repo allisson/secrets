@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	promexporter "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 // Provider manages the OpenTelemetry meter provider and Prometheus exporter.
@@ -36,9 +38,19 @@ func NewProvider(namespace string) (*Provider, error) {
 		return nil, fmt.Errorf("failed to create prometheus exporter: %w", err)
 	}
 
-	// Create meter provider with Prometheus exporter
+	// Create meter provider with Prometheus exporter and resource attributes
+	res, err := resource.New(context.Background(),
+		resource.WithAttributes(
+			semconv.ServiceNamespace(namespace),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
 	meterProvider := metric.NewMeterProvider(
 		metric.WithReader(exporter),
+		metric.WithResource(res),
 	)
 
 	return &Provider{

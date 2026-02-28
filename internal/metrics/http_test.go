@@ -11,6 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// assertMetricContains checks that the Prometheus output contains a metric matching
+// the given name, partial label values, and value. OTel adds extra scope labels so
+// we use a regex rather than an exact string match.
+func assertMetricLine(t *testing.T, output, name, labels, value string) {
+	t.Helper()
+	// The regex allows any number of extra labels between the user-defined ones.
+	pattern := name + `\{[^}]*` + labels + `[^}]*\} ` + value
+	assert.Regexp(t, pattern, output)
+}
+
 func TestHTTPMetricsMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -32,8 +42,28 @@ func TestHTTPMetricsMiddleware(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		router.ServeHTTP(w, req)
-
 		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Verify metric
+		w = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		provider.Handler().ServeHTTP(w, req)
+
+		output := w.Body.String()
+		assertMetricLine(
+			t,
+			output,
+			`test_app_http_requests_total`,
+			`method="GET".*path="/test".*status_code="200"`,
+			`1`,
+		)
+		assertMetricLine(
+			t,
+			output,
+			`test_app_http_request_duration_seconds_count`,
+			`method="GET".*path="/test".*status_code="200"`,
+			`1`,
+		)
 	})
 
 	t.Run("Success_RecordMultipleRequests", func(t *testing.T) {
@@ -76,6 +106,34 @@ func TestHTTPMetricsMiddleware(t *testing.T) {
 		req = httptest.NewRequest(http.MethodGet, "/error", nil)
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		// Verify metrics
+		w = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		provider.Handler().ServeHTTP(w, req)
+
+		output := w.Body.String()
+		assertMetricLine(
+			t,
+			output,
+			`test_app_http_requests_total`,
+			`method="GET".*path="/test".*status_code="200"`,
+			`5`,
+		)
+		assertMetricLine(
+			t,
+			output,
+			`test_app_http_requests_total`,
+			`method="POST".*path="/test".*status_code="201"`,
+			`1`,
+		)
+		assertMetricLine(
+			t,
+			output,
+			`test_app_http_requests_total`,
+			`method="GET".*path="/error".*status_code="500"`,
+			`1`,
+		)
 	})
 
 	t.Run("Success_RecordWithPathParams", func(t *testing.T) {

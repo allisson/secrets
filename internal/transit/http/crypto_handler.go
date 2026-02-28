@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
 	"github.com/allisson/secrets/internal/transit/http/dto"
@@ -20,20 +19,17 @@ import (
 // CryptoHandler handles HTTP requests for transit encryption and decryption operations.
 // It coordinates authentication, authorization, and audit logging with the TransitKeyUseCase.
 type CryptoHandler struct {
-	transitKeyUseCase transitUseCase.TransitKeyUseCase
-	auditLogUseCase   authUseCase.AuditLogUseCase
-	logger            *slog.Logger
+	transitKeyUseCase transitUseCase.TransitKeyUseCase // Business logic for encryption and decryption operations
+	logger            *slog.Logger                     // Structured logger for request handling and error reporting
 }
 
 // NewCryptoHandler creates a new crypto handler with required dependencies.
 func NewCryptoHandler(
 	transitKeyUseCase transitUseCase.TransitKeyUseCase,
-	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 ) *CryptoHandler {
 	return &CryptoHandler{
 		transitKeyUseCase: transitKeyUseCase,
-		auditLogUseCase:   auditLogUseCase,
 		logger:            logger,
 	}
 }

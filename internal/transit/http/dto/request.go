@@ -7,6 +7,7 @@ import (
 	validation "github.com/jellydator/validation"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	customValidation "github.com/allisson/secrets/internal/validation"
 )
 
@@ -22,7 +23,7 @@ func (r *CreateTransitKeyRequest) Validate() error {
 		validation.Field(&r.Name,
 			validation.Required,
 			customValidation.NotBlank,
-			validation.Length(1, 255),
+			validation.Length(1, transitDomain.MaxTransitKeyNameLength),
 		),
 		validation.Field(&r.Algorithm,
 			validation.Required,

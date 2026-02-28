@@ -28,7 +28,7 @@ func setupTestCryptoHandler(t *testing.T) (*CryptoHandler, *mocks.MockTransitKey
 	mockTransitKeyUseCase := mocks.NewMockTransitKeyUseCase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	handler := NewCryptoHandler(mockTransitKeyUseCase, nil, logger)
+	handler := NewCryptoHandler(mockTransitKeyUseCase, logger)
 
 	return handler, mockTransitKeyUseCase
 }

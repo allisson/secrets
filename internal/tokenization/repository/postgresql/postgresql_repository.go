@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -280,6 +281,11 @@ func (p *PostgreSQLTokenRepository) Create(
 		token.RevokedAt,
 	)
 	if err != nil {
+		// Check for unique constraint violation (PostgreSQL error code 23505)
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return apperrors.ErrConflict
+		}
 		return apperrors.Wrap(err, "failed to create token")
 	}
 	return nil

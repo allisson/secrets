@@ -48,20 +48,20 @@ func (s *secretUseCase) createOrUpdateSecret(
 	value []byte,
 	kek *cryptoDomain.Kek,
 ) (*secretsDomain.Secret, error) {
-	var version uint = 1
-
-	// Check if secret already exists to determine the version
-	existingSecret, err := s.secretRepo.GetByPath(ctx, path)
-	if err != nil && !errors.Is(err, secretsDomain.ErrSecretNotFound) {
-		return nil, err
-	}
-	if existingSecret != nil {
-		version = existingSecret.Version + 1
-	}
-
 	// Execute the creation within a transaction
 	var newSecret *secretsDomain.Secret
-	err = s.txManager.WithTx(ctx, func(txCtx context.Context) error {
+	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
+		var version uint = 1
+
+		// Check if secret already exists to determine the version
+		// This must happen inside the transaction to prevent race conditions
+		existingSecret, err := s.secretRepo.GetByPath(txCtx, path)
+		if err != nil && !errors.Is(err, secretsDomain.ErrSecretNotFound) {
+			return err
+		}
+		if existingSecret != nil {
+			version = existingSecret.Version + 1
+		}
 		// Create a new DEK for this secret
 		dek, err := s.keyManager.CreateDek(kek, s.dekAlgorithm)
 		if err != nil {
@@ -186,16 +186,10 @@ func (s *secretUseCase) decryptSecret(
 	return secret, nil
 }
 
-// Delete performs a soft delete on a secret by its path.
+// Delete performs a soft delete on all versions of a secret by its path.
 func (s *secretUseCase) Delete(ctx context.Context, path string) error {
-	// Retrieve the secret by path to get its ID
-	secret, err := s.secretRepo.GetByPath(ctx, path)
-	if err != nil {
-		return err
-	}
-
-	// Perform soft delete
-	return s.secretRepo.Delete(ctx, secret.ID)
+	// Perform soft delete on all versions
+	return s.secretRepo.Delete(ctx, path)
 }
 
 // List retrieves secrets without their values, ordered by path with pagination.

@@ -4,6 +4,7 @@ package http
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -42,18 +43,28 @@ func NewSecretHandler(
 	}
 }
 
+// extractPath extracts and validates the path parameter from the request.
+// Returns the cleaned path and true if valid, empty string and false if invalid.
+func (h *SecretHandler) extractPath(c *gin.Context) (string, bool) {
+	path := strings.TrimPrefix(c.Param("path"), "/")
+	if path == "" {
+		httputil.HandleBadRequestGin(
+			c,
+			errors.New("path cannot be empty"),
+			h.logger,
+		)
+		return "", false
+	}
+	return path, true
+}
+
 // CreateOrUpdateHandler creates a new secret or updates an existing one.
 // POST /v1/secrets/*path - Requires EncryptCapability.
 // Returns 201 Created with secret metadata (excludes plaintext value for security).
 func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
-	path := strings.TrimPrefix(c.Param("path"), "/")
-	if path == "" {
-		httputil.HandleBadRequestGin(
-			c,
-			fmt.Errorf("path cannot be empty"),
-			h.logger,
-		)
+	path, ok := h.extractPath(c)
+	if !ok {
 		return
 	}
 
@@ -99,13 +110,8 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 // Returns 200 OK with plaintext value. SECURITY: Plaintext is zeroed after response.
 func (h *SecretHandler) GetHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
-	path := strings.TrimPrefix(c.Param("path"), "/")
-	if path == "" {
-		httputil.HandleBadRequestGin(
-			c,
-			fmt.Errorf("path cannot be empty"),
-			h.logger,
-		)
+	path, ok := h.extractPath(c)
+	if !ok {
 		return
 	}
 
@@ -119,7 +125,15 @@ func (h *SecretHandler) GetHandler(c *gin.Context) {
 		if parseErr != nil {
 			httputil.HandleBadRequestGin(
 				c,
-				fmt.Errorf("invalid version parameter: must be a positive integer"),
+				errors.New("invalid version parameter: must be a positive integer"),
+				h.logger,
+			)
+			return
+		}
+		if version == 0 {
+			httputil.HandleBadRequestGin(
+				c,
+				errors.New("version must be greater than 0"),
 				h.logger,
 			)
 			return
@@ -147,13 +161,8 @@ func (h *SecretHandler) GetHandler(c *gin.Context) {
 // Returns 204 No Content.
 func (h *SecretHandler) DeleteHandler(c *gin.Context) {
 	// Extract and validate path from URL parameter
-	path := strings.TrimPrefix(c.Param("path"), "/")
-	if path == "" {
-		httputil.HandleBadRequestGin(
-			c,
-			fmt.Errorf("path cannot be empty"),
-			h.logger,
-		)
+	path, ok := h.extractPath(c)
+	if !ok {
 		return
 	}
 

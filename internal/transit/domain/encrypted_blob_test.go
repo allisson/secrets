@@ -317,3 +317,97 @@ func TestEncryptedBlob_String(t *testing.T) {
 		assert.Equal(t, complexData, parsed.Ciphertext)
 	})
 }
+
+func TestEncryptedBlob_Validate(t *testing.T) {
+	t.Run("Success_ValidBlobWithCiphertext", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: []byte("encrypted data"),
+			Plaintext:  nil,
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("Success_ValidBlobWithPlaintext", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    2,
+			Ciphertext: nil,
+			Plaintext:  []byte("decrypted data"),
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("Success_ValidBlobWithBoth", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    3,
+			Ciphertext: []byte("encrypted"),
+			Plaintext:  []byte("plaintext"),
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_ZeroVersion", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    0,
+			Ciphertext: []byte("data"),
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "version must be greater than 0")
+	})
+
+	t.Run("Error_EmptyBlob", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: []byte{},
+			Plaintext:  []byte{},
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must contain either ciphertext or plaintext")
+	})
+
+	t.Run("Error_BothNil", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: nil,
+			Plaintext:  nil,
+		}
+
+		// Act
+		err := blob.Validate()
+
+		// Assert
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must contain either ciphertext or plaintext")
+	})
+}

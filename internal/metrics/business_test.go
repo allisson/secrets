@@ -2,12 +2,23 @@ package metrics
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// assertBizMetricLine checks that the Prometheus output contains a business metric
+// matching the given name, partial label pattern, and value. Uses regex to handle
+// extra OTel scope labels injected by the Prometheus exporter.
+func assertBizMetricLine(t *testing.T, output, name, labels, value string) {
+	t.Helper()
+	pattern := name + `\{[^}]*` + labels + `[^}]*\} ` + value
+	assert.Regexp(t, pattern, output)
+}
 
 func TestNewBusinessMetrics(t *testing.T) {
 	t.Run("Success_CreateBusinessMetrics", func(t *testing.T) {
@@ -124,5 +135,49 @@ func TestBusinessMetrics_Integration(t *testing.T) {
 	bm.RecordDuration(ctx, "transit", "rotate_key", 150*time.Millisecond, "success")
 
 	// Metrics should be recorded without errors
-	// Actual metric values are tested through Prometheus scraping
+	// Verify metrics in Prometheus registry
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	provider.Handler().ServeHTTP(w, req)
+
+	output := w.Body.String()
+
+	// Check operation counts
+	assertBizMetricLine(
+		t,
+		output,
+		`integration_test_operations_total`,
+		`domain="auth".*operation="create_client".*status="success"`,
+		`2`,
+	)
+	assertBizMetricLine(
+		t,
+		output,
+		`integration_test_operations_total`,
+		`domain="auth".*operation="create_client".*status="error"`,
+		`1`,
+	)
+	assertBizMetricLine(
+		t,
+		output,
+		`integration_test_operations_total`,
+		`domain="secrets".*operation="encrypt".*status="success"`,
+		`1`,
+	)
+
+	// Check durations (existence)
+	assertBizMetricLine(
+		t,
+		output,
+		`integration_test_operation_duration_seconds_count`,
+		`domain="auth".*operation="create_client".*status="success"`,
+		`2`,
+	)
+	assertBizMetricLine(
+		t,
+		output,
+		`integration_test_operation_duration_seconds_sum`,
+		`domain="auth".*operation="create_client".*status="success"`,
+		``,
+	)
 }

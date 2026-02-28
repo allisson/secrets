@@ -107,23 +107,72 @@ func (s *Server) SetupRouter(
 	router.GET("/health", s.healthHandler)
 	router.GET("/ready", s.readinessHandler)
 
-	// Create authentication middleware
-	authMiddleware := authHTTP.AuthenticationMiddleware(
-		tokenUseCase,
-		tokenService,
-		s.logger,
-	)
-
-	// Create rate limit middleware (applied to authenticated routes only)
-	var rateLimitMiddleware gin.HandlerFunc
-	if cfg.RateLimitEnabled {
-		rateLimitMiddleware = authHTTP.RateLimitMiddleware(
-			cfg.RateLimitRequestsPerSec,
-			cfg.RateLimitBurst,
+	// API v1 routes
+	v1 := router.Group("/v1")
+	{
+		// Create authentication middleware
+		authMiddleware := authHTTP.AuthenticationMiddleware(
+			tokenUseCase,
+			tokenService,
 			s.logger,
+		)
+
+		// Create rate limit middleware
+		var rateLimitMiddleware gin.HandlerFunc
+		if cfg.RateLimitEnabled {
+			rateLimitMiddleware = authHTTP.RateLimitMiddleware(
+				cfg.RateLimitRequestsPerSec,
+				cfg.RateLimitBurst,
+				s.logger,
+			)
+		}
+
+		s.registerAuthRoutes(
+			v1,
+			cfg,
+			clientHandler,
+			tokenHandler,
+			auditLogHandler,
+			tokenUseCase,
+			tokenService,
+			auditLogUseCase,
+			authMiddleware,
+			rateLimitMiddleware,
+		)
+		s.registerSecretRoutes(v1, secretHandler, authMiddleware, rateLimitMiddleware, auditLogUseCase)
+		s.registerTransitRoutes(
+			v1,
+			transitKeyHandler,
+			cryptoHandler,
+			authMiddleware,
+			rateLimitMiddleware,
+			auditLogUseCase,
+		)
+		s.registerTokenizationRoutes(
+			v1,
+			tokenizationKeyHandler,
+			tokenizationHandler,
+			authMiddleware,
+			rateLimitMiddleware,
+			auditLogUseCase,
 		)
 	}
 
+	s.router = router
+}
+
+func (s *Server) registerAuthRoutes(
+	v1 *gin.RouterGroup,
+	cfg *config.Config,
+	clientHandler *authHTTP.ClientHandler,
+	tokenHandler *authHTTP.TokenHandler,
+	auditLogHandler *authHTTP.AuditLogHandler,
+	tokenUseCase authUseCase.TokenUseCase,
+	tokenService authService.TokenService,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+	authMiddleware gin.HandlerFunc,
+	rateLimitMiddleware gin.HandlerFunc,
+) {
 	// Create token rate limit middleware (IP-based, for unauthenticated token endpoint)
 	var tokenRateLimitMiddleware gin.HandlerFunc
 	if cfg.RateLimitTokenEnabled {
@@ -134,195 +183,215 @@ func (s *Server) SetupRouter(
 		)
 	}
 
-	// API v1 routes
-	v1 := router.Group("/v1")
+	// Token issuance endpoint (no authentication required, IP-based rate limiting)
+	if tokenRateLimitMiddleware != nil {
+		v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
+	} else {
+		v1.POST("/token", tokenHandler.IssueTokenHandler)
+	}
+
+	// Client management endpoints
+	clients := v1.Group("/clients")
+	clients.Use(authMiddleware)
+	if rateLimitMiddleware != nil {
+		clients.Use(rateLimitMiddleware)
+	}
 	{
-		// Token issuance endpoint (no authentication required, IP-based rate limiting)
-		if tokenRateLimitMiddleware != nil {
-			v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
-		} else {
-			v1.POST("/token", tokenHandler.IssueTokenHandler)
-		}
+		clients.POST("",
+			authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+			clientHandler.CreateHandler,
+		)
+		clients.GET("",
+			authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+			clientHandler.ListHandler,
+		)
+		clients.GET("/:id",
+			authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+			clientHandler.GetHandler,
+		)
+		clients.PUT("/:id",
+			authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+			clientHandler.UpdateHandler,
+		)
+		clients.DELETE("/:id",
+			authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+			clientHandler.DeleteHandler,
+		)
+		clients.POST("/:id/unlock",
+			authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+			clientHandler.UnlockHandler,
+		)
+	}
 
-		// Client management endpoints
-		clients := v1.Group("/clients")
-		clients.Use(authMiddleware) // All client routes require authentication
-		if rateLimitMiddleware != nil {
-			clients.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
-		}
+	// Audit log endpoints
+	auditLogs := v1.Group("/audit-logs")
+	auditLogs.Use(authMiddleware)
+	if rateLimitMiddleware != nil {
+		auditLogs.Use(rateLimitMiddleware)
+	}
+	{
+		auditLogs.GET("",
+			authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+			auditLogHandler.ListHandler,
+		)
+	}
+}
+
+func (s *Server) registerSecretRoutes(
+	v1 *gin.RouterGroup,
+	secretHandler *secretsHTTP.SecretHandler,
+	authMiddleware gin.HandlerFunc,
+	rateLimitMiddleware gin.HandlerFunc,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+) {
+	// Secret management endpoints
+	secrets := v1.Group("/secrets")
+	secrets.Use(authMiddleware)
+	if rateLimitMiddleware != nil {
+		secrets.Use(rateLimitMiddleware)
+	}
+	{
+		secrets.GET("",
+			authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+			secretHandler.ListHandler,
+		)
+		secrets.POST("/*path",
+			authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+			secretHandler.CreateOrUpdateHandler,
+		)
+		secrets.GET("/*path",
+			authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+			secretHandler.GetHandler,
+		)
+		secrets.DELETE("/*path",
+			authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+			secretHandler.DeleteHandler,
+		)
+	}
+}
+
+func (s *Server) registerTransitRoutes(
+	v1 *gin.RouterGroup,
+	transitKeyHandler *transitHTTP.TransitKeyHandler,
+	cryptoHandler *transitHTTP.CryptoHandler,
+	authMiddleware gin.HandlerFunc,
+	rateLimitMiddleware gin.HandlerFunc,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+) {
+	// Transit encryption endpoints
+	transit := v1.Group("/transit")
+	transit.Use(authMiddleware)
+	if rateLimitMiddleware != nil {
+		transit.Use(rateLimitMiddleware)
+	}
+	{
+		keys := transit.Group("/keys")
 		{
-			clients.POST("",
-				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
-				clientHandler.CreateHandler,
-			)
-			clients.GET("",
+			// List transit keys
+			keys.GET("",
 				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-				clientHandler.ListHandler,
+				transitKeyHandler.ListHandler,
 			)
-			clients.GET("/:id",
-				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-				clientHandler.GetHandler,
-			)
-			clients.PUT("/:id",
+
+			// Create new transit key
+			keys.POST("",
 				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
-				clientHandler.UpdateHandler,
+				transitKeyHandler.CreateHandler,
 			)
-			clients.DELETE("/:id",
+
+			// Rotate transit key to new version
+			keys.POST("/:name/rotate",
+				authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
+				transitKeyHandler.RotateHandler,
+			)
+
+			// Delete transit key
+			keys.DELETE("/:id",
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
-				clientHandler.DeleteHandler,
+				transitKeyHandler.DeleteHandler,
 			)
-			clients.POST("/:id/unlock",
-				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
-				clientHandler.UnlockHandler,
-			)
-		}
 
-		// Audit log endpoints
-		auditLogs := v1.Group("/audit-logs")
-		auditLogs.Use(authMiddleware) // All audit log routes require authentication
-		if rateLimitMiddleware != nil {
-			auditLogs.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
-		}
-		{
-			auditLogs.GET("",
-				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-				auditLogHandler.ListHandler,
-			)
-		}
-
-		// Secret management endpoints
-		secrets := v1.Group("/secrets")
-		secrets.Use(authMiddleware) // All secret routes require authentication
-		if rateLimitMiddleware != nil {
-			secrets.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
-		}
-		{
-			secrets.GET("",
-				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-				secretHandler.ListHandler,
-			)
-			secrets.POST("/*path",
+			// Encrypt plaintext with transit key
+			keys.POST("/:name/encrypt",
 				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
-				secretHandler.CreateOrUpdateHandler,
+				cryptoHandler.EncryptHandler,
 			)
-			secrets.GET("/*path",
+
+			// Decrypt ciphertext with transit key
+			keys.POST("/:name/decrypt",
 				authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
-				secretHandler.GetHandler,
-			)
-			secrets.DELETE("/*path",
-				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
-				secretHandler.DeleteHandler,
-			)
-		}
-
-		// Transit encryption endpoints
-		transit := v1.Group("/transit")
-		transit.Use(authMiddleware) // All transit routes require authentication
-		if rateLimitMiddleware != nil {
-			transit.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
-		}
-		{
-			keys := transit.Group("/keys")
-			{
-				// List transit keys
-				keys.GET("",
-					authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-					transitKeyHandler.ListHandler,
-				)
-
-				// Create new transit key
-				keys.POST("",
-					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
-					transitKeyHandler.CreateHandler,
-				)
-
-				// Rotate transit key to new version
-				keys.POST("/:name/rotate",
-					authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
-					transitKeyHandler.RotateHandler,
-				)
-
-				// Delete transit key
-				keys.DELETE("/:id",
-					authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
-					transitKeyHandler.DeleteHandler,
-				)
-
-				// Encrypt plaintext with transit key
-				keys.POST("/:name/encrypt",
-					authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
-					cryptoHandler.EncryptHandler,
-				)
-
-				// Decrypt ciphertext with transit key
-				keys.POST("/:name/decrypt",
-					authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
-					cryptoHandler.DecryptHandler,
-				)
-			}
-		}
-
-		// Tokenization endpoints
-		tokenization := v1.Group("/tokenization")
-		tokenization.Use(authMiddleware) // All tokenization routes require authentication
-		if rateLimitMiddleware != nil {
-			tokenization.Use(rateLimitMiddleware) // Apply rate limiting to authenticated clients
-		}
-		{
-			keys := tokenization.Group("/keys")
-			{
-				// List tokenization keys
-				keys.GET("",
-					authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-					tokenizationKeyHandler.ListHandler,
-				)
-
-				// Create new tokenization key
-				keys.POST("",
-					authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
-					tokenizationKeyHandler.CreateHandler,
-				)
-
-				// Rotate tokenization key to new version
-				keys.POST("/:name/rotate",
-					authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
-					tokenizationKeyHandler.RotateHandler,
-				)
-
-				// Delete tokenization key
-				keys.DELETE("/:id",
-					authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
-					tokenizationKeyHandler.DeleteHandler,
-				)
-
-				// Tokenize plaintext with tokenization key
-				keys.POST("/:name/tokenize",
-					authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
-					tokenizationHandler.TokenizeHandler,
-				)
-			}
-
-			// Detokenize token to retrieve plaintext
-			tokenization.POST("/detokenize",
-				authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
-				tokenizationHandler.DetokenizeHandler,
-			)
-
-			// Validate token existence and validity
-			tokenization.POST("/validate",
-				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
-				tokenizationHandler.ValidateHandler,
-			)
-
-			// Revoke token to prevent further detokenization
-			tokenization.POST("/revoke",
-				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
-				tokenizationHandler.RevokeHandler,
+				cryptoHandler.DecryptHandler,
 			)
 		}
 	}
+}
 
-	s.router = router
+func (s *Server) registerTokenizationRoutes(
+	v1 *gin.RouterGroup,
+	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler,
+	tokenizationHandler *tokenizationHTTP.TokenizationHandler,
+	authMiddleware gin.HandlerFunc,
+	rateLimitMiddleware gin.HandlerFunc,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+) {
+	// Tokenization endpoints
+	tokenization := v1.Group("/tokenization")
+	tokenization.Use(authMiddleware)
+	if rateLimitMiddleware != nil {
+		tokenization.Use(rateLimitMiddleware)
+	}
+	{
+		keys := tokenization.Group("/keys")
+		{
+			// List tokenization keys
+			keys.GET("",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				tokenizationKeyHandler.ListHandler,
+			)
+
+			// Create new tokenization key
+			keys.POST("",
+				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
+				tokenizationKeyHandler.CreateHandler,
+			)
+
+			// Rotate tokenization key to new version
+			keys.POST("/:name/rotate",
+				authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
+				tokenizationKeyHandler.RotateHandler,
+			)
+
+			// Delete tokenization key
+			keys.DELETE("/:id",
+				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+				tokenizationKeyHandler.DeleteHandler,
+			)
+
+			// Tokenize plaintext with tokenization key
+			keys.POST("/:name/tokenize",
+				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+				tokenizationHandler.TokenizeHandler,
+			)
+		}
+
+		// Detokenize token to retrieve plaintext
+		tokenization.POST("/detokenize",
+			authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+			tokenizationHandler.DetokenizeHandler,
+		)
+
+		// Validate token existence and validity
+		tokenization.POST("/validate",
+			authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+			tokenizationHandler.ValidateHandler,
+		)
+
+		// Revoke token to prevent further detokenization
+		tokenization.POST("/revoke",
+			authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+			tokenizationHandler.RevokeHandler,
+		)
+	}
 }
 
 // GetHandler returns the http.Handler for testing purposes.
@@ -371,7 +440,7 @@ type readinessResponse struct {
 // readinessHandler returns a simple readiness check response.
 func (s *Server) readinessHandler(c *gin.Context) {
 	v, _, _ := s.reqGroup.Do("readiness", func() (interface{}, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 
 		dbStatus := "ok"

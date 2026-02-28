@@ -15,10 +15,15 @@ type Token struct {
 	ValueHash         *string
 	Ciphertext        []byte
 	Nonce             []byte
-	Metadata          map[string]any
-	CreatedAt         time.Time
-	ExpiresAt         *time.Time
-	RevokedAt         *time.Time
+	// Metadata stores optional unencrypted display data (e.g., last 4 digits, expiry date).
+	// Stored as JSON in the database with recommended maximum size of 1KB.
+	// Supported types: string, int, float64, bool, nil, and nested maps/slices of these types.
+	// Example: map[string]any{"last4": "1234", "exp": "12/25", "brand": "Visa"}
+	// WARNING: Do not store sensitive data in metadata as it is NOT encrypted.
+	Metadata  map[string]any
+	CreatedAt time.Time
+	ExpiresAt *time.Time
+	RevokedAt *time.Time
 }
 
 // IsExpired checks if the token has expired. All time comparisons use UTC.

@@ -16,6 +16,22 @@ const (
 	FormatAlphanumeric   FormatType = "alphanumeric"
 )
 
+// Token length constraints
+const (
+	// MaxTokenLength is the maximum allowed token length for format-preserving tokens.
+	// This limit applies to Numeric, Luhn-Preserving, and Alphanumeric formats.
+	MaxTokenLength = 255
+
+	// MinLuhnTokenLength is the minimum token length required for Luhn algorithm validation.
+	// Luhn check requires at least 2 digits (payload + check digit).
+	MinLuhnTokenLength = 2
+
+	// MaxPlaintextSize is the maximum allowed plaintext size for tokenization (64 KB).
+	// This limit prevents DoS attacks from extremely large inputs and ensures reasonable
+	// encryption performance.
+	MaxPlaintextSize = 65536 // 64 KB
+)
+
 // Validate checks if the format type is valid.
 func (f FormatType) Validate() error {
 	switch f {
