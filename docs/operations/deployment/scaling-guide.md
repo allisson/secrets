@@ -1,7 +1,7 @@
 # 📈 Application Scaling Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: Platform engineers, SRE teams, DevOps engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -129,7 +129,7 @@ Scale when you observe:
 ```bash
 aws ec2 create-launch-template \
   --launch-template-name secrets-app \
-  --version-description "v0.10.0" \
+  --version-description "v0.19.0" \
   --launch-template-data '{
     "ImageId": "ami-0c55b159cbfafe1f0",
     "InstanceType": "t3.medium",
@@ -340,8 +340,8 @@ GOGC=200
 
 ```bash
 # Database connection pool (see Database Scaling Guide)
-DB_MAX_OPEN_CONNS=50
-DB_MAX_IDLE_CONNS=25
+DB_MAX_OPEN_CONNECTIONS=50
+DB_MAX_IDLE_CONNECTIONS=25
 ```
 
 ### Load Testing

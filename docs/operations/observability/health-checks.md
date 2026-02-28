@@ -1,7 +1,7 @@
 # 🏥 Health Check Endpoints
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: Platform engineers, SRE teams, monitoring specialists
 
 This guide covers the health check endpoints exposed by Secrets for container orchestration, monitoring, and operational readiness validation.
@@ -532,7 +532,7 @@ spec:
         autoscaling.knative.dev/maxScale: "10"
     spec:
       containers:
-        - image: gcr.io/my-project/secrets:v0.10.0
+        - image: gcr.io/my-project/secrets:v0.19.0
 
           ports:
             - containerPort: 8080
@@ -578,7 +578,7 @@ spec:
 
 ```bash
 gcloud run deploy secrets-api \
-  --image gcr.io/my-project/secrets:v0.10.0 \
+  --image gcr.io/my-project/secrets:v0.19.0 \
   --platform managed \
   --region us-central1 \
   --port 8080 \

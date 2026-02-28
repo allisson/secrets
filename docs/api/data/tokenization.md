@@ -1,6 +1,6 @@
 # 🎫 Tokenization API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 The Tokenization API provides format-preserving token generation for sensitive values,
@@ -81,7 +81,8 @@ Example response (`200 OK`):
       "version": 1,
       "format_type": "luhn-preserving",
       "is_deterministic": true,
-      "created_at": "2026-02-18T10:30:00Z"
+      "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
+      "created_at": "2026-02-27T10:30:00Z"
     }
   ]
 }
@@ -121,7 +122,8 @@ Example response (`201 Created`):
   "version": 1,
   "format_type": "luhn-preserving",
   "is_deterministic": true,
-  "created_at": "2026-02-18T10:30:00Z"
+  "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
+  "created_at": "2026-02-27T10:30:00Z"
 }
 ```
 
@@ -149,7 +151,8 @@ Example response (`201 Created`):
   "version": 2,
   "format_type": "luhn-preserving",
   "is_deterministic": true,
-  "created_at": "2026-02-18T11:00:00Z"
+  "dek_id": "0194f4a6-8901-7def-abc0-123456789df0",
+  "created_at": "2026-02-27T11:00:00Z"
 }
 ```
 
@@ -201,8 +204,8 @@ Example response (`201 Created`):
     "last_four": "0366",
     "card_type": "visa"
   },
-  "created_at": "2026-02-18T10:35:00Z",
-  "expires_at": "2026-02-18T11:35:00Z"
+  "created_at": "2026-02-27T10:35:00Z",
+  "expires_at": "2026-02-27T11:35:00Z"
 }
 ```
 

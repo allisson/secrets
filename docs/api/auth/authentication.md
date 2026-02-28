@@ -1,6 +1,6 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -29,7 +29,7 @@ Response (`201 Created`):
 ```json
 {
   "token": "tok_abcdef1234567890...",
-  "expires_at": "2026-02-13T20:13:45Z"
+  "expires_at": "2026-02-27T20:13:45Z"
 }
 ```
 

@@ -1,6 +1,6 @@
 # 📦 Secrets API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Secrets are versioned by path and encrypted with envelope encryption.
@@ -47,28 +47,37 @@ Example response (`201 Created`):
 ```json
 {
   "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
-  "path": "/app/prod/database-password",
+  "path": "app/prod/database-password",
   "version": 3,
-  "created_at": "2026-02-14T18:22:00Z"
+  "created_at": "2026-02-27T18:22:00Z"
 }
 ```
 
 ## Read Secret
 
 ```bash
+# Read latest version
 curl http://localhost:8080/v1/secrets/app/prod/database-password \
   -H "Authorization: Bearer <token>"
+
+# Read specific version
+curl "http://localhost:8080/v1/secrets/app/prod/database-password?version=1" \
+  -H "Authorization: Bearer <token>"
 ```
+
+Query parameters:
+
+- `version`: Optional. Specific secret version to retrieve. If omitted, the latest version is returned.
 
 Example response (`200 OK`):
 
 ```json
 {
   "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
-  "path": "/app/prod/database-password",
+  "path": "app/prod/database-password",
   "version": 3,
   "value": "bXktc3VwZXItc2VjcmV0LXBhc3N3b3Jk",
-  "created_at": "2026-02-14T18:22:00Z"
+  "created_at": "2026-02-27T18:22:00Z"
 }
 ```
 
@@ -91,9 +100,9 @@ Example response (`200 OK`):
   "data": [
     {
       "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
-      "path": "/app/prod/database-password",
+      "path": "app/prod/database-password",
       "version": 3,
-      "created_at": "2026-02-14T18:22:00Z"
+      "created_at": "2026-02-27T18:22:00Z"
     }
   ]
 }

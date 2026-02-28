@@ -1,6 +1,6 @@
 # 🧩 API Fundamentals
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 This page consolidates foundational API concepts for quick reference: error triage, capability mapping, rate limiting, and versioning policy.
@@ -51,10 +51,30 @@ First place to look:
 
 ### Capability mismatch quick map (`403`)
 
+- `POST /v1/clients` requires `write`
+- `GET /v1/clients` requires `read`
+- `GET /v1/clients/:id` requires `read`
+- `PUT /v1/clients/:id` requires `write`
+- `DELETE /v1/clients/:id` requires `delete`
+- `POST /v1/clients/:id/unlock` requires `write`
+- `GET /v1/secrets` requires `read`
 - `GET /v1/secrets/*path` requires `decrypt`
 - `POST /v1/secrets/*path` requires `encrypt`
+- `DELETE /v1/secrets/*path` requires `delete`
+- `GET /v1/transit/keys` requires `read`
+- `POST /v1/transit/keys` requires `write`
 - `POST /v1/transit/keys/:name/rotate` requires `rotate`
+- `DELETE /v1/transit/keys/:id` requires `delete`
+- `POST /v1/transit/keys/:name/encrypt` requires `encrypt`
+- `POST /v1/transit/keys/:name/decrypt` requires `decrypt`
+- `GET /v1/tokenization/keys` requires `read`
+- `POST /v1/tokenization/keys` requires `write`
+- `POST /v1/tokenization/keys/:name/rotate` requires `rotate`
+- `DELETE /v1/tokenization/keys/:id` requires `delete`
+- `POST /v1/tokenization/keys/:name/tokenize` requires `encrypt`
 - `POST /v1/tokenization/detokenize` requires `decrypt`
+- `POST /v1/tokenization/validate` requires `read`
+- `POST /v1/tokenization/revoke` requires `delete`
 - `GET /v1/audit-logs` requires `read`
 
 ---
@@ -84,13 +104,16 @@ This section is the canonical capability-to-endpoint reference used by API docs 
 | `POST /v1/clients/:id/unlock` | `write` |
 | `GET /v1/audit-logs` | `read` |
 | `POST /v1/secrets/*path` | `encrypt` |
+| `GET /v1/secrets` | `read` |
 | `GET /v1/secrets/*path` | `decrypt` |
 | `DELETE /v1/secrets/*path` | `delete` |
+| `GET /v1/transit/keys` | `read` |
 | `POST /v1/transit/keys` | `write` |
 | `POST /v1/transit/keys/:name/rotate` | `rotate` |
 | `DELETE /v1/transit/keys/:id` | `delete` |
 | `POST /v1/transit/keys/:name/encrypt` | `encrypt` |
 | `POST /v1/transit/keys/:name/decrypt` | `decrypt` |
+| `GET /v1/tokenization/keys` | `read` |
 | `POST /v1/tokenization/keys` | `write` |
 | `POST /v1/tokenization/keys/:name/rotate` | `rotate` |
 | `DELETE /v1/tokenization/keys/:id` | `delete` |
@@ -236,7 +259,7 @@ Required process for breaking changes:
 1. Update `docs/openapi.yaml`
 2. Update affected API docs and examples
 3. Add migration notes in `docs/operations/troubleshooting/index.md` or relevant runbook
-4. Add explicit entry in `releases/RELEASES.md`
+4. Add explicit entry in `docs/releases/RELEASES.md`
 
 ### Non-Breaking Changes
 

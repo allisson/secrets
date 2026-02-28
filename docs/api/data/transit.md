@@ -1,6 +1,6 @@
 # 🚄 Transit API
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Transit API encrypts/decrypts data without storing your application payload.
@@ -54,7 +54,7 @@ Wildcard matcher semantics reference:
 | --- | --- | --- |
 | `GET /v1/transit/keys` | `200` | `401`, `403`, `422`, `429` |
 | `POST /v1/transit/keys` | `201` | `401`, `403`, `409`, `422`, `429` |
-| `POST /v1/transit/keys/:name/rotate` | `200` | `401`, `403`, `404`, `422`, `429` |
+| `POST /v1/transit/keys/:name/rotate` | `201` | `401`, `403`, `404`, `422`, `429` |
 | `POST /v1/transit/keys/:name/encrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `POST /v1/transit/keys/:name/decrypt` | `200` | `401`, `403`, `404`, `422`, `429` |
 | `DELETE /v1/transit/keys/:id` | `204` | `401`, `403`, `404`, `422`, `429` |
@@ -78,7 +78,7 @@ Example response (`200 OK`):
       "name": "payment-data",
       "version": 2,
       "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
-      "created_at": "2026-02-15T10:30:00Z"
+      "created_at": "2026-02-27T10:30:00Z"
     }
   ]
 }
@@ -110,7 +110,7 @@ Example response (`201 Created`):
   "name": "payment-data",
   "version": 1,
   "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
-  "created_at": "2026-02-14T18:30:00Z"
+  "created_at": "2026-02-27T18:30:00Z"
 }
 ```
 

@@ -45,7 +45,7 @@ func (h *TransitKeyHandler) CreateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -58,7 +58,7 @@ func (h *TransitKeyHandler) CreateHandler(c *gin.Context) {
 	// Parse algorithm
 	alg, err := dto.ParseAlgorithm(req.Algorithm)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -76,12 +76,12 @@ func (h *TransitKeyHandler) CreateHandler(c *gin.Context) {
 
 // RotateHandler creates a new version of an existing transit key.
 // POST /v1/transit/keys/:name/rotate - Requires RotateCapability.
-// Returns 200 OK with new version metadata.
+// Returns 201 Created with new version metadata.
 func (h *TransitKeyHandler) RotateHandler(c *gin.Context) {
 	// Extract and validate name from URL parameter
 	name := c.Param("name")
 	if name == "" {
-		httputil.HandleValidationErrorGin(
+		httputil.HandleBadRequestGin(
 			c,
 			fmt.Errorf("transit key name cannot be empty"),
 			h.logger,
@@ -93,7 +93,7 @@ func (h *TransitKeyHandler) RotateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *TransitKeyHandler) RotateHandler(c *gin.Context) {
 	// Parse algorithm
 	alg, err := dto.ParseAlgorithm(req.Algorithm)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *TransitKeyHandler) RotateHandler(c *gin.Context) {
 
 	// Return response
 	response := dto.MapTransitKeyToResponse(transitKey)
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusCreated, response)
 }
 
 // DeleteHandler soft deletes a transit key by ID.
@@ -129,7 +129,7 @@ func (h *TransitKeyHandler) DeleteHandler(c *gin.Context) {
 	// Parse and validate UUID
 	transitKeyID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid transit key ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -152,7 +152,7 @@ func (h *TransitKeyHandler) ListHandler(c *gin.Context) {
 	// Parse offset and limit query parameters
 	offset, limit, err := httputil.ParsePagination(c)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

@@ -1,6 +1,6 @@
 # 🧱 API Response Shapes
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 > Applies to: API v1
 
 Use these representative response schemas as a stable reference across endpoint docs.
@@ -12,7 +12,7 @@ Token issuance:
 ```json
 {
   "token": "tok_...",
-  "expires_at": "2026-02-14T20:13:45Z"
+  "expires_at": "2026-02-27T20:13:45Z"
 }
 ```
 
@@ -30,9 +30,9 @@ Secret write:
 ```json
 {
   "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
-  "path": "/app/prod/database-password",
+  "path": "app/prod/database-password",
   "version": 3,
-  "created_at": "2026-02-14T18:22:00Z"
+  "created_at": "2026-02-27T18:22:00Z"
 }
 ```
 
@@ -41,10 +41,10 @@ Secret read:
 ```json
 {
   "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
-  "path": "/app/prod/database-password",
+  "path": "app/prod/database-password",
   "version": 3,
   "value": "YjY0LXBsYWludGV4dA==",
-  "created_at": "2026-02-14T18:22:00Z"
+  "created_at": "2026-02-27T18:22:00Z"
 }
 ```
 
@@ -75,7 +75,8 @@ Tokenization key create:
   "version": 1,
   "format_type": "luhn-preserving",
   "is_deterministic": true,
-  "created_at": "2026-02-18T10:30:00Z"
+  "dek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48dc",
+  "created_at": "2026-02-27T10:30:00Z"
 }
 ```
 
@@ -87,8 +88,8 @@ Tokenize:
   "metadata": {
     "last_four": "0366"
   },
-  "created_at": "2026-02-18T10:35:00Z",
-  "expires_at": "2026-02-18T11:35:00Z"
+  "created_at": "2026-02-27T10:35:00Z",
+  "expires_at": "2026-02-27T11:35:00Z"
 }
 ```
 
@@ -130,7 +131,10 @@ Audit log list:
         "ip": "192.168.1.10",
         "user_agent": "curl/8.7.1"
       },
-      "created_at": "2026-02-14T18:35:12Z"
+      "signature": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODkwYQ==",
+      "kek_id": "0194f4a6-7ec7-78e6-9fe7-5ca35fef48db",
+      "is_signed": true,
+      "created_at": "2026-02-27T18:35:12Z"
     }
   ]
 }

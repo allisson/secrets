@@ -29,8 +29,10 @@ services:
     environment:
       DB_DRIVER: postgres
       DB_CONNECTION_STRING: postgresql://secrets:secrets@postgres:5432/secrets?sslmode=disable
-      MASTER_KEY_PROVIDER: plaintext
-      MASTER_KEY_PLAINTEXT: cGxlYXNlQ2hhbmdlVGhpc1RvQVJhbmRvbTMyQnl0ZUtleQo=
+      KMS_PROVIDER: localsecrets
+      KMS_KEY_URI: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+      MASTER_KEYS: default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP/7SsvuVjVvq1olzRBudplPoXRkquRWUXQ+CnEXi15LACqXuPGszLS+anJUrdn04
+      ACTIVE_MASTER_KEY_ID: default
       LOG_LEVEL: info
       AUDIT_LOG_ENABLED: "true"
     ports:

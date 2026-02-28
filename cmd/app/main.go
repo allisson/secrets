@@ -14,7 +14,7 @@ import (
 
 // Build-time version information (injected via ldflags during build).
 var (
-	version   = "v0.19.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
+	version   = "v0.20.0" // Semantic version with "v" prefix (e.g., "v0.12.0")
 	buildDate = "unknown" // ISO 8601 build timestamp
 	commitSHA = "unknown" // Git commit SHA
 )
@@ -57,14 +57,16 @@ func main() {
 						Usage:   "Master key ID (e.g., prod-master-key-2025)",
 					},
 					&cli.StringFlag{
-						Name:  "kms-provider",
-						Value: "",
-						Usage: "KMS provider (localsecrets, gcpkms, awskms, azurekeyvault, hashivault)",
+						Name:     "kms-provider",
+						Value:    "",
+						Required: true,
+						Usage:    "KMS provider (localsecrets, gcpkms, awskms, azurekeyvault, hashivault)",
 					},
 					&cli.StringFlag{
-						Name:  "kms-key-uri",
-						Value: "",
-						Usage: "KMS key URI (e.g., base64key://, gcpkms://projects/.../cryptoKeys/...)",
+						Name:     "kms-key-uri",
+						Value:    "",
+						Required: true,
+						Usage:    "KMS key URI (e.g., base64key://, gcpkms://projects/.../cryptoKeys/...)",
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -85,9 +87,26 @@ func main() {
 						Value:   "",
 						Usage:   "New master key ID (e.g., prod-master-key-2026)",
 					},
+					&cli.StringFlag{
+						Name:     "kms-provider",
+						Value:    "",
+						Required: true,
+						Usage:    "KMS provider (localsecrets, gcpkms, awskms, azurekeyvault, hashivault)",
+					},
+					&cli.StringFlag{
+						Name:     "kms-key-uri",
+						Value:    "",
+						Required: true,
+						Usage:    "KMS key URI (e.g., base64key://, gcpkms://projects/.../cryptoKeys/...)",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return commands.RunRotateMasterKey(ctx, cmd.String("id"))
+					return commands.RunRotateMasterKey(
+						ctx,
+						cmd.String("id"),
+						cmd.String("kms-provider"),
+						cmd.String("kms-key-uri"),
+					)
 				},
 			},
 			{

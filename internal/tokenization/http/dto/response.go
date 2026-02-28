@@ -14,6 +14,7 @@ type TokenizationKeyResponse struct {
 	Version         uint      `json:"version"`
 	FormatType      string    `json:"format_type"`
 	IsDeterministic bool      `json:"is_deterministic"`
+	DekID           string    `json:"dek_id"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
@@ -25,6 +26,7 @@ func MapTokenizationKeyToResponse(key *tokenizationDomain.TokenizationKey) Token
 		Version:         key.Version,
 		FormatType:      string(key.FormatType),
 		IsDeterministic: key.IsDeterministic,
+		DekID:           key.DekID.String(),
 		CreatedAt:       key.CreatedAt,
 	}
 }

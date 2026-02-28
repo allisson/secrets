@@ -1,18 +1,18 @@
 # 🚀 Release Notes
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 This document contains release notes for all versions of Secrets.
 
 ## 📑 Quick Navigation
 
-**Latest Release**: [v0.19.0](#0190---2026-02-26)
+**Latest Release**: [v0.19.0](#0190---2026-02-27)
 
 **All Releases**:
 
-- [v0.19.0 (2026-02-26)](#0190---2026-02-26) - ⚠️ **Breaking Change**: KMS mode required
+- [v0.19.0 (2026-02-27)](#0190---2026-02-27) - ⚠️ **Breaking Change**: KMS mode required
 
-- [v0.18.0 (2026-02-26)](#0180---2026-02-26) - Repository layer refactoring
+- [v0.18.0 (2026-02-27)](#0180---2026-02-27) - Repository layer refactoring
 
 - [v0.17.0 (2026-02-25)](#0170---2026-02-25) - Pagination logic standardization
 
@@ -40,23 +40,23 @@ This document contains release notes for all versions of Secrets.
 
 - [v0.6.0 (2026-02-19)](#060---2026-02-19) - KMS provider support
 
-- [v0.5.1 (2026-02-19)](#051---2026-02-19) - Audit log cleanup command
+- [v0.5.1 (2026-02-19)](#051---2026-02-19) - Master key loading fix
 
-- [v0.5.0 (2026-02-19)](#050---2026-02-19) - Tokenization and CORS
+- [v0.5.0 (2026-02-19)](#050---2026-02-19) - Rate limiting and CORS
 
-- [v0.4.1 (2026-02-19)](#041---2026-02-19) - Pagination bug fix
+- [v0.4.1 (2026-02-19)](#041---2026-02-19) - Policy matcher wildcards
 
-- [v0.4.0 (2026-02-18)](#040---2026-02-18) - Audit logging
+- [v0.4.0 (2026-02-18)](#040---2026-02-18) - Tokenization API
 
-- [v0.3.0 (2026-02-16)](#030---2026-02-16) - Client management
+- [v0.3.0 (2026-02-16)](#030---2026-02-16) - OpenTelemetry metrics
 
-- [v0.2.0 (2026-02-14)](#020---2026-02-14) - Transit encryption
+- [v0.2.0 (2026-02-14)](#020---2026-02-14) - Audit log cleanup command
 
 - [v0.1.0 (2026-02-14)](#010---2026-02-14) - Initial release
 
 ---
 
-## [0.19.0] - 2026-02-26
+## [0.19.0] - 2026-02-27
 
 ### ⚠️ BREAKING CHANGES
 
@@ -134,7 +134,7 @@ ACTIVE_MASTER_KEY_ID=default
 
 ---
 
-## [0.18.0] - 2026-02-26
+## [0.18.0] - 2026-02-27
 
 ### Changed
 

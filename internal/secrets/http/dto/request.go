@@ -10,7 +10,7 @@ import (
 // CreateOrUpdateSecretRequest contains the parameters for creating or updating a secret.
 // The path is extracted from the URL parameter, not the request body.
 type CreateOrUpdateSecretRequest struct {
-	Value string `json:"value" binding:"required"` // base64-encoded plaintext
+	Value string `json:"value"` // base64-encoded plaintext
 }
 
 // Validate checks if the create or update secret request is valid.

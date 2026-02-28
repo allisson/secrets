@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Secrets is configured through environment variables.
 
@@ -246,7 +246,7 @@ Run this checklist before rolling to production:
 4. Runtime credentials for provider are present and valid
 5. Startup logs show successful key loading before traffic cutover
 
-**Breaking change in v0.19.0:** Plaintext master keys are no longer supported. All deployments must use KMS mode. For local development without cloud KMS, use the `localsecrets` provider. See the [v0.19.0 release notes](releases/RELEASES.md#0190---2026-02-26) for migration guidance.
+**Breaking change in v0.19.0:** Plaintext master keys are no longer supported. All deployments must use KMS mode. For local development without cloud KMS, use the `localsecrets` provider. See the [v0.19.0 release notes](releases/RELEASES.md#0190---2026-02-27) for migration guidance.
 
 ## Authentication configuration
 
@@ -298,7 +298,6 @@ Allows clients to temporarily exceed `RATE_LIMIT_REQUESTS_PER_SEC` up to the bur
 
 | Profile | RATE_LIMIT_REQUESTS_PER_SEC | RATE_LIMIT_BURST | Typical use case |
 | --- | --- | --- | --- |
-
 | Conservative | `5.0` | `10` | Admin-heavy or sensitive workloads |
 | Standard (default) | `10.0` | `20` | Most service-to-service integrations |
 | High-throughput | `50.0` | `100` | High-volume internal API clients |
@@ -326,7 +325,6 @@ Allows short request spikes while preserving stricter controls for the unauthent
 
 | Profile | RATE_LIMIT_TOKEN_REQUESTS_PER_SEC | RATE_LIMIT_TOKEN_BURST | Typical use case |
 | --- | --- | --- | --- |
-
 | Strict (default) | `5.0` | `10` | Internet-facing token issuance |
 | Shared-egress | `10.0` | `20` | Enterprise NAT/proxy callers |
 | Internal trusted | `20.0` | `40` | Internal service mesh token broker |
@@ -425,7 +423,10 @@ Port to bind the metrics HTTP server (default: `8081`).
   --kms-key-uri="gcpkms://projects/my-project/locations/us-central1/keyRings/my-ring/cryptoKeys/my-key"
 
 # Rotate master key (combines with existing MASTER_KEYS)
-./bin/app rotate-master-key --id master-key-2026-08
+# Note: Existing MASTER_KEYS and ACTIVE_MASTER_KEY_ID must be set in the environment.
+./bin/app rotate-master-key --id master-key-2026-02-27 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 Or with Docker image:

@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.19.0] - 2026-02-26
+## [0.20.0] - 2026-02-28
+
+### Added
+- Upgraded to Go 1.26.0
+
+### Fixed
+- Corrected `verify-audit-logs` CLI documentation for time range validation and output format consistency
+- Fixed documentation for master key rotation to clarify environment variable update workflow
+- Corrected outdated environment variable names and default values in scaling guides
+
+## [0.19.0] - 2026-02-27
 
 ### ⚠️ BREAKING CHANGES
 - **KMS mode is now required**. Legacy plaintext master key mode has been removed. All deployments must use a KMS provider (`localsecrets`, `gcpkms`, `awskms`, `azurekeyvault`, or `hashivault`).
@@ -26,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - See `docs/operations/kms/setup.md` for KMS setup instructions
 - For local development: generate a KMS key with `openssl rand -base64 32` and use `localsecrets` provider
 
-## [0.18.0] - 2026-02-26
+## [0.18.0] - 2026-02-27
 
 ### Changed
 - Refactored repository layer architecture by reorganizing database-specific implementations into dedicated `mysql/` and `postgresql/` subdirectories across all modules (`auth`, `crypto`, `secrets`, `tokenization`, `transit`). This improves code maintainability and enforces clearer separation of concerns.
@@ -354,6 +364,11 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.20.0]: https://github.com/allisson/secrets/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/allisson/secrets/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/allisson/secrets/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/allisson/secrets/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/allisson/secrets/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/allisson/secrets/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/allisson/secrets/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/allisson/secrets/compare/v0.13.0...v0.14.0

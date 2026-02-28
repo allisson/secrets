@@ -64,19 +64,22 @@ paths:
       summary: List clients
       security:
         - bearerAuth: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Clients list
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
+                $ref: "#/components/schemas/ListClientsResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -100,18 +103,85 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  secret:
-                    type: string
+                $ref: "#/components/schemas/ClientCreateResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/clients/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [clients]
+      summary: Get client details
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    put:
+      tags: [clients]
+      summary: Update client
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdateRequest"
+      responses:
+        "200":
+          description: Client updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [clients]
+      summary: Delete client
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Client deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /v1/clients/{id}/unlock:
@@ -126,14 +196,14 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         "200":
           description: Client unlocked
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: "#/components/schemas/ClientResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -167,12 +237,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/SecretWriteResponse"
+                $ref: "#/components/schemas/ListSecretsResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -217,6 +282,11 @@ paths:
       summary: Read latest secret
       security:
         - bearerAuth: []
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Secret value
@@ -320,6 +390,75 @@ paths:
               example:
                 error: conflict
                 message: transit key already exists
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/transit/keys/{name}/rotate:
+    post:
+      tags: [transit]
+      summary: Rotate transit key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitKeyRotateRequest"
+      responses:
+        "201":
+          description: New transit key version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitKeyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/transit/keys/{id}:
+    delete:
+      tags: [transit]
+      summary: Delete transit key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -708,19 +847,23 @@ paths:
           in: query
           schema:
             type: integer
+        - name: created_at_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: created_at_to
+          in: query
+          schema:
+            type: string
+            format: date-time
       responses:
         "200":
           description: Audit logs list
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
+                $ref: "#/components/schemas/ListAuditLogsResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -822,7 +965,7 @@ components:
                 type: array
                 items:
                   type: string
-      required: [name, policies]
+      required: [name, is_active, policies]
     SecretWriteRequest:
       type: object
       properties:
@@ -864,21 +1007,141 @@ components:
           type: string
         algorithm:
           type: string
+          enum: [aes-gcm, chacha20-poly1305]
       required: [name, algorithm]
+    TransitKeyRotateRequest:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          enum: [aes-gcm, chacha20-poly1305]
+      required: [algorithm]
     TransitKeyResponse:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         name:
           type: string
         dek_id:
           type: string
+          format: uuid
         version:
           type: integer
         created_at:
           type: string
           format: date-time
+      required: [id, name, version, created_at]
+    AuditLogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        request_id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        capability:
+          type: string
+        path:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        signature:
+          type: string
+          nullable: true
+        kek_id:
+          type: string
+          format: uuid
+          nullable: true
+        is_signed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required: [id, request_id, client_id, capability, path, is_signed, created_at]
+    ListAuditLogsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogResponse"
+      required: [data]
+    ListSecretsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SecretWriteResponse"
+      required: [data]
+    ClientResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_active:
+          type: boolean
+        policies:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              capabilities:
+                type: array
+                items:
+                  type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [id, name, is_active, policies, created_at]
+    ClientCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        secret:
+          type: string
+      required: [id, secret]
+    ListClientsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientResponse"
+      required: [data]
+    ClientUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        is_active:
+          type: boolean
+        policies:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              capabilities:
+                type: array
+                items:
+                  type: string
+      required: [name, is_active, policies]
     TokenizationKeyCreateRequest:
       type: object
       properties:
@@ -919,10 +1182,13 @@ components:
           type: string
         is_deterministic:
           type: boolean
+        dek_id:
+          type: string
+          format: uuid
         created_at:
           type: string
           format: date-time
-      required: [id, name, version, format_type, is_deterministic, created_at]
+      required: [id, name, version, format_type, is_deterministic, dek_id, created_at]
     TokenizeRequest:
       type: object
       properties:

@@ -1045,7 +1045,7 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 					requestBody,
 					true,
 				)
-				assert.Equal(t, http.StatusOK, resp.StatusCode)
+				assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 				var response transitDTO.TransitKeyResponse
 				err := json.Unmarshal(body, &response)

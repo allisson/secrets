@@ -97,7 +97,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_MissingName", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 
 		handler.CreateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -139,7 +139,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 
 		handler.CreateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -231,7 +231,7 @@ func TestClientHandler_GetHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
@@ -356,7 +356,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed", func(t *testing.T) {
@@ -379,7 +379,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 
 		handler.UpdateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -454,7 +454,7 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
@@ -529,7 +529,7 @@ func TestClientHandler_UnlockHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("ClientNotFound", func(t *testing.T) {
@@ -666,7 +666,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidOffset_NonNumeric", func(t *testing.T) {
@@ -681,7 +681,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_Zero", func(t *testing.T) {
@@ -696,7 +696,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_ExceedsMax", func(t *testing.T) {
@@ -711,7 +711,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_NonNumeric", func(t *testing.T) {
@@ -726,7 +726,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {

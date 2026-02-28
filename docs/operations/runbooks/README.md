@@ -1,6 +1,6 @@
 # 🧭 Operator Runbook Index
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Use this page as the single entry point for rollout, validation, and incident runbooks.
 
@@ -55,7 +55,7 @@ Use this section during rollout and incidents when you need a fast, minimal chec
 
 1. Confirm target version and image tag match release plan
 2. Confirm DB connectivity and migration window
-3. Confirm key mode settings (`KMS_PROVIDER` + `KMS_KEY_URI` or legacy mode)
+3. Confirm key mode settings (`KMS_PROVIDER` + `KMS_KEY_URI`)
 4. Confirm token and route rate-limit settings are intentional
 5. Confirm rollback owner and communication channel
 

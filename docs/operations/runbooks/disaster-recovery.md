@@ -1,7 +1,7 @@
 # 🚨 Disaster Recovery Runbook
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: SRE teams, platform engineers, incident commanders
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -162,11 +162,16 @@ A disaster is any event that causes **complete service unavailability** or **unr
    
    -- Count records
    SELECT 
-     (SELECT COUNT(*) FROM clients) as clients,
-     (SELECT COUNT(*) FROM secrets) as secrets,
-     (SELECT COUNT(*) FROM key_encryption_keys) as keks,
-     (SELECT COUNT(*) FROM audit_logs) as audit_logs;
-   ```
+         (SELECT COUNT(*) FROM clients) as clients,
+         (SELECT COUNT(*) FROM tokens) as tokens,
+         (SELECT COUNT(*) FROM keks) as keks,
+         (SELECT COUNT(*) FROM deks) as deks,
+         (SELECT COUNT(*) FROM secrets) as secrets,
+         (SELECT COUNT(*) FROM transit_keys) as transit_keys,
+         (SELECT COUNT(*) FROM tokenization_keys) as tokenization_keys,
+         (SELECT COUNT(*) FROM tokenization_tokens) as tokenization_tokens,
+         (SELECT COUNT(*) FROM audit_logs) as audit_logs;
+     ```
 
 5. **Proceed to [Application Deployment](#application-deployment)**
 
@@ -178,7 +183,7 @@ A disaster is any event that causes **complete service unavailability** or **unr
 
 **Goal**: Restore master key from KMS or encrypted backup
 
-**KMS-based master key**:
+**KMS-based master key (REQUIRED in v0.19.0+)**:
 
 ```bash
 # Verify KMS key is accessible
@@ -189,24 +194,21 @@ aws kms describe-key --key-id alias/secrets-master-key
 gcloud kms keys describe secrets-master-key \
   --location=us-east1 --keyring=secrets
 
-# Set environment variable
-export MASTER_KEY_PROVIDER=aws-kms
-export MASTER_KEY_KMS_KEY_ID=arn:aws:kms:us-east-1:123456789012:key/abc-def
+# Set environment variables
+export KMS_PROVIDER=awskms
+export KMS_KEY_URI=awskms:///alias/secrets-master-key
+export MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP...
+export ACTIVE_MASTER_KEY_ID=default
 ```
 
-**Plaintext master key from backup**:
+**LocalSecrets master key (Development only)**:
 
 ```bash
-# Decrypt backup
-gpg --decrypt master-key-backup.txt.gpg
-
-# Set environment variable
-export MASTER_KEY_PROVIDER=plaintext
-export MASTER_KEY_PLAINTEXT=<base64-encoded-key>
-
-# Verify length
-echo $MASTER_KEY_PLAINTEXT | base64 -d | wc -c
-# Should output: 32
+# Set environment variables
+export KMS_PROVIDER=localsecrets
+export KMS_KEY_URI=base64key://<base64-encoded-kms-key>
+export MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP...
+export ACTIVE_MASTER_KEY_ID=default
 ```
 
 **Expected RTO**: < 5 minutes
@@ -224,8 +226,10 @@ echo $MASTER_KEY_PLAINTEXT | base64 -d | wc -c
 cat > .env <<EOF
 DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:pass@postgres:5432/secrets?sslmode=require
-MASTER_KEY_PROVIDER=aws-kms
-MASTER_KEY_KMS_KEY_ID=arn:aws:kms:...
+KMS_PROVIDER=awskms
+KMS_KEY_URI=awskms:///alias/secrets-master-key
+MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP...
+ACTIVE_MASTER_KEY_ID=default
 EOF
 
 # 2. Deploy application with docker-compose
@@ -294,33 +298,34 @@ curl http://localhost:8080/ready
 
 **Steps**:
 
-1. **Generate new master key**:
+1. **Generate new KMS key**:
 
    ```bash
-   # KMS: Create new key
+   # AWS: Create new key
    aws kms create-key --description "Secrets master key v2"
    aws kms create-alias --alias-name alias/secrets-master-key-v2 \
      --target-key-id <new-key-id>
-   
-   # Plaintext: Generate new key
-   openssl rand -base64 32
    ```
 
 2. **Run master key rotation**:
 
    ```bash
-   ./bin/app rotate-master-key \
-     --old-master-key-provider=aws-kms \
-     --old-master-key-kms-key-id=arn:aws:kms:...:key/old-key \
-     --new-master-key-provider=aws-kms \
-     --new-master-key-kms-key-id=arn:aws:kms:...:key/new-key
+   # Update KMS_KEY_URI to point to the new key
+   export KMS_KEY_URI=awskms:///alias/secrets-master-key-v2
+
+   # Generate new master key (automatically encrypted with the new KMS key)
+   ./bin/app rotate-master-key --id master-key-v2 \
+     --kms-provider=awskms \
+     --kms-key-uri=$KMS_KEY_URI
    ```
 
 3. **Update application configuration**:
 
    ```bash
-   # Update .env file
-   sed -i 's|MASTER_KEY_KMS_KEY_ID=.*|MASTER_KEY_KMS_KEY_ID=arn:aws:kms:...:key/new-key|' .env
+   # Update .env file with the output from rotate-master-key
+   # KMS_KEY_URI=awskms:///alias/secrets-master-key-v2
+   # MASTER_KEYS=default:<old-ciphertext>,master-key-v2:<new-ciphertext>
+   # ACTIVE_MASTER_KEY_ID=master-key-v2
    
    # Restart application
    docker-compose restart secrets
@@ -335,8 +340,8 @@ curl http://localhost:8080/ready
 5. **Verify all KEKs re-encrypted**:
 
    ```sql
-   -- All KEKs should have updated_at timestamp > rotation time
-   SELECT id, created_at, updated_at FROM key_encryption_keys;
+   -- All KEKs should have been created/rotated successfully
+   SELECT id, created_at FROM keks;
    ```
 
 **Expected RTO**: 30-60 minutes (depends on number of KEKs)
@@ -461,15 +466,16 @@ panic: master key mismatch
 
 ```bash
 # Verify master key matches backup
-# Check KMS key ID or plaintext key hash
-echo $MASTER_KEY_KMS_KEY_ID
+# Check KMS key URI or encrypted MASTER_KEYS hash
+echo $KMS_KEY_URI
+echo $MASTER_KEYS | sha256sum
 ```
 
 ### Health checks pass but secrets return gibberish
 
-**Cause**: Database restored but master key is different
+**Cause**: Database restored but master key configuration (KMS or ciphertexts) is different
 
-**Solution**: Restore must use the SAME master key as the backup. If master key is lost, data is unrecoverable.
+**Solution**: Restore must use the SAME master key as the backup. If master key material is lost, data is unrecoverable.
 
 ### Backup restore is too slow (hours)
 

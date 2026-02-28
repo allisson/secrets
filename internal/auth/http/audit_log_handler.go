@@ -41,7 +41,7 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 	// Parse offset and limit query parameters
 	offset, limit, err := httputil.ParsePagination(c)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 	if fromStr := c.Query("created_at_from"); fromStr != "" {
 		parsed, err := time.Parse(time.RFC3339, fromStr)
 		if err != nil {
-			httputil.HandleValidationErrorGin(c,
+			httputil.HandleBadRequestGin(c,
 				fmt.Errorf("invalid created_at_from format: must be RFC3339 (e.g., 2026-02-01T00:00:00Z)"),
 				h.logger)
 			return
@@ -64,7 +64,7 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 	if toStr := c.Query("created_at_to"); toStr != "" {
 		parsed, err := time.Parse(time.RFC3339, toStr)
 		if err != nil {
-			httputil.HandleValidationErrorGin(c,
+			httputil.HandleBadRequestGin(c,
 				fmt.Errorf("invalid created_at_to format: must be RFC3339 (e.g., 2026-02-14T23:59:59Z)"),
 				h.logger)
 			return

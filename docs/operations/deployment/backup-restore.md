@@ -1,7 +1,7 @@
 # 💾 Backup and Restore Guide
 
-> **Document version**: v0.x
-> Last updated: 2026-02-26
+> **Document version**: v0.19.0
+> Last updated: 2026-02-28
 > **Audience**: Platform engineers, SREs, DBAs
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -67,10 +67,13 @@ Secrets stores two critical types of data:
 -- Core tables
 
 clients
-key_encryption_keys
+tokens
+keks
+deks
 secrets
 transit_keys
-transit_key_versions
+tokenization_keys
+tokenization_tokens
 audit_logs
 schema_migrations
 
@@ -92,19 +95,15 @@ SHOW TABLES;
 
 ### 2. Master Key (REQUIRED)
 
-**KMS-based deployments**:
+**KMS-based deployments (REQUIRED in v0.19.0+)**:
 
-- KMS key ID/ARN (e.g., `aws:kms:us-east-1:123456789012:key/abc-def-123`)
+- KMS key URI (e.g., `gcpkms://projects/...` or `awskms:///...`)
 
 - KMS key policy and IAM permissions
 
-- No file backup needed (KMS handles durability)
+- Encrypted `MASTER_KEYS` ciphertext from environment variables
 
-**Plaintext-based deployments**:
-
-- Base64-encoded 32-byte master key
-
-- Store in encrypted vault (1Password, HashiCorp Vault, etc.)
+- No plaintext file backup needed (KMS handles durability)
 
 ### 3. Configuration (RECOMMENDED)
 
@@ -114,12 +113,10 @@ SHOW TABLES;
 # Critical config
 DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://...
-MASTER_KEY_PROVIDER=aws-kms
-MASTER_KEY_KMS_KEY_ID=arn:aws:kms:...
-
-# Rate limiting, CORS, etc.
-RATE_LIMIT_ENABLED=true
-AUTH_TOKEN_EXPIRATION_SECONDS=14400
+KMS_PROVIDER=awskms
+KMS_KEY_URI=awskms:///alias/secrets-master-key
+MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP...
+ACTIVE_MASTER_KEY_ID=default
 
 ```
 
@@ -289,19 +286,23 @@ echo "projects/my-project/locations/us-east1/keyRings/secrets/cryptoKeys/secrets
 
 ```
 
-### Plaintext Master Key
+### LocalSecrets Master Key (Development only)
 
 **Backup procedure**:
 
 ```bash
-# Export master key from environment
-echo $MASTER_KEY_PLAINTEXT > master-key-backup.txt
+# Export localsecrets KMS key from environment
+echo $KMS_KEY_URI > kms-key-uri-backup.txt
+
+# Export MASTER_KEYS ciphertext
+echo $MASTER_KEYS > master-keys-backup.txt
 
 # Encrypt with GPG
-gpg --encrypt --recipient ops@example.com master-key-backup.txt
+gpg --encrypt --recipient ops@example.com kms-key-uri-backup.txt
+gpg --encrypt --recipient ops@example.com master-keys-backup.txt
 
 # Store encrypted backup in vault
-# NEVER commit plaintext master key to git
+# NEVER commit KMS keys or master keys to git
 
 ```
 
@@ -343,8 +344,10 @@ pg_restore --host=localhost --username=secrets --dbname=secrets \
 1. **Restore master key** (KMS example):
 
    ```bash
-   export MASTER_KEY_PROVIDER=aws-kms
-   export MASTER_KEY_KMS_KEY_ID=arn:aws:kms:us-east-1:123456789012:key/abc-def
+   export KMS_PROVIDER=awskms
+   export KMS_KEY_URI=awskms:///alias/secrets-master-key
+   export MASTER_KEYS=default:ARiEeAASDiXKAxzOQCw2NxQfrHAc33CPP...
+   export ACTIVE_MASTER_KEY_ID=default
    ```
 
 2. **Start application**:
@@ -361,39 +364,6 @@ pg_restore --host=localhost --username=secrets --dbname=secrets \
    ```
 
 4. **Test secret decryption**:
-
-   ```bash
-   # Get auth token
-   TOKEN=$(curl -X POST http://localhost:8080/v1/token \
-     -H "Content-Type: application/json" \
-     -d '{"client_id":"xxx","client_secret":"yyy"}' | jq -r .token)
-
-   # Retrieve a known secret
-   curl -X GET http://localhost:8080/v1/secrets/my-test-secret \
-     -H "Authorization: Bearer $TOKEN"
-   ```
-
-5. **Restore master key** (KMS example):
-
-   ```bash
-   export MASTER_KEY_PROVIDER=aws-kms
-   export MASTER_KEY_KMS_KEY_ID=arn:aws:kms:us-east-1:123456789012:key/abc-def
-   ```
-
-6. **Start application**:
-
-   ```bash
-   ./bin/app server
-   ```
-
-7. **Verify health**:
-
-   ```bash
-   curl http://localhost:8080/health
-   curl http://localhost:8080/ready
-   ```
-
-8. **Test secret decryption**:
 
    ```bash
    # Get auth token
@@ -463,7 +433,7 @@ grep -c "CREATE TABLE" secrets-backup-20260221-120000.sql
 **KMS-based**:
 
 ```bash
-# Test encryption with KMS key
+# Test encryption with KMS key URI
 echo "test data" | \
   aws kms encrypt --key-id alias/secrets-master-key \
   --plaintext fileb:///dev/stdin \
@@ -471,13 +441,11 @@ echo "test data" | \
 
 ```
 
-**Plaintext-based**:
+**LocalSecrets-based**:
 
 ```bash
-# Verify base64 decode works
-echo $MASTER_KEY_PLAINTEXT | base64 -d | wc -c
-# Should output: 32
-
+# Verify KMS key URI exists
+echo $KMS_KEY_URI | grep "base64key://"
 ```
 
 ## Automation Examples
@@ -556,14 +524,13 @@ mysql secrets < secrets-backup.sql
 
 ```bash
 # Verify master key matches original
-# 1. Check KMS key ID
-echo $MASTER_KEY_KMS_KEY_ID
+# 1. Check KMS key URI
+echo $KMS_KEY_URI
 
-# 2. Or check plaintext key hash
-echo $MASTER_KEY_PLAINTEXT | sha256sum
+# 2. Or check encrypted MASTER_KEYS hash
+echo $MASTER_KEYS | sha256sum
 
-# 3. Restore with correct master key
-
+# 3. Restore with correct master key and KMS configuration
 ```
 
 ### Backup file is too large

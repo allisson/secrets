@@ -128,7 +128,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_MissingName", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 
 		handler.CreateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -163,7 +163,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 
 		handler.CreateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -222,7 +222,7 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 
 		handler.RotateHandler(c)
 
-		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, http.StatusCreated, w.Code)
 
 		var response dto.TransitKeyResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -245,6 +245,11 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 		handler.RotateHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
@@ -257,6 +262,11 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 		handler.RotateHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_InvalidAlgorithm", func(t *testing.T) {
@@ -271,7 +281,12 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 
 		handler.RotateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "validation_error", response["error"])
 	})
 
 	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
@@ -324,6 +339,11 @@ func TestTransitKeyHandler_DeleteHandler(t *testing.T) {
 		handler.DeleteHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
@@ -388,6 +408,6 @@ func TestTransitKeyHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "bad_request", response["error"])
 	})
 }

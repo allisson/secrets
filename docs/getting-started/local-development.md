@@ -1,10 +1,10 @@
 # 💻 Run Locally (Development)
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Use this path if you want to modify the source code and run from your workstation.
 
-**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Deployment Guide](../operations/deployment/docker-hardened.md).
+**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Rollout Guide](../operations/deployment/production-rollout.md).
 
 ## Current Security Defaults
 

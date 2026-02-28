@@ -169,7 +169,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidOffset_NotNumber", func(t *testing.T) {
@@ -184,7 +184,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_TooLow", func(t *testing.T) {
@@ -199,7 +199,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_TooHigh", func(t *testing.T) {
@@ -214,7 +214,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_InvalidLimit_NotNumber", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
@@ -431,7 +431,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "invalid created_at_from format")
 	})
 
@@ -451,7 +451,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "bad_request", response["error"])
 		assert.Contains(t, response["message"], "invalid created_at_to format")
 	})
 
@@ -471,12 +471,12 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Contains(t, response["error"], "validation_error")
+		assert.Equal(t, "validation_error", response["error"])
 		assert.Contains(t, response["message"], "created_at_from must be before or equal to created_at_to")
 	})
 

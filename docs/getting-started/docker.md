@@ -1,12 +1,12 @@
 # 🐳 Run with Docker (Recommended)
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 This is the default way to run Secrets.
 
 This guide uses the latest Docker image (`allisson/secrets`).
 
-**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Deployment Guide](../operations/deployment/docker-hardened.md).
+**⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Rollout Guide](../operations/deployment/production-rollout.md).
 
 ## Current Security Defaults
 
@@ -98,10 +98,6 @@ docker run --rm --name secrets-api \
 
 > **Note**: The `--tmpfs /tmp` volume is **optional** because the application doesn't write to the filesystem at runtime (embedded migrations, stateless binary). However, it's recommended for security hardening to support potential temporary file operations.
 
-For comprehensive container security guidance, see [Container Security Guide](../operations/deployment/docker-hardened.md).
-
-For production security hardening, see [Security Hardening Guide](../operations/deployment/docker-hardened.md).
-
 ## ⚡ Quickstart Copy Block
 
 Use this minimal flow when you just want to get a working instance quickly:
@@ -118,11 +114,19 @@ docker run -d --name secrets-postgres --network secrets-net \
 
 # Generate KMS key and master key (KMS required in v0.19.0+)
 KMS_KEY=$(openssl rand -base64 32)
+# Create .env file
+cat > .env <<EOF
+DB_DRIVER=postgres
+DB_CONNECTION_STRING=postgres://user:password@secrets-postgres:5432/mydb?sslmode=disable
+KMS_PROVIDER=localsecrets
+KMS_KEY_URI=base64key://$KMS_KEY
+EOF
+
+# Generate encrypted master key and append to .env
 docker run --rm allisson/secrets create-master-key \
   --id default \
   --kms-provider localsecrets \
-  --kms-key-uri "base64key://$KMS_KEY"
-# copy generated values and KMS_KEY into .env with KMS_PROVIDER=localsecrets
+  --kms-key-uri "base64key://$KMS_KEY" | grep -E "MASTER_KEYS|ACTIVE_MASTER_KEY_ID" >> .env
 
 docker run --rm --network secrets-net --env-file .env allisson/secrets migrate
 docker run --rm --network secrets-net --env-file .env allisson/secrets create-kek --algorithm aes-gcm
@@ -310,4 +314,4 @@ For health check examples (Docker Compose sidecar, external monitoring), see the
 
 - [CLI commands reference](../cli-commands.md)
 
-- [Docker Compose Examples](../operations/deployment/docker-compose.md) - Complete Docker Compose setup (coming soon)
+- [Docker Compose Examples](../operations/deployment/docker-compose.md) - Complete Docker Compose setup

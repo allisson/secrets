@@ -162,7 +162,7 @@ func TestTokenizationHandler_TokenizeHandler(t *testing.T) {
 
 		handler.TokenizeHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 
 	t.Run("Error_InvalidBase64", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestTokenizationHandler_TokenizeHandler(t *testing.T) {
 
 		handler.TokenizeHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 
 	t.Run("Error_MissingKeyName", func(t *testing.T) {
@@ -280,7 +280,7 @@ func TestTokenizationHandler_DetokenizeHandler(t *testing.T) {
 
 		handler.DetokenizeHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
@@ -412,7 +412,7 @@ func TestTokenizationHandler_ValidateHandler(t *testing.T) {
 
 		handler.ValidateHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
@@ -480,7 +480,7 @@ func TestTokenizationHandler_RevokeHandler(t *testing.T) {
 
 		handler.RevokeHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 	})
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {

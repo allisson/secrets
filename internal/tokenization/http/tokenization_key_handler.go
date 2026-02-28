@@ -41,7 +41,7 @@ func (h *TokenizationKeyHandler) CreateHandler(c *gin.Context) {
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -54,13 +54,13 @@ func (h *TokenizationKeyHandler) CreateHandler(c *gin.Context) {
 	// Parse format type and algorithm
 	formatType, err := dto.ParseFormatType(req.FormatType)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
 	algorithm, err := dto.ParseAlgorithm(req.Algorithm)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -83,14 +83,14 @@ func (h *TokenizationKeyHandler) CreateHandler(c *gin.Context) {
 }
 
 // RotateHandler creates a new version of an existing tokenization key.
-// POST /v1/tokenization/keys/:name/rotate - Requires WriteCapability.
+// POST /v1/tokenization/keys/:name/rotate - Requires RotateCapability.
 // Returns 201 Created with new key version.
 func (h *TokenizationKeyHandler) RotateHandler(c *gin.Context) {
 	var req dto.RotateTokenizationKeyRequest
 
 	// Parse and bind JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *TokenizationKeyHandler) RotateHandler(c *gin.Context) {
 	// Get key name from URL parameter
 	keyName := c.Param("name")
 	if keyName == "" {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("key name is required in URL path"),
 			h.logger)
 		return
@@ -112,13 +112,13 @@ func (h *TokenizationKeyHandler) RotateHandler(c *gin.Context) {
 	// Parse format type and algorithm
 	formatType, err := dto.ParseFormatType(req.FormatType)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
 	algorithm, err := dto.ParseAlgorithm(req.Algorithm)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *TokenizationKeyHandler) DeleteHandler(c *gin.Context) {
 	// Parse and validate UUID
 	keyID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		httputil.HandleValidationErrorGin(c,
+		httputil.HandleBadRequestGin(c,
 			fmt.Errorf("invalid key ID format: must be a valid UUID"),
 			h.logger)
 		return
@@ -170,7 +170,7 @@ func (h *TokenizationKeyHandler) ListHandler(c *gin.Context) {
 	// Parse offset and limit query parameters
 	offset, limit, err := httputil.ParsePagination(c)
 	if err != nil {
-		httputil.HandleValidationErrorGin(c, err, h.logger)
+		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 

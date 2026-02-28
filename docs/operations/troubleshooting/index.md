@@ -1,6 +1,6 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Use this guide for common setup and runtime errors.
 
@@ -122,7 +122,6 @@ Common 409 case:
 
 | Endpoint | Common cause | Fix |
 | --- | --- | --- |
-
 | `POST /v1/transit/keys` | transit key `name` already has initial `version=1` | use `POST /v1/transit/keys/:name/rotate` for a new version, or pick a new key name |
 
 - Fix:
@@ -145,7 +144,6 @@ Common 422 cases:
 
 | Endpoint | Common cause | Fix |
 | --- | --- | --- |
-
 | `POST /v1/secrets/*path` | `value` is missing or not base64 | Send `value` as base64-encoded bytes |
 | `POST /v1/transit/keys/:name/encrypt` | `plaintext` is missing or not base64 | Send `plaintext` as base64-encoded bytes |
 | `POST /v1/transit/keys/:name/decrypt` | `ciphertext` not in `<version>:<base64-ciphertext>` format | Pass `ciphertext` exactly as returned by encrypt |
@@ -216,7 +214,7 @@ Quick note:
 
 - IP-based rate limiting applies to token issuance (`POST /v1/token`)
 
-- Rate limiting does not apply to `/health`, `/ready`, and `/metrics`
+- Rate limiting does not apply to `/health`, `/ready`, and `:8081/metrics`
 
 ## CORS and preflight failures
 
@@ -244,7 +242,6 @@ Quick checks:
 
 | Browser scenario | Expected result | Common misconfiguration |
 | --- | --- | --- |
-
 | `CORS_ENABLED=false`, same-origin app | Works (no cross-origin checks) | N/A |
 | `CORS_ENABLED=false`, cross-origin app | Browser blocks request | Expecting browser access without enabling CORS |
 | `CORS_ENABLED=true`, origin listed | Preflight and request succeed | Wrong scheme/port in origin list |
@@ -333,23 +330,20 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
 
   - KMS mode requires both `KMS_PROVIDER` and `KMS_KEY_URI`
 
-  - legacy mode requires both values unset/empty
-
   - verify `.env` and deployment secret injection order
 
 ## Mode mismatch diagnostics
 
 Use these quick checks when startup errors suggest key mode mismatch:
 
-> Command status: verified on 2026-02-20
+> Command status: verified on 2026-02-27
 
 ```bash
 # 1) Check selected mode variables
 env | grep -E '^(KMS_PROVIDER|KMS_KEY_URI|ACTIVE_MASTER_KEY_ID|MASTER_KEYS)='
 
 # 2) Confirm MASTER_KEYS entry shape
-# Legacy mode entries usually look like id:<base64-32-byte-key>
-# KMS mode entries should be ciphertext values produced by your KMS provider
+# All entries should be ciphertext values produced by your KMS provider
 
 # 3) Check startup logs for mode and key load behavior
 docker logs <secrets-container-name> 2>&1 | grep -E 'KMS mode enabled|master key decrypted via KMS|master key chain loaded'
@@ -357,12 +351,6 @@ docker logs <secrets-container-name> 2>&1 | grep -E 'KMS mode enabled|master key
 ```
 
 Expected patterns:
-
-- Legacy mode:
-
-  - no `KMS mode enabled` log line
-
-  - master key chain loads from local config
 
 - KMS mode:
 
@@ -436,8 +424,7 @@ Historical note:
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-
-| `GET /metrics` returns `404` | `METRICS_ENABLED=false` or server restarted with metrics disabled | Set `METRICS_ENABLED=true` and restart server |
+| `GET :8081/metrics` returns `404` | `METRICS_ENABLED=false` or server restarted with metrics disabled | Set `METRICS_ENABLED=true` and restart server |
 | Prometheus scrape target is down | Wrong host/port or network path | Verify target URL and network reachability from Prometheus |
 | Metrics present but missing expected prefix | Unexpected namespace value | Confirm `METRICS_NAMESPACE` and update queries/dashboards |
 | Dashboards show empty values for paths | Query uses concrete URLs, not route patterns | Query by route pattern labels (for example `/v1/secrets/*path`) |

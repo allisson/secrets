@@ -1,6 +1,6 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-26
+> Last updated: 2026-02-28
 
 Use this guide when adding or editing project documentation.
 
@@ -57,7 +57,7 @@ Documentation style baseline:
 ## Breaking vs Non-Breaking Docs Changes
 
 - Treat endpoint path changes, request/response contract changes, and status code behavior changes as breaking docs updates
-- Breaking docs updates must include: updated API page, updated examples, and `releases/RELEASES.md` entry
+- Breaking docs updates must include: updated API page, updated examples, and `docs/releases/RELEASES.md` entry
 - Treat wording clarifications, formatting, and cross-links as non-breaking docs updates
 - Non-breaking docs updates should still run `make docs-lint` and keep links accurate
 
@@ -117,7 +117,7 @@ When `DOCS_CHANGED_FILES` is set, changed docs pages must refresh `Last updated`
 2. API examples reflect current behavior
 3. Security warnings are present where needed
 4. Terminology is consistent across files
-5. `releases/RELEASES.md` updated for significant documentation changes
+5. `docs/releases/RELEASES.md` updated for significant documentation changes
 
 ## Docs QA Checklist
 
@@ -136,7 +136,7 @@ For behavior changes, update all relevant docs in the same PR:
 3. Examples parity (`docs/examples/*.md`) for at least curl and one SDK/runtime path
 4. Monitoring/query updates (`docs/operations/observability/monitoring.md`) when new operations/metrics are introduced
 5. Runbook updates (`docs/operations/*.md` or `docs/operations/troubleshooting/index.md`) for incident impact
-6. Release notes and changelog (consolidated in `releases/RELEASES.md`)
+6. Release notes and changelog (consolidated in `docs/releases/RELEASES.md`)
 7. Entry-point navigation updates (`README.md`, `docs/README.md`) when docs scope expands
 
 ## Ownership and Review Cadence
@@ -160,7 +160,7 @@ Quality KPIs:
 1. Update `Last updated` in every changed docs file
 2. Update `docs/metadata.json` when release/API labels change
 3. Add or update relevant examples if behavior/commands changed
-4. Append a concise entry in `releases/RELEASES.md` for significant docs changes
+4. Append a concise entry in `docs/releases/RELEASES.md` for significant docs changes
 5. Run `make docs-lint` before opening or merging PRs
 
 ## Release PR Docs QA Guard
@@ -243,7 +243,7 @@ This section defines canonical vs supporting docs to reduce duplication and drif
 
 1. Update canonical source first
 2. Propagate essential deltas to supporting docs
-3. Update `CHANGELOG.md` for significant docs updates
+3. Update `docs/releases/RELEASES.md` for significant docs updates
 4. Run docs checks before merge
 
 Recommended local validation:
@@ -299,7 +299,7 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 
 ### 5) Changelogs and Navigation
 
-- Update project changelog (`releases/RELEASES.md`) for release behavior and docs changes
+- Update project changelog (`docs/releases/RELEASES.md`) for release behavior and docs changes
 - Verify links from:
   - `README.md`
   - `docs/README.md`
@@ -383,7 +383,7 @@ For every Sev incident, include one of the following outcomes in the postmortem:
 1. Incident is resolved
 2. Owner identifies doc gaps from timeline
 3. Patch docs or record no-change rationale
-4. Update `releases/RELEASES.md` if docs changed
+4. Update `docs/releases/RELEASES.md` if docs changed
 5. Confirm docs checks pass before merge
 
 #### Suggested SLA

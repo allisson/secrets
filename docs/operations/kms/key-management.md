@@ -1,6 +1,6 @@
 # 🔑 Key Management Operations
 
-> Last updated: 2026-02-25
+> Last updated: 2026-02-28
 
 This guide covers master keys and KEK lifecycle operations.
 
@@ -9,24 +9,31 @@ This guide covers master keys and KEK lifecycle operations.
 Generate:
 
 ```bash
-./bin/app create-master-key --id prod-2026-01
-
-# KMS mode (recommended for production)
+# Create master key using localsecrets KMS provider (local development)
 ./bin/app create-master-key --id prod-2026-01 \
   --kms-provider=localsecrets \
   --kms-key-uri="base64key://<base64-32-byte-key>"
+
+# Create master key using cloud KMS provider (production)
+./bin/app create-master-key --id prod-2026-01 \
+  --kms-provider=gcpkms \
+  --kms-key-uri="gcpkms://projects/.../cryptoKeys/..."
 ```
 
 Docker image equivalent:
 
 ```bash
-docker run --rm allisson/secrets create-master-key --id prod-2026-01
+docker run --rm allisson/secrets create-master-key --id prod-2026-01 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 Rotate master key:
 
 ```bash
-./bin/app rotate-master-key --id prod-2026-08
+./bin/app rotate-master-key --id prod-2026-08 \
+  --kms-provider=localsecrets \
+  --kms-key-uri="base64key://<base64-32-byte-key>"
 ```
 
 `rotate-master-key` reads current `MASTER_KEYS`, appends a new key, and sets
@@ -35,8 +42,10 @@ Rotate master key:
 Set output in environment:
 
 ```dotenv
-MASTER_KEYS=prod-2026-01:<base64-key>
-ACTIVE_MASTER_KEY_ID=prod-2026-01
+KMS_PROVIDER="localsecrets"
+KMS_KEY_URI="base64key://<base64-32-byte-key>"
+MASTER_KEYS="prod-2026-01:<base64-key>,prod-2026-08:<base64-key>"
+ACTIVE_MASTER_KEY_ID="prod-2026-08"
 ```
 
 ## Create Initial KEK
@@ -102,7 +111,9 @@ Use this sequence for master key rotation with minimal operator drift:
 
 ```bash
 # 1) Generate next master key entry
-./bin/app rotate-master-key --id prod-2026-08
+./bin/app rotate-master-key --id prod-2026-08 \
+  --kms-provider=$KMS_PROVIDER \
+  --kms-key-uri=$KMS_KEY_URI
 
 # 2) Update MASTER_KEYS / ACTIVE_MASTER_KEY_ID from command output
 # 3) Restart API instances (rolling)
