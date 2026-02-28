@@ -33,6 +33,7 @@ Then follow the Docker setup guide in [docs/getting-started/docker.md](docs/gett
 
 1. 🐳 **Run with Docker image (recommended)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 2. 💻 **Run locally for development**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
+3. 📦 **Run with pre-compiled binary**: [docs/getting-started/binary.md](docs/getting-started/binary.md)
 
 Release history:
 
@@ -44,6 +45,7 @@ Release history:
 - 🏁 **Docs index**: [docs/README.md](docs/README.md)
 - 🚀 **Getting started (Docker)**: [docs/getting-started/docker.md](docs/getting-started/docker.md)
 - 💻 **Getting started (local)**: [docs/getting-started/local-development.md](docs/getting-started/local-development.md)
+- 📦 **Getting started (binary)**: [docs/getting-started/binary.md](docs/getting-started/binary.md)
 - 🧰 **Troubleshooting**: [docs/operations/troubleshooting/index.md](docs/operations/troubleshooting/index.md)
 - ✅ **Smoke test script**: [docs/getting-started/smoke-test.md](docs/getting-started/smoke-test.md)
 - 🧪 **CLI commands reference**: [docs/cli-commands.md](docs/cli-commands.md)

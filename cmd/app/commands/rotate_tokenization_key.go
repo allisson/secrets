@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/allisson/secrets/internal/app"
-	"github.com/allisson/secrets/internal/config"
+	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
 // RunRotateTokenizationKey creates a new version of an existing tokenization key.
@@ -16,28 +15,19 @@ import (
 // Requirements: Database must be migrated, named tokenization key must exist.
 func RunRotateTokenizationKey(
 	ctx context.Context,
+	tokenizationKeyUseCase tokenizationUseCase.TokenizationKeyUseCase,
+	logger *slog.Logger,
 	name string,
 	formatType string,
 	isDeterministic bool,
 	algorithmStr string,
 ) error {
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
 	logger.Info("rotating tokenization key",
 		slog.String("name", name),
 		slog.String("format_type", formatType),
 		slog.Bool("is_deterministic", isDeterministic),
 		slog.String("algorithm", algorithmStr),
 	)
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
 
 	// Parse format type
 	format, err := parseFormatType(formatType)
@@ -49,12 +39,6 @@ func RunRotateTokenizationKey(
 	algorithm, err := parseAlgorithm(algorithmStr)
 	if err != nil {
 		return err
-	}
-
-	// Get tokenization key use case from container
-	tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize tokenization key use case: %w", err)
 	}
 
 	// Rotate the tokenization key

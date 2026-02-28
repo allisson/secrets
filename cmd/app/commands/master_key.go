@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"log/slog"
 	"time"
 
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
@@ -23,15 +25,26 @@ import (
 //   - KMS_KEY_URI="<uri>"
 //
 // Security: Never use localsecrets provider in production. Use cloud KMS providers (gcpkms, awskms, azurekeyvault).
-func RunCreateMasterKey(keyID, kmsProvider, kmsKeyURI string) error {
-	ctx := context.Background()
-
+func RunCreateMasterKey(
+	ctx context.Context,
+	kmsService cryptoService.KMSService,
+	logger *slog.Logger,
+	writer io.Writer,
+	keyID string,
+	kmsProvider string,
+	kmsKeyURI string,
+) error {
 	// Validate required KMS parameters
 	if kmsProvider == "" || kmsKeyURI == "" {
 		return fmt.Errorf(
 			"--kms-provider and --kms-key-uri are required\n\nFor local development, use:\n  --kms-provider=localsecrets --kms-key-uri=\"base64key://<32-byte-base64-key>\"\n\nFor production, use cloud KMS providers:\n  --kms-provider=gcpkms --kms-key-uri=\"gcpkms://projects/.../cryptoKeys/...\"\n  --kms-provider=awskms --kms-key-uri=\"awskms:///alias/...\"\n  --kms-provider=azurekeyvault --kms-key-uri=\"azurekeyvault://...\"",
 		)
 	}
+
+	logger.Info("creating new master key",
+		slog.String("kms_provider", kmsProvider),
+		slog.String("kms_key_uri", kmsKeyURI),
+	)
 
 	// Generate default key ID if not provided
 	if keyID == "" {
@@ -44,19 +57,18 @@ func RunCreateMasterKey(keyID, kmsProvider, kmsKeyURI string) error {
 		return fmt.Errorf("failed to generate master key: %w", err)
 	}
 
-	fmt.Println("# KMS Mode: Encrypting master key with KMS")
-	fmt.Printf("# KMS Provider: %s\n", kmsProvider)
-	fmt.Println()
+	_, _ = fmt.Fprintln(writer, "# KMS Mode: Encrypting master key with KMS")
+	_, _ = fmt.Fprintf(writer, "# KMS Provider: %s\n", kmsProvider)
+	_, _ = fmt.Fprintln(writer)
 
-	// Create KMS service and open keeper
-	kmsService := cryptoService.NewKMSService()
+	// Open keeper
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		return fmt.Errorf("failed to open KMS keeper: %w", err)
 	}
 	defer func() {
 		if closeErr := keeperInterface.Close(); closeErr != nil {
-			fmt.Printf("Warning: failed to close KMS keeper: %v\n", closeErr)
+			_, _ = fmt.Fprintf(writer, "Warning: failed to close KMS keeper: %v\n", closeErr)
 		}
 	}()
 
@@ -78,17 +90,25 @@ func RunCreateMasterKey(keyID, kmsProvider, kmsKeyURI string) error {
 	encodedKey := base64.StdEncoding.EncodeToString(ciphertext)
 
 	// Print KMS configuration
-	fmt.Println("# Master Key Configuration (KMS Mode)")
-	fmt.Println("# Copy these environment variables to your .env file or secrets manager")
-	fmt.Println()
-	fmt.Printf("KMS_PROVIDER=\"%s\"\n", kmsProvider)
-	fmt.Printf("KMS_KEY_URI=\"%s\"\n", kmsKeyURI)
-	fmt.Printf("MASTER_KEYS=\"%s:%s\"\n", keyID, encodedKey)
-	fmt.Printf("ACTIVE_MASTER_KEY_ID=\"%s\"\n", keyID)
-	fmt.Println()
-	fmt.Println("# For multiple master keys (key rotation), encrypt each key with the same KMS key:")
-	fmt.Printf("# MASTER_KEYS=\"%s:%s,new-key:base64-encoded-kms-ciphertext\"\n", keyID, encodedKey)
-	fmt.Println("# ACTIVE_MASTER_KEY_ID=\"new-key\"")
+	_, _ = fmt.Fprintln(writer, "# Master Key Configuration (KMS Mode)")
+	_, _ = fmt.Fprintln(writer, "# Copy these environment variables to your .env file or secrets manager")
+	_, _ = fmt.Fprintln(writer)
+	_, _ = fmt.Fprintf(writer, "KMS_PROVIDER=\"%s\"\n", kmsProvider)
+	_, _ = fmt.Fprintf(writer, "KMS_KEY_URI=\"%s\"\n", kmsKeyURI)
+	_, _ = fmt.Fprintf(writer, "MASTER_KEYS=\"%s:%s\"\n", keyID, encodedKey)
+	_, _ = fmt.Fprintf(writer, "ACTIVE_MASTER_KEY_ID=\"%s\"\n", keyID)
+	_, _ = fmt.Fprintln(writer)
+	_, _ = fmt.Fprintln(
+		writer,
+		"# For multiple master keys (key rotation), encrypt each key with the same KMS key:",
+	)
+	_, _ = fmt.Fprintf(
+		writer,
+		"# MASTER_KEYS=\"%s:%s,new-key:base64-encoded-kms-ciphertext\"\n",
+		keyID,
+		encodedKey,
+	)
+	_, _ = fmt.Fprintln(writer, "# ACTIVE_MASTER_KEY_ID=\"new-key\"")
 
 	// Zero out the master key from memory for security
 	for i := range masterKey {

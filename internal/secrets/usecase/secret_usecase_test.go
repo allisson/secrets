@@ -66,7 +66,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		// Setup expectations
 		mockSecretRepo.EXPECT().
 			GetByPath(mock.Anything, path).
-			Return(nil, apperrors.ErrNotFound).
+			Return(nil, secretsDomain.ErrSecretNotFound).
 			Once()
 
 		mockTxManager.EXPECT().
@@ -362,7 +362,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		// Setup expectations
 		mockSecretRepo.EXPECT().
 			GetByPath(mock.Anything, path).
-			Return(nil, apperrors.ErrNotFound).
+			Return(nil, secretsDomain.ErrSecretNotFound).
 			Once()
 
 		mockTxManager.EXPECT().
@@ -524,7 +524,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		// Setup expectations
 		mockSecretRepo.EXPECT().
 			GetByPath(ctx, path).
-			Return(nil, apperrors.ErrNotFound).
+			Return(nil, secretsDomain.ErrSecretNotFound).
 			Once()
 
 		// Execute
@@ -871,7 +871,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		// Setup expectations
 		mockSecretRepo.EXPECT().
 			GetByPath(ctx, path).
-			Return(nil, apperrors.ErrNotFound).
+			Return(nil, secretsDomain.ErrSecretNotFound).
 			Once()
 
 		// Execute

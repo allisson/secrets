@@ -52,3 +52,8 @@ func (a *AESGCMCipher) Decrypt(ciphertext, nonce, aad []byte) ([]byte, error) {
 	}
 	return plaintext, nil
 }
+
+// NonceSize returns the size of the nonce required by the AES-GCM cipher.
+func (a *AESGCMCipher) NonceSize() int {
+	return a.aead.NonceSize()
+}

@@ -13,6 +13,9 @@ type AEAD interface {
 
 	// Decrypt decrypts ciphertext using the provided nonce and AAD.
 	Decrypt(ciphertext, nonce, aad []byte) ([]byte, error)
+
+	// NonceSize returns the size of the nonce required by the cipher.
+	NonceSize() int
 }
 
 // AEADManager defines the interface for creating AEAD cipher instances.

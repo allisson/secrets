@@ -250,7 +250,7 @@ func (t *transitKeyUseCase) Decrypt(
 
 	// Extract nonce and ciphertext from encrypted data
 	// The nonce is prepended to the ciphertext
-	nonceSize := 12 // Standard nonce size for AES-GCM and ChaCha20-Poly1305
+	nonceSize := cipher.NonceSize()
 	if len(blob.Ciphertext) < nonceSize {
 		return nil, apperrors.Wrap(cryptoDomain.ErrDecryptionFailed, "ciphertext too short")
 	}

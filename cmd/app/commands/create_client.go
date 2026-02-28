@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
 
-	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	"github.com/allisson/secrets/internal/config"
+	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
 
 // RunCreateClient creates a new authentication client with policies.
@@ -22,23 +22,15 @@ import (
 // Requirements: Database must be migrated and accessible.
 func RunCreateClient(
 	ctx context.Context,
+	clientUseCase authUseCase.ClientUseCase,
+	logger *slog.Logger,
 	name string,
 	isActive bool,
 	policiesJSON string,
 	format string,
+	io IOTuple,
 ) error {
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
 	logger.Info("creating new client", slog.String("name", name))
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
 
 	// Parse or prompt for policies
 	var policies []authDomain.PolicyDocument
@@ -46,7 +38,7 @@ func RunCreateClient(
 
 	if policiesJSON == "" {
 		// Interactive mode
-		policies, err = promptForPolicies()
+		policies, err = promptForPolicies(io)
 		if err != nil {
 			return fmt.Errorf("failed to get policies: %w", err)
 		}
@@ -60,12 +52,6 @@ func RunCreateClient(
 	// Validate that at least one policy was provided
 	if len(policies) == 0 {
 		return fmt.Errorf("at least one policy is required")
-	}
-
-	// Get client use case from container
-	clientUseCase, err := container.ClientUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize client use case: %w", err)
 	}
 
 	// Create input
@@ -83,9 +69,9 @@ func RunCreateClient(
 
 	// Output result based on format
 	if format == "json" {
-		outputJSON(output)
+		outputJSON(output, io.Writer)
 	} else {
-		outputText(output)
+		outputText(output, io.Writer)
 	}
 
 	logger.Info("client created successfully",
@@ -99,20 +85,21 @@ func RunCreateClient(
 
 // promptForPolicies interactively prompts the user to enter policy documents.
 // Shows available capabilities and accepts multiple policies until user declines.
-func promptForPolicies() ([]authDomain.PolicyDocument, error) {
-	reader := bufio.NewReader(os.Stdin)
+func promptForPolicies(io IOTuple) ([]authDomain.PolicyDocument, error) {
+	reader := bufio.NewReader(io.Reader)
+	writer := io.Writer
 	var policies []authDomain.PolicyDocument
 
-	fmt.Println("\nEnter policies for the client")
-	fmt.Println("Available capabilities: read, write, delete, encrypt, decrypt, rotate")
-	fmt.Println()
+	_, _ = fmt.Fprintln(writer, "\nEnter policies for the client")
+	_, _ = fmt.Fprintln(writer, "Available capabilities: read, write, delete, encrypt, decrypt, rotate")
+	_, _ = fmt.Fprintln(writer)
 
 	policyNum := 1
 	for {
-		fmt.Printf("Policy #%d\n", policyNum)
+		_, _ = fmt.Fprintf(writer, "Policy #%d\n", policyNum)
 
 		// Get path
-		fmt.Print("Enter path pattern (e.g., 'secret/*' or '*'): ")
+		_, _ = fmt.Fprint(writer, "Enter path pattern (e.g., 'secret/*' or '*'): ")
 		path, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read path: %w", err)
@@ -124,7 +111,7 @@ func promptForPolicies() ([]authDomain.PolicyDocument, error) {
 		}
 
 		// Get capabilities
-		fmt.Print("Enter capabilities (comma-separated, e.g., 'read,write'): ")
+		_, _ = fmt.Fprint(writer, "Enter capabilities (comma-separated, e.g., 'read,write'): ")
 		capsInput, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read capabilities: %w", err)
@@ -147,7 +134,7 @@ func promptForPolicies() ([]authDomain.PolicyDocument, error) {
 		})
 
 		// Ask if user wants to add another
-		fmt.Print("Add another policy? (y/n): ")
+		_, _ = fmt.Fprint(writer, "Add another policy? (y/n): ")
 		addAnother, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read input: %w", err)
@@ -158,7 +145,7 @@ func promptForPolicies() ([]authDomain.PolicyDocument, error) {
 			break
 		}
 
-		fmt.Println()
+		_, _ = fmt.Fprintln(writer)
 		policyNum++
 	}
 
@@ -185,15 +172,15 @@ func parseCapabilities(input string) ([]authDomain.Capability, error) {
 }
 
 // outputText outputs the result in human-readable text format.
-func outputText(output *authDomain.CreateClientOutput) {
-	fmt.Println("\nClient created successfully!")
-	fmt.Printf("Client ID: %s\n", output.ID.String())
-	fmt.Printf("Secret: %s\n", output.PlainSecret)
-	fmt.Println("\nIMPORTANT: The secret is shown only once. Store it securely.")
+func outputText(output *authDomain.CreateClientOutput, writer io.Writer) {
+	_, _ = fmt.Fprintln(writer, "\nClient created successfully!")
+	_, _ = fmt.Fprintf(writer, "Client ID: %s\n", output.ID.String())
+	_, _ = fmt.Fprintf(writer, "Secret: %s\n", output.PlainSecret)
+	_, _ = fmt.Fprintln(writer, "\nIMPORTANT: The secret is shown only once. Store it securely.")
 }
 
 // outputJSON outputs the result in JSON format for machine consumption.
-func outputJSON(output *authDomain.CreateClientOutput) {
+func outputJSON(output *authDomain.CreateClientOutput, writer io.Writer) {
 	result := map[string]string{
 		"client_id": output.ID.String(),
 		"secret":    output.PlainSecret,
@@ -201,9 +188,9 @@ func outputJSON(output *authDomain.CreateClientOutput) {
 
 	jsonBytes, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal JSON: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "failed to marshal JSON: %v\n", err)
 		return
 	}
 
-	fmt.Println(string(jsonBytes))
+	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 }

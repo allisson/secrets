@@ -8,9 +8,26 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 
+	"io"
+	"os"
+
 	"github.com/allisson/secrets/internal/app"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
+
+// IOTuple holds reader and writer for commands, allowing for testing.
+type IOTuple struct {
+	Reader io.Reader
+	Writer io.Writer
+}
+
+// DefaultIO returns an IOTuple with os.Stdin and os.Stdout.
+func DefaultIO() IOTuple {
+	return IOTuple{
+		Reader: os.Stdin,
+		Writer: os.Stdout,
+	}
+}
 
 // closeContainer closes all resources in the container and logs any errors.
 func closeContainer(container *app.Container, logger *slog.Logger) {

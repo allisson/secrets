@@ -43,3 +43,8 @@ func (c *ChaCha20Poly1305Cipher) Decrypt(ciphertext, nonce, aad []byte) ([]byte,
 	}
 	return plaintext, nil
 }
+
+// NonceSize returns the size of the nonce required by the ChaCha20-Poly1305 cipher.
+func (c *ChaCha20Poly1305Cipher) NonceSize() int {
+	return c.aead.NonceSize()
+}

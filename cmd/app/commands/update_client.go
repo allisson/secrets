@@ -5,15 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
-	"os"
 	"strings"
 
 	"github.com/google/uuid"
 
-	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	"github.com/allisson/secrets/internal/config"
+	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
 
 // RunUpdateClient updates an existing authentication client's configuration.
@@ -24,35 +23,21 @@ import (
 // Requirements: Database must be migrated and the client must exist.
 func RunUpdateClient(
 	ctx context.Context,
+	clientUseCase authUseCase.ClientUseCase,
+	logger *slog.Logger,
+	io IOTuple,
 	clientIDStr string,
 	name string,
 	isActive bool,
 	policiesJSON string,
 	format string,
 ) error {
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
 	logger.Info("updating client", slog.String("client_id", clientIDStr))
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
 
 	// Parse client ID
 	clientID, err := uuid.Parse(clientIDStr)
 	if err != nil {
 		return fmt.Errorf("invalid client ID format: %w", err)
-	}
-
-	// Get client use case from container
-	clientUseCase, err := container.ClientUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize client use case: %w", err)
 	}
 
 	// Get existing client to display current values if in interactive mode
@@ -66,7 +51,7 @@ func RunUpdateClient(
 
 	if policiesJSON == "" {
 		// Interactive mode - show current policies and prompt for new ones
-		policies, err = promptForPoliciesUpdate(existingClient.Policies)
+		policies, err = promptForPoliciesUpdate(io, existingClient.Policies)
 		if err != nil {
 			return fmt.Errorf("failed to get policies: %w", err)
 		}
@@ -96,9 +81,9 @@ func RunUpdateClient(
 
 	// Output result based on format
 	if format == "json" {
-		outputUpdateJSON(clientID, name, isActive)
+		outputUpdateJSON(io.Writer, clientID, name, isActive)
 	} else {
-		outputUpdateText(clientID, name, isActive)
+		outputUpdateText(io.Writer, clientID, name, isActive)
 	}
 
 	logger.Info("client updated successfully",
@@ -113,30 +98,37 @@ func RunUpdateClient(
 // promptForPoliciesUpdate interactively prompts the user to enter policy documents.
 // Shows current policies and available capabilities. Accepts multiple policies until user declines.
 func promptForPoliciesUpdate(
+	io IOTuple,
 	currentPolicies []authDomain.PolicyDocument,
 ) ([]authDomain.PolicyDocument, error) {
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(io.Reader)
 	var policies []authDomain.PolicyDocument
 
-	fmt.Println("\nCurrent policies:")
+	_, _ = fmt.Fprintln(io.Writer, "\nCurrent policies:")
 	for i, policy := range currentPolicies {
 		capsStr := make([]string, len(policy.Capabilities))
 		for j, cap := range policy.Capabilities {
 			capsStr[j] = string(cap)
 		}
-		fmt.Printf("  %d. Path: %s, Capabilities: [%s]\n", i+1, policy.Path, strings.Join(capsStr, ", "))
+		_, _ = fmt.Fprintf(
+			io.Writer,
+			"  %d. Path: %s, Capabilities: [%s]\n",
+			i+1,
+			policy.Path,
+			strings.Join(capsStr, ", "),
+		)
 	}
 
-	fmt.Println("\nEnter new policies for the client")
-	fmt.Println("Available capabilities: read, write, delete, encrypt, decrypt, rotate")
-	fmt.Println()
+	_, _ = fmt.Fprintln(io.Writer, "\nEnter new policies for the client")
+	_, _ = fmt.Fprintln(io.Writer, "Available capabilities: read, write, delete, encrypt, decrypt, rotate")
+	_, _ = fmt.Fprintln(io.Writer)
 
 	policyNum := 1
 	for {
-		fmt.Printf("Policy #%d\n", policyNum)
+		_, _ = fmt.Fprintf(io.Writer, "Policy #%d\n", policyNum)
 
 		// Get path
-		fmt.Print("Enter path pattern (e.g., 'secret/*' or '*'): ")
+		_, _ = fmt.Fprint(io.Writer, "Enter path pattern (e.g., 'secret/*' or '*'): ")
 		path, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read path: %w", err)
@@ -148,7 +140,7 @@ func promptForPoliciesUpdate(
 		}
 
 		// Get capabilities
-		fmt.Print("Enter capabilities (comma-separated, e.g., 'read,write'): ")
+		_, _ = fmt.Fprint(io.Writer, "Enter capabilities (comma-separated, e.g., 'read,write'): ")
 		capsInput, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read capabilities: %w", err)
@@ -171,7 +163,7 @@ func promptForPoliciesUpdate(
 		})
 
 		// Ask if user wants to add another
-		fmt.Print("Add another policy? (y/n): ")
+		_, _ = fmt.Fprint(io.Writer, "Add another policy? (y/n): ")
 		addAnother, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, fmt.Errorf("failed to read input: %w", err)
@@ -182,7 +174,7 @@ func promptForPoliciesUpdate(
 			break
 		}
 
-		fmt.Println()
+		_, _ = fmt.Fprintln(io.Writer)
 		policyNum++
 	}
 
@@ -190,15 +182,15 @@ func promptForPoliciesUpdate(
 }
 
 // outputUpdateText outputs the result in human-readable text format.
-func outputUpdateText(clientID uuid.UUID, name string, isActive bool) {
-	fmt.Println("\nClient updated successfully!")
-	fmt.Printf("Client ID: %s\n", clientID.String())
-	fmt.Printf("Name: %s\n", name)
-	fmt.Printf("Active: %t\n", isActive)
+func outputUpdateText(writer io.Writer, clientID uuid.UUID, name string, isActive bool) {
+	_, _ = fmt.Fprintln(writer, "\nClient updated successfully!")
+	_, _ = fmt.Fprintf(writer, "Client ID: %s\n", clientID.String())
+	_, _ = fmt.Fprintf(writer, "Name: %s\n", name)
+	_, _ = fmt.Fprintf(writer, "Active: %t\n", isActive)
 }
 
 // outputUpdateJSON outputs the result in JSON format for machine consumption.
-func outputUpdateJSON(clientID uuid.UUID, name string, isActive bool) {
+func outputUpdateJSON(writer io.Writer, clientID uuid.UUID, name string, isActive bool) {
 	result := map[string]interface{}{
 		"client_id": clientID.String(),
 		"name":      name,
@@ -207,9 +199,8 @@ func outputUpdateJSON(clientID uuid.UUID, name string, isActive bool) {
 
 	jsonBytes, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal JSON: %v\n", err)
 		return
 	}
 
-	fmt.Println(string(jsonBytes))
+	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 }

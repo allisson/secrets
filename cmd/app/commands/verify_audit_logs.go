@@ -4,19 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
-	"github.com/allisson/secrets/internal/app"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
-	"github.com/allisson/secrets/internal/config"
 )
 
 // RunVerifyAuditLogs verifies cryptographic integrity of audit logs within a time range.
 // Validates HMAC-SHA256 signatures against KEK-derived signing keys for tamper detection.
 //
 // Requirements: Database must be migrated with signature columns and KEK chain loaded.
-func RunVerifyAuditLogs(ctx context.Context, startDate, endDate string, format string) error {
+func RunVerifyAuditLogs(
+	ctx context.Context,
+	auditLogUseCase authUseCase.AuditLogUseCase,
+	logger *slog.Logger,
+	writer io.Writer,
+	startDate, endDate string,
+	format string,
+) error {
 	// Parse date strings to time.Time
 	start, err := parseDate(startDate)
 	if err != nil {
@@ -33,27 +39,10 @@ func RunVerifyAuditLogs(ctx context.Context, startDate, endDate string, format s
 		return fmt.Errorf("end date must be after start date")
 	}
 
-	// Load configuration
-	cfg := config.Load()
-
-	// Create DI container
-	container := app.NewContainer(cfg)
-
-	// Get logger from container
-	logger := container.Logger()
 	logger.Info("verifying audit logs",
 		slog.Time("start_date", start),
 		slog.Time("end_date", end),
 	)
-
-	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
-
-	// Get audit log use case from container
-	auditLogUseCase, err := container.AuditLogUseCase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize audit log use case: %w", err)
-	}
 
 	// Execute batch verification
 	report, err := auditLogUseCase.VerifyBatch(ctx, start, end)
@@ -63,11 +52,11 @@ func RunVerifyAuditLogs(ctx context.Context, startDate, endDate string, format s
 
 	// Output result based on format
 	if format == "json" {
-		if err := outputVerifyJSON(report); err != nil {
+		if err := outputVerifyJSON(writer, report); err != nil {
 			return fmt.Errorf("failed to output JSON: %w", err)
 		}
 	} else {
-		outputVerifyText(report, start, end)
+		outputVerifyText(writer, report, start, end)
 	}
 
 	// Log summary
@@ -107,38 +96,38 @@ func parseDate(dateStr string) (time.Time, error) {
 }
 
 // outputVerifyText outputs the verification result in human-readable text format.
-func outputVerifyText(report *authUseCase.VerificationReport, start, end time.Time) {
-	fmt.Printf("Audit Log Integrity Verification\n")
-	fmt.Printf("=================================\n\n")
-	fmt.Printf(
+func outputVerifyText(writer io.Writer, report *authUseCase.VerificationReport, start, end time.Time) {
+	_, _ = fmt.Fprintf(writer, "Audit Log Integrity Verification\n")
+	_, _ = fmt.Fprintf(writer, "=================================\n\n")
+	_, _ = fmt.Fprintf(writer,
 		"Time Range: %s to %s\n\n",
 		start.Format("2006-01-02 15:04:05"),
 		end.Format("2006-01-02 15:04:05"),
 	)
 
-	fmt.Printf("Total Checked:  %d\n", report.TotalChecked)
-	fmt.Printf("Signed:         %d\n", report.SignedCount)
-	fmt.Printf("Unsigned:       %d (legacy)\n", report.UnsignedCount)
-	fmt.Printf("Valid:          %d\n", report.ValidCount)
-	fmt.Printf("Invalid:        %d\n\n", report.InvalidCount)
+	_, _ = fmt.Fprintf(writer, "Total Checked:  %d\n", report.TotalChecked)
+	_, _ = fmt.Fprintf(writer, "Signed:         %d\n", report.SignedCount)
+	_, _ = fmt.Fprintf(writer, "Unsigned:       %d (legacy)\n", report.UnsignedCount)
+	_, _ = fmt.Fprintf(writer, "Valid:          %d\n", report.ValidCount)
+	_, _ = fmt.Fprintf(writer, "Invalid:        %d\n\n", report.InvalidCount)
 
 	switch {
 	case report.InvalidCount > 0:
-		fmt.Printf("WARNING: %d log(s) failed integrity check!\n\n", report.InvalidCount)
-		fmt.Printf("Invalid Log IDs:\n")
+		_, _ = fmt.Fprintf(writer, "WARNING: %d log(s) failed integrity check!\n\n", report.InvalidCount)
+		_, _ = fmt.Fprintf(writer, "Invalid Log IDs:\n")
 		for _, id := range report.InvalidLogs {
-			fmt.Printf("  - %s\n", id)
+			_, _ = fmt.Fprintf(writer, "  - %s\n", id)
 		}
-		fmt.Printf("\nStatus: FAILED ❌\n")
+		_, _ = fmt.Fprintf(writer, "\nStatus: FAILED ❌\n")
 	case report.TotalChecked == 0:
-		fmt.Printf("Status: No logs found in specified time range\n")
+		_, _ = fmt.Fprintf(writer, "Status: No logs found in specified time range\n")
 	default:
-		fmt.Printf("Status: PASSED ✓\n")
+		_, _ = fmt.Fprintf(writer, "Status: PASSED ✓\n")
 	}
 }
 
 // outputVerifyJSON outputs the verification result in JSON format for machine consumption.
-func outputVerifyJSON(report *authUseCase.VerificationReport) error {
+func outputVerifyJSON(writer io.Writer, report *authUseCase.VerificationReport) error {
 	result := map[string]interface{}{
 		"total_checked":  report.TotalChecked,
 		"signed_count":   report.SignedCount,
@@ -154,6 +143,6 @@ func outputVerifyJSON(report *authUseCase.VerificationReport) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	fmt.Println(string(jsonBytes))
+	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 	return nil
 }

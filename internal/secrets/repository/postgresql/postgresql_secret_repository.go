@@ -70,7 +70,7 @@ func (p *PostgreSQLSecretRepository) GetByPath(
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, apperrors.ErrNotFound
+			return nil, secretsDomain.ErrSecretNotFound
 		}
 		return nil, apperrors.Wrap(err, "failed to get secret by path")
 	}
@@ -104,7 +104,7 @@ func (p *PostgreSQLSecretRepository) GetByPathAndVersion(
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, apperrors.ErrNotFound
+			return nil, secretsDomain.ErrSecretNotFound
 		}
 		return nil, apperrors.Wrap(err, "failed to get secret by path and version")
 	}
