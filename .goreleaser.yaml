@@ -18,8 +18,11 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -a
+      - -installsuffix=cgo
     ldflags:
-      - -s -w -X main.version={{.Version}}
+      - -s -w -X main.version={{.Version}} -X main.buildDate={{.Date}} -X main.commitSHA={{.FullCommit}}
 
 archives:
   - formats: [ "tar.gz" ]
