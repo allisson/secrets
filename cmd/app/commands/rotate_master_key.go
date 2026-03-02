@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"time"
 
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
@@ -32,6 +33,11 @@ func RunRotateMasterKey(
 	}
 	if existingActiveKeyID == "" {
 		return fmt.Errorf("ACTIVE_MASTER_KEY_ID is not set")
+	}
+
+	// Ensure active key ID exists in the master keys string
+	if !strings.Contains(existingMasterKeys, existingActiveKeyID+":") {
+		return fmt.Errorf("ACTIVE_MASTER_KEY_ID '%s' not found in MASTER_KEYS", existingActiveKeyID)
 	}
 
 	// Generate default key ID if not provided

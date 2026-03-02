@@ -1,3 +1,4 @@
+// Package main provides the CLI command definitions for the application.
 package main
 
 import (
@@ -7,9 +8,9 @@ import (
 
 	"github.com/allisson/secrets/cmd/app/commands"
 	"github.com/allisson/secrets/internal/app"
-	"github.com/allisson/secrets/internal/config"
 )
 
+// getAuthCommands returns the authentication-related CLI commands.
 func getAuthCommands() []*cli.Command {
 	return []*cli.Command{
 		{
@@ -36,23 +37,24 @@ func getAuthCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				tokenizationUseCase, err := container.TokenizationUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunCleanExpiredTokens(
+				return commands.ExecuteWithContainer(
 					ctx,
-					tokenizationUseCase,
-					container.Logger(),
-					commands.DefaultIO().Writer,
-					int(cmd.Int("days")),
-					cmd.Bool("dry-run"),
-					cmd.String("format"),
+					func(ctx context.Context, container *app.Container) error {
+						tokenizationUseCase, err := container.TokenizationUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunCleanExpiredTokens(
+							ctx,
+							tokenizationUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
 				)
 			},
 		},
@@ -85,24 +87,25 @@ func getAuthCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				clientUseCase, err := container.ClientUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunCreateClient(
+				return commands.ExecuteWithContainer(
 					ctx,
-					clientUseCase,
-					container.Logger(),
-					cmd.String("name"),
-					cmd.Bool("active"),
-					cmd.String("policies"),
-					cmd.String("format"),
-					commands.DefaultIO(),
+					func(ctx context.Context, container *app.Container) error {
+						clientUseCase, err := container.ClientUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunCreateClient(
+							ctx,
+							clientUseCase,
+							container.Logger(),
+							cmd.String("name"),
+							cmd.Bool("active"),
+							cmd.String("policies"),
+							cmd.String("format"),
+							commands.DefaultIO(),
+						)
+					},
 				)
 			},
 		},
@@ -141,25 +144,26 @@ func getAuthCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				clientUseCase, err := container.ClientUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunUpdateClient(
+				return commands.ExecuteWithContainer(
 					ctx,
-					clientUseCase,
-					container.Logger(),
-					commands.DefaultIO(),
-					cmd.String("id"),
-					cmd.String("name"),
-					cmd.Bool("active"),
-					cmd.String("policies"),
-					cmd.String("format"),
+					func(ctx context.Context, container *app.Container) error {
+						clientUseCase, err := container.ClientUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunUpdateClient(
+							ctx,
+							clientUseCase,
+							container.Logger(),
+							commands.DefaultIO(),
+							cmd.String("id"),
+							cmd.String("name"),
+							cmd.Bool("active"),
+							cmd.String("policies"),
+							cmd.String("format"),
+						)
+					},
 				)
 			},
 		},

@@ -1,3 +1,4 @@
+// Package main provides the CLI command definitions for the application.
 package main
 
 import (
@@ -8,10 +9,10 @@ import (
 
 	"github.com/allisson/secrets/cmd/app/commands"
 	"github.com/allisson/secrets/internal/app"
-	"github.com/allisson/secrets/internal/config"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 )
 
+// getKeyCommands returns the key-related CLI commands.
 func getKeyCommands() []*cli.Command {
 	return []*cli.Command{
 		{
@@ -38,18 +39,19 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				return commands.RunCreateMasterKey(
+				return commands.ExecuteWithContainer(
 					ctx,
-					cryptoService.NewKMSService(),
-					container.Logger(),
-					commands.DefaultIO().Writer,
-					cmd.String("id"),
-					cmd.String("kms-provider"),
-					cmd.String("kms-key-uri"),
+					func(ctx context.Context, container *app.Container) error {
+						return commands.RunCreateMasterKey(
+							ctx,
+							cryptoService.NewKMSService(),
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							cmd.String("id"),
+							cmd.String("kms-provider"),
+							cmd.String("kms-key-uri"),
+						)
+					},
 				)
 			},
 		},
@@ -77,20 +79,21 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				return commands.RunRotateMasterKey(
+				return commands.ExecuteWithContainer(
 					ctx,
-					cryptoService.NewKMSService(),
-					container.Logger(),
-					commands.DefaultIO().Writer,
-					cmd.String("id"),
-					cmd.String("kms-provider"),
-					cmd.String("kms-key-uri"),
-					os.Getenv("MASTER_KEYS"),
-					os.Getenv("ACTIVE_MASTER_KEY_ID"),
+					func(ctx context.Context, container *app.Container) error {
+						return commands.RunRotateMasterKey(
+							ctx,
+							cryptoService.NewKMSService(),
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							cmd.String("id"),
+							cmd.String("kms-provider"),
+							cmd.String("kms-key-uri"),
+							os.Getenv("MASTER_KEYS"),
+							os.Getenv("ACTIVE_MASTER_KEY_ID"),
+						)
+					},
 				)
 			},
 		},
@@ -106,26 +109,27 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				kekUseCase, err := container.KekUseCase()
-				if err != nil {
-					return err
-				}
-
-				masterKeyChain, err := container.MasterKeyChain()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunCreateKek(
+				return commands.ExecuteWithContainer(
 					ctx,
-					kekUseCase,
-					masterKeyChain,
-					container.Logger(),
-					cmd.String("algorithm"),
+					func(ctx context.Context, container *app.Container) error {
+						kekUseCase, err := container.KekUseCase()
+						if err != nil {
+							return err
+						}
+
+						masterKeyChain, err := container.MasterKeyChain()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunCreateKek(
+							ctx,
+							kekUseCase,
+							masterKeyChain,
+							container.Logger(),
+							cmd.String("algorithm"),
+						)
+					},
 				)
 			},
 		},
@@ -141,26 +145,27 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				kekUseCase, err := container.KekUseCase()
-				if err != nil {
-					return err
-				}
-
-				masterKeyChain, err := container.MasterKeyChain()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunRotateKek(
+				return commands.ExecuteWithContainer(
 					ctx,
-					kekUseCase,
-					masterKeyChain,
-					container.Logger(),
-					cmd.String("algorithm"),
+					func(ctx context.Context, container *app.Container) error {
+						kekUseCase, err := container.KekUseCase()
+						if err != nil {
+							return err
+						}
+
+						masterKeyChain, err := container.MasterKeyChain()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunRotateKek(
+							ctx,
+							kekUseCase,
+							masterKeyChain,
+							container.Logger(),
+							cmd.String("algorithm"),
+						)
+					},
 				)
 			},
 		},
@@ -182,33 +187,34 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				masterKeyChain, err := container.MasterKeyChain()
-				if err != nil {
-					return err
-				}
-
-				kekUseCase, err := container.KekUseCase()
-				if err != nil {
-					return err
-				}
-
-				dekUseCase, err := container.CryptoDekUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunRewrapDeks(
+				return commands.ExecuteWithContainer(
 					ctx,
-					masterKeyChain,
-					kekUseCase,
-					dekUseCase,
-					container.Logger(),
-					cmd.String("kek-id"),
-					int(cmd.Int("batch-size")),
+					func(ctx context.Context, container *app.Container) error {
+						masterKeyChain, err := container.MasterKeyChain()
+						if err != nil {
+							return err
+						}
+
+						kekUseCase, err := container.KekUseCase()
+						if err != nil {
+							return err
+						}
+
+						dekUseCase, err := container.CryptoDekUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunRewrapDeks(
+							ctx,
+							masterKeyChain,
+							kekUseCase,
+							dekUseCase,
+							container.Logger(),
+							cmd.String("kek-id"),
+							int(cmd.Int("batch-size")),
+						)
+					},
 				)
 			},
 		},
@@ -242,23 +248,24 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunCreateTokenizationKey(
+				return commands.ExecuteWithContainer(
 					ctx,
-					tokenizationKeyUseCase,
-					container.Logger(),
-					cmd.String("name"),
-					cmd.String("format"),
-					cmd.Bool("deterministic"),
-					cmd.String("algorithm"),
+					func(ctx context.Context, container *app.Container) error {
+						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunCreateTokenizationKey(
+							ctx,
+							tokenizationKeyUseCase,
+							container.Logger(),
+							cmd.String("name"),
+							cmd.String("format"),
+							cmd.Bool("deterministic"),
+							cmd.String("algorithm"),
+						)
+					},
 				)
 			},
 		},
@@ -292,23 +299,24 @@ func getKeyCommands() []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunRotateTokenizationKey(
+				return commands.ExecuteWithContainer(
 					ctx,
-					tokenizationKeyUseCase,
-					container.Logger(),
-					cmd.String("name"),
-					cmd.String("format"),
-					cmd.Bool("deterministic"),
-					cmd.String("algorithm"),
+					func(ctx context.Context, container *app.Container) error {
+						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunRotateTokenizationKey(
+							ctx,
+							tokenizationKeyUseCase,
+							container.Logger(),
+							cmd.String("name"),
+							cmd.String("format"),
+							cmd.Bool("deterministic"),
+							cmd.String("algorithm"),
+						)
+					},
 				)
 			},
 		},

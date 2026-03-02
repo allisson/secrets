@@ -8,35 +8,32 @@ import (
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
-// RunRotateTokenizationKey creates a new version of an existing tokenization key.
-// Increments the version number and generates a new DEK while preserving old versions
-// for detokenization of previously issued tokens.
-//
-// Requirements: Database must be migrated, named tokenization key must exist.
+// RunRotateTokenizationKey rotates an existing tokenization key to a new version.
+// Updates format and deterministic settings. Existing tokens remain valid until rotated.
 func RunRotateTokenizationKey(
 	ctx context.Context,
 	tokenizationKeyUseCase tokenizationUseCase.TokenizationKeyUseCase,
 	logger *slog.Logger,
 	name string,
-	formatType string,
+	formatTypeStr string,
 	isDeterministic bool,
 	algorithmStr string,
 ) error {
 	logger.Info("rotating tokenization key",
 		slog.String("name", name),
-		slog.String("format_type", formatType),
+		slog.String("format_type", formatTypeStr),
 		slog.Bool("is_deterministic", isDeterministic),
 		slog.String("algorithm", algorithmStr),
 	)
 
 	// Parse format type
-	format, err := parseFormatType(formatType)
+	format, err := ParseFormatType(formatTypeStr)
 	if err != nil {
 		return err
 	}
 
 	// Parse algorithm
-	algorithm, err := parseAlgorithm(algorithmStr)
+	algorithm, err := ParseAlgorithm(algorithmStr)
 	if err != nil {
 		return err
 	}

@@ -34,7 +34,7 @@ func RunServer(ctx context.Context, version string) error {
 	logger.Info("starting server", slog.String("version", version))
 
 	// Ensure cleanup on exit
-	defer closeContainer(container, logger)
+	defer CloseContainer(container, logger)
 
 	// Get HTTP server from container (this initializes all dependencies)
 	server, err := container.HTTPServer()
@@ -72,7 +72,7 @@ func RunServer(ctx context.Context, version string) error {
 	select {
 	case <-ctx.Done():
 		logger.Info("shutdown signal received")
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.DBConnMaxLifetime)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ServerShutdownTimeout)
 		defer shutdownCancel()
 
 		var shutdownErrors []error
@@ -93,7 +93,7 @@ func RunServer(ctx context.Context, version string) error {
 	case err := <-serverErr:
 		// Attempt graceful shutdown if one server fails
 		logger.Error("server error, initiating shutdown", slog.Any("error", err))
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.DBConnMaxLifetime)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ServerShutdownTimeout)
 		defer shutdownCancel()
 
 		var shutdownErrors []error

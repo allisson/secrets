@@ -11,25 +11,73 @@ import (
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
 
+// VerifyAuditLogsResult holds the result of the audit log verification operation.
+type VerifyAuditLogsResult struct {
+	TotalChecked  int64     `json:"total_checked"`
+	SignedCount   int64     `json:"signed_count"`
+	UnsignedCount int64     `json:"unsigned_count"`
+	ValidCount    int64     `json:"valid_count"`
+	InvalidCount  int64     `json:"invalid_count"`
+	InvalidLogs   []string  `json:"invalid_logs"`
+	Passed        bool      `json:"passed"`
+	StartDate     time.Time `json:"start_date"`
+	EndDate       time.Time `json:"end_date"`
+}
+
+// ToText returns a human-readable representation of the verification result.
+func (r *VerifyAuditLogsResult) ToText() string {
+	output := "Audit Log Integrity Verification\n"
+	output += "=================================\n\n"
+	output += fmt.Sprintf(
+		"Time Range: %s to %s\n\n",
+		r.StartDate.Format("2006-01-02 15:04:05"),
+		r.EndDate.Format("2006-01-02 15:04:05"),
+	)
+
+	output += fmt.Sprintf("Total Checked:  %d\n", r.TotalChecked)
+	output += fmt.Sprintf("Signed:         %d\n", r.SignedCount)
+	output += fmt.Sprintf("Unsigned:       %d (legacy)\n", r.UnsignedCount)
+	output += fmt.Sprintf("Valid:          %d\n", r.ValidCount)
+	output += fmt.Sprintf("Invalid:        %d\n\n", r.InvalidCount)
+
+	switch {
+	case r.InvalidCount > 0:
+		output += fmt.Sprintf("WARNING: %d log(s) failed integrity check!\n\n", r.InvalidCount)
+		output += "Invalid Log IDs:\n"
+		for _, id := range r.InvalidLogs {
+			output += fmt.Sprintf("  - %s\n", id)
+		}
+		output += "\nStatus: FAILED ❌"
+	case r.TotalChecked == 0:
+		output += "Status: No logs found in specified time range"
+	default:
+		output += "Status: PASSED ✓"
+	}
+	return output
+}
+
+// ToJSON returns a JSON representation of the verification result.
+func (r *VerifyAuditLogsResult) ToJSON() string {
+	jsonBytes, _ := json.MarshalIndent(r, "", "  ")
+	return string(jsonBytes)
+}
+
 // RunVerifyAuditLogs verifies cryptographic integrity of audit logs within a time range.
-// Validates HMAC-SHA256 signatures against KEK-derived signing keys for tamper detection.
-//
-// Requirements: Database must be migrated with signature columns and KEK chain loaded.
 func RunVerifyAuditLogs(
 	ctx context.Context,
 	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 	writer io.Writer,
-	startDate, endDate string,
+	startDateStr, endDateStr string,
 	format string,
 ) error {
 	// Parse date strings to time.Time
-	start, err := parseDate(startDate)
+	start, err := parseDate(startDateStr)
 	if err != nil {
 		return fmt.Errorf("invalid start date: %w", err)
 	}
 
-	end, err := parseDate(endDate)
+	end, err := parseDate(endDateStr)
 	if err != nil {
 		return fmt.Errorf("invalid end date: %w", err)
 	}
@@ -50,14 +98,25 @@ func RunVerifyAuditLogs(
 		return fmt.Errorf("failed to verify audit logs: %w", err)
 	}
 
-	// Output result based on format
-	if format == "json" {
-		if err := outputVerifyJSON(writer, report); err != nil {
-			return fmt.Errorf("failed to output JSON: %w", err)
-		}
-	} else {
-		outputVerifyText(writer, report, start, end)
+	// Convert UUIDs to strings
+	invalidLogs := make([]string, len(report.InvalidLogs))
+	for i, id := range report.InvalidLogs {
+		invalidLogs[i] = id.String()
 	}
+
+	// Output result
+	result := &VerifyAuditLogsResult{
+		TotalChecked:  report.TotalChecked,
+		SignedCount:   report.SignedCount,
+		UnsignedCount: report.UnsignedCount,
+		ValidCount:    report.ValidCount,
+		InvalidCount:  report.InvalidCount,
+		InvalidLogs:   invalidLogs,
+		Passed:        report.InvalidCount == 0,
+		StartDate:     start,
+		EndDate:       end,
+	}
+	WriteOutput(writer, format, result)
 
 	// Log summary
 	logger.Info("verification completed",
@@ -93,56 +152,4 @@ func parseDate(dateStr string) (time.Time, error) {
 	}
 
 	return t, nil
-}
-
-// outputVerifyText outputs the verification result in human-readable text format.
-func outputVerifyText(writer io.Writer, report *authUseCase.VerificationReport, start, end time.Time) {
-	_, _ = fmt.Fprintf(writer, "Audit Log Integrity Verification\n")
-	_, _ = fmt.Fprintf(writer, "=================================\n\n")
-	_, _ = fmt.Fprintf(writer,
-		"Time Range: %s to %s\n\n",
-		start.Format("2006-01-02 15:04:05"),
-		end.Format("2006-01-02 15:04:05"),
-	)
-
-	_, _ = fmt.Fprintf(writer, "Total Checked:  %d\n", report.TotalChecked)
-	_, _ = fmt.Fprintf(writer, "Signed:         %d\n", report.SignedCount)
-	_, _ = fmt.Fprintf(writer, "Unsigned:       %d (legacy)\n", report.UnsignedCount)
-	_, _ = fmt.Fprintf(writer, "Valid:          %d\n", report.ValidCount)
-	_, _ = fmt.Fprintf(writer, "Invalid:        %d\n\n", report.InvalidCount)
-
-	switch {
-	case report.InvalidCount > 0:
-		_, _ = fmt.Fprintf(writer, "WARNING: %d log(s) failed integrity check!\n\n", report.InvalidCount)
-		_, _ = fmt.Fprintf(writer, "Invalid Log IDs:\n")
-		for _, id := range report.InvalidLogs {
-			_, _ = fmt.Fprintf(writer, "  - %s\n", id)
-		}
-		_, _ = fmt.Fprintf(writer, "\nStatus: FAILED ❌\n")
-	case report.TotalChecked == 0:
-		_, _ = fmt.Fprintf(writer, "Status: No logs found in specified time range\n")
-	default:
-		_, _ = fmt.Fprintf(writer, "Status: PASSED ✓\n")
-	}
-}
-
-// outputVerifyJSON outputs the verification result in JSON format for machine consumption.
-func outputVerifyJSON(writer io.Writer, report *authUseCase.VerificationReport) error {
-	result := map[string]interface{}{
-		"total_checked":  report.TotalChecked,
-		"signed_count":   report.SignedCount,
-		"unsigned_count": report.UnsignedCount,
-		"valid_count":    report.ValidCount,
-		"invalid_count":  report.InvalidCount,
-		"invalid_logs":   report.InvalidLogs,
-		"passed":         report.InvalidCount == 0,
-	}
-
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	_, _ = fmt.Fprintln(writer, string(jsonBytes))
-	return nil
 }

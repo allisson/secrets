@@ -18,25 +18,25 @@ func TestRunCleanExpiredTokens(t *testing.T) {
 
 	t.Run("text-output", func(t *testing.T) {
 		mockUseCase := &tokenizationMocks.MockTokenizationUseCase{}
-		mockUseCase.On("CleanupExpired", ctx, days, false).Return(int64(10), nil)
+		mockUseCase.On("CleanupExpired", ctx, days, false).Return(int64(100), nil)
 
 		var out bytes.Buffer
 		err := RunCleanExpiredTokens(ctx, mockUseCase, logger, &out, days, false, "text")
 
 		require.NoError(t, err)
-		require.Contains(t, out.String(), "Successfully deleted 10 expired token(s)")
+		require.Contains(t, out.String(), "Successfully deleted 100 expired token(s)")
 		mockUseCase.AssertExpectations(t)
 	})
 
 	t.Run("json-output", func(t *testing.T) {
 		mockUseCase := &tokenizationMocks.MockTokenizationUseCase{}
-		mockUseCase.On("CleanupExpired", ctx, days, true).Return(int64(5), nil)
+		mockUseCase.On("CleanupExpired", ctx, days, true).Return(int64(50), nil)
 
 		var out bytes.Buffer
 		err := RunCleanExpiredTokens(ctx, mockUseCase, logger, &out, days, true, "json")
 
 		require.NoError(t, err)
-		require.Contains(t, out.String(), `"count": 5`)
+		require.Contains(t, out.String(), `"count": 50`)
 		require.Contains(t, out.String(), `"dry_run": true`)
 		mockUseCase.AssertExpectations(t)
 	})

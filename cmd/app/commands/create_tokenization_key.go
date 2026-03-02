@@ -10,32 +10,30 @@ import (
 
 // RunCreateTokenizationKey creates a new tokenization key with the specified parameters.
 // Should be run during initial setup or when adding new tokenization formats.
-//
-// Requirements: Database must be migrated, MASTER_KEYS and ACTIVE_MASTER_KEY_ID must be set.
 func RunCreateTokenizationKey(
 	ctx context.Context,
 	tokenizationKeyUseCase tokenizationUseCase.TokenizationKeyUseCase,
 	logger *slog.Logger,
 	name string,
-	formatType string,
+	formatTypeStr string,
 	isDeterministic bool,
 	algorithmStr string,
 ) error {
 	logger.Info("creating new tokenization key",
 		slog.String("name", name),
-		slog.String("format_type", formatType),
+		slog.String("format_type", formatTypeStr),
 		slog.Bool("is_deterministic", isDeterministic),
 		slog.String("algorithm", algorithmStr),
 	)
 
 	// Parse format type
-	format, err := parseFormatType(formatType)
+	format, err := ParseFormatType(formatTypeStr)
 	if err != nil {
 		return err
 	}
 
 	// Parse algorithm
-	algorithm, err := parseAlgorithm(algorithmStr)
+	algorithm, err := ParseAlgorithm(algorithmStr)
 	if err != nil {
 		return err
 	}

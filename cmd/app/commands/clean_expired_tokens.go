@@ -10,6 +10,37 @@ import (
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
+// CleanExpiredTokensResult holds the result of the expired token cleanup operation.
+type CleanExpiredTokensResult struct {
+	Count  int64 `json:"count"`
+	Days   int   `json:"days"`
+	DryRun bool  `json:"dry_run"`
+}
+
+// ToText returns a human-readable representation of the cleanup result.
+func (r *CleanExpiredTokensResult) ToText() string {
+	if r.DryRun {
+		return fmt.Sprintf(
+			"Dry-run mode: Would delete %d expired token(s) older than %d day(s)",
+			r.Count,
+			r.Days,
+		)
+	}
+	return fmt.Sprintf(
+		"Successfully deleted %d expired token(s) older than %d day(s)",
+		r.Count,
+		r.Days,
+	)
+}
+
+// ToJSON returns a JSON representation of the cleanup result.
+func (r *CleanExpiredTokensResult) ToJSON() string {
+	jsonBytes, _ := json.MarshalIndent(r, "", "  ")
+	return string(jsonBytes)
+}
+
+// RunCleanExpiredTokens deletes expired tokens older than the specified number of days.
+// Supports dry-run mode and multiple output formats.
 func RunCleanExpiredTokens(
 	ctx context.Context,
 	tokenizationUseCase tokenizationUseCase.TokenizationUseCase,
@@ -35,12 +66,13 @@ func RunCleanExpiredTokens(
 		return fmt.Errorf("failed to cleanup expired tokens: %w", err)
 	}
 
-	// Output result based on format
-	if format == "json" {
-		outputCleanExpiredJSON(writer, count, days, dryRun)
-	} else {
-		outputCleanExpiredText(writer, count, days, dryRun)
+	// Output result
+	result := &CleanExpiredTokensResult{
+		Count:  count,
+		Days:   days,
+		DryRun: dryRun,
 	}
+	WriteOutput(writer, format, result)
 
 	logger.Info("cleanup completed",
 		slog.Int64("count", count),
@@ -49,39 +81,4 @@ func RunCleanExpiredTokens(
 	)
 
 	return nil
-}
-
-// outputCleanExpiredText outputs the result in human-readable text format.
-func outputCleanExpiredText(writer io.Writer, count int64, days int, dryRun bool) {
-	if dryRun {
-		_, _ = fmt.Fprintf(
-			writer,
-			"Dry-run mode: Would delete %d expired token(s) older than %d day(s)\n",
-			count,
-			days,
-		)
-	} else {
-		_, _ = fmt.Fprintf(
-			writer,
-			"Successfully deleted %d expired token(s) older than %d day(s)\n",
-			count,
-			days,
-		)
-	}
-}
-
-// outputCleanExpiredJSON outputs the result in JSON format for machine consumption.
-func outputCleanExpiredJSON(writer io.Writer, count int64, days int, dryRun bool) {
-	result := map[string]interface{}{
-		"count":   count,
-		"days":    days,
-		"dry_run": dryRun,
-	}
-
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return
-	}
-
-	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 }

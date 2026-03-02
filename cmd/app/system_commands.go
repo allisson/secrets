@@ -1,3 +1,4 @@
+// Package main provides the CLI command definitions for the application.
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 	"github.com/allisson/secrets/internal/config"
 )
 
+// getSystemCommands returns the system-related CLI commands.
 func getSystemCommands(version string) []*cli.Command {
 	return []*cli.Command{
 		{
@@ -23,11 +25,17 @@ func getSystemCommands(version string) []*cli.Command {
 			Name:  "migrate",
 			Usage: "Run database migrations",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				return commands.RunMigrations(container.Logger(), cfg.DBDriver, cfg.DBConnectionString)
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						cfg := config.Load()
+						return commands.RunMigrations(
+							container.Logger(),
+							cfg.DBDriver,
+							cfg.DBConnectionString,
+						)
+					},
+				)
 			},
 		},
 		{
@@ -54,23 +62,24 @@ func getSystemCommands(version string) []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				auditLogUseCase, err := container.AuditLogUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunCleanAuditLogs(
+				return commands.ExecuteWithContainer(
 					ctx,
-					auditLogUseCase,
-					container.Logger(),
-					commands.DefaultIO().Writer,
-					int(cmd.Int("days")),
-					cmd.Bool("dry-run"),
-					cmd.String("format"),
+					func(ctx context.Context, container *app.Container) error {
+						auditLogUseCase, err := container.AuditLogUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunCleanAuditLogs(
+							ctx,
+							auditLogUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
 				)
 			},
 		},
@@ -98,23 +107,24 @@ func getSystemCommands(version string) []*cli.Command {
 				},
 			},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				cfg := config.Load()
-				container := app.NewContainer(cfg)
-				defer func() { _ = container.Shutdown(ctx) }()
-
-				auditLogUseCase, err := container.AuditLogUseCase()
-				if err != nil {
-					return err
-				}
-
-				return commands.RunVerifyAuditLogs(
+				return commands.ExecuteWithContainer(
 					ctx,
-					auditLogUseCase,
-					container.Logger(),
-					commands.DefaultIO().Writer,
-					cmd.String("start-date"),
-					cmd.String("end-date"),
-					cmd.String("format"),
+					func(ctx context.Context, container *app.Container) error {
+						auditLogUseCase, err := container.AuditLogUseCase()
+						if err != nil {
+							return err
+						}
+
+						return commands.RunVerifyAuditLogs(
+							ctx,
+							auditLogUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							cmd.String("start-date"),
+							cmd.String("end-date"),
+							cmd.String("format"),
+						)
+					},
 				)
 			},
 		},

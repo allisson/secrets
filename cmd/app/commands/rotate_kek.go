@@ -9,6 +9,9 @@ import (
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 )
 
+// RunRotateKek rotates the Key Encryption Key (KEK) for a specific algorithm.
+// Generates a new KEK version and marks it as active. Existing secrets encrypted
+// with old KEKs remain valid until rewrapped.
 func RunRotateKek(
 	ctx context.Context,
 	kekUseCase cryptoUseCase.KekUseCase,
@@ -19,14 +22,10 @@ func RunRotateKek(
 	logger.Info("rotating KEK", slog.String("algorithm", algorithmStr))
 
 	// Parse algorithm
-	algorithm, err := parseAlgorithm(algorithmStr)
+	algorithm, err := ParseAlgorithm(algorithmStr)
 	if err != nil {
 		return err
 	}
-
-	logger.Info("master key chain loaded",
-		slog.String("active_master_key_id", masterKeyChain.ActiveMasterKeyID()),
-	)
 
 	// Rotate the KEK
 	if err := kekUseCase.Rotate(ctx, masterKeyChain, algorithm); err != nil {

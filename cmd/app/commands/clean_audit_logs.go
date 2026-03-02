@@ -10,6 +10,33 @@ import (
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
 
+// CleanAuditLogsResult holds the result of the audit log cleanup operation.
+type CleanAuditLogsResult struct {
+	Count  int64 `json:"count"`
+	Days   int   `json:"days"`
+	DryRun bool  `json:"dry_run"`
+}
+
+// ToText returns a human-readable representation of the cleanup result.
+func (r *CleanAuditLogsResult) ToText() string {
+	if r.DryRun {
+		return fmt.Sprintf(
+			"Dry-run mode: Would delete %d audit log(s) older than %d day(s)",
+			r.Count,
+			r.Days,
+		)
+	}
+	return fmt.Sprintf("Successfully deleted %d audit log(s) older than %d day(s)", r.Count, r.Days)
+}
+
+// ToJSON returns a JSON representation of the cleanup result.
+func (r *CleanAuditLogsResult) ToJSON() string {
+	jsonBytes, _ := json.MarshalIndent(r, "", "  ")
+	return string(jsonBytes)
+}
+
+// RunCleanAuditLogs deletes audit logs older than the specified number of days.
+// Supports dry-run mode and multiple output formats.
 func RunCleanAuditLogs(
 	ctx context.Context,
 	auditLogUseCase authUseCase.AuditLogUseCase,
@@ -35,12 +62,13 @@ func RunCleanAuditLogs(
 		return fmt.Errorf("failed to delete audit logs: %w", err)
 	}
 
-	// Output result based on format
-	if format == "json" {
-		outputCleanAuditLogsJSON(writer, count, days, dryRun)
-	} else {
-		outputCleanAuditLogsText(writer, count, days, dryRun)
+	// Output result
+	result := &CleanAuditLogsResult{
+		Count:  count,
+		Days:   days,
+		DryRun: dryRun,
 	}
+	WriteOutput(writer, format, result)
 
 	logger.Info("cleanup completed",
 		slog.Int64("count", count),
@@ -49,34 +77,4 @@ func RunCleanAuditLogs(
 	)
 
 	return nil
-}
-
-// outputCleanAuditLogsText outputs the result in human-readable text format.
-func outputCleanAuditLogsText(writer io.Writer, count int64, days int, dryRun bool) {
-	if dryRun {
-		_, _ = fmt.Fprintf(
-			writer,
-			"Dry-run mode: Would delete %d audit log(s) older than %d day(s)\n",
-			count,
-			days,
-		)
-	} else {
-		_, _ = fmt.Fprintf(writer, "Successfully deleted %d audit log(s) older than %d day(s)\n", count, days)
-	}
-}
-
-// outputCleanAuditLogsJSON outputs the result in JSON format for machine consumption.
-func outputCleanAuditLogsJSON(writer io.Writer, count int64, days int, dryRun bool) {
-	result := map[string]interface{}{
-		"count":   count,
-		"days":    days,
-		"dry_run": dryRun,
-	}
-
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return
-	}
-
-	_, _ = fmt.Fprintln(writer, string(jsonBytes))
 }
