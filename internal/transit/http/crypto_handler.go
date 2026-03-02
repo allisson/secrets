@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
 	"github.com/allisson/secrets/internal/transit/http/dto"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
@@ -122,7 +121,7 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 	}
 
 	// SECURITY: Zero plaintext after mapping to response
-	defer cryptoDomain.Zero(decryptedBlob.Plaintext)
+	defer decryptedBlob.Destroy()
 
 	// Return response with base64-encoded plaintext
 	response := dto.MapDecryptResponse(decryptedBlob.Plaintext, decryptedBlob.Version)

@@ -81,6 +81,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedDek := createTestDek(kek.ID)
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
@@ -136,6 +143,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedDek.Algorithm = cryptoDomain.ChaCha20
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
@@ -184,6 +198,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		existingTransitKey := createTestTransitKey("test-key", 1, uuid.Must(uuid.NewV7()))
 
 		// Setup expectations - GetByNameAndVersion should return existing key
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(existingTransitKey, nil).
@@ -218,6 +239,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("dek creation failed")
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
@@ -257,6 +285,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("database error")
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
@@ -301,6 +336,13 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 		expectedError := errors.New("database error")
 
 		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
 		mockTransitRepo.EXPECT().
 			GetByNameAndVersion(ctx, "test-key", uint(1)).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
@@ -424,7 +466,7 @@ func TestTransitKeyUseCase_Rotate(t *testing.T) {
 				_ = fn(ctx)
 			}).
 			Return(nil).
-			Once()
+			Times(2)
 
 		mockTransitRepo.EXPECT().
 			GetByName(mock.Anything, "test-key").

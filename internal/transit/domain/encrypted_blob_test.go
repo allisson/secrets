@@ -27,7 +27,7 @@ func TestNewEncryptedBlob_Success(t *testing.T) {
 		assert.Equal(t, plaintext, blob.Ciphertext)
 	})
 
-	t.Run("ValidInput_Version0", func(t *testing.T) {
+	t.Run("Error_Version0", func(t *testing.T) {
 		// Arrange
 		input := "0:dGVzdA=="
 
@@ -35,9 +35,10 @@ func TestNewEncryptedBlob_Success(t *testing.T) {
 		blob, err := domain.NewEncryptedBlob(input)
 
 		// Assert
-		require.NoError(t, err)
-		assert.Equal(t, uint(0), blob.Version)
-		assert.Equal(t, []byte("test"), blob.Ciphertext)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidBlobVersion)
+		assert.Contains(t, err.Error(), "version must be greater than 0")
+		assert.Equal(t, domain.EncryptedBlob{}, blob)
 	})
 
 	t.Run("ValidInput_LargeVersion", func(t *testing.T) {
@@ -409,5 +410,42 @@ func TestEncryptedBlob_Validate(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "must contain either ciphertext or plaintext")
+	})
+}
+
+func TestEncryptedBlob_Destroy(t *testing.T) {
+	t.Run("Success_ZeroesPlaintext", func(t *testing.T) {
+		// Arrange
+		plaintext := []byte("sensitive secret data")
+		blob := &domain.EncryptedBlob{
+			Version:   1,
+			Plaintext: plaintext,
+		}
+
+		// Act
+		blob.Destroy()
+
+		// Assert
+		// The slice length should be the same
+		assert.Len(t, blob.Plaintext, 21)
+
+		// All bytes should be 0
+		for _, b := range blob.Plaintext {
+			assert.Equal(t, byte(0), b)
+		}
+	})
+
+	t.Run("Success_NilPlaintext", func(t *testing.T) {
+		// Arrange
+		blob := &domain.EncryptedBlob{
+			Version:   1,
+			Plaintext: nil,
+		}
+
+		// Act - should not panic
+		blob.Destroy()
+
+		// Assert
+		assert.Nil(t, blob.Plaintext)
 	})
 }

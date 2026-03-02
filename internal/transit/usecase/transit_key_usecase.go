@@ -43,45 +43,51 @@ func (t *transitKeyUseCase) Create(
 	name string,
 	alg cryptoDomain.Algorithm,
 ) (*transitDomain.TransitKey, error) {
-	// Check if transit key with version 1 already exists
-	existingKey, err := t.transitRepo.GetByNameAndVersion(ctx, name, 1)
-	if err != nil && !apperrors.Is(err, transitDomain.ErrTransitKeyNotFound) {
-		// Return unexpected database errors
-		return nil, err
-	}
-	if existingKey != nil {
-		// Transit key already exists with version 1
-		return nil, transitDomain.ErrTransitKeyAlreadyExists
-	}
+	var transitKey *transitDomain.TransitKey
 
-	// Get active KEK from chain
-	activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+	err := t.txManager.WithTx(ctx, func(txCtx context.Context) error {
+		// Check if transit key with version 1 already exists
+		existingKey, err := t.transitRepo.GetByNameAndVersion(txCtx, name, 1)
+		if err != nil && !apperrors.Is(err, transitDomain.ErrTransitKeyNotFound) {
+			// Return unexpected database errors
+			return err
+		}
+		if existingKey != nil {
+			// Transit key already exists with version 1
+			return transitDomain.ErrTransitKeyAlreadyExists
+		}
+
+		// Get active KEK from chain
+		activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+		if err != nil {
+			return err
+		}
+
+		// Create DEK encrypted with active KEK
+		dek, err := t.keyManager.CreateDek(activeKek, alg)
+		if err != nil {
+			return err
+		}
+
+		// Persist DEK to database
+		if err := t.dekRepo.Create(txCtx, &dek); err != nil {
+			return err
+		}
+
+		// Create transit key with version 1
+		transitKey = &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      name,
+			Version:   1,
+			DekID:     dek.ID,
+			CreatedAt: time.Now().UTC(),
+		}
+
+		// Persist transit key
+		return t.transitRepo.Create(txCtx, transitKey)
+	})
+
 	if err != nil {
-		return nil, err
-	}
-
-	// Create DEK encrypted with active KEK
-	dek, err := t.keyManager.CreateDek(activeKek, alg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Persist DEK to database
-	if err := t.dekRepo.Create(ctx, &dek); err != nil {
-		return nil, err
-	}
-
-	// Create transit key with version 1
-	transitKey := &transitDomain.TransitKey{
-		ID:        uuid.Must(uuid.NewV7()),
-		Name:      name,
-		Version:   1,
-		DekID:     dek.ID,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	// Persist transit key
-	if err := t.transitRepo.Create(ctx, transitKey); err != nil {
 		return nil, err
 	}
 
