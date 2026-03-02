@@ -10,10 +10,17 @@ import (
 type FormatType string
 
 const (
-	FormatUUID           FormatType = "uuid"
-	FormatNumeric        FormatType = "numeric"
+	// FormatUUID represents a standard UUID token format.
+	FormatUUID FormatType = "uuid"
+
+	// FormatNumeric represents a purely numeric token format.
+	FormatNumeric FormatType = "numeric"
+
+	// FormatLuhnPreserving represents a token format that passes Luhn validation.
 	FormatLuhnPreserving FormatType = "luhn-preserving"
-	FormatAlphanumeric   FormatType = "alphanumeric"
+
+	// FormatAlphanumeric represents an alphanumeric token format.
+	FormatAlphanumeric FormatType = "alphanumeric"
 )
 
 // Token length constraints

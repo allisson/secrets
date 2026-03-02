@@ -135,6 +135,12 @@ func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 	_, err := db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	require.NoError(t, err, "failed to disable foreign key checks")
 
+	// Ensure foreign key checks are re-enabled even if truncation fails
+	defer func() {
+		_, err := db.Exec("SET FOREIGN_KEY_CHECKS = 1")
+		require.NoError(t, err, "failed to enable foreign key checks")
+	}()
+
 	// Truncate tables
 	_, err = db.Exec("TRUNCATE TABLE audit_logs")
 	require.NoError(t, err, "failed to truncate audit_logs table")
@@ -162,10 +168,6 @@ func CleanupMySQLDB(t *testing.T, db *sql.DB) {
 
 	_, err = db.Exec("TRUNCATE TABLE clients")
 	require.NoError(t, err, "failed to truncate clients table")
-
-	// Re-enable foreign key checks
-	_, err = db.Exec("SET FOREIGN_KEY_CHECKS = 1")
-	require.NoError(t, err, "failed to enable foreign key checks")
 }
 
 // runPostgresMigrations applies all pending PostgreSQL migrations for the test database.
@@ -444,7 +446,8 @@ func CreateTestDek(t *testing.T, db *sql.DB, driver, name string, kekID uuid.UUI
 }
 
 // ValidateTestClient verifies that a test client was created with expected values.
-// Returns true if the client exists and is active, false otherwise.
+// Returns true if the client exists and is active, false if it does not exist.
+// Fails the test if a database error occurs.
 func ValidateTestClient(t *testing.T, db *sql.DB, driver string, clientID uuid.UUID) bool {
 	t.Helper()
 
@@ -461,14 +464,18 @@ func ValidateTestClient(t *testing.T, db *sql.DB, driver string, clientID uuid.U
 	}
 
 	if err != nil {
-		return false
+		if err == sql.ErrNoRows {
+			return false
+		}
+		require.NoError(t, err, "failed to query client validation")
 	}
 
 	return isActive
 }
 
 // ValidateTestKek verifies that a test KEK was created with expected values.
-// Returns true if the KEK exists, false otherwise.
+// Returns true if the KEK exists, false if it does not exist.
+// Fails the test if a database error occurs.
 func ValidateTestKek(t *testing.T, db *sql.DB, driver string, kekID uuid.UUID) bool {
 	t.Helper()
 
@@ -485,8 +492,39 @@ func ValidateTestKek(t *testing.T, db *sql.DB, driver string, kekID uuid.UUID) b
 	}
 
 	if err != nil {
-		return false
+		if err == sql.ErrNoRows {
+			return false
+		}
+		require.NoError(t, err, "failed to query KEK validation")
 	}
 
 	return version > 0
+}
+
+// ValidateTestDek verifies that a test DEK was created with expected values.
+// Returns true if the DEK exists, false if it does not exist.
+// Fails the test if a database error occurs.
+func ValidateTestDek(t *testing.T, db *sql.DB, driver string, dekID uuid.UUID) bool {
+	t.Helper()
+
+	ctx := context.Background()
+	var algorithm string
+	var err error
+
+	if driver == "postgres" {
+		err = db.QueryRowContext(ctx, `SELECT algorithm FROM deks WHERE id = $1`, dekID).Scan(&algorithm)
+	} else { // mysql
+		idValue, marshalErr := uuidToDriverValue(dekID, driver)
+		require.NoError(t, marshalErr, "failed to convert DEK UUID for validation")
+		err = db.QueryRowContext(ctx, `SELECT algorithm FROM deks WHERE id = ?`, idValue).Scan(&algorithm)
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false
+		}
+		require.NoError(t, err, "failed to query DEK validation")
+	}
+
+	return algorithm == "aes-gcm"
 }

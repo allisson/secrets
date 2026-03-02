@@ -249,14 +249,12 @@ func (c *Container) initTokenizationKeyUseCase(
 func (c *Container) initTokenizationUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationUseCase, error) {
-	txManager, err := c.TxManager(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tx manager for tokenization use case: %w", err)
-	}
-
 	tokenizationKeyRepository, err := c.TokenizationKeyRepository(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tokenization key repository for tokenization use case: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get tokenization key repository for tokenization use case: %w",
+			err,
+		)
 	}
 
 	tokenRepository, err := c.TokenizationTokenRepository(ctx)
@@ -281,7 +279,6 @@ func (c *Container) initTokenizationUseCase(
 	}
 
 	baseUseCase := tokenizationUseCase.NewTokenizationUseCase(
-		txManager,
 		tokenizationKeyRepository,
 		tokenRepository,
 		dekRepository,

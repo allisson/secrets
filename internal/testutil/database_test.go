@@ -539,6 +539,24 @@ func TestValidateTestKek(t *testing.T) {
 	assert.False(t, valid, "should not validate non-existent KEK")
 }
 
+func TestValidateTestDek(t *testing.T) {
+	SkipIfNoPostgres(t)
+
+	db := SetupPostgresDB(t)
+	defer TeardownDB(t, db)
+
+	// Test with valid DEK
+	kekID := CreateTestKek(t, db, "postgres", "valid-dek-kek")
+	dekID := CreateTestDek(t, db, "postgres", "valid-dek", kekID)
+	valid := ValidateTestDek(t, db, "postgres", dekID)
+	assert.True(t, valid, "should validate existing DEK")
+
+	// Test with non-existent DEK
+	nonExistentID := uuid.Must(uuid.NewV7())
+	valid = ValidateTestDek(t, db, "postgres", nonExistentID)
+	assert.False(t, valid, "should not validate non-existent DEK")
+}
+
 func TestSkipIfNoPostgres(t *testing.T) {
 	// This test verifies that SkipIfNoPostgres doesn't panic
 	// We can't easily test the actual skipping behavior without mocking
