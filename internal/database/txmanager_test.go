@@ -3,14 +3,17 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/allisson/secrets/internal/testutil"
 )
 
 func TestNewTxManager(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 
@@ -20,6 +23,7 @@ func TestNewTxManager(t *testing.T) {
 }
 
 func TestWithTx_Success(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 
@@ -38,6 +42,7 @@ func TestWithTx_Success(t *testing.T) {
 }
 
 func TestWithTx_RollbackOnError(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 
@@ -53,20 +58,74 @@ func TestWithTx_RollbackOnError(t *testing.T) {
 }
 
 func TestWithTx_CommitError(t *testing.T) {
-	// This test is tricky because we need the transaction to start but commit to fail
-	// We'll skip this test as it's difficult to reliably trigger commit errors
-	// without using mocks, and the behavior is tested implicitly in integration tests
-	t.Skip("Difficult to test commit errors without mocks")
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer func() {
+		_ = db.Close()
+	}()
+
+	mock.ExpectBegin()
+	mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+	mock.ExpectRollback() // Rollback should be called on commit error
+
+	txManager := NewTxManager(db)
+	ctx := context.Background()
+
+	err = txManager.WithTx(ctx, func(ctx context.Context) error {
+		return nil
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "commit error")
 }
 
 func TestWithTx_RollbackError(t *testing.T) {
-	// This test is tricky because we need the transaction to start but rollback to fail
-	// We'll skip this test as it's difficult to reliably trigger rollback errors
-	// without using mocks, and the behavior is tested implicitly in integration tests
-	t.Skip("Difficult to test rollback errors without mocks")
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer func() {
+		_ = db.Close()
+	}()
+
+	testError := errors.New("original error")
+	mock.ExpectBegin()
+	mock.ExpectRollback().WillReturnError(errors.New("rollback error"))
+
+	txManager := NewTxManager(db)
+	ctx := context.Background()
+
+	err = txManager.WithTx(ctx, func(ctx context.Context) error {
+		return testError
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "original error")
+	assert.Contains(t, err.Error(), "rollback error")
+}
+
+func TestWithTx_NestedTransaction(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+
+	txManager := NewTxManager(db)
+	ctx := context.Background()
+
+	err := txManager.WithTx(ctx, func(ctx context.Context) error {
+		tx1 := ctx.Value(txKey{})
+		assert.NotNil(t, tx1)
+
+		return txManager.WithTx(ctx, func(ctx context.Context) error {
+			tx2 := ctx.Value(txKey{})
+			assert.Equal(t, tx1, tx2) // Should be the same transaction
+			return nil
+		})
+	})
+
+	assert.NoError(t, err)
 }
 
 func TestGetTx_WithTransaction(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 
@@ -84,6 +143,7 @@ func TestGetTx_WithTransaction(t *testing.T) {
 }
 
 func TestGetTx_WithoutTransaction(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 
@@ -93,7 +153,9 @@ func TestGetTx_WithoutTransaction(t *testing.T) {
 	assert.NotNil(t, querier)
 	assert.Equal(t, db, querier)
 }
+
 func TestWithTx_Panic(t *testing.T) {
+	testutil.SkipIfNoPostgres(t)
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 

@@ -4,7 +4,7 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 )
 
 // txKey is a context key type for storing database transactions.
@@ -12,13 +12,18 @@ type txKey struct{}
 
 // Querier represents a database query executor (either *sql.DB or *sql.Tx).
 type Querier interface {
+	// ExecContext executes a query without returning any rows.
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	// QueryContext executes a query that returns rows, typically a SELECT.
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	// QueryRowContext executes a query that is expected to return at most one row.
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 // TxManager manages database transactions.
 type TxManager interface {
+	// WithTx executes the function within a database transaction.
+	// If a transaction is already present in the context, it reuses it.
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
@@ -33,7 +38,13 @@ func NewTxManager(db *sql.DB) TxManager {
 }
 
 // WithTx executes the function within a database transaction.
+// If a transaction is already present in the context, it reuses it.
 func (m *sqlTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	// Check if we already have a transaction in context
+	if _, ok := ctx.Value(txKey{}).(*sql.Tx); ok {
+		return fn(ctx)
+	}
+
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -50,14 +61,14 @@ func (m *sqlTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) 
 
 	if err := fn(ctx); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("error executing function (original error: %v): %w", err, rbErr)
+			return errors.Join(err, rbErr)
 		}
 		return err
 	}
 
 	if err := tx.Commit(); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("error committing transaction (commit error: %v): %w", err, rbErr)
+			return errors.Join(err, rbErr)
 		}
 		return err
 	}
