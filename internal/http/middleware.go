@@ -3,6 +3,7 @@ package http
 
 import (
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/requestid"
@@ -18,6 +19,9 @@ func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
 
+		// Get request body size
+		requestSize := c.Request.ContentLength
+
 		// Process request
 		c.Next()
 
@@ -29,11 +33,32 @@ func CustomLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
 			slog.String("path", path),
 			slog.String("query", query),
 			slog.Int("status", c.Writer.Status()),
-			slog.Int("body_size", c.Writer.Size()),
+			slog.Int64("request_size", requestSize),
+			slog.Int("response_size", c.Writer.Size()),
 			slog.Duration("duration", duration),
 			slog.String("client_ip", c.ClientIP()),
 			slog.String("user_agent", c.Request.UserAgent()),
 			slog.String("request_id", requestid.Get(c)),
 		)
+	}
+}
+
+// CustomRecoveryMiddleware provides panic recovery using slog.
+// This replaces Gin's default recovery middleware to provide
+// structured error logs for critical failures.
+func CustomRecoveryMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				logger.Error("panic recovered",
+					slog.Any("error", err),
+					slog.String("method", c.Request.Method),
+					slog.String("path", c.Request.URL.Path),
+					slog.String("request_id", requestid.Get(c)),
+				)
+				c.AbortWithStatus(http.StatusInternalServerError)
+			}
+		}()
+		c.Next()
 	}
 }

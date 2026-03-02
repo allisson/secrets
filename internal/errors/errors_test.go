@@ -63,12 +63,36 @@ func TestWrapf(t *testing.T) {
 		}
 	})
 
+	t.Run("wrapf with multiple arguments", func(t *testing.T) {
+		wrapped := Wrapf(baseErr, "user %d failed on %s", 1, "action")
+		expected := "user 1 failed on action: base error"
+		if wrapped.Error() != expected {
+			t.Errorf("expected '%s', got '%s'", expected, wrapped.Error())
+		}
+	})
+
 	t.Run("wrapf nil error", func(t *testing.T) {
 		wrapped := Wrapf(nil, "wrapped %d", 123)
 		if wrapped != nil {
 			t.Errorf("expected nil, got %v", wrapped)
 		}
 	})
+}
+
+func TestDeepNesting(t *testing.T) {
+	base := New("base")
+	err := Wrap(base, "level 1")
+	err = Wrapf(err, "level %d", 2)
+	err = Wrap(err, "level 3")
+
+	if !Is(err, base) {
+		t.Error("expected deep wrapped error to match base")
+	}
+
+	expected := "level 3: level 2: level 1: base"
+	if err.Error() != expected {
+		t.Errorf("expected '%s', got '%s'", expected, err.Error())
+	}
 }
 
 func TestIs(t *testing.T) {
@@ -110,6 +134,7 @@ func TestStandardErrors(t *testing.T) {
 		{ErrUnauthorized, "unauthorized"},
 		{ErrForbidden, "forbidden"},
 		{ErrLocked, "locked"},
+		{ErrInternal, "internal server error"},
 	}
 
 	for _, tt := range tests {
