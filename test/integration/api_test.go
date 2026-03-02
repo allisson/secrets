@@ -271,14 +271,14 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 	container := app.NewContainer(cfg)
 
 	// Initialize KEK
-	kekUseCase, err := container.KekUseCase()
+	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
 	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
-	clientUseCase, err := container.ClientUseCase()
+	clientUseCase, err := container.ClientUseCase(context.Background())
 	require.NoError(t, err, "failed to get client use case")
 
 	rootClientInput := &authDomain.CreateClientInput{
@@ -306,7 +306,7 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 	require.NoError(t, err, "failed to get root client")
 
 	// Issue token for root client
-	tokenUseCase, err := container.TokenUseCase()
+	tokenUseCase, err := container.TokenUseCase(context.Background())
 	require.NoError(t, err, "failed to get token use case")
 
 	issueTokenInput := &authDomain.IssueTokenInput{
@@ -318,7 +318,7 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 	require.NoError(t, err, "failed to issue token")
 
 	// Setup HTTP server
-	httpSrv, err := container.HTTPServer()
+	httpSrv, err := container.HTTPServer(context.Background())
 	require.NoError(t, err, "failed to get HTTP server")
 
 	handler := httpSrv.GetHandler()
@@ -383,14 +383,14 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	container := app.NewContainer(cfg)
 
 	// Initialize KEK
-	kekUseCase, err := container.KekUseCase()
+	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
 	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
-	clientUseCase, err := container.ClientUseCase()
+	clientUseCase, err := container.ClientUseCase(context.Background())
 	require.NoError(t, err, "failed to get client use case")
 
 	rootClientInput := &authDomain.CreateClientInput{
@@ -419,7 +419,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	require.NoError(t, err, "failed to get root client")
 
 	// Issue token for root client
-	tokenUseCase, err := container.TokenUseCase()
+	tokenUseCase, err := container.TokenUseCase(context.Background())
 	require.NoError(t, err, "failed to get token use case")
 
 	issueTokenInput := &authDomain.IssueTokenInput{
@@ -431,11 +431,11 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	require.NoError(t, err, "failed to issue token")
 
 	// Setup HTTP server
-	httpSrv, err := container.HTTPServer()
+	httpSrv, err := container.HTTPServer(context.Background())
 	require.NoError(t, err, "failed to get HTTP server")
 
 	// Get the handler from the server
-	// The SetupRouter has already been called by container.HTTPServer()
+	// The SetupRouter has already been called by container.HTTPServer(context.Background())
 	handler := httpSrv.GetHandler()
 	require.NotNil(t, handler, "handler should not be nil after SetupRouter")
 
@@ -1566,7 +1566,7 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 				// KEK was created during setup - verify it exists in database
 				// This validates KMS-decrypted master key successfully encrypted KEK
 
-				kekUseCase, err := ctx.container.KekUseCase()
+				kekUseCase, err := ctx.container.KekUseCase(context.Background())
 				require.NoError(t, err)
 
 				kekChain, err := kekUseCase.Unwrap(context.Background(), ctx.masterKeyChain)
@@ -1806,14 +1806,14 @@ func setupIntegrationTestWithLockout(
 	container := app.NewContainer(cfg)
 
 	// Initialize KEK
-	kekUseCase, err := container.KekUseCase()
+	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
 	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
-	clientUseCase, err := container.ClientUseCase()
+	clientUseCase, err := container.ClientUseCase(context.Background())
 	require.NoError(t, err, "failed to get client use case")
 
 	rootClientInput := &authDomain.CreateClientInput{
@@ -1841,7 +1841,7 @@ func setupIntegrationTestWithLockout(
 	require.NoError(t, err, "failed to get root client")
 
 	// Issue token for root client
-	tokenUseCase, err := container.TokenUseCase()
+	tokenUseCase, err := container.TokenUseCase(context.Background())
 	require.NoError(t, err, "failed to get token use case")
 
 	issueTokenInput := &authDomain.IssueTokenInput{
@@ -1853,7 +1853,7 @@ func setupIntegrationTestWithLockout(
 	require.NoError(t, err, "failed to issue token")
 
 	// Setup HTTP server
-	httpSrv, err := container.HTTPServer()
+	httpSrv, err := container.HTTPServer(context.Background())
 	require.NoError(t, err, "failed to get HTTP server")
 
 	handler := httpSrv.GetHandler()

@@ -112,12 +112,12 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						kekUseCase, err := container.KekUseCase()
+						kekUseCase, err := container.KekUseCase(ctx)
 						if err != nil {
 							return err
 						}
 
-						masterKeyChain, err := container.MasterKeyChain()
+						masterKeyChain, err := container.MasterKeyChain(ctx)
 						if err != nil {
 							return err
 						}
@@ -148,12 +148,12 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						kekUseCase, err := container.KekUseCase()
+						kekUseCase, err := container.KekUseCase(ctx)
 						if err != nil {
 							return err
 						}
 
-						masterKeyChain, err := container.MasterKeyChain()
+						masterKeyChain, err := container.MasterKeyChain(ctx)
 						if err != nil {
 							return err
 						}
@@ -190,17 +190,17 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						masterKeyChain, err := container.MasterKeyChain()
+						masterKeyChain, err := container.MasterKeyChain(ctx)
 						if err != nil {
 							return err
 						}
 
-						kekUseCase, err := container.KekUseCase()
+						kekUseCase, err := container.KekUseCase(ctx)
 						if err != nil {
 							return err
 						}
 
-						dekUseCase, err := container.CryptoDekUseCase()
+						dekUseCase, err := container.CryptoDekUseCase(ctx)
 						if err != nil {
 							return err
 						}
@@ -251,7 +251,7 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
+						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase(ctx)
 						if err != nil {
 							return err
 						}
@@ -302,7 +302,7 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase()
+						tokenizationKeyUseCase, err := container.TokenizationKeyUseCase(ctx)
 						if err != nil {
 							return err
 						}

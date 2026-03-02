@@ -65,7 +65,7 @@ func getSystemCommands(version string) []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						auditLogUseCase, err := container.AuditLogUseCase()
+						auditLogUseCase, err := container.AuditLogUseCase(ctx)
 						if err != nil {
 							return err
 						}
@@ -110,7 +110,7 @@ func getSystemCommands(version string) []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						auditLogUseCase, err := container.AuditLogUseCase()
+						auditLogUseCase, err := container.AuditLogUseCase(ctx)
 						if err != nil {
 							return err
 						}

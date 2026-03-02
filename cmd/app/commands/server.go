@@ -37,13 +37,13 @@ func RunServer(ctx context.Context, version string) error {
 	defer CloseContainer(container, logger)
 
 	// Get HTTP server from container (this initializes all dependencies)
-	server, err := container.HTTPServer()
+	server, err := container.HTTPServer(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize HTTP server: %w", err)
 	}
 
 	// Get Metrics server from container
-	metricsServer, err := container.MetricsServer()
+	metricsServer, err := container.MetricsServer(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize metrics server: %w", err)
 	}
