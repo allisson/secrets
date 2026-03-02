@@ -33,7 +33,9 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		slog.Error("application error", slog.Any("error", err))
+		// Use a basic JSON logger for early errors if they occur before container initialization
+		logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+		logger.Error("application error", slog.Any("error", err))
 		os.Exit(1)
 	}
 }

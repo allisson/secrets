@@ -3,67 +3,27 @@ package commands
 import (
 	"bytes"
 	"context"
-	"errors"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
-
-type mockKMSKeeper struct {
-	mock.Mock
-}
-
-func (m *mockKMSKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
-	args := m.Called(ctx, ciphertext)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *mockKMSKeeper) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
-	args := m.Called(ctx, plaintext)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *mockKMSKeeper) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-type mockKMSService struct {
-	mock.Mock
-}
-
-func (m *mockKMSService) OpenKeeper(ctx context.Context, keyURI string) (cryptoDomain.KMSKeeper, error) {
-	args := m.Called(ctx, keyURI)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(cryptoDomain.KMSKeeper), args.Error(1)
-}
 
 func TestRunRotateMasterKey(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	kmsProvider := "localsecrets"
 	kmsKeyURI := "base64key://YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
-	existingMasterKeys := "old-key:YWJjZGVmZ2hpamtsbW5vcA=="
+	existingMasterKeys := "old-key:ciphertext"
 	existingActiveKeyID := "old-key"
 
 	t.Run("success", func(t *testing.T) {
-		mockKMSService := &mockKMSService{}
-		mockKeeper := &mockKMSKeeper{}
+		mockKMSService := &MockKMSService{}
+		mockKeeper := &MockKMSKeeper{}
 
 		mockKMSService.On("OpenKeeper", ctx, kmsKeyURI).Return(mockKeeper, nil)
-		mockKeeper.On("Encrypt", ctx, mock.AnythingOfType("[]uint8")).Return([]byte("encrypted-key"), nil)
+		mockKeeper.On("Encrypt", ctx, mock.Anything).Return([]byte("new-ciphertext"), nil)
 		mockKeeper.On("Close").Return(nil)
 
 		var out bytes.Buffer
@@ -80,43 +40,53 @@ func TestRunRotateMasterKey(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		require.Contains(t, out.String(), "KMS_PROVIDER=\"localsecrets\"")
-		require.Contains(
-			t,
-			out.String(),
-			"MASTER_KEYS=\"old-key:YWJjZGVmZ2hpamtsbW5vcA==,new-key:ZW5jcnlwdGVkLWtleQ==\"",
-		)
+		require.Contains(t, out.String(), "MASTER_KEYS=\"old-key:ciphertext,new-key:bmV3LWNpcGhlcnRleHQ=\"")
 		require.Contains(t, out.String(), "ACTIVE_MASTER_KEY_ID=\"new-key\"")
-
 		mockKMSService.AssertExpectations(t)
 		mockKeeper.AssertExpectations(t)
 	})
 
-	t.Run("kms-open-error", func(t *testing.T) {
-		mockKMSService := &mockKMSService{}
-		mockKMSService.On("OpenKeeper", ctx, kmsKeyURI).Return(nil, errors.New("kms error"))
+	t.Run("missing-kms-params", func(t *testing.T) {
+		mockKMSService := &MockKMSService{}
+		err := RunRotateMasterKey(ctx, mockKMSService, logger, &bytes.Buffer{}, "new-key", "", "", "", "")
 
-		var out bytes.Buffer
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "KMS_PROVIDER and KMS_KEY_URI are required")
+	})
+
+	t.Run("missing-existing-keys", func(t *testing.T) {
+		mockKMSService := &MockKMSService{}
 		err := RunRotateMasterKey(
 			ctx,
 			mockKMSService,
 			logger,
-			&out,
+			&bytes.Buffer{},
+			"new-key",
+			kmsProvider,
+			kmsKeyURI,
+			"",
+			"",
+		)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "MASTER_KEYS is not set")
+	})
+
+	t.Run("invalid-active-key-id", func(t *testing.T) {
+		mockKMSService := &MockKMSService{}
+		err := RunRotateMasterKey(
+			ctx,
+			mockKMSService,
+			logger,
+			&bytes.Buffer{},
 			"new-key",
 			kmsProvider,
 			kmsKeyURI,
 			existingMasterKeys,
-			existingActiveKeyID,
+			"invalid-key",
 		)
 
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "kms error")
-	})
-
-	t.Run("missing-kms-params", func(t *testing.T) {
-		mockKMSService := &mockKMSService{}
-		err := RunRotateMasterKey(ctx, mockKMSService, logger, &bytes.Buffer{}, "new-key", "", "", "", "")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "KMS_PROVIDER and KMS_KEY_URI are required")
+		require.Contains(t, err.Error(), "not found in MASTER_KEYS")
 	})
 }

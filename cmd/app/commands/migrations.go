@@ -29,7 +29,7 @@ func RunMigrations(logger *slog.Logger, dbDriver, dbConnectionString string) err
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	defer closeMigrate(m, logger)
+	defer CloseMigrate(m, logger)
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("failed to run migrations: %w", err)

@@ -16,6 +16,8 @@ type Config struct {
 	ServerHost string
 	// ServerPort is the port number the server will listen on.
 	ServerPort int
+	// ServerShutdownTimeout is the maximum time to wait for the server to gracefully shutdown.
+	ServerShutdownTimeout time.Duration
 
 	// DBDriver is the database driver to use (e.g., "postgres", "mysql").
 	DBDriver string
@@ -78,8 +80,9 @@ func Load() *Config {
 
 	return &Config{
 		// Server configuration
-		ServerHost: env.GetString("SERVER_HOST", "0.0.0.0"),
-		ServerPort: env.GetInt("SERVER_PORT", 8080),
+		ServerHost:            env.GetString("SERVER_HOST", "0.0.0.0"),
+		ServerPort:            env.GetInt("SERVER_PORT", 8080),
+		ServerShutdownTimeout: env.GetDuration("SERVER_SHUTDOWN_TIMEOUT", 10, time.Second),
 
 		// Database configuration
 		DBDriver: env.GetString("DB_DRIVER", "postgres"),

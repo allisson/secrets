@@ -16,21 +16,26 @@ import (
 func TestRunRotateTokenizationKey(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
+	name := "test-token-key"
 
 	t.Run("success", func(t *testing.T) {
 		mockUseCase := &tokenizationMocks.MockTokenizationKeyUseCase{}
-		expectedKey := &tokenizationDomain.TokenizationKey{
-			ID:              uuid.New(),
-			Name:            "test-token",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: true,
-			Version:         2,
-		}
-		mockUseCase.On("Rotate", ctx, "test-token", tokenizationDomain.FormatUUID, true, cryptoDomain.AESGCM).
-			Return(expectedKey, nil)
+		mockUseCase.On("Rotate", ctx, name, tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM).
+			Return(&tokenizationDomain.TokenizationKey{
+				ID: uuid.New(),
+			}, nil)
 
-		err := RunRotateTokenizationKey(ctx, mockUseCase, logger, "test-token", "uuid", true, "aes-gcm")
+		err := RunRotateTokenizationKey(ctx, mockUseCase, logger, name, "uuid", false, "aes-gcm")
+
 		require.NoError(t, err)
 		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("invalid-format", func(t *testing.T) {
+		mockUseCase := &tokenizationMocks.MockTokenizationKeyUseCase{}
+		err := RunRotateTokenizationKey(ctx, mockUseCase, logger, name, "invalid", false, "aes-gcm")
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid format type")
 	})
 }

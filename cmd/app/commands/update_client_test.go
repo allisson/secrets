@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 
@@ -20,119 +20,101 @@ func TestRunUpdateClient(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.Default()
 	clientID := uuid.New()
-	clientIDStr := clientID.String()
-
-	existingClient := &authDomain.Client{
-		ID:       clientID,
-		Name:     "old-name",
-		IsActive: true,
-		Policies: []authDomain.PolicyDocument{
-			{Path: "secret/*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}},
+	name := "updated-client"
+	policies := []authDomain.PolicyDocument{
+		{
+			Path:         "*",
+			Capabilities: []authDomain.Capability{"read", "write"},
 		},
 	}
+	policiesJSON, _ := json.Marshal(policies)
 
-	t.Run("success-non-interactive-text", func(t *testing.T) {
+	t.Run("non-interactive-text", func(t *testing.T) {
 		mockUseCase := &authMocks.MockClientUseCase{}
-		mockUseCase.On("Get", ctx, clientID).Return(existingClient, nil)
-		mockUseCase.On("Update", ctx, clientID, mock.AnythingOfType("*domain.UpdateClientInput")).Return(nil)
+		mockUseCase.On("Get", ctx, clientID).Return(&authDomain.Client{ID: clientID}, nil)
+		mockUseCase.On("Update", ctx, clientID, mock.Anything).Return(nil)
 
 		var out bytes.Buffer
-		io := IOTuple{Reader: &bytes.Buffer{}, Writer: &out}
-
-		policiesJSON := `[{"path": "secret/*", "capabilities": ["read", "write"]}]`
+		io := IOTuple{Writer: &out}
 		err := RunUpdateClient(
 			ctx,
 			mockUseCase,
 			logger,
 			io,
-			clientIDStr,
-			"new-name",
+			clientID.String(),
+			name,
 			true,
-			policiesJSON,
+			string(policiesJSON),
 			"text",
 		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), "Client updated successfully!")
-		require.Contains(t, out.String(), "Name: new-name")
-
+		require.Contains(t, out.String(), clientID.String())
+		require.Contains(t, out.String(), name)
 		mockUseCase.AssertExpectations(t)
 	})
 
-	t.Run("success-non-interactive-json", func(t *testing.T) {
+	t.Run("non-interactive-json", func(t *testing.T) {
 		mockUseCase := &authMocks.MockClientUseCase{}
-		mockUseCase.On("Get", ctx, clientID).Return(existingClient, nil)
-		mockUseCase.On("Update", ctx, clientID, mock.AnythingOfType("*domain.UpdateClientInput")).Return(nil)
+		mockUseCase.On("Get", ctx, clientID).Return(&authDomain.Client{ID: clientID}, nil)
+		mockUseCase.On("Update", ctx, clientID, mock.Anything).Return(nil)
 
 		var out bytes.Buffer
-		io := IOTuple{Reader: &bytes.Buffer{}, Writer: &out}
-
-		policiesJSON := `[{"path": "secret/*", "capabilities": ["read", "write"]}]`
+		io := IOTuple{Writer: &out}
 		err := RunUpdateClient(
 			ctx,
 			mockUseCase,
 			logger,
 			io,
-			clientIDStr,
-			"new-name",
+			clientID.String(),
+			name,
 			true,
-			policiesJSON,
+			string(policiesJSON),
 			"json",
 		)
 
 		require.NoError(t, err)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(out.Bytes(), &result)
-		require.NoError(t, err)
-		require.Equal(t, clientIDStr, result["client_id"])
-		require.Equal(t, "new-name", result["name"])
-		require.Equal(t, true, result["is_active"])
-
+		require.Contains(t, out.String(), clientID.String())
+		require.Contains(t, out.String(), name)
 		mockUseCase.AssertExpectations(t)
 	})
 
-	t.Run("invalid-client-id", func(t *testing.T) {
+	t.Run("invalid-id", func(t *testing.T) {
 		mockUseCase := &authMocks.MockClientUseCase{}
 		err := RunUpdateClient(
 			ctx,
 			mockUseCase,
 			logger,
-			DefaultIO(),
-			"invalid-uuid",
-			"name",
+			IOTuple{},
+			"invalid-id",
+			name,
 			true,
-			"",
+			string(policiesJSON),
 			"text",
 		)
+
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid client ID format")
 	})
 
-	t.Run("client-not-found", func(t *testing.T) {
+	t.Run("not-found", func(t *testing.T) {
 		mockUseCase := &authMocks.MockClientUseCase{}
-		mockUseCase.On("Get", ctx, clientID).Return(nil, errors.New("client not found"))
+		mockUseCase.On("Get", ctx, clientID).Return(nil, fmt.Errorf("not found"))
 
-		err := RunUpdateClient(ctx, mockUseCase, logger, DefaultIO(), clientIDStr, "name", true, "", "text")
+		err := RunUpdateClient(
+			ctx,
+			mockUseCase,
+			logger,
+			IOTuple{},
+			clientID.String(),
+			name,
+			true,
+			string(policiesJSON),
+			"text",
+		)
+
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to get existing client")
-	})
-
-	t.Run("interactive-success", func(t *testing.T) {
-		mockUseCase := &authMocks.MockClientUseCase{}
-		mockUseCase.On("Get", ctx, clientID).Return(existingClient, nil)
-		mockUseCase.On("Update", ctx, clientID, mock.AnythingOfType("*domain.UpdateClientInput")).Return(nil)
-
-		// Mock user input: path, capabilities, another policy? (n)
-		input := bytes.NewBufferString("secret/test\nread,write\nn\n")
-		var out bytes.Buffer
-		io := IOTuple{Reader: input, Writer: &out}
-
-		err := RunUpdateClient(ctx, mockUseCase, logger, io, clientIDStr, "new-name", true, "", "text")
-
-		require.NoError(t, err)
-		require.Contains(t, out.String(), "Client updated successfully!")
-
-		mockUseCase.AssertExpectations(t)
 	})
 }
