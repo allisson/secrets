@@ -40,7 +40,7 @@ func getAuthCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						tokenizationUseCase, err := container.TokenizationUseCase()
+						tokenizationUseCase, err := container.TokenizationUseCase(ctx)
 						if err != nil {
 							return err
 						}
@@ -90,7 +90,7 @@ func getAuthCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						clientUseCase, err := container.ClientUseCase()
+						clientUseCase, err := container.ClientUseCase(ctx)
 						if err != nil {
 							return err
 						}
@@ -147,7 +147,7 @@ func getAuthCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						clientUseCase, err := container.ClientUseCase()
+						clientUseCase, err := container.ClientUseCase(ctx)
 						if err != nil {
 							return err
 						}

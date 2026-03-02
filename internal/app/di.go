@@ -133,14 +133,13 @@ type Container struct {
 	tokenizationHandlerInit         sync.Once
 	httpServerInit                  sync.Once
 	metricsServerInit               sync.Once
-	initErrors                      map[string]error
+	initErrors                      sync.Map
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
 func NewContainer(cfg *config.Config) *Container {
 	return &Container{
-		config:     cfg,
-		initErrors: make(map[string]error),
+		config: cfg,
 	}
 }
 
@@ -158,109 +157,109 @@ func (c *Container) Logger() *slog.Logger {
 }
 
 // DB returns the database connection.
-func (c *Container) DB() (*sql.DB, error) {
+func (c *Container) DB(ctx context.Context) (*sql.DB, error) {
 	var err error
 	c.dbInit.Do(func() {
-		c.db, err = c.initDB()
+		c.db, err = c.initDB(ctx)
 		if err != nil {
-			c.initErrors["db"] = err
+			c.initErrors.Store("db", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["db"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("db"); ok {
+		return nil, val.(error)
 	}
 	return c.db, nil
 }
 
 // TxManager returns the transaction manager.
-func (c *Container) TxManager() (database.TxManager, error) {
+func (c *Container) TxManager(ctx context.Context) (database.TxManager, error) {
 	var err error
 	c.txManagerInit.Do(func() {
-		c.txManager, err = c.initTxManager()
+		c.txManager, err = c.initTxManager(ctx)
 		if err != nil {
-			c.initErrors["txManager"] = err
+			c.initErrors.Store("txManager", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["txManager"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("txManager"); ok {
+		return nil, val.(error)
 	}
 	return c.txManager, nil
 }
 
 // MetricsProvider returns the metrics provider for Prometheus export.
-func (c *Container) MetricsProvider() (*metrics.Provider, error) {
+func (c *Container) MetricsProvider(ctx context.Context) (*metrics.Provider, error) {
 	var err error
 	c.metricsProviderInit.Do(func() {
-		c.metricsProvider, err = c.initMetricsProvider()
+		c.metricsProvider, err = c.initMetricsProvider(ctx)
 		if err != nil {
-			c.initErrors["metricsProvider"] = err
+			c.initErrors.Store("metricsProvider", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["metricsProvider"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("metricsProvider"); ok {
+		return nil, val.(error)
 	}
 	return c.metricsProvider, nil
 }
 
 // BusinessMetrics returns the business metrics recorder.
-func (c *Container) BusinessMetrics() (metrics.BusinessMetrics, error) {
+func (c *Container) BusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
 	var err error
 	c.businessMetricsInit.Do(func() {
-		c.businessMetrics, err = c.initBusinessMetrics()
+		c.businessMetrics, err = c.initBusinessMetrics(ctx)
 		if err != nil {
-			c.initErrors["businessMetrics"] = err
+			c.initErrors.Store("businessMetrics", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["businessMetrics"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("businessMetrics"); ok {
+		return nil, val.(error)
 	}
 	return c.businessMetrics, nil
 }
 
 // HTTPServer returns the HTTP server instance.
-func (c *Container) HTTPServer() (*http.Server, error) {
+func (c *Container) HTTPServer(ctx context.Context) (*http.Server, error) {
 	var err error
 	c.httpServerInit.Do(func() {
-		c.httpServer, err = c.initHTTPServer()
+		c.httpServer, err = c.initHTTPServer(ctx)
 		if err != nil {
-			c.initErrors["httpServer"] = err
+			c.initErrors.Store("httpServer", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["httpServer"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("httpServer"); ok {
+		return nil, val.(error)
 	}
 	return c.httpServer, nil
 }
 
 // MetricsServer returns the Metrics server instance.
-func (c *Container) MetricsServer() (*http.MetricsServer, error) {
+func (c *Container) MetricsServer(ctx context.Context) (*http.MetricsServer, error) {
 	var err error
 	c.metricsServerInit.Do(func() {
-		c.metricsServer, err = c.initMetricsServer()
+		c.metricsServer, err = c.initMetricsServer(ctx)
 		if err != nil {
-			c.initErrors["metricsServer"] = err
+			c.initErrors.Store("metricsServer", err)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if storedErr, exists := c.initErrors["metricsServer"]; exists {
-		return nil, storedErr
+	if val, ok := c.initErrors.Load("metricsServer"); ok {
+		return nil, val.(error)
 	}
 	return c.metricsServer, nil
 }
@@ -334,7 +333,7 @@ func (c *Container) initLogger() *slog.Logger {
 }
 
 // initDB creates and configures the database connection.
-func (c *Container) initDB() (*sql.DB, error) {
+func (c *Container) initDB(ctx context.Context) (*sql.DB, error) {
 	db, err := database.Connect(database.Config{
 		Driver:             c.config.DBDriver,
 		ConnectionString:   c.config.DBConnectionString,
@@ -349,8 +348,8 @@ func (c *Container) initDB() (*sql.DB, error) {
 }
 
 // initTxManager creates the transaction manager using the database connection.
-func (c *Container) initTxManager() (database.TxManager, error) {
-	db, err := c.DB()
+func (c *Container) initTxManager(ctx context.Context) (database.TxManager, error) {
+	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for tx manager: %w", err)
 	}
@@ -358,7 +357,7 @@ func (c *Container) initTxManager() (database.TxManager, error) {
 }
 
 // initMetricsProvider creates the metrics provider if metrics are enabled.
-func (c *Container) initMetricsProvider() (*metrics.Provider, error) {
+func (c *Container) initMetricsProvider(ctx context.Context) (*metrics.Provider, error) {
 	if !c.config.MetricsEnabled {
 		return nil, nil
 	}
@@ -371,12 +370,12 @@ func (c *Container) initMetricsProvider() (*metrics.Provider, error) {
 }
 
 // initBusinessMetrics creates the business metrics recorder if metrics are enabled.
-func (c *Container) initBusinessMetrics() (metrics.BusinessMetrics, error) {
+func (c *Container) initBusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
 	if !c.config.MetricsEnabled {
 		return metrics.NewNoOpBusinessMetrics(), nil
 	}
 
-	provider, err := c.MetricsProvider()
+	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
@@ -392,9 +391,9 @@ func (c *Container) initBusinessMetrics() (metrics.BusinessMetrics, error) {
 }
 
 // initHTTPServer creates the HTTP server with all its dependencies.
-func (c *Container) initHTTPServer() (*http.Server, error) {
+func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 	logger := c.Logger()
-	db, err := c.DB()
+	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for http server: %w", err)
 	}
@@ -407,60 +406,60 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 	)
 
 	// Get dependencies for routing
-	clientHandler, err := c.ClientHandler()
+	clientHandler, err := c.ClientHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client handler: %w", err)
 	}
 
-	tokenHandler, err := c.TokenHandler()
+	tokenHandler, err := c.TokenHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token handler: %w", err)
 	}
 
-	auditLogHandler, err := c.AuditLogHandler()
+	auditLogHandler, err := c.AuditLogHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get audit log handler: %w", err)
 	}
 
-	secretHandler, err := c.SecretHandler()
+	secretHandler, err := c.SecretHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret handler: %w", err)
 	}
 
-	transitKeyHandler, err := c.TransitKeyHandler()
+	transitKeyHandler, err := c.TransitKeyHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transit key handler: %w", err)
 	}
 
-	cryptoHandler, err := c.CryptoHandler()
+	cryptoHandler, err := c.CryptoHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get crypto handler: %w", err)
 	}
 
-	tokenizationKeyHandler, err := c.TokenizationKeyHandler()
+	tokenizationKeyHandler, err := c.TokenizationKeyHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tokenization key handler: %w", err)
 	}
 
-	tokenizationHandler, err := c.TokenizationHandler()
+	tokenizationHandler, err := c.TokenizationHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tokenization handler: %w", err)
 	}
 
-	tokenUseCase, err := c.TokenUseCase()
+	tokenUseCase, err := c.TokenUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
 	}
 
 	tokenService := c.TokenService()
 
-	auditLogUseCase, err := c.AuditLogUseCase()
+	auditLogUseCase, err := c.AuditLogUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
 	}
 
 	// Get metrics provider (may be nil if metrics are disabled)
-	metricsProvider, err := c.MetricsProvider()
+	metricsProvider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
@@ -487,14 +486,14 @@ func (c *Container) initHTTPServer() (*http.Server, error) {
 }
 
 // initMetricsServer creates the Metrics server if metrics are enabled.
-func (c *Container) initMetricsServer() (*http.MetricsServer, error) {
+func (c *Container) initMetricsServer(ctx context.Context) (*http.MetricsServer, error) {
 	if !c.config.MetricsEnabled {
 		return nil, nil
 	}
 
 	logger := c.Logger()
 	// Get metrics provider using existing accessor
-	provider, err := c.MetricsProvider()
+	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}

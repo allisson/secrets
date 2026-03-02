@@ -57,7 +57,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 			kekChain := testCtx.kekChain
 
 			// Get repositories from container
-			auditLogRepo, err := testCtx.container.AuditLogRepository()
+			auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
 			require.NoError(t, err, "failed to get audit log repository")
 
 			// Create use case with signing enabled
@@ -375,7 +375,7 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 
 	// Create initial KEK for signing
 	ctx := context.Background()
-	kekUseCase, err := container.KekUseCase()
+	kekUseCase, err := container.KekUseCase(ctx)
 	require.NoError(t, err, "failed to get kek use case")
 
 	err = kekUseCase.Create(ctx, masterKeyChain, cryptoDomain.AESGCM)
@@ -386,7 +386,7 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 	require.NoError(t, err, "failed to unwrap KEK chain")
 
 	// Create root client for test operations
-	clientUseCase, err := container.ClientUseCase()
+	clientUseCase, err := container.ClientUseCase(ctx)
 	require.NoError(t, err, "failed to get client use case")
 
 	rootPolicies := []authDomain.PolicyDocument{
