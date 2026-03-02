@@ -62,8 +62,16 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 
 		batch := []*cryptoDomain.Dek{dek1}
 
-		// Setup mock expectations
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(nil).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 
 		plainDek1Key := []byte("dek1-plaintext-key")
 		keyManager.EXPECT().DecryptDek(dek1, oldKek).Return(plainDek1Key, nil)
@@ -72,7 +80,7 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		newNonceDek1 := []byte("dek1-nonce-new")
 		keyManager.EXPECT().EncryptDek(plainDek1Key, newKek).Return(newEncDek1, newNonceDek1, nil)
 
-		dekRepo.EXPECT().Update(ctx, mock.MatchedBy(func(dek *cryptoDomain.Dek) bool {
+		dekRepo.EXPECT().Update(mock.Anything, mock.MatchedBy(func(dek *cryptoDomain.Dek) bool {
 			return dek.ID == dek1.ID &&
 				dek.KekID == newKekID &&
 				string(dek.EncryptedKey) == "dek1-encrypted-new" &&
@@ -97,7 +105,18 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		kekChain := cryptoDomain.NewKekChain([]*cryptoDomain.Kek{newKek})
 		batchSize := 10
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return([]*cryptoDomain.Dek{}, nil)
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(nil).
+			Once()
+
+		dekRepo.EXPECT().
+			GetBatchNotKekID(mock.Anything, newKekID, batchSize).
+			Return([]*cryptoDomain.Dek{}, nil)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
 
@@ -119,7 +138,16 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		dek1 := &cryptoDomain.Dek{ID: uuid.New(), KekID: uuid.New()}
 		batch := []*cryptoDomain.Dek{dek1}
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(cryptoDomain.ErrKekNotFound).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
 
@@ -144,7 +172,16 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		dek1 := &cryptoDomain.Dek{ID: uuid.New(), KekID: oldKekID}
 		batch := []*cryptoDomain.Dek{dek1}
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(cryptoDomain.ErrKekNotFound).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
 
@@ -170,8 +207,18 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		dek1 := &cryptoDomain.Dek{ID: uuid.New(), KekID: oldKekID}
 		batch := []*cryptoDomain.Dek{dek1}
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
 		expectedErr := errors.New("decryption failed")
+
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(expectedErr).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 		keyManager.EXPECT().DecryptDek(dek1, oldKek).Return(nil, expectedErr)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
@@ -198,12 +245,22 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		dek1 := &cryptoDomain.Dek{ID: uuid.New(), KekID: oldKekID}
 		batch := []*cryptoDomain.Dek{dek1}
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
+		expectedErr := errors.New("encryption failed")
+
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(expectedErr).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 
 		plainDek1Key := []byte("plain-key")
 		keyManager.EXPECT().DecryptDek(dek1, oldKek).Return(plainDek1Key, nil)
 
-		expectedErr := errors.New("encryption failed")
 		keyManager.EXPECT().EncryptDek(plainDek1Key, newKek).Return(nil, nil, expectedErr)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
@@ -230,14 +287,24 @@ func TestDekUseCase_Rewrap(t *testing.T) {
 		dek1 := &cryptoDomain.Dek{ID: uuid.New(), KekID: oldKekID}
 		batch := []*cryptoDomain.Dek{dek1}
 
-		dekRepo.EXPECT().GetBatchNotKekID(ctx, newKekID, batchSize).Return(batch, nil)
+		expectedErr := errors.New("update failed")
+
+		// Setup mock expectations for transaction
+		txManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			Run(func(ctx context.Context, fn func(context.Context) error) {
+				_ = fn(ctx)
+			}).
+			Return(expectedErr).
+			Once()
+
+		dekRepo.EXPECT().GetBatchNotKekID(mock.Anything, newKekID, batchSize).Return(batch, nil)
 
 		plainDek1Key := []byte("plain-key")
 		keyManager.EXPECT().DecryptDek(dek1, oldKek).Return(plainDek1Key, nil)
 		keyManager.EXPECT().EncryptDek(plainDek1Key, newKek).Return([]byte("enc"), []byte("nonce"), nil)
 
-		expectedErr := errors.New("update failed")
-		dekRepo.EXPECT().Update(ctx, dek1).Return(expectedErr)
+		dekRepo.EXPECT().Update(mock.Anything, dek1).Return(expectedErr)
 
 		rewrapped, err := useCase.Rewrap(ctx, kekChain, newKekID, batchSize)
 

@@ -16,20 +16,13 @@ import (
 	_ "gocloud.dev/secrets/localsecrets"
 )
 
-// KMSService implements domain.KMSService for KMS operations using gocloud.dev/secrets.
-type KMSService interface {
-	// OpenKeeper opens a secrets.Keeper for the configured KMS provider.
-	// Returns an error if the KMS provider URI is invalid or connection fails.
-	OpenKeeper(ctx context.Context, keyURI string) (cryptoDomain.KMSKeeper, error)
-}
-
-// kmsService implements KMSService using gocloud.dev/secrets.
-type kmsService struct{}
-
 // NewKMSService creates a new KMS service instance.
-func NewKMSService() KMSService {
+func NewKMSService() cryptoDomain.KMSService {
 	return &kmsService{}
 }
+
+// kmsService implements domain.KMSService using gocloud.dev/secrets.
+type kmsService struct{}
 
 // OpenKeeper opens a secrets.Keeper for the configured KMS provider using the keyURI.
 // Supports: gcpkms://, awskms://, azurekeyvault://, hashivault://, base64key://

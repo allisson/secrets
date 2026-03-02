@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
 
 // RunCreateMasterKey generates a cryptographically secure 32-byte master key for envelope encryption.
@@ -27,7 +27,7 @@ import (
 // Security: Never use localsecrets provider in production. Use cloud KMS providers (gcpkms, awskms, azurekeyvault).
 func RunCreateMasterKey(
 	ctx context.Context,
-	kmsService cryptoService.KMSService,
+	kmsService cryptoDomain.KMSService,
 	logger *slog.Logger,
 	writer io.Writer,
 	keyID string,

@@ -47,7 +47,7 @@ type Container struct {
 	// Services
 	aeadManager   cryptoService.AEADManager
 	keyManager    cryptoService.KeyManager
-	kmsService    cryptoService.KMSService
+	kmsService    cryptoDomain.KMSService
 	secretService authService.SecretService
 	tokenService  authService.TokenService
 
