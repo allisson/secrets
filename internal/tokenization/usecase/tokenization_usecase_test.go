@@ -12,7 +12,6 @@ import (
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoServiceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
-	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationTesting "github.com/allisson/secrets/internal/tokenization/testing"
 	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
@@ -24,7 +23,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_NonDeterministicMode", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -108,7 +106,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -135,7 +132,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_DeterministicMode_NewToken", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -233,7 +229,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -259,7 +254,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_DeterministicMode_ExistingValidToken", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -316,7 +310,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -339,7 +332,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_DeterministicMode_ExpiredTokenCreatesNew", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -449,7 +441,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -471,7 +462,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_TokenizationKeyNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -491,7 +481,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -513,7 +502,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_DekNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -548,7 +536,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -570,7 +557,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_KekNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -615,7 +601,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -637,7 +622,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_EncryptionFails", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -703,7 +687,6 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -729,7 +712,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Success_DetokenizeValid", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -816,7 +798,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -837,7 +818,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -857,7 +837,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -879,7 +858,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -913,7 +891,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -934,7 +911,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_TokenRevoked", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -968,7 +944,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -989,7 +964,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_DecryptionFails", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1071,7 +1045,6 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1098,7 +1071,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("Success_ValidToken", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1130,7 +1102,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1150,7 +1121,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("Success_ExpiredToken", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1183,7 +1153,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1203,7 +1172,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("Success_TokenNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1223,7 +1191,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1243,7 +1210,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("Error_RepositoryError", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1265,7 +1231,6 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1292,7 +1257,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 	t.Run("Success_RevokeToken", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1329,7 +1293,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1348,7 +1311,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1368,7 +1330,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1389,7 +1350,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 	t.Run("Error_RevokeFails", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1428,7 +1388,6 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1454,7 +1413,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Success_DryRunMode", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1480,7 +1438,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1500,7 +1457,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Success_DeleteMode", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1526,7 +1482,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1546,7 +1501,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Error_NegativeDays", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1560,7 +1514,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,
@@ -1581,7 +1534,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Error_RepositoryError", func(t *testing.T) {
 		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
 		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
 		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
@@ -1603,7 +1555,6 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 		// Create use case
 		uc := NewTokenizationUseCase(
-			mockTxManager,
 			mockTokenizationKeyRepo,
 			mockTokenRepo,
 			mockDekRepo,

@@ -12,7 +12,6 @@ import (
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
-	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationService "github.com/allisson/secrets/internal/tokenization/service"
@@ -46,7 +45,6 @@ func validateTokenLength(formatType tokenizationDomain.FormatType, length int) e
 
 // tokenizationUseCase implements TokenizationUseCase for managing tokenization operations.
 type tokenizationUseCase struct {
-	txManager        database.TxManager
 	tokenizationRepo TokenizationKeyRepository
 	tokenRepo        TokenRepository
 	dekRepo          DekRepository
@@ -187,6 +185,12 @@ func (t *tokenizationUseCase) Tokenize(
 				// If query fails, return original create error
 				return nil, apperrors.Wrap(err, "failed to create token")
 			}
+
+			// Validate that the concurrently created token is valid before returning it
+			if !existingToken.IsValid() {
+				return nil, apperrors.Wrap(err, "concurrently created token is invalid or expired")
+			}
+
 			// Return the token created by the concurrent request
 			return existingToken, nil
 		}
@@ -314,7 +318,6 @@ func (t *tokenizationUseCase) CleanupExpired(ctx context.Context, days int, dryR
 
 // NewTokenizationUseCase creates a new TokenizationUseCase with injected dependencies.
 func NewTokenizationUseCase(
-	txManager database.TxManager,
 	tokenizationRepo TokenizationKeyRepository,
 	tokenRepo TokenRepository,
 	dekRepo DekRepository,
@@ -324,7 +327,6 @@ func NewTokenizationUseCase(
 	kekChain *cryptoDomain.KekChain,
 ) TokenizationUseCase {
 	return &tokenizationUseCase{
-		txManager:        txManager,
 		tokenizationRepo: tokenizationRepo,
 		tokenRepo:        tokenRepo,
 		dekRepo:          dekRepo,
