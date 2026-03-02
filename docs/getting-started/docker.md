@@ -1,6 +1,6 @@
 # 🐳 Run with Docker (Recommended)
 
-> Last updated: 2026-02-28
+> Last updated: 2026-03-02
 
 This is the default way to run Secrets.
 
@@ -181,10 +181,11 @@ DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@secrets-postgres:5432/mydb?sslmode=disable
 DB_MAX_OPEN_CONNECTIONS=25
 DB_MAX_IDLE_CONNECTIONS=5
-DB_CONN_MAX_LIFETIME=5
+DB_CONN_MAX_LIFETIME_MINUTES=5
 
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
+SERVER_SHUTDOWN_TIMEOUT_SECONDS=10
 LOG_LEVEL=info
 
 # KMS Configuration (required in v0.19.0+)
@@ -206,6 +207,7 @@ RATE_LIMIT_TOKEN_BURST=10
 
 METRICS_ENABLED=true
 METRICS_NAMESPACE=secrets
+METRICS_PORT=8081
 EOF
 
 ```

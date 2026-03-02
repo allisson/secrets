@@ -40,6 +40,9 @@ As your Secrets deployment grows, you may encounter:
 | **Database CPU** | > 70% | Vertical scaling (larger instance) or read replicas |
 | **Disk IOPS** | > 80% of provisioned | Increase IOPS or use faster storage |
 
+> Last updated: 2026-03-02
+...
+
 ## Connection Pooling
 
 ### Built-in Connection Pool
@@ -50,7 +53,7 @@ Secrets uses `database/sql` connection pooling (Go standard library):
 # Environment variables for connection pooling
 DB_MAX_OPEN_CONNECTIONS=25  # Max connections to database (default: 25)
 DB_MAX_IDLE_CONNECTIONS=5   # Max idle connections in pool (default: 5)
-DB_CONN_MAX_LIFETIME=5      # Max connection lifetime in minutes (default: 5 min)
+DB_CONN_MAX_LIFETIME_MINUTES=5      # Max connection lifetime in minutes (default: 5 min)
 ```
 
 ### Tuning Guidelines
