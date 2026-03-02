@@ -25,6 +25,9 @@ var (
 
 	// ErrLocked indicates the resource is temporarily locked.
 	ErrLocked = errors.New("locked")
+
+	// ErrInternal indicates an unexpected internal server error.
+	ErrInternal = errors.New("internal server error")
 )
 
 // New creates a new error with the given message.
@@ -45,8 +48,7 @@ func Wrapf(err error, format string, args ...any) error {
 	if err == nil {
 		return nil
 	}
-	message := fmt.Sprintf(format, args...)
-	return fmt.Errorf("%s: %w", message, err)
+	return fmt.Errorf(format+": %w", append(args, err)...)
 }
 
 // Is reports whether any error in err's tree matches target.

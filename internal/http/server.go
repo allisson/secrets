@@ -82,7 +82,7 @@ func (s *Server) SetupRouter(
 	router := gin.New()
 
 	// Apply custom middleware
-	router.Use(gin.Recovery()) // Gin's panic recovery
+	router.Use(CustomRecoveryMiddleware(s.logger)) // Custom slog panic recovery
 
 	// Add CORS middleware if enabled
 	if corsMiddleware := createCORSMiddleware(
@@ -161,6 +161,7 @@ func (s *Server) SetupRouter(
 	s.router = router
 }
 
+// registerAuthRoutes configures the v1 authentication-related endpoints.
 func (s *Server) registerAuthRoutes(
 	v1 *gin.RouterGroup,
 	cfg *config.Config,
@@ -237,6 +238,7 @@ func (s *Server) registerAuthRoutes(
 	}
 }
 
+// registerSecretRoutes configures the v1 secret-related endpoints.
 func (s *Server) registerSecretRoutes(
 	v1 *gin.RouterGroup,
 	secretHandler *secretsHTTP.SecretHandler,
@@ -270,6 +272,7 @@ func (s *Server) registerSecretRoutes(
 	}
 }
 
+// registerTransitRoutes configures the v1 transit-encryption-related endpoints.
 func (s *Server) registerTransitRoutes(
 	v1 *gin.RouterGroup,
 	transitKeyHandler *transitHTTP.TransitKeyHandler,
@@ -326,6 +329,7 @@ func (s *Server) registerTransitRoutes(
 	}
 }
 
+// registerTokenizationRoutes configures the v1 tokenization-related endpoints.
 func (s *Server) registerTokenizationRoutes(
 	v1 *gin.RouterGroup,
 	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler,
@@ -411,11 +415,23 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.logger.Info("starting http server", slog.String("addr", s.server.Addr))
 
-	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	// Channel to receive errors from ListenAndServe
+	errChan := make(chan error, 1)
+	go func() {
+		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- fmt.Errorf("failed to start server: %w", err)
+		}
+		close(errChan)
+	}()
 
-	return nil
+	// Wait for context cancellation or server error
+	select {
+	case <-ctx.Done():
+		s.logger.Info("context cancelled, shutting down http server")
+		return s.Shutdown(context.Background())
+	case err := <-errChan:
+		return err
+	}
 }
 
 // Shutdown gracefully shuts down the HTTP server.
@@ -426,12 +442,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // healthHandler returns a simple health check response.
 func (s *Server) healthHandler(c *gin.Context) {
-	v, _, _ := s.reqGroup.Do("health", func() (interface{}, error) {
-		return gin.H{"status": "healthy"}, nil
-	})
-	c.JSON(http.StatusOK, v)
+	c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 }
 
+// readinessResponse represents the structure of the readiness check response.
 type readinessResponse struct {
 	StatusCode int
 	Body       gin.H
@@ -439,7 +453,7 @@ type readinessResponse struct {
 
 // readinessHandler returns a simple readiness check response.
 func (s *Server) readinessHandler(c *gin.Context) {
-	v, _, _ := s.reqGroup.Do("readiness", func() (interface{}, error) {
+	v, err, _ := s.reqGroup.Do("readiness", func() (interface{}, error) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 
@@ -470,6 +484,24 @@ func (s *Server) readinessHandler(c *gin.Context) {
 		}, nil
 	})
 
-	res := v.(readinessResponse)
+	if err != nil {
+		s.logger.Error("readiness check failed", slog.Any("err", err))
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "not_ready",
+			"error":  "internal_readiness_error",
+		})
+		return
+	}
+
+	res, ok := v.(readinessResponse)
+	if !ok {
+		s.logger.Error("unexpected type from readiness check", slog.Any("value", v))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "not_ready",
+			"error":  "internal_type_error",
+		})
+		return
+	}
+
 	c.JSON(res.StatusCode, res.Body)
 }

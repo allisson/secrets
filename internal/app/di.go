@@ -498,7 +498,7 @@ func (c *Container) initMetricsServer(ctx context.Context) (*http.MetricsServer,
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
 
-	server := http.NewMetricsServer(
+	server := http.NewDefaultMetricsServer(
 		c.config.ServerHost,
 		c.config.MetricsPort,
 		logger,
