@@ -33,6 +33,7 @@ func (km *KeyManagerService) CreateKek(
 	if _, err := rand.Read(kekKey); err != nil {
 		return cryptoDomain.Kek{}, fmt.Errorf("failed to generate KEK: %w", err)
 	}
+	defer cryptoDomain.Zero(kekKey)
 
 	// Create cipher using AEADManager
 	aead, err := km.aeadManager.CreateCipher(masterKey.Key, alg)
@@ -46,12 +47,17 @@ func (km *KeyManagerService) CreateKek(
 		return cryptoDomain.Kek{}, fmt.Errorf("failed to encrypt KEK: %w", err)
 	}
 
+	// The plaintext KEK is included in the returned struct for in-memory use (e.g. initial setup)
+	// but the local variable kekKey is zeroed upon return for security.
+	keyCopy := make([]byte, len(kekKey))
+	copy(keyCopy, kekKey)
+
 	kek := cryptoDomain.Kek{
 		ID:           uuid.Must(uuid.NewV7()),
 		MasterKeyID:  masterKey.ID,
 		Algorithm:    alg,
 		EncryptedKey: encryptedKey,
-		Key:          kekKey,
+		Key:          keyCopy,
 		Nonce:        nonce,
 		Version:      1,
 		CreatedAt:    time.Now().UTC(),
@@ -92,6 +98,7 @@ func (km *KeyManagerService) CreateDek(
 	if _, err := rand.Read(dekKey); err != nil {
 		return cryptoDomain.Dek{}, fmt.Errorf("failed to generate DEK: %w", err)
 	}
+	defer cryptoDomain.Zero(dekKey)
 
 	// Create cipher using AEADManager with KEK's algorithm
 	aead, err := km.aeadManager.CreateCipher(kek.Key, kek.Algorithm)

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
 
 func RunRotateMasterKey(
 	ctx context.Context,
-	kmsService cryptoService.KMSService,
+	kmsService cryptoDomain.KMSService,
 	logger *slog.Logger,
 	writer io.Writer,
 	keyID, kmsProvider, kmsKeyURI, existingMasterKeys, existingActiveKeyID string,

@@ -46,7 +46,7 @@ func (c *Container) KeyManager() cryptoService.KeyManager {
 }
 
 // KMSService returns the KMS service.
-func (c *Container) KMSService() cryptoService.KMSService {
+func (c *Container) KMSService() cryptoDomain.KMSService {
 	c.kmsServiceInit.Do(func() {
 		c.kmsService = c.initKMSService()
 	})
@@ -156,7 +156,7 @@ func (c *Container) initKeyManager() cryptoService.KeyManager {
 }
 
 // initKMSService creates the KMS service for encrypting/decrypting master keys.
-func (c *Container) initKMSService() cryptoService.KMSService {
+func (c *Container) initKMSService() cryptoDomain.KMSService {
 	return cryptoService.NewKMSService()
 }
 

@@ -215,8 +215,12 @@ func loadMasterKeyChainFromKMS(
 		)
 
 		// Make a copy of the key data before storing to prevent issues if the underlying
-		// slice is reused. The original 'key' slice ownership is transferred to the keychain.
-		mkc.keys.Store(id, &MasterKey{ID: id, Key: key})
+		// slice is reused. The original 'key' slice from KMS is zeroed after copying.
+		keyCopy := make([]byte, len(key))
+		copy(keyCopy, key)
+		Zero(key)
+
+		mkc.keys.Store(id, &MasterKey{ID: id, Key: keyCopy})
 	}
 
 	if _, ok := mkc.Get(active); !ok {
