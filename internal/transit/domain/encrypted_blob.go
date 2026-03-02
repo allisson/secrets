@@ -13,7 +13,10 @@ import (
 type EncryptedBlob struct {
 	Version    uint   // Transit key version used for this encryption/decryption operation
 	Ciphertext []byte // Encrypted data with nonce prepended (empty after decryption)
-	Plaintext  []byte // Decrypted data (only populated after decryption, should be zeroed after use)
+	// Plaintext contains the decrypted data (only populated after decryption).
+	// SECURITY WARNING: This field contains sensitive plaintext data.
+	// Callers MUST securely zero this data after use by calling Destroy().
+	Plaintext []byte
 }
 
 // NewEncryptedBlob creates an EncryptedBlob from string format "version:ciphertext-base64".
@@ -33,6 +36,10 @@ func NewEncryptedBlob(content string) (EncryptedBlob, error) {
 	version, err := strconv.ParseUint(parts[0], 10, 0)
 	if err != nil {
 		return EncryptedBlob{}, fmt.Errorf("%w: %v", ErrInvalidBlobVersion, err)
+	}
+
+	if version == 0 {
+		return EncryptedBlob{}, fmt.Errorf("%w: version must be greater than 0", ErrInvalidBlobVersion)
 	}
 
 	// Decode base64 ciphertext
@@ -66,4 +73,13 @@ func (eb *EncryptedBlob) Validate() error {
 	}
 
 	return nil
+}
+
+// Destroy securely zeroes out the Plaintext slice to prevent memory leaks of sensitive data.
+func (eb *EncryptedBlob) Destroy() {
+	if eb.Plaintext != nil {
+		for i := range eb.Plaintext {
+			eb.Plaintext[i] = 0
+		}
+	}
 }
