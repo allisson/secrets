@@ -15,7 +15,6 @@ func TestNewProvider(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, provider)
 		assert.NotNil(t, provider.meterProvider)
-		assert.NotNil(t, provider.exporter)
 		assert.NotNil(t, provider.registry)
 	})
 

@@ -30,3 +30,8 @@ type Secret struct {
 	// DeletedAt marks when this secret was soft-deleted (nil if active).
 	DeletedAt *time.Time
 }
+
+// IsDeleted returns true if the secret has been soft-deleted.
+func (s *Secret) IsDeleted() bool {
+	return s.DeletedAt != nil
+}

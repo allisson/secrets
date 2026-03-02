@@ -19,7 +19,6 @@ import (
 // Provides access to the HTTP handler for exposing metrics in Prometheus format.
 type Provider struct {
 	meterProvider *metric.MeterProvider
-	exporter      *promexporter.Exporter
 	registry      *prometheus.Registry
 }
 
@@ -42,6 +41,7 @@ func NewProvider(namespace string) (*Provider, error) {
 	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
 			semconv.ServiceNamespace(namespace),
+			semconv.ServiceName(namespace),
 		),
 	)
 	if err != nil {
@@ -55,7 +55,6 @@ func NewProvider(namespace string) (*Provider, error) {
 
 	return &Provider{
 		meterProvider: meterProvider,
-		exporter:      exporter,
 		registry:      registry,
 	}, nil
 }
