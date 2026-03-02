@@ -1,6 +1,6 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-02-28
+> Last updated: 2026-03-02
 
 Secrets is configured through environment variables.
 
@@ -12,11 +12,12 @@ DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disable
 DB_MAX_OPEN_CONNECTIONS=25
 DB_MAX_IDLE_CONNECTIONS=5
-DB_CONN_MAX_LIFETIME=5
+DB_CONN_MAX_LIFETIME_MINUTES=5
 
 # Server configuration
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
+SERVER_SHUTDOWN_TIMEOUT_SECONDS=10
 LOG_LEVEL=info
 
 # Master key configuration (KMS mode required as of v0.19.0)
@@ -98,7 +99,7 @@ Maximum number of open database connections (default: `25`).
 
 Maximum number of idle database connections (default: `5`).
 
-### DB_CONN_MAX_LIFETIME
+### DB_CONN_MAX_LIFETIME_MINUTES
 
 Maximum lifetime of a connection in minutes (default: `5`).
 
@@ -110,11 +111,15 @@ Host address to bind the HTTP server (default: `0.0.0.0`).
 
 ### SERVER_PORT
 
-Port to bind the HTTP server (default: `8080`).
+Port to bind the HTTP server (default: `8080`). Must be between 1 and 65535 and different from `METRICS_PORT`.
+
+### SERVER_SHUTDOWN_TIMEOUT_SECONDS
+
+Maximum time to wait for the server to gracefully shutdown in seconds (default: `10`).
 
 ### LOG_LEVEL
 
-Logging level. Supported values: `debug`, `info`, `warn`, `error` (default: `info`).
+Logging level. Supported values: `debug`, `info`, `warn`, `error`, `fatal`, `panic` (default: `info`).
 
 ## Master key configuration
 

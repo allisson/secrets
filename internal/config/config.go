@@ -2,12 +2,42 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/allisson/go-env"
+	validation "github.com/jellydator/validation"
 	"github.com/joho/godotenv"
+)
+
+// Default configuration values.
+const (
+	DefaultServerHost            = "0.0.0.0"
+	DefaultServerPort            = 8080
+	DefaultServerShutdownTimeout = 10 // seconds
+	DefaultDBDriver              = "postgres"
+	DefaultDBConnectionString    = "postgres://user:password@localhost:5432/mydb?sslmode=disable" //nolint:gosec
+	DefaultDBMaxOpenConnections  = 25
+
+	DefaultDBMaxIdleConnections   = 5
+	DefaultDBConnMaxLifetime      = 5 // minutes
+	DefaultLogLevel               = "info"
+	DefaultAuthTokenExpiration    = 14400 // seconds
+	DefaultRateLimitEnabled       = true
+	DefaultRateLimitRequests      = 10.0
+	DefaultRateLimitBurst         = 20
+	DefaultRateLimitTokenEnabled  = true
+	DefaultRateLimitTokenRequests = 5.0
+	DefaultRateLimitTokenBurst    = 10
+	DefaultCORSEnabled            = false
+	DefaultCORSAllowOrigins       = ""
+	DefaultMetricsEnabled         = true
+	DefaultMetricsNamespace       = "secrets"
+	DefaultMetricsPort            = 8081
+	DefaultLockoutMaxAttempts     = 10
+	DefaultLockoutDuration        = 30 // minutes
 )
 
 // Config holds all application configuration.
@@ -30,7 +60,7 @@ type Config struct {
 	// DBConnMaxLifetime is the maximum amount of time a connection may be reused.
 	DBConnMaxLifetime time.Duration
 
-	// LogLevel is the logging level (e.g., "debug", "info", "warn", "error").
+	// LogLevel is the logging level (e.g., "debug", "info", "warn", "error", "fatal", "panic").
 	LogLevel string
 
 	// AuthTokenExpiration is the duration after which an authentication token expires.
@@ -62,7 +92,7 @@ type Config struct {
 	// MetricsPort is the port number for the metrics server.
 	MetricsPort int
 
-	// KMSProvider is the KMS provider to use (e.g., "google", "aws", "azure").
+	// KMSProvider is the KMS provider to use (e.g., "google", "aws", "azure", "hashivault", "localsecrets").
 	KMSProvider string
 	// KMSKeyURI is the URI for the master key in the KMS.
 	KMSKeyURI string
@@ -73,60 +103,115 @@ type Config struct {
 	LockoutDuration time.Duration
 }
 
+// Validate checks if the configuration is valid.
+func (c *Config) Validate() error {
+	return validation.ValidateStruct(
+		c,
+		validation.Field(&c.DBDriver, validation.Required, validation.In("postgres", "mysql")),
+		validation.Field(&c.DBConnectionString, validation.Required),
+		validation.Field(&c.ServerPort, validation.Required, validation.Min(1), validation.Max(65535)),
+		validation.Field(
+			&c.MetricsPort,
+			validation.Required,
+			validation.Min(1),
+			validation.Max(65535),
+			validation.NotIn(c.ServerPort),
+		),
+		validation.Field(
+			&c.LogLevel,
+			validation.Required,
+			validation.In("debug", "info", "warn", "error", "fatal", "panic"),
+		),
+		validation.Field(&c.KMSProvider, validation.When(c.KMSKeyURI != "", validation.Required)),
+		validation.Field(&c.KMSKeyURI, validation.When(c.KMSProvider != "", validation.Required)),
+		validation.Field(
+			&c.RateLimitRequestsPerSec,
+			validation.When(c.RateLimitEnabled, validation.Required, validation.Min(0.1)),
+		),
+		validation.Field(
+			&c.RateLimitTokenRequestsPerSec,
+			validation.When(c.RateLimitTokenEnabled, validation.Required, validation.Min(0.1)),
+		),
+	)
+}
+
 // Load loads configuration from environment variables and .env file.
 func Load() *Config {
 	// Try to load .env file recursively
 	loadDotEnv()
 
-	return &Config{
+	cfg := &Config{
 		// Server configuration
-		ServerHost:            env.GetString("SERVER_HOST", "0.0.0.0"),
-		ServerPort:            env.GetInt("SERVER_PORT", 8080),
-		ServerShutdownTimeout: env.GetDuration("SERVER_SHUTDOWN_TIMEOUT", 10, time.Second),
+		ServerHost: env.GetString("SERVER_HOST", DefaultServerHost),
+		ServerPort: env.GetInt("SERVER_PORT", DefaultServerPort),
+		ServerShutdownTimeout: env.GetDuration(
+			"SERVER_SHUTDOWN_TIMEOUT_SECONDS",
+			DefaultServerShutdownTimeout,
+			time.Second,
+		),
 
 		// Database configuration
-		DBDriver: env.GetString("DB_DRIVER", "postgres"),
+		DBDriver: env.GetString("DB_DRIVER", DefaultDBDriver),
 		DBConnectionString: env.GetString(
 			"DB_CONNECTION_STRING",
-			"postgres://user:password@localhost:5432/mydb?sslmode=disable",
+			DefaultDBConnectionString,
 		),
-		DBMaxOpenConnections: env.GetInt("DB_MAX_OPEN_CONNECTIONS", 25),
-		DBMaxIdleConnections: env.GetInt("DB_MAX_IDLE_CONNECTIONS", 5),
-		DBConnMaxLifetime:    env.GetDuration("DB_CONN_MAX_LIFETIME", 5, time.Minute),
+		DBMaxOpenConnections: env.GetInt("DB_MAX_OPEN_CONNECTIONS", DefaultDBMaxOpenConnections),
+		DBMaxIdleConnections: env.GetInt("DB_MAX_IDLE_CONNECTIONS", DefaultDBMaxIdleConnections),
+		DBConnMaxLifetime: env.GetDuration(
+			"DB_CONN_MAX_LIFETIME_MINUTES",
+			DefaultDBConnMaxLifetime,
+			time.Minute,
+		),
 
 		// Logging
-		LogLevel: env.GetString("LOG_LEVEL", "info"),
+		LogLevel: env.GetString("LOG_LEVEL", DefaultLogLevel),
 
 		// Auth
-		AuthTokenExpiration: env.GetDuration("AUTH_TOKEN_EXPIRATION_SECONDS", 14400, time.Second),
+		AuthTokenExpiration: env.GetDuration(
+			"AUTH_TOKEN_EXPIRATION_SECONDS",
+			DefaultAuthTokenExpiration,
+			time.Second,
+		),
 
 		// Rate Limiting (authenticated endpoints)
-		RateLimitEnabled:        env.GetBool("RATE_LIMIT_ENABLED", true),
-		RateLimitRequestsPerSec: env.GetFloat64("RATE_LIMIT_REQUESTS_PER_SEC", 10.0),
-		RateLimitBurst:          env.GetInt("RATE_LIMIT_BURST", 20),
+		RateLimitEnabled:        env.GetBool("RATE_LIMIT_ENABLED", DefaultRateLimitEnabled),
+		RateLimitRequestsPerSec: env.GetFloat64("RATE_LIMIT_REQUESTS_PER_SEC", DefaultRateLimitRequests),
+		RateLimitBurst:          env.GetInt("RATE_LIMIT_BURST", DefaultRateLimitBurst),
 
 		// Rate Limiting for Token Endpoint (IP-based, unauthenticated)
-		RateLimitTokenEnabled:        env.GetBool("RATE_LIMIT_TOKEN_ENABLED", true),
-		RateLimitTokenRequestsPerSec: env.GetFloat64("RATE_LIMIT_TOKEN_REQUESTS_PER_SEC", 5.0),
-		RateLimitTokenBurst:          env.GetInt("RATE_LIMIT_TOKEN_BURST", 10),
+		RateLimitTokenEnabled: env.GetBool("RATE_LIMIT_TOKEN_ENABLED", DefaultRateLimitTokenEnabled),
+		RateLimitTokenRequestsPerSec: env.GetFloat64(
+			"RATE_LIMIT_TOKEN_REQUESTS_PER_SEC",
+			DefaultRateLimitTokenRequests,
+		),
+		RateLimitTokenBurst: env.GetInt("RATE_LIMIT_TOKEN_BURST", DefaultRateLimitTokenBurst),
 
 		// CORS
-		CORSEnabled:      env.GetBool("CORS_ENABLED", false),
-		CORSAllowOrigins: env.GetString("CORS_ALLOW_ORIGINS", ""),
+		CORSEnabled:      env.GetBool("CORS_ENABLED", DefaultCORSEnabled),
+		CORSAllowOrigins: env.GetString("CORS_ALLOW_ORIGINS", DefaultCORSAllowOrigins),
 
 		// Metrics
-		MetricsEnabled:   env.GetBool("METRICS_ENABLED", true),
-		MetricsNamespace: env.GetString("METRICS_NAMESPACE", "secrets"),
-		MetricsPort:      env.GetInt("METRICS_PORT", 8081),
+		MetricsEnabled:   env.GetBool("METRICS_ENABLED", DefaultMetricsEnabled),
+		MetricsNamespace: env.GetString("METRICS_NAMESPACE", DefaultMetricsNamespace),
+		MetricsPort:      env.GetInt("METRICS_PORT", DefaultMetricsPort),
 
 		// KMS configuration
 		KMSProvider: env.GetString("KMS_PROVIDER", ""),
 		KMSKeyURI:   env.GetString("KMS_KEY_URI", ""),
 
 		// Account Lockout
-		LockoutMaxAttempts: env.GetInt("LOCKOUT_MAX_ATTEMPTS", 10),
-		LockoutDuration:    env.GetDuration("LOCKOUT_DURATION_MINUTES", 30, time.Minute),
+		LockoutMaxAttempts: env.GetInt("LOCKOUT_MAX_ATTEMPTS", DefaultLockoutMaxAttempts),
+		LockoutDuration:    env.GetDuration("LOCKOUT_DURATION_MINUTES", DefaultLockoutDuration, time.Minute),
 	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		fmt.Printf("configuration validation failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	return cfg
 }
 
 // GetGinMode returns the appropriate Gin mode based on log level.

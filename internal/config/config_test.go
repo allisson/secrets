@@ -10,6 +10,133 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *Config
+		wantErr bool
+	}{
+		{
+			name: "valid config",
+			cfg: &Config{
+				DBDriver:                     "postgres",
+				DBConnectionString:           "postgres://localhost",
+				ServerPort:                   8080,
+				MetricsPort:                  8081,
+				LogLevel:                     "info",
+				RateLimitEnabled:             true,
+				RateLimitRequestsPerSec:      10,
+				RateLimitTokenEnabled:        true,
+				RateLimitTokenRequestsPerSec: 5,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid db driver",
+			cfg: &Config{
+				DBDriver:           "sqlite",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing db connection string",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid server port",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         70000,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "conflicting ports",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8080,
+				LogLevel:           "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid log level",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "trace",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing KMS provider when key URI is present",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				KMSKeyURI:          "gcpkms://...",
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing KMS key URI when provider is present",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				KMSProvider:        "google",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid rate limit requests",
+			cfg: &Config{
+				DBDriver:                "postgres",
+				DBConnectionString:      "postgres://localhost",
+				ServerPort:              8080,
+				MetricsPort:             8081,
+				LogLevel:                "info",
+				RateLimitEnabled:        true,
+				RateLimitRequestsPerSec: 0,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestLoad(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -45,22 +172,24 @@ func TestLoad(t *testing.T) {
 		{
 			name: "load custom server configuration",
 			envVars: map[string]string{
-				"SERVER_HOST": "localhost",
-				"SERVER_PORT": "9090",
+				"SERVER_HOST":                     "localhost",
+				"SERVER_PORT":                     "9090",
+				"SERVER_SHUTDOWN_TIMEOUT_SECONDS": "20",
 			},
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, "localhost", cfg.ServerHost)
 				assert.Equal(t, 9090, cfg.ServerPort)
+				assert.Equal(t, 20*time.Second, cfg.ServerShutdownTimeout)
 			},
 		},
 		{
 			name: "load custom database configuration",
 			envVars: map[string]string{
-				"DB_DRIVER":               "mysql",
-				"DB_CONNECTION_STRING":    "user:password@tcp(localhost:3306)/testdb",
-				"DB_MAX_OPEN_CONNECTIONS": "50",
-				"DB_MAX_IDLE_CONNECTIONS": "10",
-				"DB_CONN_MAX_LIFETIME":    "10",
+				"DB_DRIVER":                    "mysql",
+				"DB_CONNECTION_STRING":         "user:password@tcp(localhost:3306)/testdb",
+				"DB_MAX_OPEN_CONNECTIONS":      "50",
+				"DB_MAX_IDLE_CONNECTIONS":      "10",
+				"DB_CONN_MAX_LIFETIME_MINUTES": "10",
 			},
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, "mysql", cfg.DBDriver)
@@ -178,6 +307,8 @@ func TestLoad(t *testing.T) {
 			}
 
 			// Load configuration
+			// We can't easily test Load() directly if it calls os.Exit(1).
+			// However, for valid test cases it should work fine.
 			cfg := Load()
 
 			// Validate
@@ -218,7 +349,13 @@ func TestLoadDotEnv(t *testing.T) {
 	}()
 
 	// Create a .env file in the temp root
-	err = os.WriteFile(filepath.Join(tmpDir, ".env"), []byte("TEST_ENV_VAR=found"), 0600)
+	err = os.WriteFile(
+		filepath.Join(tmpDir, ".env"),
+		[]byte(
+			"TEST_ENV_VAR=found\nDB_DRIVER=postgres\nDB_CONNECTION_STRING=postgres://localhost\nSERVER_PORT=8080\nMETRICS_PORT=8081\nLOG_LEVEL=info",
+		),
+		0600,
+	)
 	require.NoError(t, err)
 
 	// Create a child directory
