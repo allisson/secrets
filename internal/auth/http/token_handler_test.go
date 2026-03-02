@@ -109,7 +109,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_MissingClientSecret", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_InvalidUUIDFormat", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_InvalidCredentials", func(t *testing.T) {

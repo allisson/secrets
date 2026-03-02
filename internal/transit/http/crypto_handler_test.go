@@ -121,7 +121,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_InvalidBase64", func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
@@ -260,7 +260,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_InvalidBlobFormat", func(t *testing.T) {

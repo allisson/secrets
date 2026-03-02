@@ -476,7 +476,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 		assert.Contains(t, response["message"], "created_at_from must be before or equal to created_at_to")
 	})
 

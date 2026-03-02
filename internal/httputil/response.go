@@ -70,8 +70,15 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 			Message: "You don't have permission to access this resource",
 		}
 
+	case apperrors.Is(err, apperrors.ErrInternal):
+		statusCode = http.StatusInternalServerError
+		errorResponse = ErrorResponse{
+			Error:   "internal_error",
+			Message: "An internal error occurred",
+		}
+
 	default:
-		// For unknown/internal errors, don't expose details to the client
+		// For unknown errors, don't expose details to the client
 		statusCode = http.StatusInternalServerError
 		errorResponse = ErrorResponse{
 			Error:   "internal_error",
@@ -88,7 +95,7 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 		)
 	}
 
-	c.JSON(statusCode, errorResponse)
+	c.AbortWithStatusJSON(statusCode, errorResponse)
 }
 
 // HandleBadRequestGin writes a 400 Bad Request response for malformed JSON or parameters using Gin.
@@ -102,7 +109,7 @@ func HandleBadRequestGin(c *gin.Context, err error, logger *slog.Logger) {
 		Message: err.Error(),
 	}
 
-	c.JSON(http.StatusBadRequest, errorResponse)
+	c.AbortWithStatusJSON(http.StatusBadRequest, errorResponse)
 }
 
 // HandleValidationErrorGin writes a 422 Unprocessable Entity response for validation errors using Gin.
@@ -112,9 +119,9 @@ func HandleValidationErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 	}
 
 	errorResponse := ErrorResponse{
-		Error:   "validation_error",
+		Error:   "invalid_input",
 		Message: err.Error(),
 	}
 
-	c.JSON(http.StatusUnprocessableEntity, errorResponse)
+	c.AbortWithStatusJSON(http.StatusUnprocessableEntity, errorResponse)
 }

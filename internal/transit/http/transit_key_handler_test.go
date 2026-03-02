@@ -148,7 +148,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_ValidationFailed_InvalidAlgorithm", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
@@ -286,7 +286,7 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, "validation_error", response["error"])
+		assert.Equal(t, "invalid_input", response["error"])
 	})
 
 	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
