@@ -92,6 +92,7 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 		)
 		return
 	}
+	defer cryptoDomain.Zero(value)
 
 	// Call use case with decoded bytes
 	secret, err := h.secretUseCase.CreateOrUpdate(c.Request.Context(), path, value)

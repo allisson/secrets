@@ -14,12 +14,7 @@ type ListSecretsResponse struct {
 func MapSecretsToListResponse(secrets []*secretsDomain.Secret) ListSecretsResponse {
 	data := make([]SecretResponse, 0, len(secrets))
 	for _, secret := range secrets {
-		data = append(data, SecretResponse{
-			ID:        secret.ID.String(),
-			Path:      secret.Path,
-			Version:   secret.Version,
-			CreatedAt: secret.CreatedAt,
-		})
+		data = append(data, MapSecretToCreateResponse(secret))
 	}
 
 	return ListSecretsResponse{
