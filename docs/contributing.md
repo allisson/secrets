@@ -212,6 +212,130 @@ If gosec reports a false positive, suppress it with an inline comment explaining
 
 Never suppress real security issues. If you're unsure, ask in the PR review.
 
+### Testing Guide
+
+The project uses a two-tier testing strategy to balance speed and coverage:
+
+#### Test Types
+
+**Unit Tests**
+- Fast, in-memory tests that don't require external dependencies
+- Run by default with `make test` or `go test ./...`
+- Execute in parallel for maximum speed
+- Coverage report: `coverage.out`
+
+**Integration Tests**
+- Tests that require real databases (PostgreSQL or MySQL)
+- Tagged with `//go:build integration` build constraint
+- Run serially to avoid database conflicts
+- Coverage report: `coverage-integration.out`
+
+#### Build Tag System
+
+Integration tests use Go's build tag system to enable conditional compilation:
+
+```go
+//go:build integration
+
+package mypackage_test
+// ... test code that requires databases
+```
+
+**Without build tags:**
+```bash
+go test ./...  # Skips integration tests automatically
+```
+
+**With build tags:**
+```bash
+go test -tags=integration ./...  # Includes integration tests
+```
+
+#### Running Tests Locally
+
+**Quick feedback (unit tests only):**
+```bash
+make test
+```
+
+**Full validation (integration tests with databases):**
+```bash
+make test-with-db  # Starts DBs → runs integration tests → stops DBs
+```
+
+**Run both unit and integration tests:**
+```bash
+make test-all
+```
+
+**Run integration tests only (requires running databases):**
+```bash
+make test-integration
+```
+
+#### Writing Integration Tests
+
+All repository-layer tests that interact with real databases must be tagged as integration tests:
+
+1. Add build tag as the **first line** of the test file:
+   ```go
+   //go:build integration
+   
+   package postgresql_test
+   ```
+
+2. Use `internal/testutil/database.go` utilities for database setup:
+   ```go
+   func TestMyRepository(t *testing.T) {
+       db := testutil.SetupTestDB(t, "postgresql") // or "mysql"
+       defer db.Close()
+       // ... test code
+   }
+   ```
+
+3. Test against **both** PostgreSQL and MySQL when applicable:
+   ```go
+   func TestMyFeature(t *testing.T) {
+       for _, dbType := range []string{"postgresql", "mysql"} {
+           t.Run(dbType, func(t *testing.T) {
+               db := testutil.SetupTestDB(t, dbType)
+               defer db.Close()
+               // ... test code
+           })
+       }
+   }
+   ```
+
+#### Files That Require Integration Tag
+
+- All `*_test.go` files in `internal/*/repository/postgresql/`
+- All `*_test.go` files in `internal/*/repository/mysql/`
+- E2E API tests in `test/integration/`
+- Any tests requiring `TEST_POSTGRES_DSN` or `TEST_MYSQL_DSN`
+
+#### CI Test Execution
+
+The CI pipeline runs two separate test jobs:
+
+1. **test job**: Fast unit tests (runs first, ~2-3 minutes)
+2. **integration-test job**: Database tests (runs after unit tests pass, ~5-10 minutes)
+
+Both jobs must pass for CI to succeed. This approach provides:
+- Fast feedback for common issues (unit tests)
+- Comprehensive validation (integration tests)
+- Clear separation of concerns
+
+#### Test Environment Variables
+
+Integration tests use these environment variables:
+
+```bash
+TEST_POSTGRES_DSN="postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable"
+TEST_MYSQL_DSN="testuser:testpass@tcp(localhost:3306)/testdb?parseTime=true"
+```
+
+The `make test-with-db` target automatically configures these variables.
+
 ### Run Specific Tests
 
 ```bash
