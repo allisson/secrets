@@ -218,13 +218,15 @@ The project uses a two-tier testing strategy to balance speed and coverage:
 
 #### Test Types
 
-**Unit Tests**
+##### Unit Tests
+
 - Fast, in-memory tests that don't require external dependencies
 - Run by default with `make test` or `go test ./...`
 - Execute in parallel for maximum speed
 - Coverage report: `coverage.out`
 
-**Integration Tests**
+##### Integration Tests
+
 - Tests that require real databases (PostgreSQL or MySQL)
 - Tagged with `//go:build integration` build constraint
 - Run serially to avoid database conflicts
@@ -242,11 +244,13 @@ package mypackage_test
 ```
 
 **Without build tags:**
+
 ```bash
 go test ./...  # Skips integration tests automatically
 ```
 
 **With build tags:**
+
 ```bash
 go test -tags=integration ./...  # Includes integration tests
 ```
@@ -254,21 +258,25 @@ go test -tags=integration ./...  # Includes integration tests
 #### Running Tests Locally
 
 **Quick feedback (unit tests only):**
+
 ```bash
 make test
 ```
 
 **Full validation (integration tests with databases):**
+
 ```bash
 make test-with-db  # Starts DBs → runs integration tests → stops DBs
 ```
 
 **Run both unit and integration tests:**
+
 ```bash
 make test-all
 ```
 
 **Run integration tests only (requires running databases):**
+
 ```bash
 make test-integration
 ```
@@ -278,6 +286,7 @@ make test-integration
 All repository-layer tests that interact with real databases must be tagged as integration tests:
 
 1. Add build tag as the **first line** of the test file:
+
    ```go
    //go:build integration
    
@@ -285,6 +294,7 @@ All repository-layer tests that interact with real databases must be tagged as i
    ```
 
 2. Use `internal/testutil/database.go` utilities for database setup:
+
    ```go
    func TestMyRepository(t *testing.T) {
        db := testutil.SetupTestDB(t, "postgresql") // or "mysql"
@@ -294,6 +304,7 @@ All repository-layer tests that interact with real databases must be tagged as i
    ```
 
 3. Test against **both** PostgreSQL and MySQL when applicable:
+
    ```go
    func TestMyFeature(t *testing.T) {
        for _, dbType := range []string{"postgresql", "mysql"} {
@@ -321,6 +332,7 @@ The CI pipeline runs two separate test jobs:
 2. **integration-test job**: Database tests (runs after unit tests pass, ~5-10 minutes)
 
 Both jobs must pass for CI to succeed. This approach provides:
+
 - Fast feedback for common issues (unit tests)
 - Comprehensive validation (integration tests)
 - Clear separation of concerns

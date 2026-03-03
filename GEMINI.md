@@ -37,7 +37,7 @@ The project follows a **Modular Clean Architecture** (inspired by DDD) located i
 - **Build:** `make build` (creates binary in `bin/app`)
 - **Run Server:** `make run-server`
 - **Run Migrations:** `make migrate-up`
-- **Test:** `make test` (unit tests) or `make test-with-db` (integration tests with Docker databases)
+- **Test:** `make test` (unit tests, fast), `make test-integration` (DB tests), `make test-with-db` (DB tests with lifecycle), `make test-all` (complete suite)
 - **Lint:** `make lint` (runs `golangci-lint` with `gosec` + `govulncheck` for security scanning)
 - **Docker:** `make docker-build`
 
@@ -58,15 +58,32 @@ Configuration is managed via environment variables (see `internal/config/config.
 - **Mocks:** Interface mocks are generated using `mockery` (run `make mocks`).
 
 ### Testing Practices
-- **Parallel Tests:** Unit tests should be able to run in parallel.
-- **Integration Tests:** Located in `test/integration/`. Use `make test-with-db` to run them locally.
-  - **CRITICAL:** Every new repository method (e.g., `Create`, `Get`, `List`, `Delete`) MUST have corresponding tests written natively in BOTH its `mysql_..._repository_test.go` and `postgresql_..._repository_test.go` files, and must be validated to pass against the test databases via `make test-with-db`.
-- **HTTP/DTO Tests:** 
-  - **CRITICAL:** Every new HTTP handler (e.g., `ListHandler`, `CreateHandler`) MUST have corresponding unit tests in its `..._handler_test.go` file.
-  - **CRITICAL:** Every new mapping DTO (e.g., `MapSecretsToListResponse`) MUST have corresponding unit tests in its package (e.g., `list_secrets_response_test.go`) to ensure accurate payload mapping.
-- **Usecase Tests:**
-  - **CRITICAL:** Every new usecase method MUST have corresponding unit tests written natively in its `..._usecase_test.go` file to ensure core business logic is tested independently.
-- **Coverage:** Aim for high coverage in `usecase` and `domain` layers.
+
+**Two-Tier Testing Strategy:**
+- **Unit Tests:** Fast, in-memory tests (run in parallel, no external dependencies)
+- **Integration Tests:** Database-dependent tests tagged with `//go:build integration`
+
+**Quick Reference:**
+- `make test` - Unit tests only (fast feedback)
+- `make test-integration` - Integration tests only (requires running databases)
+- `make test-with-db` - Integration tests with automatic DB lifecycle
+- `make test-all` - Complete suite (unit + integration)
+
+**Build Tags:**
+- All database-dependent repository tests require `//go:build integration` as first line
+- Applies to: `internal/*/repository/{postgresql,mysql}/*_test.go` and `test/integration/*_test.go`
+
+**Test Organization:**
+- Integration tests in `test/integration/` are split by feature area (auth_flow, kms_flow, secrets_flow, tokenization_flow, transit_flow, etc.)
+- Each uses shared `helpers_test.go` for common setup utilities
+
+**Critical Requirements:**
+- **Repository:** Every new method MUST have tests in BOTH MySQL and PostgreSQL test files with `//go:build integration` tag
+- **HTTP Handlers:** Every new handler MUST have unit tests in its `..._handler_test.go`
+- **DTOs:** Every new mapping function MUST have unit tests for payload accuracy
+- **Usecases:** Every new method MUST have unit tests in its `..._usecase_test.go`
+
+**CI:** Unit tests run first (fast feedback), then integration tests (comprehensive validation). See `docs/contributing.md` for complete testing guide.
 
 ### Contribution Guidelines
 - **ADRs:** Major architectural decisions are documented as Architecture Decision Records in `docs/adr/`.
