@@ -41,7 +41,14 @@ var (
 	// ErrTokenizationKeyNameEmpty indicates the tokenization key name is empty.
 	ErrTokenizationKeyNameEmpty = errors.Wrap(errors.ErrInvalidInput, "tokenization key name cannot be empty")
 
-	// ErrTokenizationKeyVersionInvalid indicates the version is invalid (must be > 0).
+	// ErrTokenizationKeySaltInvalid indicates the tokenization key salt is invalid.
+	ErrTokenizationKeySaltInvalid = errors.Wrap(
+		errors.ErrInvalidInput,
+		"tokenization key salt cannot be empty for deterministic keys",
+	)
+
+	// ErrTokenizationKeyVersionInvalid indicates the tokenization key version is invalid.
+
 	ErrTokenizationKeyVersionInvalid = errors.Wrap(
 		errors.ErrInvalidInput,
 		"tokenization key version must be greater than 0",

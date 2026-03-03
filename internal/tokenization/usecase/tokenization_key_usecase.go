@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,12 +55,20 @@ func (t *tokenizationKeyUseCase) createTokenizationKey(
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to generate UUID for tokenization key")
 	}
+
+	// Generate salt for deterministic hashing
+	salt := make([]byte, 32)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, apperrors.Wrap(err, "failed to generate salt")
+	}
+
 	tokenizationKey := &tokenizationDomain.TokenizationKey{
 		ID:              keyID,
 		Name:            name,
 		Version:         version,
 		FormatType:      formatType,
 		IsDeterministic: isDeterministic,
+		Salt:            salt,
 		DekID:           dek.ID,
 		CreatedAt:       time.Now().UTC(),
 	}
@@ -164,12 +173,20 @@ func (t *tokenizationKeyUseCase) Rotate(
 		if err != nil {
 			return apperrors.Wrap(err, "failed to generate UUID for tokenization key")
 		}
+
+		// Generate salt for deterministic hashing
+		salt := make([]byte, 32)
+		if _, err := rand.Read(salt); err != nil {
+			return apperrors.Wrap(err, "failed to generate salt")
+		}
+
 		newKey = &tokenizationDomain.TokenizationKey{
 			ID:              keyID,
 			Name:            name,
 			Version:         currentKey.Version + 1,
 			FormatType:      formatType,
 			IsDeterministic: isDeterministic,
+			Salt:            salt,
 			DekID:           dek.ID,
 			CreatedAt:       time.Now().UTC(),
 		}

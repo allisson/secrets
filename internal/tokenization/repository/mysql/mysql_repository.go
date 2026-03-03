@@ -27,8 +27,8 @@ func (m *MySQLTokenizationKeyRepository) Create(
 ) error {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `INSERT INTO tokenization_keys (id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO tokenization_keys (id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at) 
+			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	id, err := key.ID.MarshalBinary()
 	if err != nil {
@@ -48,6 +48,7 @@ func (m *MySQLTokenizationKeyRepository) Create(
 		key.Version,
 		key.FormatType,
 		key.IsDeterministic,
+		key.Salt,
 		dekID,
 		key.CreatedAt,
 		key.DeletedAt,
@@ -84,7 +85,7 @@ func (m *MySQLTokenizationKeyRepository) GetByName(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE name = ? AND deleted_at IS NULL 
 			  ORDER BY version DESC 
@@ -100,6 +101,7 @@ func (m *MySQLTokenizationKeyRepository) GetByName(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&dekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -130,7 +132,7 @@ func (m *MySQLTokenizationKeyRepository) Get(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE id = ? AND deleted_at IS NULL`
 
@@ -149,6 +151,7 @@ func (m *MySQLTokenizationKeyRepository) Get(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&dekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -180,7 +183,7 @@ func (m *MySQLTokenizationKeyRepository) GetByNameAndVersion(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE name = ? AND version = ? AND deleted_at IS NULL`
 
@@ -194,6 +197,7 @@ func (m *MySQLTokenizationKeyRepository) GetByNameAndVersion(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&dekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -226,7 +230,7 @@ func (m *MySQLTokenizationKeyRepository) List(
 	querier := database.GetTx(ctx, m.db)
 
 	query := `
-		SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.dek_id, tk.created_at, tk.deleted_at 
+		SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
 		FROM tokenization_keys tk
 		INNER JOIN (
 			SELECT name, MAX(version) as max_version
@@ -258,6 +262,7 @@ func (m *MySQLTokenizationKeyRepository) List(
 			&key.Version,
 			&formatType,
 			&key.IsDeterministic,
+			&key.Salt,
 			&dekID,
 			&key.CreatedAt,
 			&key.DeletedAt,

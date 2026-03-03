@@ -147,7 +147,8 @@ def tokenize_detokenize(token: str) -> None:
 
 Deterministic caveat:
 
-- If you create a key with `is_deterministic=True`, repeated tokenization of identical plaintext can return the same token.
+- If you create a key with `is_deterministic=True`, the engine uses per-key version salts and HMAC-SHA256 to prevent rainbow table attacks.
+- Repeated tokenization of identical plaintext under the same active key version will return the same token.
 - Use deterministic mode only when equality matching is a functional requirement.
 
 Rate-limit note:

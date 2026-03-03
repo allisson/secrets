@@ -75,7 +75,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 					key.FormatType == tokenizationDomain.FormatUUID &&
 					key.Version == 1 &&
 					key.IsDeterministic == false &&
-					key.DekID == dek.ID
+					key.DekID == dek.ID &&
+					len(key.Salt) == 32
 			})).
 			Return(nil).
 			Once()
@@ -150,7 +151,8 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 				return key.Name == "payment-cards" &&
 					key.FormatType == tokenizationDomain.FormatLuhnPreserving &&
 					key.Version == 1 &&
-					key.IsDeterministic == true
+					key.IsDeterministic == true &&
+					len(key.Salt) == 32
 			})).
 			Return(nil).
 			Once()
@@ -431,7 +433,8 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 					key.FormatType == tokenizationDomain.FormatNumeric &&
 					key.Version == 2 && // Version incremented
 					key.IsDeterministic == true &&
-					key.DekID == dek.ID
+					key.DekID == dek.ID &&
+					len(key.Salt) == 32
 			})).
 			Return(nil).
 			Once()
@@ -504,7 +507,8 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 			Create(mock.Anything, mock.MatchedBy(func(key *tokenizationDomain.TokenizationKey) bool {
 				return key.Name == "new-key" &&
 					key.FormatType == tokenizationDomain.FormatUUID &&
-					key.Version == 1
+					key.Version == 1 &&
+					len(key.Salt) == 32
 			})).
 			Return(nil).
 			Once()

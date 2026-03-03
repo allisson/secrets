@@ -20,7 +20,8 @@ Secrets is designed for practical defense-in-depth around secret storage and cry
 ## 🎫 Tokenization security considerations
 
 - Metadata is not encrypted: do not place full PAN, credentials, or regulated payloads in token metadata.
-- Deterministic tokenization leaks equality patterns for identical plaintext under the same active key.
+- Deterministic tokenization now uses per-key version salts and HMAC-SHA256 keyed hashing to prevent rainbow table attacks.
+- Equality patterns for identical plaintext are still visible *under the same active key version* when deterministic mode is enabled.
 - TTL expiration and revocation both invalidate token usage, but neither should replace endpoint authorization.
 - Detokenization is plaintext exposure: isolate clients with `decrypt` capability and avoid shared broad policies.
 - Expired tokens should be cleaned on cadence (`clean-expired-tokens`) to reduce stale sensitive mappings.

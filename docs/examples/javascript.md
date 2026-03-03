@@ -165,7 +165,8 @@ async function tokenizationFlow(token) {
 
 Deterministic caveat:
 
-- With `is_deterministic: true`, tokenizing the same plaintext with the same active key can produce the same token.
+- With `is_deterministic: true`, the engine uses per-key version salts and HMAC-SHA256 to prevent rainbow table attacks.
+- Identical plaintext tokenized with the same active key version will produce the same token.
 - Prefer non-deterministic mode unless stable equality matching is required.
 
 Rate-limit note:

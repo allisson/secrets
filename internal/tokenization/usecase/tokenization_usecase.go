@@ -84,7 +84,7 @@ func (t *tokenizationUseCase) Tokenize(
 
 	// In deterministic mode, check if token already exists for this value
 	if tokenizationKey.IsDeterministic {
-		valueHash := t.hashService.Hash(plaintext)
+		valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
 		existingToken, err := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
 		if err != nil && !apperrors.Is(err, tokenizationDomain.ErrTokenNotFound) {
 			return nil, apperrors.Wrap(err, "failed to check existing token in deterministic mode")
@@ -168,7 +168,7 @@ func (t *tokenizationUseCase) Tokenize(
 
 	// In deterministic mode, store value hash for lookup
 	if tokenizationKey.IsDeterministic {
-		valueHash := t.hashService.Hash(plaintext)
+		valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
 		token.ValueHash = &valueHash
 	}
 
@@ -179,7 +179,7 @@ func (t *tokenizationUseCase) Tokenize(
 		if tokenizationKey.IsDeterministic && apperrors.Is(err, apperrors.ErrConflict) {
 			// Race detected: another concurrent request inserted this token
 			// Query again to get the token that was inserted
-			valueHash := t.hashService.Hash(plaintext)
+			valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
 			existingToken, queryErr := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
 			if queryErr != nil {
 				// If query fails, return original create error
