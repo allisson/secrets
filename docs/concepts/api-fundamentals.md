@@ -1,6 +1,5 @@
 # 🧩 API Fundamentals
 
-> Last updated: 2026-02-28
 > Applies to: API v1
 
 This page consolidates foundational API concepts for quick reference: error triage, capability mapping, rate limiting, and versioning policy.
@@ -133,7 +132,7 @@ Policy matcher quick reference:
 | Trailing wildcard | `/v1/secrets/*` | Prefix + nested paths |
 | Mid-path wildcard | `/v1/transit/keys/*/rotate` | `*` matches one segment |
 
-For complete matcher semantics and unsupported forms, see [Policies cookbook](auth/policies.md#path-matching-behavior).
+For complete matcher semantics and unsupported forms, see [Policies cookbook](../auth/policies.md#path-matching-behavior).
 
 See [ADR 0003: Capability-Based Authorization Model](../adr/0003-capability-based-authorization-model.md) for the architectural rationale behind this design.
 
@@ -259,7 +258,7 @@ Required process for breaking changes:
 1. Update `docs/openapi.yaml`
 2. Update affected API docs and examples
 3. Add migration notes in `docs/operations/troubleshooting/index.md` or relevant runbook
-4. Add explicit entry in `docs/releases/RELEASES.md`
+4. Add explicit entry in `CHANGELOG.md`
 
 ### Non-Breaking Changes
 
@@ -293,14 +292,13 @@ Non-breaking telemetry examples:
 
 ## See also
 
-- [Authentication API](auth/authentication.md)
-- [Clients API](auth/clients.md)
-- [Policies cookbook](auth/policies.md)
-- [Secrets API](data/secrets.md)
-- [Transit API](data/transit.md)
-- [Tokenization API](data/tokenization.md)
-- [Audit Logs API](observability/audit-logs.md)
-- [Response shapes](observability/response-shapes.md)
+- [Authentication API](../auth/authentication.md)
+- [Clients API](../auth/clients.md)
+- [Policies cookbook](../auth/policies.md)
+- [Secrets API](../engines/secrets.md)
+- [Transit API](../engines/transit.md)
+- [Tokenization API](../engines/tokenization.md)
+- [Audit Logs API](../observability/audit-logs.md)
 - [Environment variables](../configuration.md)
 - [Troubleshooting](../operations/troubleshooting/index.md)
 - [Contributing guide](../contributing.md)

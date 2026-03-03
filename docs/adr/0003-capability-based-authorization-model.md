@@ -106,7 +106,7 @@ Each secret/key/resource has its own ACL defining who can access it.
 
 ## See also
 
-- [Policies cookbook](../api/auth/policies.md)
-- [Capability matrix](../api/fundamentals.md#capability-matrix)
+- [Policies cookbook](../auth/policies.md)
+- [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
 - [Security model](../concepts/security-model.md)
 - [ADR 0007: Path-Based API Versioning](0007-path-based-api-versioning.md)

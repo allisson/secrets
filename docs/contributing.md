@@ -1,7 +1,5 @@
 # 🤝 Documentation Contributing Guide
 
-> Last updated: 2026-02-28
-
 Use this guide when adding or editing project documentation.
 
 ## Table of Contents
@@ -57,7 +55,7 @@ Documentation style baseline:
 ## Breaking vs Non-Breaking Docs Changes
 
 - Treat endpoint path changes, request/response contract changes, and status code behavior changes as breaking docs updates
-- Breaking docs updates must include: updated API page, updated examples, and `docs/releases/RELEASES.md` entry
+- Breaking docs updates must include: updated API page, updated examples, and `CHANGELOG.md` entry
 - Treat wording clarifications, formatting, and cross-links as non-breaking docs updates
 - Non-breaking docs updates should still run `make docs-lint` and keep links accurate
 
@@ -82,7 +80,6 @@ Copy-safe examples policy:
 
 ## Metadata Source of Truth
 
-- `docs/metadata.json` is the canonical source for current release and API version labels
 - Keep `README.md`, `docs/README.md`, and API applies-to markers aligned with this file
 - Validate with `make docs-check-metadata`
 
@@ -117,13 +114,13 @@ When `DOCS_CHANGED_FILES` is set, changed docs pages must refresh `Last updated`
 2. API examples reflect current behavior
 3. Security warnings are present where needed
 4. Terminology is consistent across files
-5. `docs/releases/RELEASES.md` updated for significant documentation changes
+5. `CHANGELOG.md` updated for significant documentation changes
 
 ## Docs QA Checklist
 
 1. Capability and endpoint mappings are consistent across `docs/api/*.md`
 2. Route-shape (`404`) and policy-shape (`403`) behavior is validated for authorization changes
-3. Release links and current release references match `docs/metadata.json`
+3. Release links and current release references match the latest release
 4. `Last updated` markers are refreshed in changed docs pages
 5. `make docs-lint` passes locally
 
@@ -136,7 +133,7 @@ For behavior changes, update all relevant docs in the same PR:
 3. Examples parity (`docs/examples/*.md`) for at least curl and one SDK/runtime path
 4. Monitoring/query updates (`docs/operations/observability/monitoring.md`) when new operations/metrics are introduced
 5. Runbook updates (`docs/operations/*.md` or `docs/operations/troubleshooting/index.md`) for incident impact
-6. Release notes and changelog (consolidated in `docs/releases/RELEASES.md`)
+6. Release notes and changelog (consolidated in `CHANGELOG.md`)
 7. Entry-point navigation updates (`README.md`, `docs/README.md`) when docs scope expands
 
 ## Ownership and Review Cadence
@@ -144,7 +141,7 @@ For behavior changes, update all relevant docs in the same PR:
 - Docs owners: project maintainers and reviewers for touched domain (`api`, `operations`, `security`)
 - Every functional change PR should include corresponding docs updates when behavior changes
 - Perform a monthly docs review for stale examples, outdated commands, and dead links
-- During releases, verify `Last updated` metadata and append entries to `releases/RELEASES.md`
+- During releases, verify `Last updated` metadata and append entries to `../CHANGELOG.md`
 
 Incident feedback policy:
 
@@ -158,9 +155,9 @@ Quality KPIs:
 ## Docs Release Process
 
 1. Update `Last updated` in every changed docs file
-2. Update `docs/metadata.json` when release/API labels change
+2. Update the latest release when release/API labels change
 3. Add or update relevant examples if behavior/commands changed
-4. Append a concise entry in `docs/releases/RELEASES.md` for significant docs changes
+4. Append a concise entry in `CHANGELOG.md` for significant docs changes
 5. Run `make docs-lint` before opening or merging PRs
 
 ## Release PR Docs QA Guard
@@ -216,7 +213,7 @@ This section defines canonical vs supporting docs to reduce duplication and drif
 
 | Topic | Canonical document |
 | --- | --- |
-| Release and API label metadata | `docs/metadata.json` |
+| Release and API label metadata | the latest release |
 | API contract subset | `docs/openapi.yaml` |
 | Capability-to-endpoint mapping | `docs/api/fundamentals.md#capability-matrix` |
 | Authorization path matcher semantics | `docs/api/auth/policies.md` (see [ADR 0003](adr/0003-capability-based-authorization-model.md)) |
@@ -243,7 +240,7 @@ This section defines canonical vs supporting docs to reduce duplication and drif
 
 1. Update canonical source first
 2. Propagate essential deltas to supporting docs
-3. Update `docs/releases/RELEASES.md` for significant docs updates
+3. Update `CHANGELOG.md` for significant docs updates
 4. Run docs checks before merge
 
 Recommended local validation:
@@ -262,7 +259,7 @@ Recommended local validation:
 ### Drift Signals
 
 - Endpoint docs disagree with capability matrix
-- Release references disagree with `docs/metadata.json`
+- Release references disagree with the latest release
 - Examples use old response/error semantics
 - Troubleshooting behavior diverges from runbooks
 
@@ -272,7 +269,7 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 
 ### 1) Metadata and Release Labels
 
-- Update `docs/metadata.json`:
+- Update the latest release:
   - `current_release`
   - `last_docs_refresh`
 - Ensure `README.md` and `docs/README.md` reflect the same current release
@@ -299,7 +296,7 @@ Use this checklist for each release (`vX.Y.Z`) to keep docs consistent and navig
 
 ### 5) Changelogs and Navigation
 
-- Update project changelog (`docs/releases/RELEASES.md`) for release behavior and docs changes
+- Update project changelog (`CHANGELOG.md`) for release behavior and docs changes
 - Verify links from:
   - `README.md`
   - `docs/README.md`
@@ -383,7 +380,7 @@ For every Sev incident, include one of the following outcomes in the postmortem:
 1. Incident is resolved
 2. Owner identifies doc gaps from timeline
 3. Patch docs or record no-change rationale
-4. Update `docs/releases/RELEASES.md` if docs changed
+4. Update `CHANGELOG.md` if docs changed
 5. Confirm docs checks pass before merge
 
 #### Suggested SLA
@@ -438,10 +435,10 @@ This section consolidates all documentation improvement initiatives into one pri
 ## See also
 
 - [Documentation index](README.md)
-- [Changelog](releases/RELEASES.md)
+- [Changelog](../CHANGELOG.md)
 - [Local development](getting-started/local-development.md)
 - [Smoke test](getting-started/smoke-test.md)
 - [Troubleshooting](operations/troubleshooting/index.md)
 - [Incident response guide](operations/observability/incident-response.md)
-- [API compatibility policy](api/fundamentals.md#compatibility-and-versioning-policy)
+- [API compatibility policy](concepts/api-fundamentals.md#compatibility-and-versioning-policy)
 - [Production rollout golden path](operations/deployment/production-rollout.md)

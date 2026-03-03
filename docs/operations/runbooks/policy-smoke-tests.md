@@ -1,7 +1,5 @@
 # 🧪 Policy Smoke Tests
 
-> Last updated: 2026-02-28
-
 Use this page to quickly validate authorization behavior after policy changes.
 
 ## Why this exists
@@ -105,7 +103,7 @@ test "$BAD_SHAPE_STATUS" = "404"
 
 Tip: this validates caller path shape expectations; use the allow/deny rotate checks above to validate
 capability enforcement.
-See [Route shape vs policy shape](../../api/auth/policies.md#route-shape-vs-policy-shape) for triage guidance.
+See [Route shape vs policy shape](../../auth/policies.md#route-shape-vs-policy-shape) for triage guidance.
 
 Secrets malformed path-shape check (missing wildcard subpath should not match):
 
@@ -119,7 +117,7 @@ test "$BAD_SECRET_SHAPE_STATUS" = "404"
 ```
 
 Tip: use this check to ensure policy path logic is not confused with route-template shape.
-See [Route shape vs policy shape](../../api/auth/policies.md#route-shape-vs-policy-shape) for details.
+See [Route shape vs policy shape](../../auth/policies.md#route-shape-vs-policy-shape) for details.
 
 Tokenization detokenize check (`decrypt` required):
 
@@ -214,7 +212,7 @@ echo "policy smoke suite: PASS"
 
 ## See also
 
-- [Capability matrix](../../api/fundamentals.md#capability-matrix)
-- [Policies cookbook](../../api/auth/policies.md)
+- [Capability matrix](../../concepts/api-fundamentals.md#capability-matrix)
+- [Policies cookbook](../../auth/policies.md)
 - [Incident response guide](../observability/incident-response.md)
 - [Troubleshooting](../../operations/troubleshooting/index.md)

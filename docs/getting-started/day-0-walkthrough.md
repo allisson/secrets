@@ -1,7 +1,5 @@
 # 🧭 Day 0 Walkthrough
 
-> Last updated: 2026-02-28
-
 Choose your onboarding path based on your role:
 
 ## 📑 Quick Navigation
@@ -65,14 +63,14 @@ Use this path for first-time contributors integrating with Secrets APIs.
 
 ### Step 2: Understand auth + policy behavior
 
-- Read: [Authentication API](../api/auth/authentication.md)
-- Read: [Policies cookbook](../api/auth/policies.md)
-- Read: [Capability matrix](../api/fundamentals.md#capability-matrix)
+- Read: [Authentication API](../auth/authentication.md)
+- Read: [Policies cookbook](../auth/policies.md)
+- Read: [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
 
 ### Step 3: Validate error and retry behavior
 
-- Read: [API error decision matrix](../api/fundamentals.md#error-decision-matrix)
-- Read: [API rate limiting](../api/fundamentals.md#rate-limiting)
+- Read: [API error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
+- Read: [API rate limiting](../concepts/api-fundamentals.md#rate-limiting)
 
 ### Step 4: Use examples by runtime
 

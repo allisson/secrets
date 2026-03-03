@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples docs-check-metadata docs-check-release-tags
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -78,20 +78,10 @@ docs-check-examples: ## Validate JSON shapes used by docs examples
 	@echo "Running docs example shape checks..."
 	@python3 docs/tools/check_example_shapes.py
 
-docs-check-metadata: ## Validate docs metadata and API markers
-	@echo "Running docs metadata checks..."
-	@python3 docs/tools/check_docs_metadata.py
-
-docs-check-release-tags: ## Validate pinned release image tags in current docs
-	@echo "Running docs release image tag checks..."
-	@python3 docs/tools/check_release_image_tags.py
-
 docs-lint: ## Run markdown lint and offline link checks (with auto-fix)
 	@echo "Running markdownlint-cli2 (with auto-fix)..."
 	@docker run --rm -v "$(PWD):/workdir" -w /workdir davidanson/markdownlint-cli2:v0.18.1 --fix README.md "docs/**/*.md" ".github/pull_request_template.md"
 	@$(MAKE) docs-check-examples
-	@$(MAKE) docs-check-metadata
-	@$(MAKE) docs-check-release-tags
 	@echo "Running lychee offline link checks..."
 	@docker run --rm -v "$(PWD):/input" lycheeverse/lychee:latest --offline --include-fragments --no-progress "/input/README.md" "/input/docs/**/*.md" "/input/.github/pull_request_template.md"
 

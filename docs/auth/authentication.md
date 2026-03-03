@@ -1,6 +1,5 @@
 # 🔐 Authentication API
 
-> Last updated: 2026-02-28
 > Applies to: API v1
 
 All protected endpoints require `Authorization: Bearer <token>`.
@@ -10,6 +9,32 @@ All protected endpoints require `Authorization: Bearer <token>`.
 - API surface: `/v1/*`
 - Server expectation: Secrets server with token issuance enabled at `POST /v1/token`
 - OpenAPI baseline: `docs/openapi.yaml`
+
+## Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant DB
+    
+    Client->>API: POST /v1/token (client_id, client_secret)
+    API->>DB: Fetch Client by ID
+    DB-->>API: Client Record (with Argon2id hash & locked status)
+    API->>API: Check lockout status & Verify Argon2id hash
+    alt Valid Credentials
+        API->>DB: Reset failed attempts (if any)
+        API-->>Client: 201 Created (Token + Expiry)
+    else Invalid Credentials
+        API->>DB: Increment failed attempts (lock if > max)
+        API-->>Client: 401 Unauthorized / 423 Locked
+    end
+
+    Note over Client,API: Subsequent requests use the Token
+    Client->>API: GET /v1/secrets/my-secret (Bearer Token)
+    API->>API: Validate Token & Check Capabilities
+    API-->>Client: 200 OK
+```
 
 ## Issue Token
 
@@ -109,7 +134,7 @@ Rate limiting note:
 POST /v1/clients/{id}/unlock  (requires WriteCapability on /v1/clients/{id})
 ```
 
-See [Configuration reference](../../configuration.md#account-lockout) for details.
+See [Configuration reference](../configuration.md#account-lockout) for details.
 
 ## Token `429` Handling Quick Check
 
@@ -174,22 +199,20 @@ Representative error payloads (exact messages may vary):
 - `docs/examples/python.md`
 - `docs/examples/javascript.md`
 - `docs/examples/go.md`
-- `docs/api/observability/response-shapes.md`
 
 ## Notes
 
 - `Bearer` prefix is case-insensitive (`bearer`, `Bearer`, `BEARER`)
 - Tokens are time-limited and should be renewed before expiration
-- Client secrets are hashed using Argon2id (see [ADR 0010: Argon2id for Client Secret Hashing](../../adr/0010-argon2id-for-client-secret-hashing.md))
+- Client secrets are hashed using Argon2id (see [ADR 0010: Argon2id for Client Secret Hashing](../adr/0010-argon2id-for-client-secret-hashing.md))
 - For wildcard path matcher semantics used by authorization, see
   [Policies cookbook / Path matching behavior](policies.md#path-matching-behavior)
 
 ## See also
 
 - [Clients API](clients.md)
-- [API error decision matrix](../fundamentals.md#error-decision-matrix)
-- [API rate limiting](../fundamentals.md#rate-limiting)
+- [API error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
+- [API rate limiting](../concepts/api-fundamentals.md#rate-limiting)
 - [Policies cookbook](policies.md)
-- [Capability matrix](../fundamentals.md#capability-matrix)
+- [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
 - [Audit logs API](../observability/audit-logs.md)
-- [Response shapes](../observability/response-shapes.md)

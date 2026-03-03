@@ -1,7 +1,6 @@
 # 🚀 Production Rollout Golden Path
 
 > **Document version**: v0.19.0
-> Last updated: 2026-02-28
 
 Use this runbook for a standard production rollout with verification and rollback checkpoints.
 
@@ -393,7 +392,7 @@ After completing rollback testing:
 
 - [Production deployment guide](../deployment/docker-hardened.md)
 
-- [Release notes](../../releases/RELEASES.md)
+- [Release notes](../../../CHANGELOG.md)
 
 - [KMS migration checklist](../kms/setup.md#migration-checklist)
 

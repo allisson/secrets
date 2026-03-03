@@ -1,7 +1,5 @@
 # ⚙️ Documentation Process
 
-> Last updated: 2026-02-28
-
 This guide defines the processes for managing and releasing documentation for Secrets.
 
 ## Local Docs Checks
@@ -26,7 +24,7 @@ make docs-check-metadata
 2. API examples reflect current behavior.
 3. Security warnings are present where needed.
 4. Terminology is consistent across files.
-5. `releases/RELEASES.md` updated for significant changes.
+5. `../../CHANGELOG.md` updated for significant changes.
 
 ### Feature PR Consistency Checklist
 
@@ -37,14 +35,14 @@ For behavior changes, update:
 3. Examples parity (`docs/examples/*.md`).
 4. Monitoring/query updates (`docs/operations/observability/monitoring.md`).
 5. Runbook updates (`docs/operations/*.md`).
-6. Release notes (`releases/RELEASES.md`).
+6. Release notes (`../../CHANGELOG.md`).
 
 ## Docs Release Process
 
 1. Update `Last updated` in every changed docs file.
-2. Update `docs/metadata.json` when release/API labels change.
+2. Update the latest release when release/API labels change.
 3. Add or update relevant examples.
-4. Append an entry in `releases/RELEASES.md`.
+4. Append an entry in `../../CHANGELOG.md`.
 5. Run `make docs-lint` before merge.
 
 ## Documentation Management

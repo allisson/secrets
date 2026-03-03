@@ -1,7 +1,5 @@
 # 🎨 Documentation Style Guide
 
-> Last updated: 2026-02-28
-
 This guide defines the writing style and technical conventions for Secrets documentation.
 
 ## Writing Style

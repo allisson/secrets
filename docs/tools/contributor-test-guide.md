@@ -1,7 +1,5 @@
 # 🧪 Contributor Test Guide
 
-> Last updated: 2026-02-28
-
 This guide defines the testing procedures and useful commands for contributing to Secrets.
 
 ## Useful Commands

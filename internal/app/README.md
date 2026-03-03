@@ -1,6 +1,5 @@
 # Dependency Injection Container
 
-> Last updated: 2026-02-28
 
 This package provides a dependency injection (DI) container for assembling and managing application components following Clean Architecture principles.
 

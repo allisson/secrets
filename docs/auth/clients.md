@@ -1,6 +1,5 @@
 # 👤 Clients API
 
-> Last updated: 2026-02-28
 > Applies to: API v1
 
 Client APIs manage machine identities and policy documents.
@@ -217,11 +216,10 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 
 - 📘 [Policy cookbook](policies.md)
 - 🧭 [Wildcard matcher semantics](policies.md#path-matching-behavior)
-- 🧪 [Curl examples](../../examples/curl.md)
-- 🐍 [Python examples](../../examples/python.md)
-- 🟨 [JavaScript examples](../../examples/javascript.md)
-- 🐹 [Go examples](../../examples/go.md)
-- 🧱 [Response shapes](../observability/response-shapes.md)
+- 🧪 [Curl examples](../examples/curl.md)
+- 🐍 [Python examples](../examples/python.md)
+- 🟨 [JavaScript examples](../examples/javascript.md)
+- 🐹 [Go examples](../examples/go.md)
 
 ## Use Cases
 
@@ -232,11 +230,10 @@ Expected result: create returns `201 Created` with one-time `secret`; list retur
 ## See also
 
 - [Authentication API](authentication.md)
-- [API error decision matrix](../fundamentals.md#error-decision-matrix)
-- [API rate limiting](../fundamentals.md#rate-limiting)
+- [API error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
+- [API rate limiting](../concepts/api-fundamentals.md#rate-limiting)
 - [Policies cookbook](policies.md)
-- [Capability matrix](../fundamentals.md#capability-matrix)
+- [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
 - [Audit logs API](../observability/audit-logs.md)
-- [Response shapes](../observability/response-shapes.md)
-- [API compatibility policy](../fundamentals.md#compatibility-and-versioning-policy)
-- [Glossary](../../concepts/architecture.md#glossary)
+- [API compatibility policy](../concepts/api-fundamentals.md#compatibility-and-versioning-policy)
+- [Glossary](../concepts/architecture.md#glossary)

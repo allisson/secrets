@@ -80,18 +80,9 @@ jobs:
             esac
 
             # Documentation files that should be updated when API changes
-            # Note: docs/api/*.md matches root files, docs/api/**/*.md matches subdirectories
             case "$file" in
-              docs/api/*.md|docs/api/**/*.md|\
+              docs/*.md|docs/**/*.md|\
               docs/openapi.yaml|\
-              docs/examples/*.md|\
-              docs/operations/*.md|docs/operations/**/*.md|\
-              docs/getting-started/*.md|\
-              docs/cli-commands.md|\
-              docs/releases/*.md|\
-              docs/configuration.md|\
-              docs/README.md|\
-              docs/metadata.json|\
               CHANGELOG.md|\
               README.md)
                 docs_changed=true
@@ -103,17 +94,9 @@ jobs:
 
           if [ "$api_changed" = true ] && [ "$docs_changed" = false ]; then
             echo "API/runtime changes detected but no related docs updates found"
-            echo "Update docs/api/*/, openapi.yaml, examples/, operations/*/, or release notes/changelog as needed"
+            echo "Update docs/**/*.md, docs/openapi.yaml, or CHANGELOG.md as needed"
             exit 1
           fi
-
-      - name: Release docs link guard (PRs)
-        if: github.event_name == 'pull_request'
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.sha }}
-        run: python3 docs/tools/check_release_docs_links.py
 
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v20
@@ -126,21 +109,6 @@ jobs:
 
       - name: Example shape checks
         run: python3 docs/tools/check_example_shapes.py
-
-      - name: Docs metadata checks
-        run: |
-          set -euo pipefail
-
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            export DOCS_CHANGED_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}")"
-          else
-            export DOCS_CHANGED_FILES=""
-          fi
-
-          python3 docs/tools/check_docs_metadata.py
-
-      - name: Docs release image tag checks
-        run: python3 docs/tools/check_release_image_tags.py
 
       - name: OpenAPI validation
         run: |

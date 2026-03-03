@@ -1,7 +1,5 @@
 # ⚙️ Environment Variables
 
-> Last updated: 2026-03-02
-
 Secrets is configured through environment variables.
 
 ## Core configuration
@@ -251,7 +249,7 @@ Run this checklist before rolling to production:
 4. Runtime credentials for provider are present and valid
 5. Startup logs show successful key loading before traffic cutover
 
-**Breaking change in v0.19.0:** Plaintext master keys are no longer supported. All deployments must use KMS mode. For local development without cloud KMS, use the `localsecrets` provider. See the [v0.19.0 release notes](releases/RELEASES.md#0190---2026-02-27) for migration guidance.
+**Breaking change in v0.19.0:** Plaintext master keys are no longer supported. All deployments must use KMS mode. For local development without cloud KMS, use the `localsecrets` provider. See the [v0.19.0 release notes](../CHANGELOG.md) for migration guidance.
 
 ## Authentication configuration
 
@@ -357,7 +355,7 @@ LOCKOUT_MAX_ATTEMPTS=10
 LOCKOUT_DURATION_MINUTES=30
 ```
 
-See [Authentication API: account lockout](api/auth/authentication.md#account-lockout) for behavior details and [Troubleshooting: 423 Locked](operations/troubleshooting/index.md) for resolution steps.
+See [Authentication API: account lockout](auth/authentication.md#account-lockout) for behavior details and [Troubleshooting: 423 Locked](operations/troubleshooting/index.md) for resolution steps.
 
 ## CORS configuration
 

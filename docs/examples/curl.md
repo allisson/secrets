@@ -1,7 +1,5 @@
 # 🧪 Curl Examples
 
-> Last updated: 2026-02-28
-
 ⚠️ Security Warning: base64 is encoding, not encryption. Always use HTTPS/TLS.
 
 End-to-end shell workflow.
@@ -187,8 +185,8 @@ Deterministic caveat:
 
 ## See also
 
-- [Authentication API](../api/auth/authentication.md)
-- [Secrets API](../api/data/secrets.md)
-- [Transit API](../api/data/transit.md)
-- [Clients API](../api/auth/clients.md)
-- [API rate limiting](../api/fundamentals.md#rate-limiting)
+- [Authentication API](../auth/authentication.md)
+- [Secrets API](../engines/secrets.md)
+- [Transit API](../engines/transit.md)
+- [Clients API](../auth/clients.md)
+- [API rate limiting](../concepts/api-fundamentals.md#rate-limiting)

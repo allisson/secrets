@@ -1,7 +1,6 @@
 # 🗄️ Database Scaling Guide
 
 > **Document version**: v0.19.0
-> Last updated: 2026-02-28
 > **Audience**: DBAs, SRE teams, platform engineers
 >
 > **⚠️ UNTESTED PROCEDURES**: The procedures in this guide are reference examples and have not been tested in production. Always test in a non-production environment first and adapt to your infrastructure.
@@ -40,7 +39,6 @@ As your Secrets deployment grows, you may encounter:
 | **Database CPU** | > 70% | Vertical scaling (larger instance) or read replicas |
 | **Disk IOPS** | > 80% of provisioned | Increase IOPS or use faster storage |
 
-> Last updated: 2026-03-02
 ...
 
 ## Connection Pooling

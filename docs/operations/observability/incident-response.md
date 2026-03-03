@@ -1,7 +1,5 @@
 # 🚨 Incident Response Guide
 
-> Last updated: 2026-02-28
-
 This guide provides fast incident triage workflows, decision paths, and failure playbooks for common API issues.
 
 ## 📑 Quick Navigation
@@ -86,8 +84,8 @@ Use this to route incidents quickly to the right runbook.
    - `401` → [401 Spike Playbook](#401-spike-unauthorized)
    - `403` → [403 Spike Playbook](#403-spike-policycapability-mismatch)
    - `429` on `/v1/token` → [Token throttling runbook](../deployment/docker-hardened.md)
-   - `429` on authenticated routes → [API rate limiting](../../api/fundamentals.md#rate-limiting)
-   - `422` → [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
+   - `429` on authenticated routes → [API rate limiting](../../concepts/api-fundamentals.md#rate-limiting)
+   - `422` → [API error decision matrix](../../concepts/api-fundamentals.md#error-decision-matrix)
    - `5xx` → [First 15 Minutes](#quick-start-first-15-minutes)
 
 ### Fast Branches
@@ -227,10 +225,10 @@ curl -s "http://localhost:8080/v1/audit-logs?limit=50&offset=0" \
 - [Production rollout golden path](../deployment/production-rollout.md)
 - [Troubleshooting](../../operations/troubleshooting/index.md)
 - [Operator quick card](../runbooks/README.md#operator-quick-card)
-- [Policies cookbook](../../api/auth/policies.md)
+- [Policies cookbook](../../auth/policies.md)
 - [Policy smoke tests](../runbooks/policy-smoke-tests.md)
-- [Transit API](../../api/data/transit.md)
-- [Tokenization API](../../api/data/tokenization.md)
-- [API rate limiting](../../api/fundamentals.md#rate-limiting)
-- [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
+- [Transit API](../../engines/transit.md)
+- [Tokenization API](../../engines/tokenization.md)
+- [API rate limiting](../../concepts/api-fundamentals.md#rate-limiting)
+- [API error decision matrix](../../concepts/api-fundamentals.md#error-decision-matrix)
 - [Production operations](../deployment/docker-hardened.md)

@@ -150,4 +150,4 @@ Simpler setup with built-in Logger and Recovery.
 - [Custom logger middleware](../../internal/http/middleware.go)
 - [ADR 0009: UUIDv7 for Identifiers](0009-uuidv7-for-identifiers.md) - Request ID generation strategy
 - [ADR 0006: Dual-Scope Rate Limiting Strategy](0006-dual-scope-rate-limiting-strategy.md) - Rate limiting middleware
-- [API fundamentals](../api/fundamentals.md)
+- [API fundamentals](../concepts/api-fundamentals.md)

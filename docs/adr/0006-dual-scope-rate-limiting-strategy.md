@@ -178,6 +178,6 @@ Use single client-based mechanism for all endpoints.
 
 ## See also
 
-- [Rate limiting fundamentals](../api/fundamentals.md#rate-limiting)
+- [Rate limiting fundamentals](../concepts/api-fundamentals.md#rate-limiting)
 - [Monitoring rate limiting metrics](../operations/observability/monitoring.md#rate-limiting-observability-queries)
 - [Configuration](../configuration.md)
