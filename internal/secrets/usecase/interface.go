@@ -5,6 +5,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -38,6 +39,12 @@ type SecretRepository interface {
 	// List retrieves secrets ordered by path ascending with pagination.
 	// Returns the latest version for each secret. Uses offset and limit for pagination.
 	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
+
+	// HardDelete permanently removes soft-deleted secrets older than the specified time.
+	// Only affects secrets where deleted_at IS NOT NULL.
+	// If dryRun is true, returns count without performing deletion.
+	// Returns the number of secrets that were (or would be) deleted.
+	HardDelete(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)
 }
 
 // SecretUseCase defines the interface for secret management business logic.
@@ -65,4 +72,9 @@ type SecretUseCase interface {
 	// List retrieves secrets without their values, ordered by path with pagination.
 	// Returns empty slice if no secrets found.
 	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
+
+	// PurgeDeleted permanently removes soft-deleted secrets older than specified days.
+	// If dryRun is true, returns count without performing deletion.
+	// Returns the number of secrets that were (or would be) deleted.
+	PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error)
 }

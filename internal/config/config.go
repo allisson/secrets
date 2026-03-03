@@ -17,6 +17,9 @@ const (
 	DefaultServerHost            = "0.0.0.0"
 	DefaultServerPort            = 8080
 	DefaultServerShutdownTimeout = 10 // seconds
+	DefaultServerReadTimeout     = 15 // seconds
+	DefaultServerWriteTimeout    = 15 // seconds
+	DefaultServerIdleTimeout     = 60 // seconds
 	DefaultDBDriver              = "postgres"
 	DefaultDBConnectionString    = "postgres://user:password@localhost:5432/mydb?sslmode=disable" //nolint:gosec
 	DefaultDBMaxOpenConnections  = 25
@@ -48,6 +51,12 @@ type Config struct {
 	ServerPort int
 	// ServerShutdownTimeout is the maximum time to wait for the server to gracefully shutdown.
 	ServerShutdownTimeout time.Duration
+	// ServerReadTimeout is the maximum duration for reading the entire request, including the body.
+	ServerReadTimeout time.Duration
+	// ServerWriteTimeout is the maximum duration before timing out writes of the response.
+	ServerWriteTimeout time.Duration
+	// ServerIdleTimeout is the maximum time to wait for the next request when keep-alives are enabled.
+	ServerIdleTimeout time.Duration
 
 	// DBDriver is the database driver to use (e.g., "postgres", "mysql").
 	DBDriver string
@@ -111,6 +120,24 @@ func (c *Config) Validate() error {
 		validation.Field(&c.DBConnectionString, validation.Required),
 		validation.Field(&c.ServerPort, validation.Required, validation.Min(1), validation.Max(65535)),
 		validation.Field(
+			&c.ServerReadTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.ServerWriteTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.ServerIdleTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
 			&c.MetricsPort,
 			validation.Required,
 			validation.Min(1),
@@ -122,7 +149,14 @@ func (c *Config) Validate() error {
 			validation.Required,
 			validation.In("debug", "info", "warn", "error", "fatal", "panic"),
 		),
-		validation.Field(&c.KMSProvider, validation.When(c.KMSKeyURI != "", validation.Required)),
+		validation.Field(
+			&c.KMSProvider,
+			validation.When(c.KMSKeyURI != "", validation.Required),
+			validation.When(
+				c.KMSProvider != "",
+				validation.In("localsecrets", "gcpkms", "awskms", "azurekeyvault", "hashivault"),
+			),
+		),
 		validation.Field(&c.KMSKeyURI, validation.When(c.KMSProvider != "", validation.Required)),
 		validation.Field(
 			&c.RateLimitRequestsPerSec,
@@ -136,7 +170,7 @@ func (c *Config) Validate() error {
 }
 
 // Load loads configuration from environment variables and .env file.
-func Load() *Config {
+func Load() (*Config, error) {
 	// Try to load .env file recursively
 	loadDotEnv()
 
@@ -147,6 +181,21 @@ func Load() *Config {
 		ServerShutdownTimeout: env.GetDuration(
 			"SERVER_SHUTDOWN_TIMEOUT_SECONDS",
 			DefaultServerShutdownTimeout,
+			time.Second,
+		),
+		ServerReadTimeout: env.GetDuration(
+			"SERVER_READ_TIMEOUT_SECONDS",
+			DefaultServerReadTimeout,
+			time.Second,
+		),
+		ServerWriteTimeout: env.GetDuration(
+			"SERVER_WRITE_TIMEOUT_SECONDS",
+			DefaultServerWriteTimeout,
+			time.Second,
+		),
+		ServerIdleTimeout: env.GetDuration(
+			"SERVER_IDLE_TIMEOUT_SECONDS",
+			DefaultServerIdleTimeout,
 			time.Second,
 		),
 
@@ -207,11 +256,10 @@ func Load() *Config {
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
-		fmt.Printf("configuration validation failed: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // GetGinMode returns the appropriate Gin mode based on log level.

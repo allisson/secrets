@@ -699,19 +699,20 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		assert.Equal(t, "bad_request", response["error"])
 	})
 
-	t.Run("Error_InvalidLimit_ExceedsMax", func(t *testing.T) {
-		handler, _ := setupTestHandler(t)
+	t.Run("Success_LimitClampedToMax", func(t *testing.T) {
+		handler, mockUseCase := setupTestHandler(t)
 
-		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=101", nil)
+		// Mock usecase to expect clamped limit of 1000
+		mockUseCase.EXPECT().
+			List(mock.Anything, 0, 1000).
+			Return([]*authDomain.Client{}, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=5000", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("Error_InvalidLimit_NonNumeric", func(t *testing.T) {

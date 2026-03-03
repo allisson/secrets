@@ -1435,6 +1435,202 @@ func TestSecretUseCase_List(t *testing.T) {
 	})
 }
 
+// TestSecretUseCase_PurgeDeleted tests the PurgeDeleted method of secretUseCase.
+func TestSecretUseCase_PurgeDeleted(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("Success_PurgeDeletedSecrets", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedCount := int64(5)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCount, count)
+	})
+
+	t.Run("Success_DryRun", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		olderThanDays := 60
+		dryRun := true
+		expectedCount := int64(10)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCount, count)
+	})
+
+	t.Run("Success_NoSecretsToDelete", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		olderThanDays := 90
+		dryRun := false
+		expectedCount := int64(0)
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCount, count)
+	})
+
+	t.Run("Error_NegativeDays", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		olderThanDays := -5
+		dryRun := false
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Contains(t, err.Error(), "olderThanDays must be non-negative")
+	})
+
+	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedError := errors.New("database error")
+
+		// Setup expectations
+		mockSecretRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(int64(0), expectedError).
+			Once()
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Equal(t, expectedError, err)
+	})
+}
+
 // createKekChain is a helper function to create a KEK chain for testing.
 func createKekChain(keks []*cryptoDomain.Kek) *cryptoDomain.KekChain {
 	return cryptoDomain.NewKekChain(keks)

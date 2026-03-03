@@ -112,3 +112,23 @@ func (s *secretUseCaseWithMetrics) List(
 
 	return secrets, err
 }
+
+// PurgeDeleted records metrics for secret purge operations.
+func (s *secretUseCaseWithMetrics) PurgeDeleted(
+	ctx context.Context,
+	olderThanDays int,
+	dryRun bool,
+) (int64, error) {
+	start := time.Now()
+	count, err := s.next.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	s.metrics.RecordOperation(ctx, "secrets", "secret_purge", status)
+	s.metrics.RecordDuration(ctx, "secrets", "secret_purge", time.Since(start), status)
+
+	return count, err
+}

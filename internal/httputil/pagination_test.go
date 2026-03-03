@@ -38,6 +38,13 @@ func TestParsePagination(t *testing.T) {
 		},
 		{
 			name:           "max limit",
+			url:            "/?limit=1000",
+			expectedOffset: 0,
+			expectedLimit:  1000,
+			expectError:    false,
+		},
+		{
+			name:           "limit below max",
 			url:            "/?limit=100",
 			expectedOffset: 0,
 			expectedLimit:  100,
@@ -59,19 +66,20 @@ func TestParsePagination(t *testing.T) {
 			name:        "limit zero",
 			url:         "/?limit=0",
 			expectError: true,
-			errorMsg:    "invalid limit parameter: must be between 1 and 100",
+			errorMsg:    "invalid limit parameter: must be a positive integer",
 		},
 		{
-			name:        "limit exceeds max",
-			url:         "/?limit=101",
-			expectError: true,
-			errorMsg:    "invalid limit parameter: must be between 1 and 100",
+			name:           "limit exceeds max gets clamped",
+			url:            "/?limit=5000",
+			expectedOffset: 0,
+			expectedLimit:  1000,
+			expectError:    false,
 		},
 		{
 			name:        "limit not an integer",
 			url:         "/?limit=xyz",
 			expectError: true,
-			errorMsg:    "invalid limit parameter: must be between 1 and 100",
+			errorMsg:    "invalid limit parameter: must be a positive integer",
 		},
 	}
 

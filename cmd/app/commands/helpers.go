@@ -54,7 +54,10 @@ func ExecuteWithContainer(
 	ctx context.Context,
 	fn func(ctx context.Context, container *app.Container) error,
 ) error {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
 	container := app.NewContainer(cfg)
 	defer func() {
 		if err := container.Shutdown(ctx); err != nil {

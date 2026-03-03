@@ -24,6 +24,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerPort:                   8080,
 				MetricsPort:                  8081,
 				LogLevel:                     "info",
+				ServerReadTimeout:            15 * time.Second,
+				ServerWriteTimeout:           15 * time.Second,
+				ServerIdleTimeout:            60 * time.Second,
 				RateLimitEnabled:             true,
 				RateLimitRequestsPerSec:      10,
 				RateLimitTokenEnabled:        true,
@@ -94,6 +97,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerPort:         8080,
 				MetricsPort:        8081,
 				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
 				KMSKeyURI:          "gcpkms://...",
 			},
 			wantErr: true,
@@ -106,6 +112,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerPort:         8080,
 				MetricsPort:        8081,
 				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
 				KMSProvider:        "google",
 			},
 			wantErr: true,
@@ -118,8 +127,191 @@ func TestConfig_Validate(t *testing.T) {
 				ServerPort:              8080,
 				MetricsPort:             8081,
 				LogLevel:                "info",
+				ServerReadTimeout:       15 * time.Second,
+				ServerWriteTimeout:      15 * time.Second,
+				ServerIdleTimeout:       60 * time.Second,
 				RateLimitEnabled:        true,
 				RateLimitRequestsPerSec: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid KMS provider name",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "invalid_provider",
+				KMSKeyURI:          "invalid://key",
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid KMS provider - localsecrets",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "localsecrets",
+				KMSKeyURI:          "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid KMS provider - gcpkms",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "gcpkms",
+				KMSKeyURI:          "gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid KMS provider - awskms",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "awskms",
+				KMSKeyURI:          "awskms://arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012?region=us-east-1",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid KMS provider - azurekeyvault",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "azurekeyvault",
+				KMSKeyURI:          "azurekeyvault://myvault.vault.azure.net/keys/mykey",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid KMS provider - hashivault",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+				KMSProvider:        "hashivault",
+				KMSKeyURI:          "hashivault://mykey",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid server timeouts - default values",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid server timeouts - minimum values",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  1 * time.Second,
+				ServerWriteTimeout: 1 * time.Second,
+				ServerIdleTimeout:  1 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid server timeouts - maximum values",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  300 * time.Second,
+				ServerWriteTimeout: 300 * time.Second,
+				ServerIdleTimeout:  300 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid server read timeout - below minimum",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  0 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid server write timeout - above maximum",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 301 * time.Second,
+				ServerIdleTimeout:  60 * time.Second,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid server idle timeout - negative value",
+			cfg: &Config{
+				DBDriver:           "postgres",
+				DBConnectionString: "postgres://localhost",
+				ServerPort:         8080,
+				MetricsPort:        8081,
+				LogLevel:           "info",
+				ServerReadTimeout:  15 * time.Second,
+				ServerWriteTimeout: 15 * time.Second,
+				ServerIdleTimeout:  -1 * time.Second,
 			},
 			wantErr: true,
 		},
@@ -139,9 +331,10 @@ func TestConfig_Validate(t *testing.T) {
 
 func TestLoad(t *testing.T) {
 	tests := []struct {
-		name     string
-		envVars  map[string]string
-		validate func(t *testing.T, cfg *Config)
+		name        string
+		envVars     map[string]string
+		validate    func(t *testing.T, cfg *Config)
+		expectError bool
 	}{
 		{
 			name:    "load default configuration",
@@ -167,6 +360,9 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, "", cfg.CORSAllowOrigins)
 				assert.Equal(t, true, cfg.MetricsEnabled)
 				assert.Equal(t, "secrets", cfg.MetricsNamespace)
+				assert.Equal(t, 15*time.Second, cfg.ServerReadTimeout)
+				assert.Equal(t, 15*time.Second, cfg.ServerWriteTimeout)
+				assert.Equal(t, 60*time.Second, cfg.ServerIdleTimeout)
 			},
 		},
 		{
@@ -180,6 +376,19 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, "localhost", cfg.ServerHost)
 				assert.Equal(t, 9090, cfg.ServerPort)
 				assert.Equal(t, 20*time.Second, cfg.ServerShutdownTimeout)
+			},
+		},
+		{
+			name: "load custom server timeout configuration",
+			envVars: map[string]string{
+				"SERVER_READ_TIMEOUT_SECONDS":  "30",
+				"SERVER_WRITE_TIMEOUT_SECONDS": "45",
+				"SERVER_IDLE_TIMEOUT_SECONDS":  "120",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, 30*time.Second, cfg.ServerReadTimeout)
+				assert.Equal(t, 45*time.Second, cfg.ServerWriteTimeout)
+				assert.Equal(t, 120*time.Second, cfg.ServerIdleTimeout)
 			},
 		},
 		{
@@ -270,11 +479,11 @@ func TestLoad(t *testing.T) {
 		{
 			name: "load custom KMS configuration",
 			envVars: map[string]string{
-				"KMS_PROVIDER": "google",
+				"KMS_PROVIDER": "gcpkms",
 				"KMS_KEY_URI":  "gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
 			},
 			validate: func(t *testing.T, cfg *Config) {
-				assert.Equal(t, "google", cfg.KMSProvider)
+				assert.Equal(t, "gcpkms", cfg.KMSProvider)
 				assert.Equal(
 					t,
 					"gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
@@ -292,6 +501,40 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 5, cfg.LockoutMaxAttempts)
 				assert.Equal(t, 15*time.Minute, cfg.LockoutDuration)
 			},
+			expectError: false,
+		},
+		{
+			name: "invalid db driver fails to load",
+			envVars: map[string]string{
+				"DB_DRIVER":            "invalid_driver",
+				"DB_CONNECTION_STRING": "postgres://localhost",
+				"SERVER_PORT":          "8080",
+				"METRICS_PORT":         "8081",
+				"LOG_LEVEL":            "info",
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid server port fails to load",
+			envVars: map[string]string{
+				"DB_DRIVER":            "postgres",
+				"DB_CONNECTION_STRING": "postgres://localhost",
+				"SERVER_PORT":          "99999",
+				"METRICS_PORT":         "8081",
+				"LOG_LEVEL":            "info",
+			},
+			expectError: true,
+		},
+		{
+			name: "conflicting server and metrics ports fails to load",
+			envVars: map[string]string{
+				"DB_DRIVER":            "postgres",
+				"DB_CONNECTION_STRING": "postgres://localhost",
+				"SERVER_PORT":          "8080",
+				"METRICS_PORT":         "8080",
+				"LOG_LEVEL":            "info",
+			},
+			expectError: true,
 		},
 	}
 
@@ -307,12 +550,20 @@ func TestLoad(t *testing.T) {
 			}
 
 			// Load configuration
-			// We can't easily test Load() directly if it calls os.Exit(1).
-			// However, for valid test cases it should work fine.
-			cfg := Load()
+			cfg, err := Load()
 
-			// Validate
-			tt.validate(t, cfg)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, cfg)
+				assert.Contains(t, err.Error(), "configuration validation failed")
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, cfg)
+				if tt.validate != nil {
+					// Validate
+					tt.validate(t, cfg)
+				}
+			}
 		})
 	}
 }

@@ -46,6 +46,9 @@ func NewServer(
 	db *sql.DB,
 	host string,
 	port int,
+	readTimeout time.Duration,
+	writeTimeout time.Duration,
+	idleTimeout time.Duration,
 	logger *slog.Logger,
 ) *Server {
 	return &Server{
@@ -53,9 +56,9 @@ func NewServer(
 		logger: logger,
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", host, port),
-			ReadTimeout:  15 * time.Second,
-			WriteTimeout: 15 * time.Second,
-			IdleTimeout:  60 * time.Second,
+			ReadTimeout:  readTimeout,
+			WriteTimeout: writeTimeout,
+			IdleTimeout:  idleTimeout,
 		},
 	}
 }

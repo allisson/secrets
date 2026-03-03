@@ -178,7 +178,9 @@ make run-server
 make run-migrate
 make lint
 make test
+make test-coverage-check
 make test-with-db
+make test-integration-coverage-check
 make mocks
 make docs-check-examples
 ```
@@ -369,6 +371,61 @@ make test-db-down
 2. Run `make lint`
 3. Run targeted tests
 4. Run full `make test`
+5. Check coverage threshold with `make test-coverage-check`
+
+### Coverage Requirements
+
+The project enforces minimum test coverage thresholds in CI to prevent regressions:
+
+| Test Type | Minimum Coverage | Rationale |
+| --- | --- | --- |
+| Unit Tests | 30% | Core logic coverage baseline |
+| Integration Tests | 25% | Database-layer coverage baseline |
+
+#### Checking Coverage Locally
+
+**Check unit test coverage:**
+
+```bash
+make test-coverage-check
+```
+
+**Check integration test coverage:**
+
+```bash
+make test-integration-coverage-check
+```
+
+**View detailed coverage report:**
+
+```bash
+make test
+make test-coverage  # Opens HTML coverage report in browser
+```
+
+#### Coverage Threshold Policy
+
+- CI will fail if coverage drops below the threshold
+- Thresholds are enforced after each test run
+- New code should maintain or improve coverage
+- Coverage thresholds may be increased over time as the codebase matures
+- Use `make test-coverage-check` locally before pushing to catch issues early
+
+#### Improving Coverage
+
+When adding new features:
+
+1. Write tests for all public interfaces
+2. Cover error cases and edge conditions
+3. Test both success and failure paths
+4. Run `make test-coverage-check` to verify threshold is met
+
+If coverage drops below threshold:
+
+1. Identify untested code: `go tool cover -html=coverage.out`
+2. Add missing test cases
+3. Focus on critical paths first
+4. Verify with `make test-coverage-check`
 
 ## Docs Architecture Map
 

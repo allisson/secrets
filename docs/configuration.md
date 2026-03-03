@@ -115,6 +115,39 @@ Port to bind the HTTP server (default: `8080`). Must be between 1 and 65535 and 
 
 Maximum time to wait for the server to gracefully shutdown in seconds (default: `10`).
 
+### SERVER_READ_TIMEOUT_SECONDS
+
+Maximum duration for reading the entire HTTP request, including the body, in seconds (default: `15`).
+
+**Range:** 1-300 seconds
+
+This timeout protects against slow-reading clients that could tie up server resources.
+
+### SERVER_WRITE_TIMEOUT_SECONDS
+
+Maximum duration before timing out writes of the HTTP response in seconds (default: `15`).
+
+**Range:** 1-300 seconds
+
+This timeout protects against slow-writing responses or slow-reading clients.
+
+### SERVER_IDLE_TIMEOUT_SECONDS
+
+Maximum time to wait for the next request when HTTP keep-alives are enabled, in seconds (default: `60`).
+
+**Range:** 1-300 seconds
+
+This timeout controls how long idle connections are kept open between requests.
+
+**Recommended timeout settings:**
+
+| Environment | Read | Write | Idle | Rationale |
+|------------|------|-------|------|-----------|
+| Standard (default) | 15 | 15 | 60 | Balanced for most workloads |
+| High-latency networks | 30 | 30 | 120 | Tolerates slower connections |
+| High-security/low-trust | 5 | 5 | 30 | Aggressive timeouts reduce attack surface |
+| Large payload operations | 60 | 60 | 120 | Accommodate large secret transfers |
+
 ### LOG_LEVEL
 
 Logging level. Supported values: `debug`, `info`, `warn`, `error`, `fatal`, `panic` (default: `info`).
