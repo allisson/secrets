@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-03-02
+
+### Added
+- Added configuration validation for improved reliability and error detection at startup.
+
+### Changed
+- Refactored `transit` module to improve security, atomicity, and validation rules.
+- Refactored `tokenization` module to remove unused `TxManager` and improve test utilities.
+- Refactored `crypto` module: moved `KMSService` to domain and enhanced key security.
+- Refactored `internal` package to inject context into the DI container for better lifecycle management.
+- Refactored `database` layer to improve transaction management and connection pool settings.
+- Refactored `http` layer to refine metrics server, middleware logic, and error wrapping.
+- Refactored `cli` commands to standardize implementation and reduce boilerplate.
+- Refactored `httputil` to improve error handling.
+- Reorganized and refactored documentation structure for improved clarity and consistency.
+- Improved metrics provider, secret security, and core domain logic.
+
 ## [0.22.1] - 2026-02-28
 
 ### Fixed
@@ -393,6 +410,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.23.0]: https://github.com/allisson/secrets/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/allisson/secrets/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/allisson/secrets/compare/v0.21.0...v0.22.0
 [0.19.0]: https://github.com/allisson/secrets/compare/v0.18.0...v0.19.0
