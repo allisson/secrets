@@ -202,9 +202,6 @@ jobs:
 
       - name: Run integration tests
         run: go test -v -race -p 1 -coverprofile=coverage-integration.out -tags=integration ./...
-        env:
-          TEST_POSTGRES_DSN: "postgres://testuser:testpassword@localhost:5433/testdb?sslmode=disable"
-          TEST_MYSQL_DSN: "testuser:testpassword@tcp(localhost:3307)/testdb?parseTime=true"
 
       - name: Integration test coverage
         run: go tool cover -func=coverage-integration.out
