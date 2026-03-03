@@ -27,7 +27,15 @@ func TestMain(m *testing.M) {
 // createTestServer creates a test server with a discarding logger.
 func createTestServer() *Server {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return NewServer(nil, "localhost", 8080, logger)
+	return NewServer(
+		nil,
+		"localhost",
+		8080,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+		logger,
+	)
 }
 
 // createMinimalRouter creates a minimal router with only health and ready endpoints for testing.

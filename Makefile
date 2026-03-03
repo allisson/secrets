@@ -1,4 +1,4 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples
+.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples test-coverage-check test-integration-coverage-check
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -39,10 +39,30 @@ test: ## Run unit tests only (excludes integration tests)
 	@go test -v -race -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out
 
+test-coverage-check: test ## Check if unit test coverage meets threshold
+	@echo "Checking unit test coverage threshold..."
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | tr -d '%'); \
+	THRESHOLD=30; \
+	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc -l) -eq 1 ]; then \
+		echo "❌ Coverage $$COVERAGE% is below threshold $$THRESHOLD%"; \
+		exit 1; \
+	fi; \
+	echo "✅ Coverage $$COVERAGE% meets threshold $$THRESHOLD%"
+
 test-integration: ## Run integration tests only (requires databases)
 	@echo "Running integration tests..."
 	@go test -v -race -p 1 -coverprofile=coverage-integration.out -tags=integration ./...
 	@go tool cover -func=coverage-integration.out
+
+test-integration-coverage-check: test-integration ## Check if integration test coverage meets threshold
+	@echo "Checking integration test coverage threshold..."
+	@COVERAGE=$$(go tool cover -func=coverage-integration.out | grep total | awk '{print $$3}' | tr -d '%'); \
+	THRESHOLD=25; \
+	if [ $$(echo "$$COVERAGE < $$THRESHOLD" | bc -l) -eq 1 ]; then \
+		echo "❌ Integration coverage $$COVERAGE% is below threshold $$THRESHOLD%"; \
+		exit 1; \
+	fi; \
+	echo "✅ Integration coverage $$COVERAGE% meets threshold $$THRESHOLD%"
 
 test-with-db: test-db-up test-integration test-db-down ## Run integration tests with test databases
 

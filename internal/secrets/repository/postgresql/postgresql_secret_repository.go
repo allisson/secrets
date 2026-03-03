@@ -192,6 +192,41 @@ func (p *PostgreSQLSecretRepository) List(
 	return secrets, nil
 }
 
+// HardDelete permanently removes soft-deleted secrets older than the specified time.
+// Only affects secrets where deleted_at IS NOT NULL.
+// If dryRun is true, returns count without performing deletion.
+// Returns the number of secrets that were (or would be) deleted.
+func (p *PostgreSQLSecretRepository) HardDelete(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	if dryRun {
+		query := `SELECT COUNT(*) FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < $1`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count secrets for deletion")
+		}
+		return count, nil
+	}
+
+	query := `DELETE FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < $1`
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to hard delete secrets")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get affected rows count")
+	}
+
+	return count, nil
+}
+
 // NewPostgreSQLSecretRepository creates a new PostgreSQL Secret repository instance.
 func NewPostgreSQLSecretRepository(db *sql.DB) *PostgreSQLSecretRepository {
 	return &PostgreSQLSecretRepository{db: db}

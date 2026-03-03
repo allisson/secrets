@@ -280,7 +280,7 @@ case "postgres":
 }
 
 userUseCase, err := userUsecase.NewUserUseCase(txManager, userRepo, outboxRepo)
-server := http.NewServer(cfg.ServerHost, cfg.ServerPort, logger, userUseCase)
+server := http.NewServer(db, cfg.ServerHost, cfg.ServerPort, cfg.ServerReadTimeout, cfg.ServerWriteTimeout, cfg.ServerIdleTimeout, logger)
 ```
 
 **After:**

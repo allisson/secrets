@@ -21,13 +21,21 @@ import (
 // signal, gracefully stops the server within DBConnMaxLifetime timeout.
 func RunServer(ctx context.Context, version string) error {
 	// Load configuration
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
 
 	// Set Gin mode based on log level
 	gin.SetMode(cfg.GetGinMode())
 
 	// Create DI container
 	container := app.NewContainer(cfg)
+
+	// Validate KMS connectivity if configured
+	if err := validateKMSConnectivity(ctx, container, cfg); err != nil {
+		return fmt.Errorf("failed to validate KMS: %w", err)
+	}
 
 	// Get logger from container
 	logger := container.Logger()
@@ -114,5 +122,38 @@ func RunServer(ctx context.Context, version string) error {
 		return errors.Join(shutdownErrors...)
 	}
 
+	return nil
+}
+
+// validateKMSConnectivity performs a lightweight KMS connectivity check at startup.
+// It attempts to open a KMS keeper to verify the provider is accessible.
+// Returns nil if KMS is not configured (empty provider/URI).
+func validateKMSConnectivity(ctx context.Context, container *app.Container, cfg *config.Config) error {
+	// Skip validation if KMS is not configured
+	if cfg.KMSProvider == "" || cfg.KMSKeyURI == "" {
+		return nil
+	}
+
+	logger := container.Logger()
+	logger.Info("validating KMS connectivity", slog.String("provider", cfg.KMSProvider))
+
+	// Get KMS service from container
+	kmsService := container.KMSService()
+
+	// Attempt to open a keeper to test connectivity
+	keeper, err := kmsService.OpenKeeper(ctx, cfg.KMSKeyURI)
+	if err != nil {
+		return fmt.Errorf(
+			"KMS connectivity check failed: %w. Verify KMS_PROVIDER and KMS_KEY_URI configuration",
+			err,
+		)
+	}
+	defer func() {
+		if closeErr := keeper.Close(); closeErr != nil {
+			logger.Warn("failed to close KMS keeper", slog.Any("error", closeErr))
+		}
+	}()
+
+	logger.Info("KMS connectivity validated successfully")
 	return nil
 }

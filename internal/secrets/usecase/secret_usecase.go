@@ -197,6 +197,18 @@ func (s *secretUseCase) List(ctx context.Context, offset, limit int) ([]*secrets
 	return s.secretRepo.List(ctx, offset, limit)
 }
 
+// PurgeDeleted permanently removes soft-deleted secrets older than specified days.
+// If dryRun is true, returns count without performing deletion.
+// Returns the number of secrets that were (or would be) deleted.
+func (s *secretUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error) {
+	if olderThanDays < 0 {
+		return 0, errors.New("olderThanDays must be non-negative")
+	}
+
+	olderThan := time.Now().UTC().AddDate(0, 0, -olderThanDays)
+	return s.secretRepo.HardDelete(ctx, olderThan, dryRun)
+}
+
 // NewSecretUseCase creates a new secret use case instance with the provided dependencies.
 func NewSecretUseCase(
 	txManager database.TxManager,

@@ -500,6 +500,64 @@ Requirements:
 - Database must be reachable and migrated
 - Use `--dry-run` before deletion in production environments
 
+## Secret Maintenance
+
+### `purge-secrets`
+
+Permanently deletes soft-deleted secrets older than a specified number of days. This operation is **irreversible** and should be used with caution.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete secrets soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion) - see what would be deleted
+./bin/app purge-secrets --days 30 --dry-run
+
+# Execute deletion with default 30 days threshold
+./bin/app purge-secrets
+
+# Execute deletion with custom threshold
+./bin/app purge-secrets --days 90 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  purge-secrets --days 30 --dry-run --format json
+```
+
+Example text output:
+
+```text
+Successfully deleted 42 secret(s) older than 30 day(s)
+```
+
+Example JSON output:
+
+```json
+{
+  "count": 42,
+  "days": 30,
+  "dry_run": false
+}
+```
+
+Important notes:
+
+- Only affects **soft-deleted** secrets (where `deleted_at` is set)
+- Active secrets are never touched
+- This operation is **irreversible** - deleted data cannot be recovered
+- Always use `--dry-run` first to preview the impact
+- Recommended to run periodically as part of maintenance (e.g., monthly cron job)
+
+Requirements:
+
+- Database must be reachable and migrated
+- Use `--dry-run` before deletion in production environments
+
 ## See also
 
 - [Docker getting started](getting-started/docker.md)

@@ -402,6 +402,9 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		db,
 		c.config.ServerHost,
 		c.config.ServerPort,
+		c.config.ServerReadTimeout,
+		c.config.ServerWriteTimeout,
+		c.config.ServerIdleTimeout,
 		logger,
 	)
 

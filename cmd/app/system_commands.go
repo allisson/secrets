@@ -8,7 +8,6 @@ import (
 
 	"github.com/allisson/secrets/cmd/app/commands"
 	"github.com/allisson/secrets/internal/app"
-	"github.com/allisson/secrets/internal/config"
 )
 
 // getSystemCommands returns the system-related CLI commands.
@@ -28,7 +27,7 @@ func getSystemCommands(version string) []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						cfg := config.Load()
+						cfg := container.Config()
 						return commands.RunMigrations(
 							container.Logger(),
 							cfg.DBDriver,
@@ -73,6 +72,51 @@ func getSystemCommands(version string) []*cli.Command {
 						return commands.RunCleanAuditLogs(
 							ctx,
 							auditLogUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
+				)
+			},
+		},
+		{
+			Name:  "purge-secrets",
+			Usage: "Permanently delete soft-deleted secrets older than specified days",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:    "days",
+					Aliases: []string{"d"},
+					Value:   30,
+					Usage:   "Delete secrets soft-deleted more than this many days ago",
+				},
+				&cli.BoolFlag{
+					Name:    "dry-run",
+					Aliases: []string{"n"},
+					Value:   false,
+					Usage:   "Show how many secrets would be deleted without deleting",
+				},
+				&cli.StringFlag{
+					Name:    "format",
+					Aliases: []string{"f"},
+					Value:   "text",
+					Usage:   "Output format: 'text' or 'json'",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						secretUseCase, err := container.SecretUseCase(ctx)
+						if err != nil {
+							return err
+						}
+
+						return commands.RunPurgeSecrets(
+							ctx,
+							secretUseCase,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),

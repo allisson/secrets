@@ -234,6 +234,41 @@ func (m *MySQLSecretRepository) List(
 	return secrets, nil
 }
 
+// HardDelete permanently removes soft-deleted secrets older than the specified time.
+// Only affects secrets where deleted_at IS NOT NULL.
+// If dryRun is true, returns count without performing deletion.
+// Returns the number of secrets that were (or would be) deleted.
+func (m *MySQLSecretRepository) HardDelete(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	if dryRun {
+		query := `SELECT COUNT(*) FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count secrets for deletion")
+		}
+		return count, nil
+	}
+
+	query := `DELETE FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to hard delete secrets")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get affected rows count")
+	}
+
+	return count, nil
+}
+
 // NewMySQLSecretRepository creates a new MySQL Secret repository instance.
 func NewMySQLSecretRepository(db *sql.DB) *MySQLSecretRepository {
 	return &MySQLSecretRepository{db: db}
