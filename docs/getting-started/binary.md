@@ -1,7 +1,5 @@
 # 📦 Run with Pre-compiled Binary
 
-> Last updated: 2026-02-28
-
 This guide covers how to install and run Secrets using pre-compiled binaries from GitHub Releases. This is a great option if you don't want to use Docker but still want a quick and easy installation.
 
 ## 📥 Download

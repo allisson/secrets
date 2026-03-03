@@ -1,7 +1,5 @@
 # 💻 Run Locally (Development)
 
-> Last updated: 2026-02-28
-
 Use this path if you want to modify the source code and run from your workstation.
 
 **⚠️ Security Warning:** This guide is for **development and testing only**. For production deployments, see [Security Hardening Guide](../operations/deployment/docker-hardened.md) and [Production Rollout Guide](../operations/deployment/production-rollout.md).
@@ -13,7 +11,7 @@ Use this path if you want to modify the source code and run from your workstatio
 - `RATE_LIMIT_TOKEN_ENABLED` default is `true` (per IP on `POST /v1/token`)
 - `CORS_ENABLED` default is `false`
 
-These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` (see `docs/metadata.json` for latest).
+These defaults were introduced in `v0.5.0` with token-endpoint rate limiting added in `v0.7.0` .
 
 ## Prerequisites
 

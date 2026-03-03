@@ -1,7 +1,6 @@
 # ❌ Error Message Reference
 
 > **Document version**: v0.19.0
-> Last updated: 2026-02-28
 > **Audience**: Developers, DevOps engineers, SRE teams troubleshooting Secrets errors
 
 ## Overview
@@ -140,7 +139,7 @@ psql -d secrets -c "SELECT id, name, is_active FROM clients WHERE id = 'your-cli
 - `403 Forbidden` - Token valid, but insufficient permissions
 - `429 Too Many Requests` - Token endpoint rate limited
 
-**See also**: [Authentication Guide](../../api/auth/authentication.md)
+**See also**: [Authentication Guide](../../auth/authentication.md)
 
 ---
 
@@ -216,7 +215,7 @@ WHERE client_id = 'your-client-id' AND path = '/v1/secrets/*';
 - `401 Unauthorized` - No token or invalid token
 - `404 Not Found` - Client doesn't have visibility to resource
 
-**See also**: [Authorization Policies Guide](../../api/auth/policies.md)
+**See also**: [Authorization Policies Guide](../../auth/policies.md)
 
 ---
 
@@ -422,7 +421,7 @@ curl -X POST http://localhost:8080/v1/clients \
 
 - `400 Bad Request` - Malformed JSON (before validation)
 
-**See also**: [API Validation Rules](../../api/fundamentals.md)
+**See also**: [API Validation Rules](../../concepts/api-fundamentals.md)
 
 ---
 
@@ -1148,7 +1147,7 @@ Policy path uses unsupported wildcard pattern.
 
 ```
 
-**See also**: [Authorization Policies Guide](../../api/auth/policies.md)
+**See also**: [Authorization Policies Guide](../../auth/policies.md)
 
 ---
 
@@ -1172,7 +1171,7 @@ Policy path uses unsupported wildcard pattern.
 
 - [Troubleshooting Guide](../../operations/troubleshooting/index.md) - Step-by-step troubleshooting workflows
 - [Configuration Reference](../../configuration.md) - All environment variables
-- [API Fundamentals](../../api/fundamentals.md) - API error handling patterns
+- [API Fundamentals](../../concepts/api-fundamentals.md) - API error handling patterns
 
 - [KMS Setup Guide](../kms/setup.md) - KMS provider configuration
 - [Incident Response Guide](../observability/incident-response.md) - Production incident handling

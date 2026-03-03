@@ -1,7 +1,5 @@
 # 🔒 Security Model
 
-> Last updated: 2026-02-28
-
 Secrets is designed for practical defense-in-depth around secret storage and cryptographic operations.
 
 ## 🛡️ Core security properties
@@ -69,8 +67,8 @@ For comprehensive production security guidance, see [Security Hardening Guide](.
 - [Security hardening guide](../operations/deployment/docker-hardened.md)
 - [Production deployment](../operations/deployment/docker-hardened.md)
 - [Architecture](architecture.md)
-- [Authentication API](../api/auth/authentication.md)
-- [Policies cookbook](../api/auth/policies.md)
-- [Capability matrix](../api/fundamentals.md#capability-matrix)
-- [Tokenization API](../api/data/tokenization.md)
+- [Authentication API](../auth/authentication.md)
+- [Policies cookbook](../auth/policies.md)
+- [Capability matrix](api-fundamentals.md#capability-matrix)
+- [Tokenization API](../engines/tokenization.md)
 - [Key management operations](../operations/kms/key-management.md)

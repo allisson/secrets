@@ -28,7 +28,7 @@ Adopt URL path-based versioning using `/v1/*` prefix for all API endpoints:
 
 - OpenAPI specification at `docs/openapi.yaml` defines v1 contract baseline
 - Endpoint documentation in `docs/api/*.md` defines full public behavior
-- Breaking changes documented in `releases/RELEASES.md`
+- Breaking changes documented in `../../CHANGELOG.md`
 
 **Version independence:**
 
@@ -124,7 +124,7 @@ When breaking changes needed:
    - Migration examples (v1 request → v2 request)
    - Deprecation timeline for v1
 3. **Update** `docs/openapi.yaml` with v2 contract
-4. **Announce** in `releases/RELEASES.md` and release notes
+4. **Announce** in `../../CHANGELOG.md` and release notes
 5. **Monitor** `/v1/*` and `/v2/*` usage metrics
 6. **Remove** `/v1/*` after sunset period
 
@@ -162,7 +162,7 @@ These can be added to existing `/v1/*` without new version:
 
 ## See also
 
-- [API versioning policy](../api/fundamentals.md#compatibility-and-versioning-policy)
+- [API versioning policy](../concepts/api-fundamentals.md#compatibility-and-versioning-policy)
 - [Breaking vs non-breaking changes](../contributing.md#breaking-vs-non-breaking-docs-changes)
 - [OpenAPI specification](../openapi.yaml)
 - [ADR 0002: Transit Versioned Ciphertext Contract](0002-transit-versioned-ciphertext-contract.md)

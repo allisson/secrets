@@ -1,9 +1,5 @@
 # 📚 Secrets Documentation
 
-> Last updated: 2026-02-28
-
-Metadata source for release/API labels: `docs/metadata.json`
-
 > [!WARNING]
 > While in versions `v0.x.y`, this project is not yet recommended for production deployment and the API is not yet stable and is subject to many changes. It will only be recommended for production when it reaches version `v1.0.0`.
 
@@ -84,15 +80,14 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 ## 🌐 API Reference
 
-- 🔐 [api/auth/authentication.md](api/auth/authentication.md)
-- 👤 [api/auth/clients.md](api/auth/clients.md)
-- 📘 [api/auth/policies.md](api/auth/policies.md)
-- 📦 [api/data/secrets.md](api/data/secrets.md)
-- 🚄 [api/data/transit.md](api/data/transit.md)
-- 🎫 [api/data/tokenization.md](api/data/tokenization.md)
-- 📜 [api/observability/audit-logs.md](api/observability/audit-logs.md)
-- 🧱 [api/observability/response-shapes.md](api/observability/response-shapes.md)
-- 🧩 [api/fundamentals.md](api/fundamentals.md) - Error triage, capabilities, rate limits, versioning
+- 🔐 [api/auth/authentication.md](auth/authentication.md)
+- 👤 [api/auth/clients.md](auth/clients.md)
+- 📘 [api/auth/policies.md](auth/policies.md)
+- 📦 [engines/secrets.md](engines/secrets.md)
+- 🚄 [engines/transit.md](engines/transit.md)
+- 🎫 [engines/tokenization.md](engines/tokenization.md)
+- 📜 [observability/audit-logs.md](observability/audit-logs.md)
+- 🧩 [api/fundamentals.md](concepts/api-fundamentals.md) - Error triage, capabilities, rate limits, versioning
 - 📄 [openapi.yaml](openapi.yaml)
 
 ## 🔎 Search Aliases
@@ -105,13 +100,13 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 OpenAPI scope note:
 
-- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.22.0, see `docs/metadata.json`)
+- `openapi.yaml` is a baseline subset for common API flows in the current release (v0.22.0, see the latest release)
 - Full endpoint behavior is documented in the endpoint pages under `docs/api/`
 - Tokenization endpoints are included in `openapi.yaml` for the current release
 
 ## 🚀 Releases
 
-- 📦 [releases/RELEASES.md](releases/RELEASES.md) - All release notes
+- 📦 [../CHANGELOG.md](../CHANGELOG.md) - All release notes
 
 ## 🧠 Architecture Decision Records
 
@@ -152,5 +147,5 @@ Secrets is inspired by HashiCorp Vault, but it is much simpler and intentionally
 
 - [Docker getting started](getting-started/docker.md)
 - [Architecture](concepts/architecture.md)
-- [Authentication API](api/auth/authentication.md)
+- [Authentication API](auth/authentication.md)
 - [Production operations](operations/deployment/docker-hardened.md)

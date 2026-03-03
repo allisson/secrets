@@ -1,7 +1,5 @@
 # 🎭 Documentation Paths by Persona
 
-> Last updated: 2026-02-28
-
 Choose your learning path based on your role and goals. Each persona path provides a curated journey through the documentation.
 
 ## 📑 Quick Navigation
@@ -37,15 +35,15 @@ Use this path when your goal is API integration and feature delivery with docs p
 ### Primary path
 
 1. [Day 0 Developer Walkthrough](../getting-started/day-0-walkthrough.md#developer-path)
-2. [Authentication API](../api/auth/authentication.md)
-3. [Error decision matrix](../api/fundamentals.md#error-decision-matrix)
-4. [Rate limiting](../api/fundamentals.md#rate-limiting)
+2. [Authentication API](../auth/authentication.md)
+3. [Error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
+4. [Rate limiting](../concepts/api-fundamentals.md#rate-limiting)
 5. [Code examples](../examples/README.md)
 
 ### Deep links
 
-- [Capability matrix](../api/fundamentals.md#capability-matrix)
-- [Policies cookbook](../api/auth/policies.md)
+- [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
+- [Policies cookbook](../auth/policies.md)
 - [Docs release checklist](../contributing.md#docs-release-checklist)
 
 ---

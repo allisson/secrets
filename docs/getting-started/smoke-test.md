@@ -1,7 +1,5 @@
 # ✅ Smoke Test Script
 
-> Last updated: 2026-02-28
-
 Run a fast end-to-end validation of a running Secrets instance.
 
 Script path: `docs/getting-started/smoke-test.sh`
@@ -83,5 +81,5 @@ Expected result under throttling:
 - [Docker getting started](docker.md)
 - [Local development](local-development.md)
 - [Troubleshooting](../operations/troubleshooting/index.md)
-- [Release notes](../releases/RELEASES.md)
+- [Release notes](../../CHANGELOG.md)
 - [Curl examples](../examples/curl.md)

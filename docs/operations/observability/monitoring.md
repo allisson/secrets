@@ -1,7 +1,5 @@
 # 📊 Monitoring
 
-> Last updated: 2026-02-28
-
 This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
 
 **Related guides**:
@@ -593,6 +591,6 @@ When disabled:
 - [Production Deployment](../deployment/docker-hardened.md)
 - [Operator drills](../runbooks/README.md#operator-drills-quarterly)
 - [Incident response guide](../observability/incident-response.md)
-- [API rate limiting](../../api/fundamentals.md#rate-limiting)
+- [API rate limiting](../../concepts/api-fundamentals.md#rate-limiting)
 - [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
 - [Prometheus Documentation](https://prometheus.io/docs/)

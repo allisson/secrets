@@ -1,30 +1,28 @@
 # 🧭 Operator Runbook Index
 
-> Last updated: 2026-02-28
-
 Use this page as the single entry point for rollout, validation, and incident runbooks.
 
 ## Release and Rollout
 
-- [Release notes](../../releases/RELEASES.md)
+- [Release notes](../../../CHANGELOG.md)
 - [Production rollout golden path](../deployment/production-rollout.md)
 - [Production deployment guide](../deployment/docker-hardened.md)
 - [KMS setup guide](../kms/setup.md)
 
 ## Authorization Policy Validation
 
-- [Policies cookbook](../../api/auth/policies.md)
-- [Path matching behavior](../../api/auth/policies.md#path-matching-behavior)
-- [Route shape vs policy shape](../../api/auth/policies.md#route-shape-vs-policy-shape)
-- [Policy review checklist before deploy](../../api/auth/policies.md#policy-review-checklist-before-deploy)
+- [Policies cookbook](../../auth/policies.md)
+- [Path matching behavior](../../auth/policies.md#path-matching-behavior)
+- [Route shape vs policy shape](../../auth/policies.md#route-shape-vs-policy-shape)
+- [Policy review checklist before deploy](../../auth/policies.md#policy-review-checklist-before-deploy)
 - [Policy smoke tests](../runbooks/policy-smoke-tests.md)
 
 ## API and Access Verification
 
-- [Capability matrix](../../api/fundamentals.md#capability-matrix)
-- [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
-- [Authentication API](../../api/auth/authentication.md)
-- [Audit logs API](../../api/observability/audit-logs.md)
+- [Capability matrix](../../concepts/api-fundamentals.md#capability-matrix)
+- [API error decision matrix](../../concepts/api-fundamentals.md#error-decision-matrix)
+- [Authentication API](../../auth/authentication.md)
+- [Audit logs API](../../observability/audit-logs.md)
 
 ## Incident and Recovery
 
@@ -62,7 +60,7 @@ Use this section during rollout and incidents when you need a fast, minimal chec
 Primary references:
 
 - [Production rollout golden path](../deployment/production-rollout.md)
-- [Release notes](../../releases/RELEASES.md)
+- [Release notes](../../../CHANGELOG.md)
 
 ### Baseline Verification (before traffic cutover)
 
@@ -84,8 +82,8 @@ Reference:
 
 References:
 
-- [API error decision matrix](../../api/fundamentals.md#error-decision-matrix)
-- [API rate limiting](../../api/fundamentals.md#rate-limiting)
+- [API error decision matrix](../../concepts/api-fundamentals.md#error-decision-matrix)
+- [API rate limiting](../../concepts/api-fundamentals.md#rate-limiting)
 - [Monitoring](../observability/monitoring.md)
 
 ### Token Endpoint `429` Quick Path

@@ -1,7 +1,5 @@
 # 🏗️ Architecture
 
-> Last updated: 2026-02-28
-
 Secrets follows Clean Architecture with domain-driven boundaries so cryptographic rules stay isolated from transport and storage concerns.
 
 ## 🔐 Envelope encryption model
@@ -114,7 +112,7 @@ Quick definitions for terms used across API and operations docs.
 - [Security model](security-model.md)
 - [Key management operations](../operations/kms/key-management.md)
 - [Environment variables](../configuration.md)
-- [Secrets API](../api/data/secrets.md)
-- [Tokenization API](../api/data/tokenization.md)
+- [Secrets API](../engines/secrets.md)
+- [Tokenization API](../engines/tokenization.md)
 - [ADR 0001: Envelope Encryption Model](../adr/0001-envelope-encryption-model.md)
 - [ADR 0002: Transit Versioned Ciphertext Contract](../adr/0002-transit-versioned-ciphertext-contract.md)

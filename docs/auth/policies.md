@@ -1,6 +1,5 @@
 # 📘 Authorization Policy Cookbook
 
-> Last updated: 2026-02-28
 > Applies to: API v1
 
 Ready-to-use policy templates for common service roles.
@@ -45,6 +44,19 @@ Ready-to-use policy templates for common service roles.
 
 Capabilities: `read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`.
 
+### Capability Matching Flow
+
+```mermaid
+graph TD
+    A[Client Request] -->|GET /v1/secrets/app/prod/db-pass| B(API Middleware)
+    B --> C[Determine Required Capability]
+    C -->|decrypt| D[Fetch Client Policies]
+    D --> E[Evaluate Policy Path Matchers]
+    E --> F{Matches /v1/secrets/app/prod/* \n with 'decrypt' capability?}
+    F -->|Yes| G[Allow Request]
+    F -->|No| H[Deny 403 Forbidden]
+```
+
 ## Path matching behavior
 
 Policies are evaluated with case-sensitive matching rules:
@@ -54,7 +66,7 @@ Policies are evaluated with case-sensitive matching rules:
 - Trailing wildcard: `prefix/*` matches paths starting with `prefix/` (greedy for deeper paths)
 - Mid-path wildcard: `*` inside a path matches exactly one segment
 
-See [ADR 0003: Capability-Based Authorization Model](../../adr/0003-capability-based-authorization-model.md) for the architectural rationale behind this design.
+See [ADR 0003: Capability-Based Authorization Model](../adr/0003-capability-based-authorization-model.md) for the architectural rationale behind this design.
 
 Examples:
 
@@ -78,17 +90,17 @@ Unsupported patterns (not shell globs):
 - Example: `POST /v1/transit/keys/payment/rotate` can still return `403` if caller lacks `rotate` on
   `/v1/transit/keys/*/rotate`.
 
-Use [Policy smoke tests](../../operations/runbooks/policy-smoke-tests.md) to validate both route shape and policy behavior.
+Use [Policy smoke tests](../operations/runbooks/policy-smoke-tests.md) to validate both route shape and policy behavior.
 
 ## Policy review checklist before deploy
 
 1. Confirm endpoint capability intent for each path (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`).
 2. Confirm wildcard type is intentional (exact, full `*`, trailing `/*`, or mid-path segment `*`).
 3. Reject unsupported patterns (`prod-*`, `*prod`, `prod*`, `**`) before policy rollout.
-4. Run route-shape and allow/deny smoke checks from [Policy smoke tests](../../operations/runbooks/policy-smoke-tests.md).
+4. Run route-shape and allow/deny smoke checks from [Policy smoke tests](../operations/runbooks/policy-smoke-tests.md).
 5. Review denied audit events after rollout and verify mismatches are expected.
 
-Endpoint capability intent (quick map, condensed from [Capability matrix](../fundamentals.md#capability-matrix)):
+Endpoint capability intent (quick map, condensed from [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)):
 
 | Endpoint family | Typical capability |
 | --- | --- |
@@ -153,7 +165,7 @@ Risk note: should not include `decrypt` unless CI must read values.
 
 Use for services that should encrypt sensitive values but never decrypt.
 
-See [Transit API](../data/transit.md) for encrypt/decrypt request and response contracts.
+See [Transit API](../engines/transit.md) for encrypt/decrypt request and response contracts.
 
 ```json
 [
@@ -170,7 +182,7 @@ Risk note: encrypt-only separation limits plaintext exposure.
 
 Use for tightly scoped decryption workers.
 
-See [Decrypt input contract](../data/transit.md#decrypt-input-contract) for required
+See [Decrypt input contract](../engines/transit.md#decrypt-data) for required
 `ciphertext` format.
 
 ```json
@@ -338,7 +350,7 @@ fi
 echo "policy static checks: PASS"
 ```
 
-For runtime allow/deny assertions, run [Policy smoke tests](../../operations/runbooks/policy-smoke-tests.md).
+For runtime allow/deny assertions, run [Policy smoke tests](../operations/runbooks/policy-smoke-tests.md).
 
 ## Policy mismatch example (wrong vs fixed)
 
@@ -390,8 +402,8 @@ Also verify path matching, for example `/v1/secrets/app/prod/*` if you want tigh
 ## See also
 
 - [Authentication API](authentication.md)
-- [API error decision matrix](../fundamentals.md#error-decision-matrix)
+- [API error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
 - [Clients API](clients.md)
-- [Capability matrix](../fundamentals.md#capability-matrix)
-- [Secrets API](../data/secrets.md)
-- [Transit API](../data/transit.md)
+- [Capability matrix](../concepts/api-fundamentals.md#capability-matrix)
+- [Secrets API](../engines/secrets.md)
+- [Transit API](../engines/transit.md)

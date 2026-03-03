@@ -1,7 +1,6 @@
 # 🐳 Docker Compose Deployment Guide
 
 > **Document version**: v0.19.0
-> Last updated: 2026-02-28
 > **Audience**: Developers, DevOps engineers deploying with Docker Compose
 
 ## Table of Contents

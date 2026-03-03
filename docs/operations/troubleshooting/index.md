@@ -1,7 +1,5 @@
 # 🧰 Troubleshooting
 
-> Last updated: 2026-02-28
-
 Use this guide for common setup and runtime errors.
 
 **📖 For detailed error messages with causes and solutions**, see the [Error Message Reference](error-reference.md).
@@ -178,7 +176,7 @@ Common 422 cases:
 
 3. After unlocking, authenticate with the correct secret — this resets the counter
 
-**Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../../api/auth/authentication.md#account-lockout) for behavior details.
+**Prevention:** Ensure client integrations do not retry authentication in tight loops on `401` responses. Add exponential backoff and a circuit breaker. See [Account Lockout](../../auth/authentication.md#account-lockout) for behavior details.
 
 ## 429 Too Many Requests
 
@@ -406,7 +404,7 @@ Historical note:
 
   - run key-dependent smoke checks (token issuance, secrets write/read, transit round-trip)
 
-  - review [v0.5.1 release notes](../../releases/RELEASES.md#051---2026-02-19)
+  - review [v0.5.1 release notes](../../../CHANGELOG.md)
 
 ## Missing KEK
 

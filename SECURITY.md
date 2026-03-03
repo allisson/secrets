@@ -1,6 +1,5 @@
 # Security Policy
 
-> Last updated: 2026-02-28
 
 ## Supported Versions
 
@@ -183,7 +182,7 @@ See [Security Scanning Guide](docs/operations/security/scanning.md) for CI/CD in
 Security advisories are published via:
 
 - **GitHub Security Advisories**: https://github.com/allisson/secrets/security/advisories
-- **Release notes**: [CHANGELOG.md](CHANGELOG.md) and [RELEASES.md](docs/releases/RELEASES.md)
+- **Release notes**: [CHANGELOG.md](CHANGELOG.md) and [RELEASES.md](CHANGELOG.md)
 
 Subscribe to GitHub notifications to receive alerts for new advisories.
 

@@ -1,7 +1,5 @@
 # 🧪 CLI Commands Reference
 
-> Last updated: 2026-02-28
-
 Use the `app` CLI for server runtime, key management, and client lifecycle operations.
 
 ## Binary and Docker forms
@@ -506,5 +504,5 @@ Requirements:
 
 - [Docker getting started](getting-started/docker.md)
 - [Local development](getting-started/local-development.md)
-- [Authentication API](api/auth/authentication.md)
-- [Policies cookbook](api/auth/policies.md)
+- [Authentication API](auth/authentication.md)
+- [Policies cookbook](auth/policies.md)

@@ -1,7 +1,5 @@
 # 🧪 Code Examples
 
-> Last updated: 2026-02-28
-
 Complete code examples for integrating with Secrets APIs across multiple languages and releases.
 
 ## 📑 Quick Navigation
@@ -19,11 +17,11 @@ Complete code examples for integrating with Secrets APIs across multiple languag
 
 ## Version Compatibility
 
-All examples in this directory target the latest stable release (see `docs/metadata.json`).
+All examples in this directory target the latest stable release .
 
 For full version-specific behavior changes and compatibility history, please refer to the consolidated release notes:
 
-- 📦 [Full Release History](../releases/RELEASES.md)
+- 📦 [Full Release History](../../CHANGELOG.md)
 
 ### Compatibility notes
 
@@ -42,7 +40,7 @@ For full version-specific behavior changes and compatibility history, please ref
 
 ## See also
 
-- [Authentication API](../api/auth/authentication.md)
-- [API error decision matrix](../api/fundamentals.md#error-decision-matrix)
-- [API rate limiting](../api/fundamentals.md#rate-limiting)
-- [Release notes](../releases/RELEASES.md)
+- [Authentication API](../auth/authentication.md)
+- [API error decision matrix](../concepts/api-fundamentals.md#error-decision-matrix)
+- [API rate limiting](../concepts/api-fundamentals.md#rate-limiting)
+- [Release notes](../../CHANGELOG.md)

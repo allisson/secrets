@@ -1,7 +1,5 @@
 # KMS Setup Guide
 
-> Last updated: 2026-02-28
-
 This guide covers setting up Key Management Service (KMS) integration for encrypting master keys at rest. KMS mode is **required** in v0.19.0+ (breaking change).
 
 ## Table of Contents
@@ -855,7 +853,7 @@ Reference: [Key management operations](../kms/key-management.md)
 - [ ] If rollback needed, revert app version first
 - [ ] Re-validate health and smoke checks after rollback
 
-Reference: [Release notes](../../releases/RELEASES.md)
+Reference: [Release notes](../../../CHANGELOG.md)
 
 ## Key Rotation
 

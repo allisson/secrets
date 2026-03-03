@@ -71,11 +71,10 @@ Configuration is managed via environment variables (see `internal/config/config.
 ### Contribution Guidelines
 - **ADRs:** Major architectural decisions are documented as Architecture Decision Records in `docs/adr/`.
 - **Documentation:** Maintain concise, reference-oriented documentation in the `docs/` directory following the Diátaxis framework principles. Avoid lengthy paragraphs in favor of bullet points, tables, and centralized code examples. **CRITICAL CI RULES:**
-  1. **Freshness:** Any modified markdown file MUST have its `> Last updated: 2026-02-28
-  2. **Changelog:** Every new version MUST be added to the high-level `CHANGELOG.md` in the root directory.
-  3. **Main Version:** The `version` variable in `cmd/app/main.go` MUST be updated to match the new release version.
-  4. **Docs Linting:** The command `make docs-lint` MUST be executed and all issues resolved.
-  5. **OpenAPI Spec:** Any new API handler or configuration change MUST be reflected in `docs/openapi.yaml`.
+  1. **Changelog:** Every new version MUST be added to the high-level `CHANGELOG.md` in the root directory.
+  2. **Main Version:** The `version` variable in `cmd/app/main.go` MUST be updated to match the new release version.
+  3. **Docs Linting:** The command `make docs-lint` MUST be executed and all issues resolved.
+  4. **OpenAPI Spec:** Any new API handler or configuration change MUST be reflected in `docs/openapi.yaml`.
 - **Migrations:** New database changes must include both `up` and `down` SQL scripts for both MySQL and PostgreSQL.
 
 ### Tooling
