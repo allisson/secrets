@@ -38,7 +38,7 @@ The project follows a **Modular Clean Architecture** (inspired by DDD) located i
 - **Run Server:** `make run-server`
 - **Run Migrations:** `make migrate-up`
 - **Test:** `make test` (unit tests) or `make test-with-db` (integration tests with Docker databases)
-- **Lint:** `make lint` (uses `golangci-lint`)
+- **Lint:** `make lint` (runs `golangci-lint` with `gosec` + `govulncheck` for security scanning)
 - **Docker:** `make docker-build`
 
 ### Configuration
@@ -78,6 +78,11 @@ Configuration is managed via environment variables (see `internal/config/config.
 - **Migrations:** New database changes must include both `up` and `down` SQL scripts for both MySQL and PostgreSQL.
 
 ### Tooling
-- **Linting:** `golangci-lint` is mandatory.
+- **Linting:** `golangci-lint` is mandatory (includes `gosec` for security checks).
+- **Security Scanning:** 
+  - `gosec` runs via `golangci-lint` for static security analysis
+  - `govulncheck` scans for known vulnerabilities in dependencies
+  - Both run automatically in `make lint` and CI (required to pass before merge)
+  - Auto-installs `govulncheck` if not present
 - **Formatting:** Standard `go fmt`.
 - **CI/CD:** GitHub Actions are used for CI (`.github/workflows/ci.yml`).
