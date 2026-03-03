@@ -1,3 +1,5 @@
+//go:build integration
+
 // Package integration provides integration tests for audit log cryptographic signatures.
 package integration
 

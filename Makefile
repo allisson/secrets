@@ -34,12 +34,19 @@ run-migrate: build ## Build and run database migrations
 	@echo "Running migrations..."
 	@$(BINARY) migrate
 
-test: ## Run tests
-	@echo "Running tests..."
-	@go test -v -race -p 1 -coverprofile=coverage.out ./...
+test: ## Run unit tests only (excludes integration tests)
+	@echo "Running unit tests..."
+	@go test -v -race -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out
 
-test-with-db: test-db-up test test-db-down ## Run tests with test databases
+test-integration: ## Run integration tests only (requires databases)
+	@echo "Running integration tests..."
+	@go test -v -race -p 1 -coverprofile=coverage-integration.out -tags=integration ./...
+	@go tool cover -func=coverage-integration.out
+
+test-with-db: test-db-up test-integration test-db-down ## Run integration tests with test databases
+
+test-all: test test-with-db ## Run all tests (unit + integration)
 
 test-db-up: ## Start test databases
 	@echo "Starting test databases..."
@@ -64,7 +71,7 @@ lint: ## Run linter and security checks
 clean: ## Remove build artifacts
 	@echo "Cleaning..."
 	@rm -rf $(BINARY_DIR)
-	@rm -f coverage.out
+	@rm -f coverage.out coverage-integration.out
 	@echo "Clean complete"
 
 deps: ## Download dependencies
