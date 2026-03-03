@@ -54,9 +54,12 @@ test-db-down: ## Stop test databases
 test-coverage: test ## Run tests and show coverage in browser
 	@go tool cover -html=coverage.out
 
-lint: ## Run linter
+lint: ## Run linter and security checks
 	@echo "Running linter..."
 	@golangci-lint run -v --fix
+	@echo "Running govulncheck..."
+	@which govulncheck > /dev/null || (echo "Installing govulncheck..." && go install golang.org/x/vuln/cmd/govulncheck@latest)
+	@govulncheck ./...
 
 clean: ## Remove build artifacts
 	@echo "Cleaning..."

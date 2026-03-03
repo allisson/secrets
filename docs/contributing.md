@@ -183,6 +183,35 @@ make mocks
 make docs-check-examples
 ```
 
+### Security Linting
+
+The project enforces security checks in CI that must pass before merging:
+
+- **gosec**: Security-focused static analysis (runs via `golangci-lint`)
+- **govulncheck**: Checks for known vulnerabilities in Go dependencies
+
+Run security checks locally:
+
+```bash
+# Run both golangci-lint (with gosec) and govulncheck
+make lint
+
+# Or run govulncheck separately
+govulncheck ./...
+```
+
+The `make lint` command will automatically install `govulncheck` if not present.
+
+#### Handling False Positives
+
+If gosec reports a false positive, suppress it with an inline comment explaining why:
+
+```go
+//nolint:gosec // G104: Error intentionally ignored because [reason]
+```
+
+Never suppress real security issues. If you're unsure, ask in the PR review.
+
 ### Run Specific Tests
 
 ```bash

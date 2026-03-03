@@ -173,5 +173,11 @@ jobs:
         with:
           version: latest
 
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: 1.26.0
+          go-package: ./...
+
       - name: Run tests
         run: make test
