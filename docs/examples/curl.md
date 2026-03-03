@@ -171,8 +171,9 @@ curl -X POST "$BASE_URL/v1/tokenization/detokenize" \
 
 Deterministic caveat:
 
-- When `is_deterministic=true`, tokenizing the same plaintext with the same active key can return the same token
-- Prefer non-deterministic mode unless you explicitly need equality matching
+- When `is_deterministic=true`, the engine uses per-key version salts and HMAC-SHA256 to prevent rainbow table attacks.
+- Identical plaintext tokenized with the same active key version will return the same token.
+- Prefer non-deterministic mode unless you explicitly need equality matching.
 
 ## Common Mistakes
 

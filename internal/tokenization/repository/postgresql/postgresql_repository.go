@@ -29,8 +29,8 @@ func (p *PostgreSQLTokenizationKeyRepository) Create(
 ) error {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `INSERT INTO tokenization_keys (id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at) 
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	query := `INSERT INTO tokenization_keys (id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := querier.ExecContext(
 		ctx,
@@ -40,6 +40,7 @@ func (p *PostgreSQLTokenizationKeyRepository) Create(
 		key.Version,
 		key.FormatType,
 		key.IsDeterministic,
+		key.Salt,
 		key.DekID,
 		key.CreatedAt,
 		key.DeletedAt,
@@ -71,7 +72,7 @@ func (p *PostgreSQLTokenizationKeyRepository) GetByName(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE name = $1 AND deleted_at IS NULL 
 			  ORDER BY version DESC 
@@ -86,6 +87,7 @@ func (p *PostgreSQLTokenizationKeyRepository) GetByName(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&key.DekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -108,7 +110,7 @@ func (p *PostgreSQLTokenizationKeyRepository) Get(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE id = $1 AND deleted_at IS NULL`
 
@@ -121,6 +123,7 @@ func (p *PostgreSQLTokenizationKeyRepository) Get(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&key.DekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -144,7 +147,7 @@ func (p *PostgreSQLTokenizationKeyRepository) GetByNameAndVersion(
 ) (*tokenizationDomain.TokenizationKey, error) {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `SELECT id, name, version, format_type, is_deterministic, dek_id, created_at, deleted_at 
+	query := `SELECT id, name, version, format_type, is_deterministic, salt, dek_id, created_at, deleted_at 
 			  FROM tokenization_keys 
 			  WHERE name = $1 AND version = $2 AND deleted_at IS NULL`
 
@@ -157,6 +160,7 @@ func (p *PostgreSQLTokenizationKeyRepository) GetByNameAndVersion(
 		&key.Version,
 		&formatType,
 		&key.IsDeterministic,
+		&key.Salt,
 		&key.DekID,
 		&key.CreatedAt,
 		&key.DeletedAt,
@@ -181,7 +185,7 @@ func (p *PostgreSQLTokenizationKeyRepository) List(
 	querier := database.GetTx(ctx, p.db)
 
 	query := `
-		SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.dek_id, tk.created_at, tk.deleted_at 
+		SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
 		FROM tokenization_keys tk
 		INNER JOIN (
 			SELECT name, MAX(version) as max_version
@@ -212,6 +216,7 @@ func (p *PostgreSQLTokenizationKeyRepository) List(
 			&key.Version,
 			&formatType,
 			&key.IsDeterministic,
+			&key.Salt,
 			&key.DekID,
 			&key.CreatedAt,
 			&key.DeletedAt,

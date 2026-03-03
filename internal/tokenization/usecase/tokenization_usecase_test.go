@@ -38,6 +38,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
+		salt := []byte("test-salt-32-bytes-long-12345678")
 
 		tokenizationKey := &tokenizationDomain.TokenizationKey{
 			ID:              tokenizationKeyID,
@@ -46,6 +47,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: false,
 			Version:         1,
+			Salt:            salt,
 		}
 
 		dek := &cryptoDomain.Dek{
@@ -147,6 +149,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
+		salt := []byte("deterministic-salt-32-bytes-long")
 
 		tokenizationKey := &tokenizationDomain.TokenizationKey{
 			ID:              tokenizationKeyID,
@@ -155,6 +158,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			FormatType:      tokenizationDomain.FormatLuhnPreserving,
 			IsDeterministic: true,
 			Version:         1,
+			Salt:            salt,
 		}
 
 		dek := &cryptoDomain.Dek{
@@ -181,7 +185,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Once()
 
 		mockHashService.EXPECT().
-			Hash(plaintext).
+			Hash(plaintext, salt).
 			Return(valueHash).
 			Once()
 
@@ -211,7 +215,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Once()
 
 		mockHashService.EXPECT().
-			Hash(plaintext).
+			Hash(plaintext, salt).
 			Return(valueHash).
 			Once()
 
@@ -267,6 +271,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		defer kekChain.Close()
 
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
+		salt := []byte("deterministic-salt-32-bytes-long")
 		plaintext := []byte("test-value")
 		valueHash := "hash-of-plaintext"
 		existingTokenValue := "existing-token-123"
@@ -278,6 +283,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: true,
 			Version:         1,
+			Salt:            salt,
 		}
 
 		existingToken := &tokenizationDomain.Token{
@@ -299,7 +305,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Once()
 
 		mockHashService.EXPECT().
-			Hash(plaintext).
+			Hash(plaintext, salt).
 			Return(valueHash).
 			Once()
 
@@ -347,6 +353,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 		activeKek := tokenizationTesting.GetActiveKek(kekChain)
 		dekID := uuid.Must(uuid.NewV7())
 		tokenizationKeyID := uuid.Must(uuid.NewV7())
+		salt := []byte("deterministic-salt-32-bytes-long")
 		plaintext := []byte("test-value")
 		valueHash := "hash-of-plaintext"
 		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
@@ -358,6 +365,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: true,
 			Version:         1,
+			Salt:            salt,
 		}
 
 		expiredToken := &tokenizationDomain.Token{
@@ -394,7 +402,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Once()
 
 		mockHashService.EXPECT().
-			Hash(plaintext).
+			Hash(plaintext, salt).
 			Return(valueHash).
 			Once()
 
@@ -424,7 +432,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Once()
 
 		mockHashService.EXPECT().
-			Hash(plaintext).
+			Hash(plaintext, salt).
 			Return(valueHash).
 			Once()
 

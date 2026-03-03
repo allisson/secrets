@@ -42,16 +42,16 @@ func (_m *MockHashService) EXPECT() *MockHashService_Expecter {
 }
 
 // Hash provides a mock function for the type MockHashService
-func (_mock *MockHashService) Hash(value []byte) string {
-	ret := _mock.Called(value)
+func (_mock *MockHashService) Hash(value []byte, salt []byte) string {
+	ret := _mock.Called(value, salt)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Hash")
 	}
 
 	var r0 string
-	if returnFunc, ok := ret.Get(0).(func([]byte) string); ok {
-		r0 = returnFunc(value)
+	if returnFunc, ok := ret.Get(0).(func([]byte, []byte) string); ok {
+		r0 = returnFunc(value, salt)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -65,18 +65,24 @@ type MockHashService_Hash_Call struct {
 
 // Hash is a helper method to define mock.On call
 //   - value []byte
-func (_e *MockHashService_Expecter) Hash(value interface{}) *MockHashService_Hash_Call {
-	return &MockHashService_Hash_Call{Call: _e.mock.On("Hash", value)}
+//   - salt []byte
+func (_e *MockHashService_Expecter) Hash(value interface{}, salt interface{}) *MockHashService_Hash_Call {
+	return &MockHashService_Hash_Call{Call: _e.mock.On("Hash", value, salt)}
 }
 
-func (_c *MockHashService_Hash_Call) Run(run func(value []byte)) *MockHashService_Hash_Call {
+func (_c *MockHashService_Hash_Call) Run(run func(value []byte, salt []byte)) *MockHashService_Hash_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 []byte
 		if args[0] != nil {
 			arg0 = args[0].([]byte)
 		}
+		var arg1 []byte
+		if args[1] != nil {
+			arg1 = args[1].([]byte)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -87,7 +93,7 @@ func (_c *MockHashService_Hash_Call) Return(s string) *MockHashService_Hash_Call
 	return _c
 }
 
-func (_c *MockHashService_Hash_Call) RunAndReturn(run func(value []byte) string) *MockHashService_Hash_Call {
+func (_c *MockHashService_Hash_Call) RunAndReturn(run func(value []byte, salt []byte) string) *MockHashService_Hash_Call {
 	_c.Call.Return(run)
 	return _c
 }

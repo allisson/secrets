@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-03-03
+
+### Changed
+- Refactored `tokenization` module to improve security for deterministic mode by adding per-key version salts and HMAC-SHA256 keyed hashing to prevent rainbow table attacks.
+
 ## [0.23.0] - 2026-03-02
 
 ### Added

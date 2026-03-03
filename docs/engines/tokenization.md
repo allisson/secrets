@@ -101,6 +101,14 @@ Example response (`200 OK`):
 - `GET /v1/tokenization/keys` (Capability: `read`)
 - `DELETE /v1/tokenization/keys/:id` (Capability: `delete`)
 
+## Deterministic Tokenization
+
+When `is_deterministic` is set to `true`, the engine ensures that the same plaintext value always produces the same token *under the same key version*.
+
+- **Security**: To prevent rainbow table attacks, each key version generates a unique random 32-byte salt. The engine uses HMAC-SHA256 with this salt to compute a unique hash for each plaintext.
+- **Equality Matching**: This mode allows for equality matching and duplicate detection within your application without exposing the sensitive plaintext.
+- **Rotation**: When a key is rotated, a new salt is generated. Identical plaintext tokenized under the new version will produce a different token than the previous version.
+
 ## Relevant CLI Commands
 
 - `rewrap-deks`: Rewraps tokenization key DEKs when rotating the KEK.

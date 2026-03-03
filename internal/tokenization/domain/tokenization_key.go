@@ -27,6 +27,9 @@ type TokenizationKey struct {
 	// When true, enables efficient duplicate detection; when false, provides better privacy.
 	IsDeterministic bool
 
+	// Salt is used for deterministic tokenization to prevent rainbow table attacks.
+	Salt []byte
+
 	// DekID is the reference to the Data Encryption Key used to encrypt values for this version.
 	DekID uuid.UUID
 
@@ -48,6 +51,9 @@ func (tk *TokenizationKey) Validate() error {
 	}
 	if err := tk.FormatType.Validate(); err != nil {
 		return ErrInvalidFormatType
+	}
+	if tk.IsDeterministic && len(tk.Salt) == 0 {
+		return ErrTokenizationKeySaltInvalid
 	}
 	if tk.DekID == uuid.Nil {
 		return ErrTokenizationKeyDekIDInvalid

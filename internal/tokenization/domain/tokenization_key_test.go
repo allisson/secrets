@@ -11,6 +11,7 @@ import (
 func TestTokenizationKey_Validate(t *testing.T) {
 	validID := uuid.Must(uuid.NewV7())
 	validDekID := uuid.Must(uuid.NewV7())
+	validSalt := []byte("test-salt-32-bytes-long-12345678")
 	now := time.Now().UTC()
 
 	tests := []struct {
@@ -41,6 +42,7 @@ func TestTokenizationKey_Validate(t *testing.T) {
 				Version:         100,
 				FormatType:      FormatNumeric,
 				IsDeterministic: true,
+				Salt:            validSalt,
 				DekID:           validDekID,
 				CreatedAt:       now,
 				DeletedAt:       nil,
@@ -60,6 +62,21 @@ func TestTokenizationKey_Validate(t *testing.T) {
 				DeletedAt:       nil,
 			},
 			expectError: false,
+		},
+		{
+			name: "Error_DeterministicKeyWithoutSalt",
+			key: &TokenizationKey{
+				ID:              validID,
+				Name:            "test-key",
+				Version:         1,
+				FormatType:      FormatUUID,
+				IsDeterministic: true,
+				Salt:            nil,
+				DekID:           validDekID,
+				CreatedAt:       now,
+			},
+			expectError: true,
+			expectedErr: ErrTokenizationKeySaltInvalid,
 		},
 		{
 			name: "Error_EmptyName",
@@ -152,6 +169,7 @@ func TestTokenizationKey_Fields(t *testing.T) {
 	t.Run("Success_AllFieldsSet", func(t *testing.T) {
 		id := uuid.Must(uuid.NewV7())
 		dekID := uuid.Must(uuid.NewV7())
+		salt := []byte("field-test-salt")
 		now := time.Now().UTC()
 		deletedAt := now.Add(24 * time.Hour)
 
@@ -161,6 +179,7 @@ func TestTokenizationKey_Fields(t *testing.T) {
 			Version:         5,
 			FormatType:      FormatLuhnPreserving,
 			IsDeterministic: true,
+			Salt:            salt,
 			DekID:           dekID,
 			CreatedAt:       now,
 			DeletedAt:       &deletedAt,
@@ -171,6 +190,7 @@ func TestTokenizationKey_Fields(t *testing.T) {
 		assert.Equal(t, uint(5), key.Version)
 		assert.Equal(t, FormatLuhnPreserving, key.FormatType)
 		assert.True(t, key.IsDeterministic)
+		assert.Equal(t, salt, key.Salt)
 		assert.Equal(t, dekID, key.DekID)
 		assert.Equal(t, now, key.CreatedAt)
 		assert.NotNil(t, key.DeletedAt)

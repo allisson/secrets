@@ -254,7 +254,8 @@ func tokenizationFlow(token string) error {
 
 Deterministic caveat:
 
-- Keys configured as deterministic can emit the same token for the same plaintext under the same active key.
+- Keys configured as deterministic use per-key version salts and HMAC-SHA256 to prevent rainbow table attacks.
+- They can emit the same token for the same plaintext under the same active key version.
 - Use deterministic mode only when your workflow requires equality matching.
 
 Rate-limit note:
