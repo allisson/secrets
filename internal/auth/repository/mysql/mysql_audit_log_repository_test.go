@@ -473,7 +473,7 @@ func TestMySQLAuditLogRepository_ListCursor_WithFilters(t *testing.T) {
 	clientID := testutil.CreateTestClient(t, db, "mysql", "test-cursor-filters")
 
 	// Create audit logs with different timestamps
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	for i := 0; i < 5; i++ {
 		auditLog := &authDomain.AuditLog{
 			ID:         uuid.Must(uuid.NewV7()),
