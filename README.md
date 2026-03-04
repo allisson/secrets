@@ -36,6 +36,12 @@ Format-preserving token generation for sensitive values (e.g., credit cards) wit
 
 Tamper-resistant cryptographic audit logs capture capability checks and access attempts for monitoring and compliance.
 
+## 📊 Observability
+
+- **[Metrics Reference](docs/observability/metrics-reference.md)** - Complete catalog of all Prometheus metrics and operations
+- **[Monitoring Setup](docs/operations/observability/monitoring.md)** - Prometheus, Grafana, and alerting configuration
+- **[Health Checks](docs/operations/observability/health-checks.md)** - Liveness and readiness probe endpoints
+
 ## 🚀 Quick Start
 
 Choose your preferred deployment method to get started:
