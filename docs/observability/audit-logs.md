@@ -26,7 +26,7 @@ graph TD
 - **Endpoint**: `GET /v1/audit-logs`
 - **Capability**: `read`
 - **Query Params**:
-  - `offset` (default 0)
+  - `after_id` (UUID cursor)
   - `limit` (default 50, max 100)
   - `created_at_from` (RFC3339)
   - `created_at_to` (RFC3339)
