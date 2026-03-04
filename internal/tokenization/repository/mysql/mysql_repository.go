@@ -390,6 +390,51 @@ func (m *MySQLTokenizationKeyRepository) ListCursor(
 	return keys, nil
 }
 
+// HardDelete permanently removes soft-deleted tokenization keys and their associated tokens.
+func (m *MySQLTokenizationKeyRepository) HardDelete(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	if dryRun {
+		query := `SELECT COUNT(*) FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count tokenization keys for hard delete")
+		}
+		return count, nil
+	}
+
+	// Delete associated tokens first
+	//nolint:gosec // false positive: this is a SQL query, not a credential
+	deleteTokensQuery := `
+		DELETE FROM tokenization_tokens 
+		WHERE tokenization_key_id IN (
+			SELECT id FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < ?
+		)`
+	_, err := querier.ExecContext(ctx, deleteTokensQuery, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to delete associated tokens")
+	}
+
+	// Delete keys
+	deleteKeysQuery := `DELETE FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+	result, err := querier.ExecContext(ctx, deleteKeysQuery, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to hard delete tokenization keys")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get rows affected for hard delete")
+	}
+
+	return count, nil
+}
+
 // NewMySQLTokenizationKeyRepository creates a new MySQL tokenization key repository instance.
 func NewMySQLTokenizationKeyRepository(db *sql.DB) *MySQLTokenizationKeyRepository {
 	return &MySQLTokenizationKeyRepository{db: db}

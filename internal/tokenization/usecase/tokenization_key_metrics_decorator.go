@@ -107,3 +107,23 @@ func (t *tokenizationKeyUseCaseWithMetrics) ListCursor(
 
 	return keys, err
 }
+
+// PurgeDeleted records metrics for tokenization key purge operations.
+func (t *tokenizationKeyUseCaseWithMetrics) PurgeDeleted(
+	ctx context.Context,
+	olderThanDays int,
+	dryRun bool,
+) (int64, error) {
+	start := time.Now()
+	count, err := t.next.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "tokenization", "tokenization_key_purge", status)
+	t.metrics.RecordDuration(ctx, "tokenization", "tokenization_key_purge", time.Since(start), status)
+
+	return count, err
+}

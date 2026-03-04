@@ -4,6 +4,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -39,6 +40,12 @@ type TransitKeyRepository interface {
 	// Returns the latest version for each key. Filters out soft-deleted keys.
 	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
 	ListCursor(ctx context.Context, afterName *string, limit int) ([]*transitDomain.TransitKey, error)
+
+	// HardDelete permanently removes soft-deleted transit keys older than the specified time.
+	// Only affects keys where deleted_at IS NOT NULL.
+	// If dryRun is true, returns count without performing deletion.
+	// Returns the number of keys that were (or would be) deleted.
+	HardDelete(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)
 }
 
 // TransitKeyUseCase defines the interface for transit encryption operations.
@@ -70,4 +77,9 @@ type TransitKeyUseCase interface {
 	// Returns the latest version for each key. Filters out soft-deleted keys.
 	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
 	ListCursor(ctx context.Context, afterName *string, limit int) ([]*transitDomain.TransitKey, error)
+
+	// PurgeDeleted permanently removes soft-deleted transit keys older than specified days.
+	// If dryRun is true, returns count without performing deletion.
+	// Returns the number of keys that were (or would be) deleted.
+	PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error)
 }

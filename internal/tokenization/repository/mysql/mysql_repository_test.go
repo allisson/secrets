@@ -557,3 +557,118 @@ func TestMySQLTokenizationKeyRepository_ListCursor_EmptyResult(t *testing.T) {
 	assert.NotNil(t, keys)
 	assert.Len(t, keys, 0)
 }
+
+func TestMySQLTokenizationKeyRepository_HardDelete(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	tokenRepo := NewMySQLTokenRepository(db)
+	ctx := context.Background()
+
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	// Create keys and tokens:
+	// 1. Not deleted
+	// 2. Deleted 10 days ago
+	// 3. Deleted 40 days ago (with associated token)
+
+	now := time.Now().UTC()
+	tenDaysAgo := now.AddDate(0, 0, -10)
+	fortyDaysAgo := now.AddDate(0, 0, -40)
+
+	key1 := &tokenizationDomain.TokenizationKey{
+		ID:         uuid.Must(uuid.NewV7()),
+		Name:       "active-key",
+		Version:    1,
+		FormatType: tokenizationDomain.FormatUUID,
+		DekID:      dekID,
+		CreatedAt:  now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key1))
+
+	key2 := &tokenizationDomain.TokenizationKey{
+		ID:         uuid.Must(uuid.NewV7()),
+		Name:       "deleted-recent",
+		Version:    1,
+		FormatType: tokenizationDomain.FormatUUID,
+		DekID:      dekID,
+		CreatedAt:  now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key2))
+	key2IDBytes, _ := key2.ID.MarshalBinary()
+	_, err := db.ExecContext(ctx, "UPDATE tokenization_keys SET deleted_at = ? WHERE id = ?", tenDaysAgo, key2IDBytes)
+	require.NoError(t, err)
+
+	key3 := &tokenizationDomain.TokenizationKey{
+		ID:         uuid.Must(uuid.NewV7()),
+		Name:       "deleted-old",
+		Version:    1,
+		FormatType: tokenizationDomain.FormatUUID,
+		DekID:      dekID,
+		CreatedAt:  now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key3))
+	key3IDBytes, _ := key3.ID.MarshalBinary()
+	_, err = db.ExecContext(ctx, "UPDATE tokenization_keys SET deleted_at = ? WHERE id = ?", fortyDaysAgo, key3IDBytes)
+	require.NoError(t, err)
+
+	// Add a token for key3
+	token := &tokenizationDomain.Token{
+		ID:                uuid.Must(uuid.NewV7()),
+		TokenizationKeyID: key3.ID,
+		Token:             "tok_for_key3",
+		Ciphertext:        []byte("encrypted"),
+		Nonce:             []byte("nonce"),
+		CreatedAt:         now.AddDate(0, 0, -45),
+	}
+	require.NoError(t, tokenRepo.Create(ctx, token))
+	tokenIDBytes, _ := token.ID.MarshalBinary()
+
+	cutoff := now.AddDate(0, 0, -30)
+
+	t.Run("DryRun", func(t *testing.T) {
+		count, err := repo.HardDelete(ctx, cutoff, true)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+
+		// Verify key still exists
+		var exists bool
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_keys WHERE id = ?)", key3IDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+
+		// Verify token still exists
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_tokens WHERE id = ?)", tokenIDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+	})
+
+	t.Run("ActualDelete", func(t *testing.T) {
+		count, err := repo.HardDelete(ctx, cutoff, false)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+
+		// Verify key3 is gone
+		var exists bool
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_keys WHERE id = ?)", key3IDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.False(t, exists)
+
+		// Verify token for key3 is gone
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_tokens WHERE id = ?)", tokenIDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.False(t, exists)
+
+		// Verify key1 and key2 still exist
+		key1IDBytes, _ := key1.ID.MarshalBinary()
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_keys WHERE id = ?)", key1IDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM tokenization_keys WHERE id = ?)", key2IDBytes).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+	})
+}

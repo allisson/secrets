@@ -912,3 +912,89 @@ func TestPostgreSQLTransitKeyRepository_ListCursor_EmptyResult(t *testing.T) {
 	assert.NotNil(t, keys)
 	assert.Len(t, keys, 0)
 }
+
+func TestPostgreSQLTransitKeyRepository_HardDelete(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTransitKeyRepository(db)
+	ctx := context.Background()
+
+	dekID := createTestDek(t, db)
+
+	// Create keys:
+	// 1. Not deleted
+	// 2. Deleted 10 days ago
+	// 3. Deleted 40 days ago
+
+	now := time.Now().UTC()
+	tenDaysAgo := now.AddDate(0, 0, -10)
+	fortyDaysAgo := now.AddDate(0, 0, -40)
+
+	key1 := &transitDomain.TransitKey{
+		ID:        uuid.Must(uuid.NewV7()),
+		Name:      "active-key",
+		Version:   1,
+		DekID:     dekID,
+		CreatedAt: now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key1))
+
+	key2 := &transitDomain.TransitKey{
+		ID:        uuid.Must(uuid.NewV7()),
+		Name:      "deleted-recent",
+		Version:   1,
+		DekID:     dekID,
+		CreatedAt: now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key2))
+	_, err := db.ExecContext(ctx, "UPDATE transit_keys SET deleted_at = $1 WHERE id = $2", tenDaysAgo, key2.ID)
+	require.NoError(t, err)
+
+	key3 := &transitDomain.TransitKey{
+		ID:        uuid.Must(uuid.NewV7()),
+		Name:      "deleted-old",
+		Version:   1,
+		DekID:     dekID,
+		CreatedAt: now.AddDate(0, 0, -50),
+	}
+	require.NoError(t, repo.Create(ctx, key3))
+	_, err = db.ExecContext(ctx, "UPDATE transit_keys SET deleted_at = $1 WHERE id = $2", fortyDaysAgo, key3.ID)
+	require.NoError(t, err)
+
+	cutoff := now.AddDate(0, 0, -30)
+
+	t.Run("DryRun", func(t *testing.T) {
+		count, err := repo.HardDelete(ctx, cutoff, true)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+
+		// Verify key still exists
+		var exists bool
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM transit_keys WHERE id = $1)", key3.ID).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+	})
+
+	t.Run("ActualDelete", func(t *testing.T) {
+		count, err := repo.HardDelete(ctx, cutoff, false)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+
+		// Verify key3 is gone
+		var exists bool
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM transit_keys WHERE id = $1)", key3.ID).Scan(&exists)
+		require.NoError(t, err)
+		assert.False(t, exists)
+
+		// Verify key1 and key2 still exist
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM transit_keys WHERE id = $1)", key1.ID).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+
+		err = db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM transit_keys WHERE id = $1)", key2.ID).Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists)
+	})
+}

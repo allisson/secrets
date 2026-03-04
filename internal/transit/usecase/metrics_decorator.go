@@ -140,3 +140,23 @@ func (t *transitKeyUseCaseWithMetrics) ListCursor(
 
 	return keys, err
 }
+
+// PurgeDeleted records metrics for transit key purge operations.
+func (t *transitKeyUseCaseWithMetrics) PurgeDeleted(
+	ctx context.Context,
+	olderThanDays int,
+	dryRun bool,
+) (int64, error) {
+	start := time.Now()
+	count, err := t.next.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "transit", "transit_key_purge", status)
+	t.metrics.RecordDuration(ctx, "transit", "transit_key_purge", time.Since(start), status)
+
+	return count, err
+}

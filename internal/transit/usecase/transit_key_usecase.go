@@ -286,6 +286,16 @@ func (t *transitKeyUseCase) ListCursor(
 	return t.transitRepo.ListCursor(ctx, afterName, limit)
 }
 
+// PurgeDeleted permanently removes soft-deleted transit keys older than specified days.
+func (t *transitKeyUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error) {
+	if olderThanDays < 0 {
+		return 0, apperrors.New("olderThanDays must be a positive number")
+	}
+
+	olderThan := time.Now().UTC().AddDate(0, 0, -olderThanDays)
+	return t.transitRepo.HardDelete(ctx, olderThan, dryRun)
+}
+
 // NewTransitKeyUseCase creates a new TransitKeyUseCase with injected dependencies.
 func NewTransitKeyUseCase(
 	txManager database.TxManager,

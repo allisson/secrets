@@ -232,6 +232,21 @@ func (t *tokenizationKeyUseCase) ListCursor(
 	return keys, nil
 }
 
+// PurgeDeleted permanently removes soft-deleted tokenization keys older than specified days.
+// It also removes all tokens associated with those keys.
+func (t *tokenizationKeyUseCase) PurgeDeleted(
+	ctx context.Context,
+	olderThanDays int,
+	dryRun bool,
+) (int64, error) {
+	if olderThanDays < 0 {
+		return 0, apperrors.New("olderThanDays must be a positive number")
+	}
+
+	olderThan := time.Now().UTC().AddDate(0, 0, -olderThanDays)
+	return t.tokenizationKeyRepo.HardDelete(ctx, olderThan, dryRun)
+}
+
 // NewTokenizationKeyUseCase creates a new tokenization key use case instance.
 func NewTokenizationKeyUseCase(
 	txManager database.TxManager,
