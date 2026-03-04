@@ -1327,3 +1327,138 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
 	})
 }
+
+// TestTransitKeyUseCase_PurgeDeleted tests the PurgeDeleted method of transitKeyUseCase.
+func TestTransitKeyUseCase_PurgeDeleted(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_PurgeDeletedKeys", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedDeletedCount := int64(5)
+
+		// Setup expectations
+		mockTransitRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedDeletedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, count)
+	})
+
+	t.Run("Success_PurgeDeletedKeys_DryRun", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := true
+		expectedDeletedCount := int64(10)
+
+		// Setup expectations
+		mockTransitRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedDeletedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, count)
+	})
+
+	t.Run("Error_InvalidOlderThanDays", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		olderThanDays := -1
+		dryRun := false
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Contains(t, err.Error(), "olderThanDays must be a positive number")
+	})
+	t.Run("Error_HardDeleteFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedError := errors.New("database error")
+
+		// Setup expectations
+		mockTransitRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(int64(0), expectedError).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Equal(t, expectedError, err)
+	})
+}

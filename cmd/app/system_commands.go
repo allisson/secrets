@@ -154,6 +154,96 @@ func getSystemCommands(version string) []*cli.Command {
 			},
 		},
 		{
+			Name:  "purge-transit-keys",
+			Usage: "Permanently delete soft-deleted transit keys older than specified days",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:    "days",
+					Aliases: []string{"d"},
+					Value:   30,
+					Usage:   "Delete transit keys soft-deleted more than this many days ago",
+				},
+				&cli.BoolFlag{
+					Name:    "dry-run",
+					Aliases: []string{"n"},
+					Value:   false,
+					Usage:   "Show how many transit keys would be deleted without deleting",
+				},
+				&cli.StringFlag{
+					Name:    "format",
+					Aliases: []string{"f"},
+					Value:   "text",
+					Usage:   "Output format: 'text' or 'json'",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						transitUseCase, err := container.TransitKeyUseCase(ctx)
+						if err != nil {
+							return err
+						}
+
+						return commands.RunPurgeTransitKeys(
+							ctx,
+							transitUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
+				)
+			},
+		},
+		{
+			Name:  "purge-tokenization-keys",
+			Usage: "Permanently delete soft-deleted tokenization keys and associated tokens older than specified days",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:    "days",
+					Aliases: []string{"d"},
+					Value:   30,
+					Usage:   "Delete tokenization keys soft-deleted more than this many days ago",
+				},
+				&cli.BoolFlag{
+					Name:    "dry-run",
+					Aliases: []string{"n"},
+					Value:   false,
+					Usage:   "Show how many tokenization keys would be deleted without deleting",
+				},
+				&cli.StringFlag{
+					Name:    "format",
+					Aliases: []string{"f"},
+					Value:   "text",
+					Usage:   "Output format: 'text' or 'json'",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						tokenizationUseCase, err := container.TokenizationKeyUseCase(ctx)
+						if err != nil {
+							return err
+						}
+
+						return commands.RunPurgeTokenizationKeys(
+							ctx,
+							tokenizationUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
+				)
+			},
+		},
+		{
 			Name:  "verify-audit-logs",
 			Usage: "Verify cryptographic integrity of audit logs",
 			Flags: []cli.Flag{

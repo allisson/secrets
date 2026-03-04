@@ -327,6 +327,51 @@ func (p *PostgreSQLTokenizationKeyRepository) ListCursor(
 	return keys, nil
 }
 
+// HardDelete permanently removes soft-deleted tokenization keys and their associated tokens.
+func (p *PostgreSQLTokenizationKeyRepository) HardDelete(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	if dryRun {
+		query := `SELECT COUNT(*) FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < $1`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count tokenization keys for hard delete")
+		}
+		return count, nil
+	}
+
+	// Delete associated tokens first
+	//nolint:gosec // false positive: this is a SQL query, not a credential
+	deleteTokensQuery := `
+		DELETE FROM tokenization_tokens 
+		WHERE tokenization_key_id IN (
+			SELECT id FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < $1
+		)`
+	_, err := querier.ExecContext(ctx, deleteTokensQuery, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to delete associated tokens")
+	}
+
+	// Delete keys
+	deleteKeysQuery := `DELETE FROM tokenization_keys WHERE deleted_at IS NOT NULL AND deleted_at < $1`
+	result, err := querier.ExecContext(ctx, deleteKeysQuery, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to hard delete tokenization keys")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get rows affected for hard delete")
+	}
+
+	return count, nil
+}
+
 // NewPostgreSQLTokenizationKeyRepository creates a new PostgreSQL tokenization key repository instance.
 func NewPostgreSQLTokenizationKeyRepository(db *sql.DB) *PostgreSQLTokenizationKeyRepository {
 	return &PostgreSQLTokenizationKeyRepository{db: db}

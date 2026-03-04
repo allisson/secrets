@@ -595,6 +595,40 @@ Requirements:
 - Database must be reachable and migrated
 - Use `--dry-run` before deletion in production environments
 
+### `purge-transit-keys`
+
+Permanently deletes soft-deleted transit keys older than a specified number of days. This operation is **irreversible** and any data encrypted with these keys will become permanently inaccessible.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete transit keys soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+./bin/app purge-transit-keys --days 30 --dry-run
+./bin/app purge-transit-keys --days 90 --format json
+```
+
+### `purge-tokenization-keys`
+
+Permanently deletes soft-deleted tokenization keys and all of their associated tokens older than a specified number of days. This operation is **irreversible** and any tokens generated with these keys will be permanently deleted.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete tokenization keys soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count of keys without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+./bin/app purge-tokenization-keys --days 30 --dry-run
+./bin/app purge-tokenization-keys --days 90 --format json
+```
+
 ## See also
 
 - [Docker getting started](getting-started/docker.md)

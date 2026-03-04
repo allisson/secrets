@@ -39,6 +39,13 @@ type TokenizationKeyRepository interface {
 		afterName *string,
 		limit int,
 	) ([]*tokenizationDomain.TokenizationKey, error)
+
+	// HardDelete permanently removes soft-deleted tokenization keys older than the specified time.
+	// It must also cascade the deletion to any associated tokens in the tokenization_tokens table.
+	// Only affects keys where deleted_at IS NOT NULL.
+	// If dryRun is true, returns count of keys without performing deletion.
+	// Returns the number of keys that were (or would be) deleted.
+	HardDelete(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)
 }
 
 // TokenRepository defines the interface for token mapping persistence.
@@ -93,6 +100,12 @@ type TokenizationKeyUseCase interface {
 		afterName *string,
 		limit int,
 	) ([]*tokenizationDomain.TokenizationKey, error)
+
+	// PurgeDeleted permanently removes soft-deleted tokenization keys older than specified days.
+	// It also removes all tokens associated with those keys.
+	// If dryRun is true, returns count of keys without performing deletion.
+	// Returns the number of keys that were (or would be) deleted.
+	PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error)
 }
 
 // TokenizationUseCase defines the interface for token generation and management operations.

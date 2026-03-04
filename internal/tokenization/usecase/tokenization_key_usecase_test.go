@@ -606,3 +606,150 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to delete tokenization key")
 	})
 }
+
+// TestTokenizationKeyUseCase_PurgeDeleted tests the PurgeDeleted method.
+func TestTokenizationKeyUseCase_PurgeDeleted(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_PurgeDeletedKeys", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedDeletedCount := int64(5)
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedDeletedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, count)
+	})
+
+	t.Run("Success_PurgeDeletedKeys_DryRun", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := true
+		expectedDeletedCount := int64(10)
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(expectedDeletedCount, nil).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedDeletedCount, count)
+	})
+
+	t.Run("Error_InvalidOlderThanDays", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		olderThanDays := -1
+		dryRun := false
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.Contains(t, err.Error(), "olderThanDays must be a positive number")
+	})
+	t.Run("Error_HardDeleteFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		olderThanDays := 30
+		dryRun := false
+		expectedError := errors.New("database error")
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
+			Return(int64(0), expectedError).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
+		assert.True(t, errors.Is(err, expectedError))
+	})
+}

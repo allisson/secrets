@@ -6,6 +6,7 @@ package mocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/allisson/secrets/internal/crypto/domain"
 	domain0 "github.com/allisson/secrets/internal/transit/domain"
@@ -444,6 +445,78 @@ func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) Return(transitKey *
 }
 
 func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain0.TransitKey, error)) *MockTransitKeyRepository_GetByNameAndVersion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HardDelete provides a mock function for the type MockTransitKeyRepository
+func (_mock *MockTransitKeyRepository) HardDelete(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error) {
+	ret := _mock.Called(ctx, olderThan, dryRun)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HardDelete")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, bool) (int64, error)); ok {
+		return returnFunc(ctx, olderThan, dryRun)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, bool) int64); ok {
+		r0 = returnFunc(ctx, olderThan, dryRun)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time, bool) error); ok {
+		r1 = returnFunc(ctx, olderThan, dryRun)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTransitKeyRepository_HardDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HardDelete'
+type MockTransitKeyRepository_HardDelete_Call struct {
+	*mock.Call
+}
+
+// HardDelete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - olderThan time.Time
+//   - dryRun bool
+func (_e *MockTransitKeyRepository_Expecter) HardDelete(ctx interface{}, olderThan interface{}, dryRun interface{}) *MockTransitKeyRepository_HardDelete_Call {
+	return &MockTransitKeyRepository_HardDelete_Call{Call: _e.mock.On("HardDelete", ctx, olderThan, dryRun)}
+}
+
+func (_c *MockTransitKeyRepository_HardDelete_Call) Run(run func(ctx context.Context, olderThan time.Time, dryRun bool)) *MockTransitKeyRepository_HardDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 bool
+		if args[2] != nil {
+			arg2 = args[2].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_HardDelete_Call) Return(n int64, err error) *MockTransitKeyRepository_HardDelete_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_HardDelete_Call) RunAndReturn(run func(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error)) *MockTransitKeyRepository_HardDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -898,6 +971,78 @@ func (_c *MockTransitKeyUseCase_ListCursor_Call) Return(transitKeys []*domain0.T
 }
 
 func (_c *MockTransitKeyUseCase_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterName *string, limit int) ([]*domain0.TransitKey, error)) *MockTransitKeyUseCase_ListCursor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PurgeDeleted provides a mock function for the type MockTransitKeyUseCase
+func (_mock *MockTransitKeyUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error) {
+	ret := _mock.Called(ctx, olderThanDays, dryRun)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PurgeDeleted")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, bool) (int64, error)); ok {
+		return returnFunc(ctx, olderThanDays, dryRun)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, bool) int64); ok {
+		r0 = returnFunc(ctx, olderThanDays, dryRun)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, bool) error); ok {
+		r1 = returnFunc(ctx, olderThanDays, dryRun)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTransitKeyUseCase_PurgeDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PurgeDeleted'
+type MockTransitKeyUseCase_PurgeDeleted_Call struct {
+	*mock.Call
+}
+
+// PurgeDeleted is a helper method to define mock.On call
+//   - ctx context.Context
+//   - olderThanDays int
+//   - dryRun bool
+func (_e *MockTransitKeyUseCase_Expecter) PurgeDeleted(ctx interface{}, olderThanDays interface{}, dryRun interface{}) *MockTransitKeyUseCase_PurgeDeleted_Call {
+	return &MockTransitKeyUseCase_PurgeDeleted_Call{Call: _e.mock.On("PurgeDeleted", ctx, olderThanDays, dryRun)}
+}
+
+func (_c *MockTransitKeyUseCase_PurgeDeleted_Call) Run(run func(ctx context.Context, olderThanDays int, dryRun bool)) *MockTransitKeyUseCase_PurgeDeleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 bool
+		if args[2] != nil {
+			arg2 = args[2].(bool)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_PurgeDeleted_Call) Return(n int64, err error) *MockTransitKeyUseCase_PurgeDeleted_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_PurgeDeleted_Call) RunAndReturn(run func(ctx context.Context, olderThanDays int, dryRun bool) (int64, error)) *MockTransitKeyUseCase_PurgeDeleted_Call {
 	_c.Call.Return(run)
 	return _c
 }

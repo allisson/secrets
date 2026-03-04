@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -311,6 +312,38 @@ func (m *MySQLTransitKeyRepository) ListCursor(
 	}
 
 	return transitKeys, nil
+}
+
+// HardDelete permanently removes soft-deleted transit keys older than the specified time.
+func (m *MySQLTransitKeyRepository) HardDelete(
+	ctx context.Context,
+	olderThan time.Time,
+	dryRun bool,
+) (int64, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	if dryRun {
+		query := `SELECT COUNT(*) FROM transit_keys WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+		var count int64
+		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
+		if err != nil {
+			return 0, apperrors.Wrap(err, "failed to count transit keys for hard delete")
+		}
+		return count, nil
+	}
+
+	query := `DELETE FROM transit_keys WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to hard delete transit keys")
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to get rows affected for hard delete")
+	}
+
+	return count, nil
 }
 
 // NewMySQLTransitKeyRepository creates a new MySQL transit key repository instance.
