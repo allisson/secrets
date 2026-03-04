@@ -199,25 +199,35 @@ func (h *ClientHandler) UnlockHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.MapClientToResponse(client))
 }
 
-// ListHandler retrieves clients with pagination support.
-// GET /v1/clients?offset=0&limit=50 - Requires ReadCapability on path /v1/clients.
-// Returns 200 OK with paginated client list.
+// ListHandler retrieves clients with cursor-based pagination support.
+// GET /v1/clients?after_id=<uuid>&limit=50 - Requires ReadCapability on path /v1/clients.
+// Returns 200 OK with paginated client list ordered by ID descending. Uses cursor pagination
+// with after_id parameter.
 func (h *ClientHandler) ListHandler(c *gin.Context) {
-	// Parse offset and limit query parameters
-	offset, limit, err := httputil.ParsePagination(c)
+	// Parse cursor and limit query parameters
+	afterID, limit, err := httputil.ParseUUIDCursorPagination(c, "after_id")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
-	// Call use case
-	clients, err := h.clientUseCase.List(c.Request.Context(), offset, limit)
+	// Call use case with limit + 1 to detect if there are more results
+	clients, err := h.clientUseCase.ListCursor(c.Request.Context(), afterID, limit+1)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
+	// Determine if there are more results and set next cursor
+	var nextCursor *string
+	if len(clients) > limit {
+		// More results exist, use the last visible item's ID as cursor
+		clients = clients[:limit]
+		cursorValue := clients[len(clients)-1].ID.String()
+		nextCursor = &cursorValue
+	}
+
 	// Map to response
-	response := dto.MapClientsToListResponse(clients)
+	response := dto.MapClientsToListResponse(clients, nextCursor)
 	c.JSON(http.StatusOK, response)
 }

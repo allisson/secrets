@@ -98,8 +98,60 @@ Example response (`200 OK`):
 
 ### List and Delete Keys
 
-- `GET /v1/tokenization/keys` (Capability: `read`)
-- `DELETE /v1/tokenization/keys/:id` (Capability: `delete`)
+#### List Tokenization Keys
+
+- **Endpoint**: `GET /v1/tokenization/keys`
+- **Capability**: `read`
+- **Query Params**:
+  - `after_name` (optional) - Cursor for pagination. Omit for first page.
+  - `limit` (default 50, max 1000) - Number of items per page.
+- **Success**: `200 OK`
+
+```bash
+# First page
+curl "http://localhost:8080/v1/tokenization/keys?limit=50" \
+  -H "Authorization: Bearer <token>"
+
+# Subsequent pages (use next_cursor from previous response)
+curl "http://localhost:8080/v1/tokenization/keys?after_name=payment-tokens&limit=50" \
+  -H "Authorization: Bearer <token>"
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "data": [
+    {
+      "id": "0194f4c1-82de-7f9a-c2b3-9def1a7bc5d8",
+      "name": "customer-ids",
+      "algorithm": "uuid_v7",
+      "is_deterministic": true,
+      "version": 2,
+      "created_at": "2026-02-27T20:10:00Z",
+      "updated_at": "2026-02-28T10:30:00Z"
+    },
+    {
+      "id": "0194f4d3-a5bc-7e2f-d8a1-4bef2c9ad7e1",
+      "name": "payment-tokens",
+      "algorithm": "luhn_preserving",
+      "is_deterministic": false,
+      "version": 1,
+      "created_at": "2026-02-27T21:45:00Z",
+      "updated_at": "2026-02-27T21:45:00Z"
+    }
+  ],
+  "next_cursor": "payment-tokens"
+}
+```
+
+**Note**: The `next_cursor` field is only present when there are more pages available.
+
+#### Delete Tokenization Key
+
+- **Endpoint**: `DELETE /v1/tokenization/keys/:name`
+- **Capability**: `delete`
+- **Success**: `204 No Content`
 
 ## Deterministic Tokenization
 

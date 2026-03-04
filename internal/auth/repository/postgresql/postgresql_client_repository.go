@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -126,21 +127,35 @@ func (p *PostgreSQLClientRepository) Get(
 	return &client, nil
 }
 
-// List retrieves clients ordered by ID descending with pagination support. Uses transaction
-// support via database.GetTx(). Returns empty slice if no clients found, or an error if
-// policy unmarshaling or database query fails.
-func (p *PostgreSQLClientRepository) List(
+// ListCursor retrieves clients ordered by ID descending (newest first) with cursor-based pagination. If afterID is provided,
+// returns clients with ID less than afterID (for DESC ordering). Uses transaction support via database.GetTx().
+// Returns empty slice if no clients found, or an error if policy unmarshaling or database query fails.
+// Limit is pre-validated (1-1000).
+func (p *PostgreSQLClientRepository) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 ) ([]*authDomain.Client, error) {
 	querier := database.GetTx(ctx, p.db)
 
+	// Build query with optional cursor
 	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at
-			  FROM clients
-			  ORDER BY id DESC
-			  LIMIT $1 OFFSET $2`
+			  FROM clients`
 
-	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	var args []interface{}
+	paramIndex := 1
+
+	// Add cursor condition if provided (use < for DESC ordering)
+	if afterID != nil {
+		query += fmt.Sprintf(" WHERE id < $%d", paramIndex)
+		args = append(args, *afterID)
+		paramIndex++
+	}
+
+	query += fmt.Sprintf(" ORDER BY id DESC LIMIT $%d", paramIndex)
+	args = append(args, limit)
+
+	rows, err := querier.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list clients")
 	}

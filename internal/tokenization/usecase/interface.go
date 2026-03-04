@@ -30,9 +30,15 @@ type TokenizationKeyRepository interface {
 		version uint,
 	) (*tokenizationDomain.TokenizationKey, error)
 
-	// List retrieves tokenization keys ordered by name ascending with pagination.
-	// Returns the latest version for each key.
-	List(ctx context.Context, offset, limit int) ([]*tokenizationDomain.TokenizationKey, error)
+	// ListCursor retrieves tokenization keys ordered by name ascending with cursor-based pagination.
+	// If afterName is provided, returns keys with name greater than afterName (ASC order).
+	// Returns the latest version for each key. Filters out soft-deleted keys.
+	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
+	ListCursor(
+		ctx context.Context,
+		afterName *string,
+		limit int,
+	) ([]*tokenizationDomain.TokenizationKey, error)
 }
 
 // TokenRepository defines the interface for token mapping persistence.
@@ -78,9 +84,15 @@ type TokenizationKeyUseCase interface {
 	// Delete soft deletes a tokenization key and all its versions by key ID.
 	Delete(ctx context.Context, keyID uuid.UUID) error
 
-	// List retrieves tokenization keys ordered by name ascending with pagination.
-	// Returns the latest version for each key.
-	List(ctx context.Context, offset, limit int) ([]*tokenizationDomain.TokenizationKey, error)
+	// ListCursor retrieves tokenization keys ordered by name ascending with cursor-based pagination.
+	// If afterName is provided, returns keys with name greater than afterName (ASC order).
+	// Returns the latest version for each key. Filters out soft-deleted keys.
+	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
+	ListCursor(
+		ctx context.Context,
+		afterName *string,
+		limit int,
+	) ([]*tokenizationDomain.TokenizationKey, error)
 }
 
 // TokenizationUseCase defines the interface for token generation and management operations.

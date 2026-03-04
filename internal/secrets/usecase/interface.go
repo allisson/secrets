@@ -36,9 +36,11 @@ type SecretRepository interface {
 	// GetByPathAndVersion retrieves a specific version of a secret. Returns ErrSecretNotFound if not found.
 	GetByPathAndVersion(ctx context.Context, path string, version uint) (*secretsDomain.Secret, error)
 
-	// List retrieves secrets ordered by path ascending with pagination.
-	// Returns the latest version for each secret. Uses offset and limit for pagination.
-	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
+	// ListCursor retrieves secrets ordered by path ascending with cursor-based pagination.
+	// If afterPath is provided, returns secrets with path greater than afterPath (ASC order).
+	// Returns the latest version for each secret. Filters out soft-deleted secrets.
+	// Returns empty slice if no secrets found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterPath *string, limit int) ([]*secretsDomain.Secret, error)
 
 	// HardDelete permanently removes soft-deleted secrets older than the specified time.
 	// Only affects secrets where deleted_at IS NOT NULL.
@@ -69,9 +71,11 @@ type SecretUseCase interface {
 	// Preserves encrypted data for audit purposes while preventing future access.
 	Delete(ctx context.Context, path string) error
 
-	// List retrieves secrets without their values, ordered by path with pagination.
-	// Returns empty slice if no secrets found.
-	List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error)
+	// ListCursor retrieves secrets ordered by path ascending with cursor-based pagination.
+	// If afterPath is provided, returns secrets with path greater than afterPath (ASC order).
+	// Returns secrets without their values. Filters out soft-deleted secrets.
+	// Returns empty slice if no secrets found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterPath *string, limit int) ([]*secretsDomain.Secret, error)
 
 	// PurgeDeleted permanently removes soft-deleted secrets older than specified days.
 	// If dryRun is true, returns count without performing deletion.

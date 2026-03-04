@@ -159,14 +159,15 @@ func (m *MySQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*authD
 	return &auditLog, nil
 }
 
-// List retrieves audit logs ordered by created_at descending (newest first) with pagination
-// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional filters
-// (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps are expected
-// in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
-// returning nil map for those entries. UUIDs are stored as BINARY(16) and must be unmarshaled.
-func (m *MySQLAuditLogRepository) List(
+// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
+// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
+// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
+// returning nil map for those entries. UUIDs are stored as BINARY(16) and must be unmarshaled. Limit is pre-validated (1-1000).
+func (m *MySQLAuditLogRepository) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
 	querier := database.GetTx(ctx, m.db)
@@ -174,6 +175,16 @@ func (m *MySQLAuditLogRepository) List(
 	// Build dynamic WHERE clause based on provided filters
 	var conditions []string
 	var args []interface{}
+
+	// Add cursor condition if provided (UUIDv7 is time-ordered, use > for forward pagination)
+	if afterID != nil {
+		afterIDBinary, err := afterID.MarshalBinary()
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to marshal afterID to binary")
+		}
+		conditions = append(conditions, "id > ?")
+		args = append(args, afterIDBinary)
+	}
 
 	if createdAtFrom != nil {
 		conditions = append(conditions, "created_at >= ?")
@@ -193,10 +204,10 @@ func (m *MySQLAuditLogRepository) List(
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	query += " ORDER BY created_at DESC LIMIT ?"
 
-	// Add limit and offset to args
-	args = append(args, limit, offset)
+	// Add limit to args
+	args = append(args, limit)
 
 	rows, err := querier.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -134,11 +134,92 @@ else
 fi
 ```
 
-## 5) Audit logs query
+## 5) List audit logs (cursor pagination)
 
 ```bash
-curl "$BASE_URL/v1/audit-logs?limit=50&offset=0" \
+# First page (no cursor)
+curl "$BASE_URL/v1/audit-logs?limit=50" \
   -H "Authorization: Bearer $TOKEN"
+
+# Response (abbreviated)
+# {
+#   "data": [
+#     {
+#       "id": "01936c8e-7f2a-7b3c-9d4e-5f6a7b8c9d0e",
+#       "client_id": "01936c8e-1234-5678-9abc-def012345678",
+#       "action": "secret.read",
+#       "resource_type": "secret",
+#       "resource_path": "/app/prod/api-key",
+#       "created_at": "2026-03-03T10:30:00Z"
+#     }
+#   ],
+#   "next_cursor": "01936c8e-7f2a-7b3c-9d4e-5f6a7b8c9d0e"
+# }
+
+# Subsequent page (with after_id cursor)
+curl "$BASE_URL/v1/audit-logs?limit=50&after_id=01936c8e-7f2a-7b3c-9d4e-5f6a7b8c9d0e" \
+  -H "Authorization: Bearer $TOKEN"
+
+# When no more pages exist, next_cursor is omitted from response
+```
+
+## 5.1) List clients (cursor pagination)
+
+```bash
+# First page (no cursor)
+curl "$BASE_URL/v1/clients?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Response (abbreviated)
+# {
+#   "data": [
+#     {
+#       "id": "01936c8e-1234-5678-9abc-def012345678",
+#       "name": "production-app",
+#       "description": "Main production application",
+#       "is_active": true,
+#       "created_at": "2026-03-01T08:00:00Z"
+#     }
+#   ],
+#   "next_cursor": "01936c8e-1234-5678-9abc-def012345678"
+# }
+
+# Subsequent page (with after_id cursor)
+curl "$BASE_URL/v1/clients?limit=50&after_id=01936c8e-1234-5678-9abc-def012345678" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 5.2) List secrets (cursor pagination)
+
+```bash
+# First page (no cursor)
+curl "$BASE_URL/v1/secrets?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Response (abbreviated)
+# {
+#   "data": [
+#     {
+#       "path": "/app/dev/database-url",
+#       "version": 3,
+#       "created_at": "2026-03-02T14:20:00Z",
+#       "updated_at": "2026-03-03T09:15:00Z"
+#     },
+#     {
+#       "path": "/app/prod/api-key",
+#       "version": 1,
+#       "created_at": "2026-03-03T10:00:00Z",
+#       "updated_at": "2026-03-03T10:00:00Z"
+#     }
+#   ],
+#   "next_cursor": "/app/prod/api-key"
+# }
+
+# Subsequent page (with after_path cursor)
+curl "$BASE_URL/v1/secrets?limit=50&after_path=/app/prod/api-key" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Note: Secrets use path-based cursor (after_path) instead of UUID cursor
 ```
 
 ## 6) Tokenization quick flow
@@ -175,6 +256,78 @@ Deterministic caveat:
 - Identical plaintext tokenized with the same active key version will return the same token.
 - Prefer non-deterministic mode unless you explicitly need equality matching.
 
+## 6.1) List tokenization keys (cursor pagination)
+
+```bash
+# First page (no cursor)
+curl "$BASE_URL/v1/tokenization/keys?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Response (abbreviated)
+# {
+#   "data": [
+#     {
+#       "name": "payment-cards",
+#       "format_type": "luhn-preserving",
+#       "is_deterministic": true,
+#       "algorithm": "aes-gcm",
+#       "current_version": 1,
+#       "created_at": "2026-03-03T10:00:00Z"
+#     },
+#     {
+#       "name": "ssn-tokens",
+#       "format_type": "numeric",
+#       "is_deterministic": false,
+#       "algorithm": "aes-gcm",
+#       "current_version": 2,
+#       "created_at": "2026-03-02T15:30:00Z"
+#     }
+#   ],
+#   "next_cursor": "ssn-tokens"
+# }
+
+# Subsequent page (with after_name cursor)
+curl "$BASE_URL/v1/tokenization/keys?limit=50&after_name=ssn-tokens" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Note: Tokenization keys use name-based cursor (after_name)
+```
+
+## 6.2) List transit keys (cursor pagination)
+
+```bash
+# First page (no cursor)
+curl "$BASE_URL/v1/transit/keys?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Response (abbreviated)
+# {
+#   "data": [
+#     {
+#       "name": "encryption-key",
+#       "algorithm": "aes-gcm",
+#       "current_version": 1,
+#       "min_decryption_version": 1,
+#       "created_at": "2026-03-01T12:00:00Z"
+#     },
+#     {
+#       "name": "pii",
+#       "algorithm": "aes-gcm",
+#       "current_version": 3,
+#       "min_decryption_version": 1,
+#       "created_at": "2026-03-02T08:30:00Z"
+#     }
+#   ],
+#   "next_cursor": "pii"
+# }
+
+# Subsequent page (with after_name cursor)
+curl "$BASE_URL/v1/transit/keys?limit=50&after_name=pii" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Note: Transit keys use name-based cursor (after_name)
+```
+
 ## Common Mistakes
 
 - Sending raw plaintext instead of base64 in `value`/`plaintext`
@@ -183,6 +336,7 @@ Deterministic caveat:
 - Using create repeatedly for same transit key name instead of rotate after `409`
 - Sending token in URL path for tokenization lifecycle endpoints (the API expects token in JSON body)
 - Ignoring `429` and retrying immediately instead of honoring `Retry-After`
+- Using offset-based pagination parameters (removed in v1.0.0 - use cursor-based pagination instead)
 
 ## See also
 

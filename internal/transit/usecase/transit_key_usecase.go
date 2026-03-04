@@ -277,12 +277,13 @@ func (t *transitKeyUseCase) Decrypt(
 	}, nil
 }
 
-// List retrieves transit keys ordered by name ascending with pagination.
-func (t *transitKeyUseCase) List(
+// ListCursor retrieves transit keys ordered by name ascending with cursor pagination.
+func (t *transitKeyUseCase) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterName *string,
+	limit int,
 ) ([]*transitDomain.TransitKey, error) {
-	return t.transitRepo.List(ctx, offset, limit)
+	return t.transitRepo.ListCursor(ctx, afterName, limit)
 }
 
 // NewTransitKeyUseCase creates a new TransitKeyUseCase with injected dependencies.

@@ -79,12 +79,13 @@ func (m *mockAuditLogUseCase) Create(
 	return args.Error(0)
 }
 
-func (m *mockAuditLogUseCase) List(
+func (m *mockAuditLogUseCase) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
-	args := m.Called(ctx, offset, limit, createdAtFrom, createdAtTo)
+	args := m.Called(ctx, afterID, limit, createdAtFrom, createdAtTo)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

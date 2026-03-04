@@ -95,12 +95,13 @@ func (s *secretUseCaseWithMetrics) Delete(ctx context.Context, path string) erro
 }
 
 // List records metrics for secret listing operations.
-func (s *secretUseCaseWithMetrics) List(
+func (s *secretUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterPath *string,
+	limit int,
 ) ([]*secretsDomain.Secret, error) {
 	start := time.Now()
-	secrets, err := s.next.List(ctx, offset, limit)
+	secrets, err := s.next.ListCursor(ctx, afterPath, limit)
 
 	status := "success"
 	if err != nil {

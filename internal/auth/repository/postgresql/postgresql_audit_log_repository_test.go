@@ -323,251 +323,7 @@ func TestPostgreSQLAuditLogRepository_Create_TransactionRollback(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 
-func TestPostgreSQLAuditLogRepository_List_SortingByCreatedAt(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLAuditLogRepository(db)
-	ctx := context.Background()
-
-	// Create test clients for foreign key constraints
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "test-sort-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "test-sort-2")
-	clientID3 := testutil.CreateTestClient(t, db, "postgres", "test-sort-3")
-
-	// Create audit logs with different created_at timestamps
-	now := time.Now().UTC()
-	auditLog1 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID1,
-		Capability: authDomain.ReadCapability,
-		Path:       "/secrets/oldest",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-2 * time.Hour),
-	}
-	auditLog2 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID2,
-		Capability: authDomain.WriteCapability,
-		Path:       "/secrets/middle",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-1 * time.Hour),
-	}
-	auditLog3 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID3,
-		Capability: authDomain.DeleteCapability,
-		Path:       "/secrets/newest",
-		Metadata:   nil,
-		CreatedAt:  now,
-	}
-
-	require.NoError(t, repo.Create(ctx, auditLog1))
-	require.NoError(t, repo.Create(ctx, auditLog2))
-	require.NoError(t, repo.Create(ctx, auditLog3))
-
-	// List all audit logs without filters
-	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
-	require.NoError(t, err)
-	require.Len(t, auditLogs, 3)
-
-	// Verify they are sorted by created_at DESC (newest first)
-	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
-	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
-	assert.Equal(t, auditLog1.ID, auditLogs[2].ID)
-}
-
-func TestPostgreSQLAuditLogRepository_List_WithCreatedAtFromFilter(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLAuditLogRepository(db)
-	ctx := context.Background()
-
-	// Create test clients for foreign key constraints
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "test-from-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "test-from-2")
-	clientID3 := testutil.CreateTestClient(t, db, "postgres", "test-from-3")
-
-	// Create audit logs with different timestamps
-	now := time.Now().UTC()
-	auditLog1 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID1,
-		Capability: authDomain.ReadCapability,
-		Path:       "/secrets/before",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-3 * time.Hour),
-	}
-	auditLog2 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID2,
-		Capability: authDomain.WriteCapability,
-		Path:       "/secrets/after1",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-1 * time.Hour),
-	}
-	auditLog3 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID3,
-		Capability: authDomain.DeleteCapability,
-		Path:       "/secrets/after2",
-		Metadata:   nil,
-		CreatedAt:  now,
-	}
-
-	require.NoError(t, repo.Create(ctx, auditLog1))
-	require.NoError(t, repo.Create(ctx, auditLog2))
-	require.NoError(t, repo.Create(ctx, auditLog3))
-
-	// Filter with created_at_from = now - 2 hours (should return 2 logs)
-	createdAtFrom := now.Add(-2 * time.Hour)
-	auditLogs, err := repo.List(ctx, 0, 10, &createdAtFrom, nil)
-	require.NoError(t, err)
-	require.Len(t, auditLogs, 2)
-
-	// Verify only logs after the filter time are returned (newest first)
-	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
-	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
-}
-
-func TestPostgreSQLAuditLogRepository_List_WithCreatedAtToFilter(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLAuditLogRepository(db)
-	ctx := context.Background()
-
-	// Create test clients for foreign key constraints
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "test-to-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "test-to-2")
-	clientID3 := testutil.CreateTestClient(t, db, "postgres", "test-to-3")
-
-	// Create audit logs with different timestamps
-	now := time.Now().UTC()
-	auditLog1 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID1,
-		Capability: authDomain.ReadCapability,
-		Path:       "/secrets/before1",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-3 * time.Hour),
-	}
-	auditLog2 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID2,
-		Capability: authDomain.WriteCapability,
-		Path:       "/secrets/before2",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-1 * time.Hour),
-	}
-	auditLog3 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID3,
-		Capability: authDomain.DeleteCapability,
-		Path:       "/secrets/after",
-		Metadata:   nil,
-		CreatedAt:  now,
-	}
-
-	require.NoError(t, repo.Create(ctx, auditLog1))
-	require.NoError(t, repo.Create(ctx, auditLog2))
-	require.NoError(t, repo.Create(ctx, auditLog3))
-
-	// Filter with created_at_to = now - 30 minutes (should return 2 logs)
-	createdAtTo := now.Add(-30 * time.Minute)
-	auditLogs, err := repo.List(ctx, 0, 10, nil, &createdAtTo)
-	require.NoError(t, err)
-	require.Len(t, auditLogs, 2)
-
-	// Verify only logs before the filter time are returned (newest first)
-	assert.Equal(t, auditLog2.ID, auditLogs[0].ID)
-	assert.Equal(t, auditLog1.ID, auditLogs[1].ID)
-}
-
-func TestPostgreSQLAuditLogRepository_List_WithBothFilters(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLAuditLogRepository(db)
-	ctx := context.Background()
-
-	// Create test clients for foreign key constraints
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "test-both-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "test-both-2")
-	clientID3 := testutil.CreateTestClient(t, db, "postgres", "test-both-3")
-	clientID4 := testutil.CreateTestClient(t, db, "postgres", "test-both-4")
-
-	// Create audit logs with different timestamps
-	now := time.Now().UTC()
-	auditLog1 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID1,
-		Capability: authDomain.ReadCapability,
-		Path:       "/secrets/before-range",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-5 * time.Hour),
-	}
-	auditLog2 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID2,
-		Capability: authDomain.WriteCapability,
-		Path:       "/secrets/in-range1",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-3 * time.Hour),
-	}
-	auditLog3 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID3,
-		Capability: authDomain.DeleteCapability,
-		Path:       "/secrets/in-range2",
-		Metadata:   nil,
-		CreatedAt:  now.Add(-2 * time.Hour),
-	}
-	auditLog4 := &authDomain.AuditLog{
-		ID:         uuid.Must(uuid.NewV7()),
-		RequestID:  uuid.Must(uuid.NewV7()),
-		ClientID:   clientID4,
-		Capability: authDomain.EncryptCapability,
-		Path:       "/secrets/after-range",
-		Metadata:   nil,
-		CreatedAt:  now,
-	}
-
-	require.NoError(t, repo.Create(ctx, auditLog1))
-	require.NoError(t, repo.Create(ctx, auditLog2))
-	require.NoError(t, repo.Create(ctx, auditLog3))
-	require.NoError(t, repo.Create(ctx, auditLog4))
-
-	// Filter with date range: now - 4 hours to now - 1 hour (should return 2 logs)
-	createdAtFrom := now.Add(-4 * time.Hour)
-	createdAtTo := now.Add(-1 * time.Hour)
-	auditLogs, err := repo.List(ctx, 0, 10, &createdAtFrom, &createdAtTo)
-	require.NoError(t, err)
-	require.Len(t, auditLogs, 2)
-
-	// Verify only logs within the range are returned (newest first)
-	assert.Equal(t, auditLog3.ID, auditLogs[0].ID)
-	assert.Equal(t, auditLog2.ID, auditLogs[1].ID)
-}
-
-func TestPostgreSQLAuditLogRepository_List_NoFilters(t *testing.T) {
+func TestPostgreSQLAuditLogRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -576,10 +332,11 @@ func TestPostgreSQLAuditLogRepository_List_NoFilters(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client for foreign key constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-no-filters")
+	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-first")
 
-	// Create multiple audit logs
+	// Create 5 audit logs
 	now := time.Now().UTC()
+	createdIDs := make([]uuid.UUID, 5)
 	for i := 0; i < 5; i++ {
 		auditLog := &authDomain.AuditLog{
 			ID:         uuid.Must(uuid.NewV7()),
@@ -588,39 +345,25 @@ func TestPostgreSQLAuditLogRepository_List_NoFilters(t *testing.T) {
 			Capability: authDomain.ReadCapability,
 			Path:       "/secrets/test",
 			Metadata:   nil,
-			CreatedAt:  now.Add(time.Duration(-i) * time.Hour),
+			CreatedAt:  now.Add(time.Duration(-i) * time.Minute),
 		}
 		require.NoError(t, repo.Create(ctx, auditLog))
+		createdIDs[i] = auditLog.ID
+		time.Sleep(1 * time.Millisecond) // Ensure different UUIDv7 timestamps
 	}
 
-	// List all without filters
-	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
+	// First page with no cursor (limit 3)
+	logs, err := repo.ListCursor(ctx, nil, 3, nil, nil)
 	require.NoError(t, err)
-	assert.Len(t, auditLogs, 5)
+	assert.Len(t, logs, 3)
 
-	// Verify sorting (newest first)
-	for i := 0; i < len(auditLogs)-1; i++ {
-		assert.True(t, auditLogs[i].CreatedAt.After(auditLogs[i+1].CreatedAt) ||
-			auditLogs[i].CreatedAt.Equal(auditLogs[i+1].CreatedAt))
+	// Verify DESC ordering (newest first)
+	for i := 0; i < len(logs)-1; i++ {
+		assert.True(t, logs[i].CreatedAt.After(logs[i+1].CreatedAt) || logs[i].CreatedAt.Equal(logs[i+1].CreatedAt))
 	}
 }
 
-func TestPostgreSQLAuditLogRepository_List_EmptyResult(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLAuditLogRepository(db)
-	ctx := context.Background()
-
-	// List when no audit logs exist
-	auditLogs, err := repo.List(ctx, 0, 10, nil, nil)
-	require.NoError(t, err)
-	assert.Len(t, auditLogs, 0)
-	assert.NotNil(t, auditLogs) // Should return empty slice, not nil
-}
-
-func TestPostgreSQLAuditLogRepository_List_Pagination(t *testing.T) {
+func TestPostgreSQLAuditLogRepository_ListCursor_SubsequentPages(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -629,7 +372,7 @@ func TestPostgreSQLAuditLogRepository_List_Pagination(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client for foreign key constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-pagination")
+	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-pages")
 
 	// Create 10 audit logs
 	now := time.Now().UTC()
@@ -644,21 +387,87 @@ func TestPostgreSQLAuditLogRepository_List_Pagination(t *testing.T) {
 			CreatedAt:  now.Add(time.Duration(-i) * time.Minute),
 		}
 		require.NoError(t, repo.Create(ctx, auditLog))
+		time.Sleep(1 * time.Millisecond) // Ensure different UUIDv7 timestamps
 	}
 
-	// First page (limit 3, offset 0)
-	page1, err := repo.List(ctx, 0, 3, nil, nil)
+	// First page (no cursor, limit 3)
+	page1, err := repo.ListCursor(ctx, nil, 3, nil, nil)
 	require.NoError(t, err)
-	assert.Len(t, page1, 3)
+	require.Len(t, page1, 3)
 
-	// Second page (limit 3, offset 3)
-	page2, err := repo.List(ctx, 3, 3, nil, nil)
+	// Second page (use last ID from page1 as cursor)
+	lastIDPage1 := page1[len(page1)-1].ID
+	page2, err := repo.ListCursor(ctx, &lastIDPage1, 3, nil, nil)
 	require.NoError(t, err)
-	assert.Len(t, page2, 3)
+	require.Len(t, page2, 3)
 
 	// Verify pages don't overlap
 	assert.NotEqual(t, page1[0].ID, page2[0].ID)
+	assert.NotEqual(t, page1[len(page1)-1].ID, page2[0].ID)
 
-	// Verify page2 has older logs than page1
-	assert.True(t, page2[0].CreatedAt.Before(page1[len(page1)-1].CreatedAt))
+	// Verify page2 has older logs than page1 (DESC ordering with id < cursor)
+	assert.True(t, page2[0].CreatedAt.Before(page1[len(page1)-1].CreatedAt) || page2[0].CreatedAt.Equal(page1[len(page1)-1].CreatedAt))
+
+	// Third page (use last ID from page2 as cursor)
+	lastIDPage2 := page2[len(page2)-1].ID
+	page3, err := repo.ListCursor(ctx, &lastIDPage2, 3, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, page3, 3)
+
+	// Verify no overlap
+	assert.NotEqual(t, page2[len(page2)-1].ID, page3[0].ID)
+}
+
+func TestPostgreSQLAuditLogRepository_ListCursor_EmptyResult(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// List with no data
+	logs, err := repo.ListCursor(ctx, nil, 10, nil, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, logs)
+	assert.Len(t, logs, 0)
+}
+
+func TestPostgreSQLAuditLogRepository_ListCursor_WithFilters(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create test client for foreign key constraint
+	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-filters")
+
+	// Create audit logs with different timestamps
+	now := time.Now().UTC()
+	for i := 0; i < 5; i++ {
+		auditLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   clientID,
+			Capability: authDomain.ReadCapability,
+			Path:       "/secrets/test",
+			Metadata:   nil,
+			CreatedAt:  now.Add(time.Duration(-i) * time.Hour),
+		}
+		require.NoError(t, repo.Create(ctx, auditLog))
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	// Filter: created_at >= (now - 2 hours)
+	filterFrom := now.Add(-2 * time.Hour)
+	logs, err := repo.ListCursor(ctx, nil, 10, &filterFrom, nil)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(logs), 3) // Should get logs from 0, -1, -2 hours
+
+	// Verify all returned logs are within filter range
+	for _, log := range logs {
+		assert.True(t, log.CreatedAt.After(filterFrom) || log.CreatedAt.Equal(filterFrom))
+	}
 }

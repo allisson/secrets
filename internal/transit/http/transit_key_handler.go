@@ -141,25 +141,35 @@ func (h *TransitKeyHandler) DeleteHandler(c *gin.Context) {
 	c.Data(http.StatusNoContent, "application/json", nil)
 }
 
-// ListHandler retrieves transit keys with pagination support.
-// GET /v1/transit/keys?offset=0&limit=50 - Requires ReadCapability.
-// Returns 200 OK with paginated transit key list.
+// ListHandler retrieves transit keys with cursor-based pagination support.
+// GET /v1/transit/keys?after_name=key-name&limit=50 - Requires ReadCapability.
+// Returns 200 OK with paginated transit key list ordered by name ascending.
+// Uses cursor pagination with after_name parameter.
 func (h *TransitKeyHandler) ListHandler(c *gin.Context) {
-	// Parse offset and limit query parameters
-	offset, limit, err := httputil.ParsePagination(c)
+	// Parse cursor and limit query parameters
+	afterName, limit, err := httputil.ParseStringCursorPagination(c, "after_name")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
-	// Call use case
-	transitKeys, err := h.transitKeyUseCase.List(c.Request.Context(), offset, limit)
+	// Call use case with limit + 1 to detect if there are more results
+	transitKeys, err := h.transitKeyUseCase.ListCursor(c.Request.Context(), afterName, limit+1)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
+	// Determine if there are more results and set next cursor
+	var nextCursor *string
+	if len(transitKeys) > limit {
+		// More results exist, use the last visible item's name as cursor
+		transitKeys = transitKeys[:limit]
+		cursorValue := transitKeys[len(transitKeys)-1].Name
+		nextCursor = &cursorValue
+	}
+
 	// Map to response
-	response := dto.MapTransitKeysToListResponse(transitKeys)
+	response := dto.MapTransitKeysToListResponse(transitKeys, nextCursor)
 	c.JSON(http.StatusOK, response)
 }

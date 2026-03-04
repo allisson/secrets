@@ -192,6 +192,87 @@ func (p *PostgreSQLSecretRepository) List(
 	return secrets, nil
 }
 
+// ListCursor retrieves secrets ordered by path ascending using cursor-based pagination.
+func (p *PostgreSQLSecretRepository) ListCursor(
+	ctx context.Context,
+	afterPath *string,
+	limit int,
+) ([]*secretsDomain.Secret, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	var query string
+	var args []interface{}
+
+	if afterPath == nil {
+		// First page: no cursor
+		query = `
+			SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
+			FROM secrets s
+			INNER JOIN (
+				SELECT path, MAX(version) as max_version
+				FROM secrets
+				WHERE deleted_at IS NULL
+				GROUP BY path
+				ORDER BY path ASC
+				LIMIT $1
+			) latest ON s.path = latest.path AND s.version = latest.max_version
+			ORDER BY s.path ASC`
+		args = []interface{}{limit}
+	} else {
+		// Subsequent pages: use cursor (path > afterPath)
+		query = `
+			SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
+			FROM secrets s
+			INNER JOIN (
+				SELECT path, MAX(version) as max_version
+				FROM secrets
+				WHERE deleted_at IS NULL AND path > $1
+				GROUP BY path
+				ORDER BY path ASC
+				LIMIT $2
+			) latest ON s.path = latest.path AND s.version = latest.max_version
+			ORDER BY s.path ASC`
+		args = []interface{}{*afterPath, limit}
+	}
+
+	rows, err := querier.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list secrets with cursor")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var secrets []*secretsDomain.Secret
+	for rows.Next() {
+		var secret secretsDomain.Secret
+		err := rows.Scan(
+			&secret.ID,
+			&secret.Path,
+			&secret.Version,
+			&secret.DekID,
+			&secret.Ciphertext,
+			&secret.Nonce,
+			&secret.CreatedAt,
+			&secret.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan secret")
+		}
+		secrets = append(secrets, &secret)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating secrets")
+	}
+
+	if secrets == nil {
+		secrets = make([]*secretsDomain.Secret, 0)
+	}
+
+	return secrets, nil
+}
+
 // HardDelete permanently removes soft-deleted secrets older than the specified time.
 // Only affects secrets where deleted_at IS NOT NULL.
 // If dryRun is true, returns count without performing deletion.

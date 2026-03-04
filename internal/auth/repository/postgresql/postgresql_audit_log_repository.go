@@ -107,14 +107,15 @@ func (p *PostgreSQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*
 	return &auditLog, nil
 }
 
-// List retrieves audit logs ordered by created_at descending (newest first) with pagination
-// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional filters
-// (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps are expected
-// in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
-// returning nil map for those entries.
-func (p *PostgreSQLAuditLogRepository) List(
+// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
+// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
+// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
+// returning nil map for those entries. Limit is pre-validated (1-1000).
+func (p *PostgreSQLAuditLogRepository) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
 	querier := database.GetTx(ctx, p.db)
@@ -123,6 +124,13 @@ func (p *PostgreSQLAuditLogRepository) List(
 	var conditions []string
 	var args []interface{}
 	paramIndex := 1
+
+	// Add cursor condition if provided (UUIDv7 is time-ordered, use > for forward pagination)
+	if afterID != nil {
+		conditions = append(conditions, fmt.Sprintf("id > $%d", paramIndex))
+		args = append(args, *afterID)
+		paramIndex++
+	}
 
 	if createdAtFrom != nil {
 		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", paramIndex))
@@ -144,10 +152,10 @@ func (p *PostgreSQLAuditLogRepository) List(
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", paramIndex, paramIndex+1)
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", paramIndex)
 
-	// Add limit and offset to args
-	args = append(args, limit, offset)
+	// Add limit to args
+	args = append(args, limit)
 
 	rows, err := querier.QueryContext(ctx, query, args...)
 	if err != nil {

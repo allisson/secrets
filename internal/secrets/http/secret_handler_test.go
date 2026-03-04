@@ -483,7 +483,7 @@ func TestSecretHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 100).
+			ListCursor(mock.Anything, (*string)(nil), 101).
 			Return(expectedSecrets, nil).
 			Once()
 
@@ -503,16 +503,18 @@ func TestSecretHandler_ListHandler(t *testing.T) {
 
 	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
 		t.Parallel()
-		handler, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*string)(nil), 51).
+			Return([]*secretsDomain.Secret{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/secrets?offset=invalid", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }

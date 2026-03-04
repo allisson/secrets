@@ -240,6 +240,93 @@ func (p *PostgreSQLTokenizationKeyRepository) List(
 	return keys, nil
 }
 
+// ListCursor retrieves tokenization keys ordered by name ascending using cursor-based pagination.
+// Returns the latest version for each key.
+func (p *PostgreSQLTokenizationKeyRepository) ListCursor(
+	ctx context.Context,
+	afterName *string,
+	limit int,
+) ([]*tokenizationDomain.TokenizationKey, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	var query string
+	var args []interface{}
+
+	if afterName == nil {
+		// First page: no cursor
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
+			FROM tokenization_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM tokenization_keys
+				WHERE deleted_at IS NULL
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT $1
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{limit}
+	} else {
+		// Subsequent pages: use cursor (name > afterName)
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
+			FROM tokenization_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM tokenization_keys
+				WHERE deleted_at IS NULL AND name > $1
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT $2
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{*afterName, limit}
+	}
+
+	rows, err := querier.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list tokenization keys with cursor")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var keys []*tokenizationDomain.TokenizationKey
+	for rows.Next() {
+		var key tokenizationDomain.TokenizationKey
+		var formatType string
+
+		err := rows.Scan(
+			&key.ID,
+			&key.Name,
+			&key.Version,
+			&formatType,
+			&key.IsDeterministic,
+			&key.Salt,
+			&key.DekID,
+			&key.CreatedAt,
+			&key.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan tokenization key")
+		}
+
+		key.FormatType = tokenizationDomain.FormatType(formatType)
+		keys = append(keys, &key)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating tokenization keys")
+	}
+
+	if keys == nil {
+		keys = make([]*tokenizationDomain.TokenizationKey, 0)
+	}
+
+	return keys, nil
+}
+
 // NewPostgreSQLTokenizationKeyRepository creates a new PostgreSQL tokenization key repository instance.
 func NewPostgreSQLTokenizationKeyRepository(db *sql.DB) *PostgreSQLTokenizationKeyRepository {
 	return &PostgreSQLTokenizationKeyRepository{db: db}

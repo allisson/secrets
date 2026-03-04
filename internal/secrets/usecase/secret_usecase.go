@@ -192,9 +192,13 @@ func (s *secretUseCase) Delete(ctx context.Context, path string) error {
 	return s.secretRepo.Delete(ctx, path)
 }
 
-// List retrieves secrets without their values, ordered by path with pagination.
-func (s *secretUseCase) List(ctx context.Context, offset, limit int) ([]*secretsDomain.Secret, error) {
-	return s.secretRepo.List(ctx, offset, limit)
+// ListCursor retrieves secrets without their values, ordered by path with cursor pagination.
+func (s *secretUseCase) ListCursor(
+	ctx context.Context,
+	afterPath *string,
+	limit int,
+) ([]*secretsDomain.Secret, error) {
+	return s.secretRepo.ListCursor(ctx, afterPath, limit)
 }
 
 // PurgeDeleted permanently removes soft-deleted secrets older than specified days.

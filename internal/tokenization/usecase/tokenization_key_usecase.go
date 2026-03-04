@@ -219,12 +219,13 @@ func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) er
 	return nil
 }
 
-// List retrieves tokenization keys ordered by name ascending with pagination.
-func (t *tokenizationKeyUseCase) List(
+// ListCursor retrieves tokenization keys ordered by name ascending with cursor pagination.
+func (t *tokenizationKeyUseCase) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterName *string,
+	limit int,
 ) ([]*tokenizationDomain.TokenizationKey, error) {
-	keys, err := t.tokenizationKeyRepo.List(ctx, offset, limit)
+	keys, err := t.tokenizationKeyRepo.ListCursor(ctx, afterName, limit)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list tokenization keys")
 	}

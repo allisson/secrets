@@ -79,13 +79,44 @@ Example response (`200 OK`):
 
 - **Endpoint**: `GET /v1/secrets`
 - **Capability**: `read`
-- **Query Params**: `offset` (default 0), `limit` (default 50)
+- **Query Params**:
+  - `after_path` (optional) - Cursor for pagination. Omit for first page.
+  - `limit` (default 50, max 1000) - Number of items per page.
 - **Success**: `200 OK` (Does not return secret values)
 
 ```bash
-curl "http://localhost:8080/v1/secrets?offset=0&limit=50" 
+# First page
+curl "http://localhost:8080/v1/secrets?limit=50" \
+  -H "Authorization: Bearer <token>"
+
+# Subsequent pages (use next_cursor from previous response)
+curl "http://localhost:8080/v1/secrets?after_path=app/prod/db&limit=50" \
   -H "Authorization: Bearer <token>"
 ```
+
+Example response (`200 OK`):
+
+```json
+{
+  "data": [
+    {
+      "id": "0194f4a5-73fe-7a7d-a3a0-6fbe9b5ef8f3",
+      "path": "app/prod/database-password",
+      "version": 3,
+      "created_at": "2026-02-27T18:22:00Z"
+    },
+    {
+      "id": "0194f4b2-91ab-7c3d-b5e1-8adc2f6ea4c9",
+      "path": "app/prod/redis-password",
+      "version": 1,
+      "created_at": "2026-02-27T19:15:00Z"
+    }
+  ],
+  "next_cursor": "app/prod/redis-password"
+}
+```
+
+**Note**: The `next_cursor` field is only present when there are more pages available. When it's absent, you've reached the last page.
 
 ### Delete Secret
 

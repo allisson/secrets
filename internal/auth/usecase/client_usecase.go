@@ -98,10 +98,15 @@ func (c *clientUseCase) Delete(ctx context.Context, clientID uuid.UUID) error {
 	return c.clientRepo.Update(ctx, client)
 }
 
-// List retrieves clients ordered by ID descending with pagination support.
-// Returns empty slice if no clients found.
-func (c *clientUseCase) List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error) {
-	return c.clientRepo.List(ctx, offset, limit)
+// ListCursor retrieves clients ordered by ID descending (newest first) with cursor-based pagination.
+// If afterID is provided, returns clients with ID less than afterID (DESC order).
+// Returns empty slice if no clients found. Limit is pre-validated (1-1000).
+func (c *clientUseCase) ListCursor(
+	ctx context.Context,
+	afterID *uuid.UUID,
+	limit int,
+) ([]*authDomain.Client, error) {
+	return c.clientRepo.ListCursor(ctx, afterID, limit)
 }
 
 // Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.

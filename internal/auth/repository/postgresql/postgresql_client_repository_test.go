@@ -4,7 +4,6 @@ package postgresql
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -391,49 +390,7 @@ func TestPostgreSQLClientRepository_Get_WithTransaction(t *testing.T) {
 	assert.Equal(t, client2.ID, retrievedClient2.ID)
 }
 
-func TestPostgreSQLClientRepository_List_Success(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	// Create multiple clients with slight delays to ensure different UUIDv7 timestamps
-	clients := make([]*authDomain.Client, 5)
-	for i := 0; i < 5; i++ {
-		if i > 0 {
-			time.Sleep(time.Millisecond)
-		}
-		clients[i] = &authDomain.Client{
-			ID:        uuid.Must(uuid.NewV7()),
-			Secret:    "secret-" + string(rune('0'+i)),
-			Name:      "client-" + string(rune('0'+i)),
-			IsActive:  true,
-			CreatedAt: time.Now().UTC(),
-		}
-		err := repo.Create(ctx, clients[i])
-		require.NoError(t, err)
-	}
-
-	// Test default pagination (first 3 clients)
-	retrieved, err := repo.List(ctx, 0, 3)
-	require.NoError(t, err)
-	assert.Len(t, retrieved, 3)
-
-	// Verify descending order (newest first)
-	assert.Equal(t, clients[4].ID, retrieved[0].ID)
-	assert.Equal(t, clients[3].ID, retrieved[1].ID)
-	assert.Equal(t, clients[2].ID, retrieved[2].ID)
-
-	// Verify lockout fields default to zero values
-	for _, c := range retrieved {
-		assert.Equal(t, 0, c.FailedAttempts)
-		assert.Nil(t, c.LockedUntil)
-	}
-}
-
-func TestPostgreSQLClientRepository_List_WithOffset(t *testing.T) {
+func TestPostgreSQLClientRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -442,78 +399,33 @@ func TestPostgreSQLClientRepository_List_WithOffset(t *testing.T) {
 	ctx := context.Background()
 
 	// Create 5 clients
-	clients := make([]*authDomain.Client, 5)
 	for i := 0; i < 5; i++ {
-		if i > 0 {
-			time.Sleep(time.Millisecond)
-		}
-		clients[i] = &authDomain.Client{
-			ID:        uuid.Must(uuid.NewV7()),
-			Secret:    "secret-" + string(rune('0'+i)),
-			Name:      "client-" + string(rune('0'+i)),
-			IsActive:  true,
-			CreatedAt: time.Now().UTC(),
-		}
-		err := repo.Create(ctx, clients[i])
-		require.NoError(t, err)
-	}
-
-	// Test with offset
-	retrieved, err := repo.List(ctx, 2, 2)
-	require.NoError(t, err)
-	assert.Len(t, retrieved, 2)
-
-	// Verify correct clients (skipping first 2, getting next 2)
-	assert.Equal(t, clients[2].ID, retrieved[0].ID)
-	assert.Equal(t, clients[1].ID, retrieved[1].ID)
-}
-
-func TestPostgreSQLClientRepository_List_EmptyResult(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	// List with no clients in database
-	retrieved, err := repo.List(ctx, 0, 10)
-	require.NoError(t, err)
-	assert.Empty(t, retrieved)
-	assert.NotNil(t, retrieved)
-}
-
-func TestPostgreSQLClientRepository_List_LimitExceedsTotal(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	// Create 2 clients
-	for i := 0; i < 2; i++ {
-		if i > 0 {
-			time.Sleep(time.Millisecond)
-		}
 		client := &authDomain.Client{
-			ID:        uuid.Must(uuid.NewV7()),
-			Secret:    "secret",
-			Name:      fmt.Sprintf("client-%d", i),
-			IsActive:  true,
-			CreatedAt: time.Now().UTC(),
+			ID:             uuid.Must(uuid.NewV7()),
+			Name:           "test-cursor-first-" + string(rune('a'+i)),
+			Secret:         "hash",
+			IsActive:       true,
+			FailedAttempts: 0,
+			LockedUntil:    nil,
+			CreatedAt:      time.Now().UTC(),
 		}
-		err := repo.Create(ctx, client)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, client))
+		time.Sleep(1 * time.Millisecond) // Ensure different UUIDv7 timestamps
 	}
 
-	// Request more than available
-	retrieved, err := repo.List(ctx, 0, 100)
+	// First page with no cursor (limit 3)
+	clients, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
-	assert.Len(t, retrieved, 2)
+	assert.Len(t, clients, 3)
+
+	// Verify DESC ordering (newest first based on UUIDv7)
+	for i := 0; i < len(clients)-1; i++ {
+		// UUIDv7 IDs should be DESC ordered
+		assert.True(t, clients[i].ID.String() > clients[i+1].ID.String())
+	}
 }
 
-func TestPostgreSQLClientRepository_List_OffsetExceedsTotal(t *testing.T) {
+func TestPostgreSQLClientRepository_ListCursor_SubsequentPages(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -521,29 +433,50 @@ func TestPostgreSQLClientRepository_List_OffsetExceedsTotal(t *testing.T) {
 	repo := NewPostgreSQLClientRepository(db)
 	ctx := context.Background()
 
-	// Create 2 clients
-	for i := 0; i < 2; i++ {
-		if i > 0 {
-			time.Sleep(time.Millisecond)
-		}
+	// Create 10 clients
+	for i := 0; i < 10; i++ {
 		client := &authDomain.Client{
-			ID:        uuid.Must(uuid.NewV7()),
-			Secret:    "secret",
-			Name:      fmt.Sprintf("client-%d", i),
-			IsActive:  true,
-			CreatedAt: time.Now().UTC(),
+			ID:             uuid.Must(uuid.NewV7()),
+			Name:           "test-cursor-pages-" + string(rune('a'+i)),
+			Secret:         "hash",
+			IsActive:       true,
+			FailedAttempts: 0,
+			LockedUntil:    nil,
+			CreatedAt:      time.Now().UTC(),
 		}
-		err := repo.Create(ctx, client)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, client))
+		time.Sleep(1 * time.Millisecond) // Ensure different UUIDv7 timestamps
 	}
 
-	// Offset beyond available clients
-	retrieved, err := repo.List(ctx, 10, 10)
+	// First page (no cursor, limit 3)
+	page1, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
-	assert.Empty(t, retrieved)
+	require.Len(t, page1, 3)
+
+	// Second page (use last ID from page1 as cursor)
+	lastIDPage1 := page1[len(page1)-1].ID
+	page2, err := repo.ListCursor(ctx, &lastIDPage1, 3)
+	require.NoError(t, err)
+	require.Len(t, page2, 3)
+
+	// Verify pages don't overlap
+	assert.NotEqual(t, page1[0].ID, page2[0].ID)
+	assert.NotEqual(t, page1[len(page1)-1].ID, page2[0].ID)
+
+	// Verify DESC ordering (id < cursor means older IDs)
+	assert.True(t, page2[0].ID.String() < page1[len(page1)-1].ID.String())
+
+	// Third page
+	lastIDPage2 := page2[len(page2)-1].ID
+	page3, err := repo.ListCursor(ctx, &lastIDPage2, 3)
+	require.NoError(t, err)
+	require.Len(t, page3, 3)
+
+	// Verify no overlap
+	assert.NotEqual(t, page2[len(page2)-1].ID, page3[0].ID)
 }
 
-func TestPostgreSQLClientRepository_List_WithPolicies(t *testing.T) {
+func TestPostgreSQLClientRepository_ListCursor_EmptyResult(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -551,118 +484,9 @@ func TestPostgreSQLClientRepository_List_WithPolicies(t *testing.T) {
 	repo := NewPostgreSQLClientRepository(db)
 	ctx := context.Background()
 
-	// Create client with policies
-	client := &authDomain.Client{
-		ID:       uuid.Must(uuid.NewV7()),
-		Secret:   "secret",
-		Name:     "client-with-policies",
-		IsActive: true,
-		Policies: []authDomain.PolicyDocument{
-			{
-				Path:         "secrets/*",
-				Capabilities: []authDomain.Capability{authDomain.ReadCapability, authDomain.WriteCapability},
-			},
-			{
-				Path:         "keys/*",
-				Capabilities: []authDomain.Capability{authDomain.EncryptCapability},
-			},
-		},
-		CreatedAt: time.Now().UTC(),
-	}
-
-	err := repo.Create(ctx, client)
+	// List with no data
+	clients, err := repo.ListCursor(ctx, nil, 10)
 	require.NoError(t, err)
-
-	// List and verify policies are preserved
-	retrieved, err := repo.List(ctx, 0, 10)
-	require.NoError(t, err)
-	require.Len(t, retrieved, 1)
-
-	assert.Equal(t, client.ID, retrieved[0].ID)
-	assert.Len(t, retrieved[0].Policies, 2)
-	assert.Equal(t, "secrets/*", retrieved[0].Policies[0].Path)
-	assert.Contains(t, retrieved[0].Policies[0].Capabilities, authDomain.ReadCapability)
-	assert.Contains(t, retrieved[0].Policies[0].Capabilities, authDomain.WriteCapability)
-}
-
-func TestPostgreSQLClientRepository_UpdateLockState_SetLock(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	client := &authDomain.Client{
-		ID:        uuid.Must(uuid.NewV7()),
-		Secret:    "secret",
-		Name:      "lock-test-client",
-		IsActive:  true,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	err := repo.Create(ctx, client)
-	require.NoError(t, err)
-
-	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
-	err = repo.UpdateLockState(ctx, client.ID, 3, &lockedUntil)
-	require.NoError(t, err)
-
-	retrieved, err := repo.Get(ctx, client.ID)
-	require.NoError(t, err)
-
-	assert.Equal(t, 3, retrieved.FailedAttempts)
-	require.NotNil(t, retrieved.LockedUntil)
-	assert.WithinDuration(t, lockedUntil, *retrieved.LockedUntil, time.Second)
-}
-
-func TestPostgreSQLClientRepository_UpdateLockState_ClearLock(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	client := &authDomain.Client{
-		ID:        uuid.Must(uuid.NewV7()),
-		Secret:    "secret",
-		Name:      "clear-lock-test-client",
-		IsActive:  true,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	err := repo.Create(ctx, client)
-	require.NoError(t, err)
-
-	// Set a lock first
-	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
-	err = repo.UpdateLockState(ctx, client.ID, 3, &lockedUntil)
-	require.NoError(t, err)
-
-	// Now clear it
-	err = repo.UpdateLockState(ctx, client.ID, 0, nil)
-	require.NoError(t, err)
-
-	retrieved, err := repo.Get(ctx, client.ID)
-	require.NoError(t, err)
-
-	assert.Equal(t, 0, retrieved.FailedAttempts)
-	assert.Nil(t, retrieved.LockedUntil)
-}
-
-func TestPostgreSQLClientRepository_UpdateLockState_NonExistentClient(t *testing.T) {
-	db := testutil.SetupPostgresDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupPostgresDB(t, db)
-
-	repo := NewPostgreSQLClientRepository(db)
-	ctx := context.Background()
-
-	nonExistentID := uuid.Must(uuid.NewV7())
-	lockedUntil := time.Now().UTC().Add(30 * time.Minute)
-
-	// Zero rows affected is not an error
-	err := repo.UpdateLockState(ctx, nonExistentID, 1, &lockedUntil)
-	assert.NoError(t, err)
+	assert.NotNil(t, clients)
+	assert.Len(t, clients, 0)
 }

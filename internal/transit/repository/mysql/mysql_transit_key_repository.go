@@ -222,6 +222,97 @@ func (m *MySQLTransitKeyRepository) List(
 	return transitKeys, nil
 }
 
+// ListCursor retrieves transit keys ordered by name ascending using cursor-based pagination.
+// Returns the latest version for each key.
+func (m *MySQLTransitKeyRepository) ListCursor(
+	ctx context.Context,
+	afterName *string,
+	limit int,
+) ([]*transitDomain.TransitKey, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	var query string
+	var args []interface{}
+
+	if afterName == nil {
+		// First page: no cursor
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at
+			FROM transit_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM transit_keys
+				WHERE deleted_at IS NULL
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT ?
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{limit}
+	} else {
+		// Subsequent pages: use cursor (name > afterName)
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at
+			FROM transit_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM transit_keys
+				WHERE deleted_at IS NULL AND name > ?
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT ?
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{*afterName, limit}
+	}
+
+	rows, err := querier.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list transit keys with cursor")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var transitKeys []*transitDomain.TransitKey
+	for rows.Next() {
+		var transitKey transitDomain.TransitKey
+		var id, dekID []byte
+
+		err := rows.Scan(
+			&id,
+			&transitKey.Name,
+			&transitKey.Version,
+			&dekID,
+			&transitKey.CreatedAt,
+			&transitKey.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan transit key")
+		}
+
+		if err := transitKey.ID.UnmarshalBinary(id); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal transit key id")
+		}
+
+		if err := transitKey.DekID.UnmarshalBinary(dekID); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+		}
+
+		transitKeys = append(transitKeys, &transitKey)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating transit keys")
+	}
+
+	if transitKeys == nil {
+		transitKeys = make([]*transitDomain.TransitKey, 0)
+	}
+
+	return transitKeys, nil
+}
+
 // NewMySQLTransitKeyRepository creates a new MySQL transit key repository instance.
 func NewMySQLTransitKeyRepository(db *sql.DB) *MySQLTransitKeyRepository {
 	return &MySQLTransitKeyRepository{db: db}

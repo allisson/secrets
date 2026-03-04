@@ -134,7 +134,7 @@ func TestMapClientsToListResponse(t *testing.T) {
 			},
 		}
 
-		response := MapClientsToListResponse(clients)
+		response := MapClientsToListResponse(clients, nil)
 
 		assert.Len(t, response.Data, 2)
 		assert.Equal(t, client1ID.String(), response.Data[0].ID)
@@ -143,15 +143,17 @@ func TestMapClientsToListResponse(t *testing.T) {
 		assert.Equal(t, client2ID.String(), response.Data[1].ID)
 		assert.Equal(t, "Client 2", response.Data[1].Name)
 		assert.False(t, response.Data[1].IsActive)
+		assert.Nil(t, response.NextCursor)
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
 		clients := []*authDomain.Client{}
 
-		response := MapClientsToListResponse(clients)
+		response := MapClientsToListResponse(clients, nil)
 
 		assert.NotNil(t, response.Data)
 		assert.Empty(t, response.Data)
+		assert.Nil(t, response.NextCursor)
 	})
 
 	t.Run("Success_SingleClient", func(t *testing.T) {
@@ -169,11 +171,35 @@ func TestMapClientsToListResponse(t *testing.T) {
 			},
 		}
 
-		response := MapClientsToListResponse(clients)
+		response := MapClientsToListResponse(clients, nil)
 
 		assert.Len(t, response.Data, 1)
 		assert.Equal(t, clientID.String(), response.Data[0].ID)
 		assert.Equal(t, "Single Client", response.Data[0].Name)
+		assert.Nil(t, response.NextCursor)
+	})
+
+	t.Run("Success_WithNextCursor", func(t *testing.T) {
+		now := time.Now().UTC()
+		clientID := uuid.Must(uuid.NewV7())
+		cursor := clientID.String()
+
+		clients := []*authDomain.Client{
+			{
+				ID:        clientID,
+				Secret:    "hashed_secret",
+				Name:      "Client With Cursor",
+				IsActive:  true,
+				Policies:  []authDomain.PolicyDocument{},
+				CreatedAt: now,
+			},
+		}
+
+		response := MapClientsToListResponse(clients, &cursor)
+
+		assert.Len(t, response.Data, 1)
+		assert.NotNil(t, response.NextCursor)
+		assert.Equal(t, cursor, *response.NextCursor)
 	})
 }
 
@@ -337,7 +363,7 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 			},
 		}
 
-		response := MapAuditLogsToListResponse(auditLogs)
+		response := MapAuditLogsToListResponse(auditLogs, nil)
 
 		assert.Len(t, response.Data, 2)
 		assert.Equal(t, id1.String(), response.Data[0].ID)
@@ -347,15 +373,17 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 		assert.NotNil(t, response.Data[0].Metadata)
 		assert.Equal(t, id2.String(), response.Data[1].ID)
 		assert.Nil(t, response.Data[1].Metadata)
+		assert.Nil(t, response.NextCursor)
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
 		auditLogs := []*authDomain.AuditLog{}
 
-		response := MapAuditLogsToListResponse(auditLogs)
+		response := MapAuditLogsToListResponse(auditLogs, nil)
 
 		assert.NotNil(t, response.Data)
 		assert.Empty(t, response.Data)
+		assert.Nil(t, response.NextCursor)
 	})
 
 	t.Run("Success_SingleAuditLog", func(t *testing.T) {
@@ -376,11 +404,38 @@ func TestMapAuditLogsToListResponse(t *testing.T) {
 			},
 		}
 
-		response := MapAuditLogsToListResponse(auditLogs)
+		response := MapAuditLogsToListResponse(auditLogs, nil)
 
 		assert.Len(t, response.Data, 1)
 		assert.Equal(t, id.String(), response.Data[0].ID)
 		assert.Equal(t, string(authDomain.EncryptCapability), response.Data[0].Capability)
 		assert.NotNil(t, response.Data[0].Metadata)
+		assert.Nil(t, response.NextCursor)
+	})
+
+	t.Run("Success_WithNextCursor", func(t *testing.T) {
+		now := time.Now().UTC()
+		id := uuid.Must(uuid.NewV7())
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := uuid.Must(uuid.NewV7())
+		cursor := id.String()
+
+		auditLogs := []*authDomain.AuditLog{
+			{
+				ID:         id,
+				RequestID:  requestID,
+				ClientID:   clientID,
+				Capability: authDomain.ReadCapability,
+				Path:       "/v1/audit-logs",
+				Metadata:   nil,
+				CreatedAt:  now,
+			},
+		}
+
+		response := MapAuditLogsToListResponse(auditLogs, &cursor)
+
+		assert.Len(t, response.Data, 1)
+		assert.NotNil(t, response.NextCursor)
+		assert.Equal(t, cursor, *response.NextCursor)
 	})
 }

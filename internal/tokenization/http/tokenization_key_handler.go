@@ -163,25 +163,35 @@ func (h *TokenizationKeyHandler) DeleteHandler(c *gin.Context) {
 	c.Data(http.StatusNoContent, "application/json", nil)
 }
 
-// ListHandler retrieves tokenization keys with pagination support.
-// GET /v1/tokenization/keys?offset=0&limit=50 - Requires ReadCapability.
-// Returns 200 OK with paginated tokenization key list.
+// ListHandler retrieves tokenization keys with cursor-based pagination support.
+// GET /v1/tokenization/keys?after_name=key-name&limit=50 - Requires ReadCapability.
+// Returns 200 OK with paginated tokenization key list ordered by name ascending.
+// Uses cursor pagination with after_name parameter.
 func (h *TokenizationKeyHandler) ListHandler(c *gin.Context) {
-	// Parse offset and limit query parameters
-	offset, limit, err := httputil.ParsePagination(c)
+	// Parse cursor and limit query parameters
+	afterName, limit, err := httputil.ParseStringCursorPagination(c, "after_name")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
-	// Call use case
-	keys, err := h.keyUseCase.List(c.Request.Context(), offset, limit)
+	// Call use case with limit + 1 to detect if there are more results
+	keys, err := h.keyUseCase.ListCursor(c.Request.Context(), afterName, limit+1)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
+	// Determine if there are more results and set next cursor
+	var nextCursor *string
+	if len(keys) > limit {
+		// More results exist, use the last visible item's name as cursor
+		keys = keys[:limit]
+		cursorValue := keys[len(keys)-1].Name
+		nextCursor = &cursorValue
+	}
+
 	// Map to response
-	response := dto.MapTokenizationKeysToListResponse(keys)
+	response := dto.MapTokenizationKeysToListResponse(keys, nextCursor)
 	c.JSON(http.StatusOK, response)
 }

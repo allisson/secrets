@@ -80,12 +80,13 @@ func (c *clientUseCaseWithMetrics) Get(ctx context.Context, clientID uuid.UUID) 
 }
 
 // List records metrics for client list operations.
-func (c *clientUseCaseWithMetrics) List(
+func (c *clientUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 ) ([]*authDomain.Client, error) {
 	start := time.Now()
-	clients, err := c.next.List(ctx, offset, limit)
+	clients, err := c.next.ListCursor(ctx, afterID, limit)
 
 	status := "success"
 	if err != nil {
@@ -220,13 +221,14 @@ func (a *auditLogUseCaseWithMetrics) Create(
 }
 
 // List records metrics for audit log list operations.
-func (a *auditLogUseCaseWithMetrics) List(
+func (a *auditLogUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
 	start := time.Now()
-	logs, err := a.next.List(ctx, offset, limit, createdAtFrom, createdAtTo)
+	logs, err := a.next.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo)
 
 	status := "success"
 	if err != nil {
