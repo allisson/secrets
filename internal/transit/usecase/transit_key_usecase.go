@@ -201,8 +201,9 @@ func (t *transitKeyUseCase) Encrypt(
 
 	// Combine ciphertext and nonce (nonce is prepended to ciphertext by AEAD)
 	// The AEAD Encrypt returns ciphertext with authentication tag, we need to store nonce separately
-	//nolint:gocritic // intentionally creating new slice with combined nonce and ciphertext
-	encryptedData := append(nonce, ciphertext...)
+	encryptedData := make([]byte, 0, len(nonce)+len(ciphertext))
+	encryptedData = append(encryptedData, nonce...)
+	encryptedData = append(encryptedData, ciphertext...)
 
 	return &transitDomain.EncryptedBlob{
 		Version:    transitKey.Version,
