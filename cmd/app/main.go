@@ -17,6 +17,11 @@ var (
 	commitSHA = "unknown" // Git commit SHA
 )
 
+// main is the primary entry point for the secrets CLI application.
+// It configures the version printer, initializes the CLI command tree,
+// and executes the requested command context. If the application encounters
+// a fatal error before the main logging subsystem is initialized, it falls
+// back to writing a JSON error payload directly to os.Stderr.
 func main() {
 	// Custom version printer to display build metadata
 	cli.VersionPrinter = func(cmd *cli.Command) {

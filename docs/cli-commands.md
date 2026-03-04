@@ -235,6 +235,304 @@ Master key rotation quick sequence:
 # remove old master key from MASTER_KEYS after verification
 ```
 
+## Transit
+
+### `purge-transit-keys`
+
+Permanently deletes soft-deleted transit keys older than a specified number of days. This operation is **irreversible** and any data encrypted with these keys will become permanently inaccessible.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete transit keys soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion) - see what would be deleted
+./bin/app purge-transit-keys --days 30 --dry-run
+
+# Execute deletion with default 30 days threshold
+./bin/app purge-transit-keys
+
+# Execute deletion with custom threshold
+./bin/app purge-transit-keys --days 90 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  purge-transit-keys --days 30 --dry-run --format json
+```
+
+Example text output:
+
+```text
+Successfully deleted 42 transit key(s) older than 30 day(s)
+```
+
+Example JSON output:
+
+```json
+{
+  "count": 42,
+  "days": 30,
+  "dry_run": false
+}
+```
+
+Important notes:
+
+- Only affects **soft-deleted** transit keys (where `deleted_at` is set)
+- Active transit keys are never touched
+- This operation is **irreversible** - any data encrypted with these keys will become permanently inaccessible
+- Always use `--dry-run` first to preview the impact
+- Recommended to run periodically as part of maintenance
+
+Requirements:
+
+- Database must be reachable and migrated
+- Use `--dry-run` before deletion in production environments
+
+## Tokenization
+
+### `create-tokenization-key`
+
+Creates a tokenization key with version `1`.
+
+Flags:
+
+- `--name`, `-n` (required): unique tokenization key name
+- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
+- `--deterministic`, `--det` (default `false`): generate deterministic tokens for identical plaintext
+- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
+
+Examples:
+
+```bash
+./bin/app create-tokenization-key \
+  --name payment-cards \
+  --format luhn-preserving \
+  --deterministic \
+  --algorithm aes-gcm
+
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  create-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm aes-gcm
+```
+
+### `rotate-tokenization-key`
+
+Creates a new version for an existing tokenization key.
+
+Flags:
+
+- `--name`, `-n` (required): tokenization key name to rotate
+- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
+- `--deterministic`, `--det` (default `false`)
+- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
+
+Examples:
+
+```bash
+./bin/app rotate-tokenization-key \
+  --name payment-cards \
+  --format luhn-preserving \
+  --deterministic \
+  --algorithm chacha20-poly1305
+
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  rotate-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm chacha20-poly1305
+```
+
+### `clean-expired-tokens`
+
+Deletes expired tokens older than a retention window.
+
+Flags:
+
+- `--days`, `-d` (required): delete tokens older than this many days
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion)
+./bin/app clean-expired-tokens --days 30 --dry-run --format json
+
+# Execute deletion
+./bin/app clean-expired-tokens --days 30 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  clean-expired-tokens --days 30 --dry-run --format json
+```
+
+### `purge-tokenization-keys`
+
+Permanently deletes soft-deleted tokenization keys and all of their associated tokens older than a specified number of days. This operation is **irreversible** and any tokens generated with these keys will be permanently deleted.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete tokenization keys soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count of keys without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion) - see what would be deleted
+./bin/app purge-tokenization-keys --days 30 --dry-run
+
+# Execute deletion with default 30 days threshold
+./bin/app purge-tokenization-keys
+
+# Execute deletion with custom threshold
+./bin/app purge-tokenization-keys --days 90 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  purge-tokenization-keys --days 30 --dry-run --format json
+```
+
+Example text output:
+
+```text
+Successfully deleted 42 tokenization key(s) older than 30 day(s)
+```
+
+Example JSON output:
+
+```json
+{
+  "count": 42,
+  "days": 30,
+  "dry_run": false
+}
+```
+
+Important notes:
+
+- Only affects **soft-deleted** tokenization keys (where `deleted_at` is set)
+- Active tokenization keys are never touched
+- This operation is **irreversible** - any tokens generated with these keys will be permanently deleted
+- Always use `--dry-run` first to preview the impact
+- Recommended to run periodically as part of maintenance
+
+Requirements:
+
+- Database must be reachable and migrated
+- Use `--dry-run` before deletion in production environments
+
+## Secrets
+
+### `purge-secrets`
+
+Permanently deletes soft-deleted secrets older than a specified number of days. This operation is **irreversible** and should be used with caution.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete secrets soft-deleted more than this many days ago
+- `--dry-run`, `-n` (default `false`): preview count without deleting
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Preview (no deletion) - see what would be deleted
+./bin/app purge-secrets --days 30 --dry-run
+
+# Execute deletion with default 30 days threshold
+./bin/app purge-secrets
+
+# Execute deletion with custom threshold
+./bin/app purge-secrets --days 90 --format text
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  purge-secrets --days 30 --dry-run --format json
+```
+
+Example text output:
+
+```text
+Successfully deleted 42 secret(s) older than 30 day(s)
+```
+
+Example JSON output:
+
+```json
+{
+  "count": 42,
+  "days": 30,
+  "dry_run": false
+}
+```
+
+Important notes:
+
+- Only affects **soft-deleted** secrets (where `deleted_at` is set)
+- Active secrets are never touched
+- This operation is **irreversible** - deleted data cannot be recovered
+- Always use `--dry-run` first to preview the impact
+- Recommended to run periodically as part of maintenance (e.g., monthly cron job)
+
+Requirements:
+
+- Database must be reachable and migrated
+- Use `--dry-run` before deletion in production environments
+
+## Client Management
+
+### `create-client`
+
+Creates an API client and returns `client_id` plus one-time `secret`.
+
+Flags:
+
+- `--name`, `-n` (required): client name
+- `--active`, `-a` (default `true`): whether client can authenticate immediately
+- `--policies`, `-p`: JSON array of policy documents (omit to use interactive mode)
+- `--format`, `-f`: `text` (default) or `json`
+
+Non-interactive example:
+
+```bash
+./bin/app create-client \
+  --name bootstrap-admin \
+  --active \
+  --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]' \
+  --format json
+```
+
+Interactive example:
+
+```bash
+./bin/app create-client --name bootstrap-admin
+```
+
+### `update-client`
+
+Updates client name, active state, and policies.
+
+Flags:
+
+- `--id`, `-i` (required): client UUID
+- `--name`, `-n` (required): client name
+- `--active`, `-a` (default `true`): whether client can authenticate
+- `--policies`, `-p`: JSON array of policy documents (omit to use interactive mode)
+- `--format`, `-f`: `text` (default) or `json`
+
+```bash
+./bin/app update-client \
+  --id <client-uuid> \
+  --name payments-api \
+  --active=true \
+  --policies '[{"path":"/v1/secrets/*","capabilities":["decrypt","encrypt"]}]' \
+  --format json
+```
+
+## Audit Logs
+
 ### `verify-audit-logs`
 
 Verifies cryptographic integrity of audit logs within a time range. Validates HMAC-SHA256 signatures against KEK-derived signing keys for tamper detection.
@@ -358,139 +656,6 @@ Notes:
 - Invalid signatures indicate potential tampering or KEK mismatch
 - Verification requires KEK IDs referenced in audit logs to exist in database
 
-## Tokenization
-
-### `create-tokenization-key`
-
-Creates a tokenization key with version `1`.
-
-Flags:
-
-- `--name`, `-n` (required): unique tokenization key name
-- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
-- `--deterministic`, `--det` (default `false`): generate deterministic tokens for identical plaintext
-- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
-
-Examples:
-
-```bash
-./bin/app create-tokenization-key \
-  --name payment-cards \
-  --format luhn-preserving \
-  --deterministic \
-  --algorithm aes-gcm
-
-docker run --rm --network secrets-net --env-file .env allisson/secrets \
-  create-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm aes-gcm
-```
-
-### `rotate-tokenization-key`
-
-Creates a new version for an existing tokenization key.
-
-Flags:
-
-- `--name`, `-n` (required): tokenization key name to rotate
-- `--format`, `--fmt`: `uuid` (default), `numeric`, `luhn-preserving`, or `alphanumeric`
-- `--deterministic`, `--det` (default `false`)
-- `--algorithm`, `--alg`: `aes-gcm` (default) or `chacha20-poly1305`
-
-Examples:
-
-```bash
-./bin/app rotate-tokenization-key \
-  --name payment-cards \
-  --format luhn-preserving \
-  --deterministic \
-  --algorithm chacha20-poly1305
-
-docker run --rm --network secrets-net --env-file .env allisson/secrets \
-  rotate-tokenization-key --name payment-cards --format luhn-preserving --deterministic --algorithm chacha20-poly1305
-```
-
-### `clean-expired-tokens`
-
-Deletes expired tokens older than a retention window.
-
-Flags:
-
-- `--days`, `-d` (required): delete tokens older than this many days
-- `--dry-run`, `-n` (default `false`): preview count without deleting
-- `--format`, `-f`: `text` (default) or `json`
-
-Examples:
-
-```bash
-# Preview (no deletion)
-./bin/app clean-expired-tokens --days 30 --dry-run --format json
-
-# Execute deletion
-./bin/app clean-expired-tokens --days 30 --format text
-
-# Docker form
-docker run --rm --network secrets-net --env-file .env allisson/secrets \
-  clean-expired-tokens --days 30 --dry-run --format json
-```
-
-## Client Management
-
-### `create-client`
-
-Creates an API client and returns `client_id` plus one-time `secret`.
-
-Flags:
-
-- `--name`, `-n` (required): client name
-- `--active`, `-a` (default `true`): whether client can authenticate immediately
-- `--policies`, `-p`: JSON array of policy documents (omit to use interactive mode)
-- `--format`, `-f`: `text` (default) or `json`
-
-Non-interactive example:
-
-```bash
-./bin/app create-client \
-  --name bootstrap-admin \
-  --active \
-  --policies '[{"path":"*","capabilities":["read","write","delete","encrypt","decrypt","rotate"]}]' \
-  --format json
-```
-
-Interactive example:
-
-```bash
-./bin/app create-client --name bootstrap-admin
-```
-
-### `update-client`
-
-Updates client name, active state, and policies.
-
-Flags:
-
-- `--id`, `-i` (required): client UUID
-- `--name`, `-n` (required): client name
-- `--active`, `-a` (default `true`): whether client can authenticate
-- `--policies`, `-p`: JSON array of policy documents (omit to use interactive mode)
-- `--format`, `-f`: `text` (default) or `json`
-
-```bash
-./bin/app update-client \
-  --id <client-uuid> \
-  --name payments-api \
-  --active=true \
-  --policies '[{"path":"/v1/secrets/*","capabilities":["decrypt","encrypt"]}]' \
-  --format json
-```
-
-## Output and Safety Notes
-
-- `create-client` secret is shown once and cannot be retrieved later
-- Prefer `--format json` for automation
-- Store client secrets in a secure secret manager
-- Use least-privilege policies per workload and path
-
-## Audit Log Maintenance
-
 ### `clean-audit-logs`
 
 Deletes audit logs older than a specified retention period.
@@ -537,97 +702,12 @@ Requirements:
 - Database must be reachable and migrated
 - Use `--dry-run` before deletion in production environments
 
-## Secret Maintenance
+## Output and Safety Notes
 
-### `purge-secrets`
-
-Permanently deletes soft-deleted secrets older than a specified number of days. This operation is **irreversible** and should be used with caution.
-
-Flags:
-
-- `--days`, `-d` (default `30`): delete secrets soft-deleted more than this many days ago
-- `--dry-run`, `-n` (default `false`): preview count without deleting
-- `--format`, `-f`: `text` (default) or `json`
-
-Examples:
-
-```bash
-# Preview (no deletion) - see what would be deleted
-./bin/app purge-secrets --days 30 --dry-run
-
-# Execute deletion with default 30 days threshold
-./bin/app purge-secrets
-
-# Execute deletion with custom threshold
-./bin/app purge-secrets --days 90 --format text
-
-# Docker form
-docker run --rm --network secrets-net --env-file .env allisson/secrets \
-  purge-secrets --days 30 --dry-run --format json
-```
-
-Example text output:
-
-```text
-Successfully deleted 42 secret(s) older than 30 day(s)
-```
-
-Example JSON output:
-
-```json
-{
-  "count": 42,
-  "days": 30,
-  "dry_run": false
-}
-```
-
-Important notes:
-
-- Only affects **soft-deleted** secrets (where `deleted_at` is set)
-- Active secrets are never touched
-- This operation is **irreversible** - deleted data cannot be recovered
-- Always use `--dry-run` first to preview the impact
-- Recommended to run periodically as part of maintenance (e.g., monthly cron job)
-
-Requirements:
-
-- Database must be reachable and migrated
-- Use `--dry-run` before deletion in production environments
-
-### `purge-transit-keys`
-
-Permanently deletes soft-deleted transit keys older than a specified number of days. This operation is **irreversible** and any data encrypted with these keys will become permanently inaccessible.
-
-Flags:
-
-- `--days`, `-d` (default `30`): delete transit keys soft-deleted more than this many days ago
-- `--dry-run`, `-n` (default `false`): preview count without deleting
-- `--format`, `-f`: `text` (default) or `json`
-
-Examples:
-
-```bash
-./bin/app purge-transit-keys --days 30 --dry-run
-./bin/app purge-transit-keys --days 90 --format json
-```
-
-### `purge-tokenization-keys`
-
-Permanently deletes soft-deleted tokenization keys and all of their associated tokens older than a specified number of days. This operation is **irreversible** and any tokens generated with these keys will be permanently deleted.
-
-Flags:
-
-- `--days`, `-d` (default `30`): delete tokenization keys soft-deleted more than this many days ago
-- `--dry-run`, `-n` (default `false`): preview count of keys without deleting
-- `--format`, `-f`: `text` (default) or `json`
-
-Examples:
-
-```bash
-./bin/app purge-tokenization-keys --days 30 --dry-run
-./bin/app purge-tokenization-keys --days 90 --format json
-```
+- `create-client` secret is shown once and cannot be retrieved later
+- Prefer `--format json` for automation
+- Store client secrets in a secure secret manager
+- Use least-privilege policies per workload and path
 
 ## See also
 
