@@ -59,4 +59,10 @@ var (
 		errors.ErrInvalidInput,
 		"tokenization key DEK ID cannot be nil",
 	)
+
+	// ErrTokenizationKeyCreatedAtInvalid indicates the creation timestamp is invalid (zero time).
+	ErrTokenizationKeyCreatedAtInvalid = errors.Wrap(
+		errors.ErrInvalidInput,
+		"tokenization key creation timestamp cannot be zero",
+	)
 )
