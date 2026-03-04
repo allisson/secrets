@@ -5,7 +5,6 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 	"time"
 
@@ -807,7 +806,7 @@ func createTestDek(t *testing.T, db *sql.DB) uuid.UUID {
 	return dekID
 }
 
-func TestPostgreSQLTransitKeyRepository_List(t *testing.T) {
+func TestPostgreSQLTransitKeyRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupPostgresDB(t, db)
@@ -815,49 +814,101 @@ func TestPostgreSQLTransitKeyRepository_List(t *testing.T) {
 	repo := NewPostgreSQLTransitKeyRepository(db)
 	ctx := context.Background()
 
-	dekID := createTestDek(t, db)
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek")
+	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek", kekID)
 
-	// Create a few keys
-	for i := 0; i < 5; i++ {
-		time.Sleep(time.Millisecond)
+	// Create 5 transit keys with different names (alphabetically ordered)
+	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key"}
+	for _, name := range names {
 		key := &transitDomain.TransitKey{
 			ID:        uuid.Must(uuid.NewV7()),
-			Name:      fmt.Sprintf("key-%02d", i),
+			Name:      name,
 			Version:   1,
 			DekID:     dekID,
 			CreatedAt: time.Now().UTC(),
 		}
-		err := repo.Create(ctx, key)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, key))
+	}
 
-		time.Sleep(time.Millisecond)
-		keyV2 := &transitDomain.TransitKey{
+	// First page with no cursor (limit 3)
+	keys, err := repo.ListCursor(ctx, nil, 3)
+	require.NoError(t, err)
+	assert.Len(t, keys, 3)
+
+	// Verify ASC ordering by name
+	assert.Equal(t, "a-key", keys[0].Name)
+	assert.Equal(t, "b-key", keys[1].Name)
+	assert.Equal(t, "c-key", keys[2].Name)
+}
+
+func TestPostgreSQLTransitKeyRepository_ListCursor_SubsequentPages(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTransitKeyRepository(db)
+	ctx := context.Background()
+
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek-2")
+	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek-2", kekID)
+
+	// Create 10 transit keys with alphabetically ordered names
+	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key",
+		"f-key", "g-key", "h-key", "i-key", "j-key"}
+	for _, name := range names {
+		key := &transitDomain.TransitKey{
 			ID:        uuid.Must(uuid.NewV7()),
-			Name:      fmt.Sprintf("key-%02d", i),
-			Version:   2,
+			Name:      name,
+			Version:   1,
 			DekID:     dekID,
 			CreatedAt: time.Now().UTC(),
 		}
-		err = repo.Create(ctx, keyV2)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, key))
 	}
 
-	// Test pagination
-	keys, err := repo.List(ctx, 0, 3)
+	// First page (no cursor, limit 3)
+	page1, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
-	assert.Len(t, keys, 3)
-	assert.Equal(t, "key-00", keys[0].Name)
-	assert.Equal(t, uint(2), keys[0].Version)
-	assert.Equal(t, "key-01", keys[1].Name)
-	assert.Equal(t, uint(2), keys[1].Version)
-	assert.Equal(t, "key-02", keys[2].Name)
-	assert.Equal(t, uint(2), keys[2].Version)
+	require.Len(t, page1, 3)
+	assert.Equal(t, "a-key", page1[0].Name)
 
-	keys, err = repo.List(ctx, 3, 3)
+	// Second page (use last name from page1 as cursor)
+	lastNamePage1 := page1[len(page1)-1].Name
+	page2, err := repo.ListCursor(ctx, &lastNamePage1, 3)
 	require.NoError(t, err)
-	assert.Len(t, keys, 2)
-	assert.Equal(t, "key-03", keys[0].Name)
-	assert.Equal(t, uint(2), keys[0].Version)
-	assert.Equal(t, "key-04", keys[1].Name)
-	assert.Equal(t, uint(2), keys[1].Version)
+	require.Len(t, page2, 3)
+
+	// Verify pages don't overlap
+	assert.NotEqual(t, page1[len(page1)-1].Name, page2[0].Name)
+
+	// Verify ASC ordering (name > cursor means later names)
+	assert.True(t, page2[0].Name > page1[len(page1)-1].Name)
+	assert.Equal(t, "d-key", page2[0].Name)
+
+	// Third page
+	lastNamePage2 := page2[len(page2)-1].Name
+	page3, err := repo.ListCursor(ctx, &lastNamePage2, 3)
+	require.NoError(t, err)
+	require.Len(t, page3, 3)
+
+	// Verify no overlap
+	assert.NotEqual(t, page2[len(page2)-1].Name, page3[0].Name)
+	assert.Equal(t, "g-key", page3[0].Name)
+}
+
+func TestPostgreSQLTransitKeyRepository_ListCursor_EmptyResult(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTransitKeyRepository(db)
+	ctx := context.Background()
+
+	// List with no data
+	keys, err := repo.ListCursor(ctx, nil, 10)
+	require.NoError(t, err)
+	assert.NotNil(t, keys)
+	assert.Len(t, keys, 0)
 }

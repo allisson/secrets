@@ -121,13 +121,14 @@ func (t *transitKeyUseCaseWithMetrics) Decrypt(
 	return blob, err
 }
 
-// List records metrics for transit listing operations.
-func (t *transitKeyUseCaseWithMetrics) List(
+// ListCursor records metrics for transit listing operations with cursor pagination.
+func (t *transitKeyUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterName *string,
+	limit int,
 ) ([]*transitDomain.TransitKey, error) {
 	start := time.Now()
-	keys, err := t.next.List(ctx, offset, limit)
+	keys, err := t.next.ListCursor(ctx, afterName, limit)
 
 	status := "success"
 	if err != nil {

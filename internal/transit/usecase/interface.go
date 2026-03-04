@@ -34,9 +34,11 @@ type TransitKeyRepository interface {
 	// GetByNameAndVersion retrieves a specific version of a transit key. Returns ErrTransitKeyNotFound if not found.
 	GetByNameAndVersion(ctx context.Context, name string, version uint) (*transitDomain.TransitKey, error)
 
-	// List retrieves transit keys ordered by name ascending with pagination.
-	// Returns the latest version for each key.
-	List(ctx context.Context, offset, limit int) ([]*transitDomain.TransitKey, error)
+	// ListCursor retrieves transit keys ordered by name ascending with cursor-based pagination.
+	// If afterName is provided, returns keys with name greater than afterName (ASC order).
+	// Returns the latest version for each key. Filters out soft-deleted keys.
+	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterName *string, limit int) ([]*transitDomain.TransitKey, error)
 }
 
 // TransitKeyUseCase defines the interface for transit encryption operations.
@@ -63,7 +65,9 @@ type TransitKeyUseCase interface {
 	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
 	Decrypt(ctx context.Context, name string, ciphertext string) (*transitDomain.EncryptedBlob, error)
 
-	// List retrieves transit keys ordered by name ascending with pagination.
-	// Returns the latest version for each key.
-	List(ctx context.Context, offset, limit int) ([]*transitDomain.TransitKey, error)
+	// ListCursor retrieves transit keys ordered by name ascending with cursor-based pagination.
+	// If afterName is provided, returns keys with name greater than afterName (ASC order).
+	// Returns the latest version for each key. Filters out soft-deleted keys.
+	// Returns empty slice if no keys found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterName *string, limit int) ([]*transitDomain.TransitKey, error)
 }

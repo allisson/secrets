@@ -121,7 +121,8 @@ migrate-up: ## Run database migrations up
 	@$(BINARY) migrate
 
 migrate-down: ## Run database migrations down
-	@echo "Rollback migrations not implemented in binary. Use golang-migrate CLI directly."
+	@echo "Rolling back migrations..."
+	@$(BINARY) migrate-down --steps=1
 
 # Docker
 docker-build: ## Build Docker image with version injection

@@ -38,6 +38,32 @@ func getSystemCommands(version string) []*cli.Command {
 			},
 		},
 		{
+			Name:  "migrate-down",
+			Usage: "Rollback database migrations",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:    "steps",
+					Aliases: []string{"n"},
+					Value:   1,
+					Usage:   "Number of migrations to rollback",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						cfg := container.Config()
+						return commands.RunMigrationsDown(
+							container.Logger(),
+							cfg.DBDriver,
+							cfg.DBConnectionString,
+							int(cmd.Int("steps")),
+						)
+					},
+				)
+			},
+		},
+		{
 			Name:  "clean-audit-logs",
 			Usage: "Delete audit logs older than specified days",
 			Flags: []cli.Flag{

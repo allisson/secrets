@@ -50,6 +50,43 @@ Docker:
 docker run --rm --network secrets-net --env-file .env allisson/secrets migrate
 ```
 
+### `migrate-down`
+
+Rolls back database migrations. This command should **only be used for emergency rollbacks**, not for regular operations.
+
+Flags:
+
+- `--steps`, `-n` (default `1`): number of migrations to rollback
+
+Local:
+
+```bash
+# Rollback the last migration
+./bin/app migrate-down
+
+# Rollback the last 3 migrations
+./bin/app migrate-down --steps 3
+```
+
+Docker:
+
+```bash
+docker run --rm --network secrets-net --env-file .env allisson/secrets migrate-down --steps 1
+```
+
+**Important warnings:**
+
+- Migration rollbacks are **potentially destructive** operations that may result in data loss
+- Always backup your database before running rollback operations
+- Only use this command for emergency rollbacks (e.g., after a failed migration)
+- For production systems, test rollback procedures in a staging environment first
+- Consider forward-only migrations instead of rollbacks when possible
+
+Requirements:
+
+- Database must be reachable
+- Down migration SQL files must exist for the migrations being rolled back
+
 ## Key Management
 
 ### `create-master-key`

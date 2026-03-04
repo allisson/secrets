@@ -68,7 +68,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -97,29 +97,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		expectedAuditLogs := []*authDomain.AuditLog{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 10, 25, (*time.Time)(nil), (*time.Time)(nil)).
-			Return(expectedAuditLogs, nil).
-			Once()
-
-		c, w := createTestContext(http.MethodGet, "/v1/audit-logs?offset=10&limit=25", nil)
-
-		handler.ListHandler(c)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var response dto.ListAuditLogsResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Len(t, response.Data, 0)
-	})
-
-	t.Run("Success_MaxLimit", func(t *testing.T) {
-		handler, mockUseCase := setupTestAuditLogHandler(t)
-
-		expectedAuditLogs := []*authDomain.AuditLog{}
-
-		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 100, (*time.Time)(nil), (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 101, (*time.Time)(nil), (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -141,7 +119,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		expectedAuditLogs := []*authDomain.AuditLog{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -158,33 +136,35 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidOffset_Negative", func(t *testing.T) {
-		handler, _ := setupTestAuditLogHandler(t)
+		handler, mockUseCase := setupTestAuditLogHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), (*time.Time)(nil)).
+			Return([]*authDomain.AuditLog{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/audit-logs?offset=-1", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("Error_InvalidOffset_NotNumber", func(t *testing.T) {
-		handler, _ := setupTestAuditLogHandler(t)
+		handler, mockUseCase := setupTestAuditLogHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), (*time.Time)(nil)).
+			Return([]*authDomain.AuditLog{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/audit-logs?offset=abc", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("Error_InvalidLimit_TooLow", func(t *testing.T) {
@@ -207,7 +187,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 
 		// Mock usecase to expect clamped limit of 1000
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 1000, (*time.Time)(nil), (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 1001, (*time.Time)(nil), (*time.Time)(nil)).
 			Return([]*authDomain.AuditLog{}, nil).
 			Once()
 
@@ -237,7 +217,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		handler, mockUseCase := setupTestAuditLogHandler(t)
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, (*time.Time)(nil), (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), (*time.Time)(nil)).
 			Return(nil, errors.New("database error")).
 			Once()
 
@@ -276,7 +256,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, &createdAtFrom, (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, &createdAtFrom, (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -320,7 +300,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, (*time.Time)(nil), &createdAtTo).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, (*time.Time)(nil), &createdAtTo).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -365,7 +345,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, &createdAtFrom, &createdAtTo).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, &createdAtFrom, &createdAtTo).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -401,7 +381,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		expectedAuditLogs := []*authDomain.AuditLog{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, &createdAtFromUTC, (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, &createdAtFromUTC, (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -489,7 +469,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		expectedAuditLogs := []*authDomain.AuditLog{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50, &now, &now).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51, &now, &now).
 			Return(expectedAuditLogs, nil).
 			Once()
 
@@ -519,7 +499,7 @@ func TestAuditLogHandler_ListHandler(t *testing.T) {
 		expectedAuditLogs := []*authDomain.AuditLog{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 10, 25, &createdAtFrom, (*time.Time)(nil)).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 26, &createdAtFrom, (*time.Time)(nil)).
 			Return(expectedAuditLogs, nil).
 			Once()
 

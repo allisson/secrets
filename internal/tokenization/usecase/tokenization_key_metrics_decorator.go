@@ -89,12 +89,13 @@ func (t *tokenizationKeyUseCaseWithMetrics) Delete(ctx context.Context, tokeniza
 }
 
 // List records metrics for tokenization key listing operations.
-func (t *tokenizationKeyUseCaseWithMetrics) List(
+func (t *tokenizationKeyUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterName *string,
+	limit int,
 ) ([]*tokenizationDomain.TokenizationKey, error) {
 	start := time.Now()
-	keys, err := t.next.List(ctx, offset, limit)
+	keys, err := t.next.ListCursor(ctx, afterName, limit)
 
 	status := "success"
 	if err != nil {

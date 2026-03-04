@@ -294,6 +294,102 @@ func (m *MySQLTokenizationKeyRepository) List(
 	return keys, nil
 }
 
+// ListCursor retrieves tokenization keys ordered by name ascending using cursor-based pagination.
+// Returns the latest version for each key.
+func (m *MySQLTokenizationKeyRepository) ListCursor(
+	ctx context.Context,
+	afterName *string,
+	limit int,
+) ([]*tokenizationDomain.TokenizationKey, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	var query string
+	var args []interface{}
+
+	if afterName == nil {
+		// First page: no cursor
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
+			FROM tokenization_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM tokenization_keys
+				WHERE deleted_at IS NULL
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT ?
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{limit}
+	} else {
+		// Subsequent pages: use cursor (name > afterName)
+		query = `
+			SELECT tk.id, tk.name, tk.version, tk.format_type, tk.is_deterministic, tk.salt, tk.dek_id, tk.created_at, tk.deleted_at 
+			FROM tokenization_keys tk
+			INNER JOIN (
+				SELECT name, MAX(version) as max_version
+				FROM tokenization_keys
+				WHERE deleted_at IS NULL AND name > ?
+				GROUP BY name
+				ORDER BY name ASC
+				LIMIT ?
+			) latest ON tk.name = latest.name AND tk.version = latest.max_version
+			ORDER BY tk.name ASC`
+		args = []interface{}{*afterName, limit}
+	}
+
+	rows, err := querier.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to list tokenization keys with cursor")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var keys []*tokenizationDomain.TokenizationKey
+	for rows.Next() {
+		var key tokenizationDomain.TokenizationKey
+		var id, dekID []byte
+		var formatType string
+
+		err := rows.Scan(
+			&id,
+			&key.Name,
+			&key.Version,
+			&formatType,
+			&key.IsDeterministic,
+			&key.Salt,
+			&dekID,
+			&key.CreatedAt,
+			&key.DeletedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan tokenization key")
+		}
+
+		if err := key.ID.UnmarshalBinary(id); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal tokenization key id")
+		}
+
+		if err := key.DekID.UnmarshalBinary(dekID); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal dek id")
+		}
+
+		key.FormatType = tokenizationDomain.FormatType(formatType)
+		keys = append(keys, &key)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating tokenization keys")
+	}
+
+	if keys == nil {
+		keys = make([]*tokenizationDomain.TokenizationKey, 0)
+	}
+
+	return keys, nil
+}
+
 // NewMySQLTokenizationKeyRepository creates a new MySQL tokenization key repository instance.
 func NewMySQLTokenizationKeyRepository(db *sql.DB) *MySQLTokenizationKeyRepository {
 	return &MySQLTokenizationKeyRepository{db: db}

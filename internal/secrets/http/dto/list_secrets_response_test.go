@@ -28,16 +28,29 @@ func TestMapSecretsToListResponse(t *testing.T) {
 		},
 	}
 
-	response := dto.MapSecretsToListResponse(secrets)
+	t.Run("WithoutCursor", func(t *testing.T) {
+		response := dto.MapSecretsToListResponse(secrets, nil)
 
-	assert.Len(t, response.Data, 2)
-	assert.Equal(t, secrets[0].ID.String(), response.Data[0].ID)
-	assert.Equal(t, secrets[0].Path, response.Data[0].Path)
-	assert.Equal(t, secrets[0].Version, response.Data[0].Version)
-	assert.Equal(t, secrets[0].CreatedAt, response.Data[0].CreatedAt)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, secrets[0].ID.String(), response.Data[0].ID)
+		assert.Equal(t, secrets[0].Path, response.Data[0].Path)
+		assert.Equal(t, secrets[0].Version, response.Data[0].Version)
+		assert.Equal(t, secrets[0].CreatedAt, response.Data[0].CreatedAt)
 
-	assert.Equal(t, secrets[1].ID.String(), response.Data[1].ID)
-	assert.Equal(t, secrets[1].Path, response.Data[1].Path)
-	assert.Equal(t, secrets[1].Version, response.Data[1].Version)
-	assert.Equal(t, secrets[1].CreatedAt, response.Data[1].CreatedAt)
+		assert.Equal(t, secrets[1].ID.String(), response.Data[1].ID)
+		assert.Equal(t, secrets[1].Path, response.Data[1].Path)
+		assert.Equal(t, secrets[1].Version, response.Data[1].Version)
+		assert.Equal(t, secrets[1].CreatedAt, response.Data[1].CreatedAt)
+
+		assert.Nil(t, response.NextCursor)
+	})
+
+	t.Run("WithCursor", func(t *testing.T) {
+		cursor := "/test/2"
+		response := dto.MapSecretsToListResponse(secrets, &cursor)
+
+		assert.Len(t, response.Data, 2)
+		assert.NotNil(t, response.NextCursor)
+		assert.Equal(t, cursor, *response.NextCursor)
+	})
 }

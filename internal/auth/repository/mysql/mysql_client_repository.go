@@ -141,21 +141,37 @@ func (m *MySQLClientRepository) Get(ctx context.Context, clientID uuid.UUID) (*a
 	return &client, nil
 }
 
-// List retrieves clients ordered by ID descending with pagination support using BINARY(16)
-// for UUIDs. Uses transaction support via database.GetTx(). Returns empty slice if no clients
-// found, or an error if UUID/policy unmarshaling or database query fails.
-func (m *MySQLClientRepository) List(
+// ListCursor retrieves clients ordered by ID descending (newest first) with cursor-based pagination. If afterID is provided,
+// returns clients with ID less than afterID (for DESC ordering). UUIDs are stored as BINARY(16) and require marshaling.
+// Uses transaction support via database.GetTx(). Returns empty slice if no clients found, or an error if
+// UUID/policy unmarshaling or database query fails. Limit is pre-validated (1-1000).
+func (m *MySQLClientRepository) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 ) ([]*authDomain.Client, error) {
 	querier := database.GetTx(ctx, m.db)
 
+	// Build query with optional cursor
 	query := `SELECT id, secret, name, is_active, policies, failed_attempts, locked_until, created_at
-			  FROM clients
-			  ORDER BY id DESC
-			  LIMIT ? OFFSET ?`
+			  FROM clients`
 
-	rows, err := querier.QueryContext(ctx, query, limit, offset)
+	var args []interface{}
+
+	// Add cursor condition if provided (use < for DESC ordering)
+	if afterID != nil {
+		afterIDBinary, err := afterID.MarshalBinary()
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to marshal afterID to binary")
+		}
+		query += " WHERE id < ?"
+		args = append(args, afterIDBinary)
+	}
+
+	query += " ORDER BY id DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := querier.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list clients")
 	}

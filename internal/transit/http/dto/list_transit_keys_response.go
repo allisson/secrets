@@ -6,17 +6,22 @@ import (
 
 // ListTransitKeysResponse represents a paginated list of transit keys in API responses.
 type ListTransitKeysResponse struct {
-	Data []TransitKeyResponse `json:"data"`
+	Data       []TransitKeyResponse `json:"data"`
+	NextCursor *string              `json:"next_cursor,omitempty"`
 }
 
 // MapTransitKeysToListResponse converts a slice of domain transit keys to a list response.
-func MapTransitKeysToListResponse(transitKeys []*transitDomain.TransitKey) ListTransitKeysResponse {
+func MapTransitKeysToListResponse(
+	transitKeys []*transitDomain.TransitKey,
+	nextCursor *string,
+) ListTransitKeysResponse {
 	data := make([]TransitKeyResponse, 0, len(transitKeys))
 	for _, tk := range transitKeys {
 		data = append(data, MapTransitKeyToResponse(tk))
 	}
 
 	return ListTransitKeysResponse{
-		Data: data,
+		Data:       data,
+		NextCursor: nextCursor,
 	}
 }

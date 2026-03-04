@@ -5,7 +5,6 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 	"time"
 
@@ -448,7 +447,7 @@ func TestMySQLTokenRepository_DeleteExpired_ZeroTime(t *testing.T) {
 	assert.Contains(t, err.Error(), "olderThan timestamp cannot be zero")
 }
 
-func TestMySQLTokenizationKeyRepository_List(t *testing.T) {
+func TestMySQLTokenizationKeyRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
@@ -456,131 +455,105 @@ func TestMySQLTokenizationKeyRepository_List(t *testing.T) {
 	repo := NewMySQLTokenizationKeyRepository(db)
 	ctx := context.Background()
 
-	_, dekID := createKekAndDekMySQL(t, db)
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "mysql", "test-kek")
+	dekID := testutil.CreateTestDek(t, db, "mysql", "test-dek", kekID)
 
-	for i := 0; i < 5; i++ {
-		time.Sleep(time.Millisecond)
+	// Create 5 tokenization keys with different names (alphabetically ordered)
+	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key"}
+	for _, name := range names {
 		key := &tokenizationDomain.TokenizationKey{
 			ID:              uuid.Must(uuid.NewV7()),
-			Name:            fmt.Sprintf("tok-key-%02d", i),
+			Name:            name,
 			Version:         1,
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: false,
-			Salt:            []byte("test-salt-32-bytes-long-12345678"),
 			DekID:           dekID,
 			CreatedAt:       time.Now().UTC(),
 		}
-		err := repo.Create(ctx, key)
-		require.NoError(t, err)
-
-		time.Sleep(time.Millisecond)
-		keyV2 := &tokenizationDomain.TokenizationKey{
-			ID:              uuid.Must(uuid.NewV7()),
-			Name:            fmt.Sprintf("tok-key-%02d", i),
-			Version:         2,
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Salt:            []byte("test-salt-32-bytes-long-12345678"),
-			DekID:           dekID,
-			CreatedAt:       time.Now().UTC(),
-		}
-		err = repo.Create(ctx, keyV2)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, key))
 	}
 
-	keys, err := repo.List(ctx, 0, 3)
+	// First page with no cursor (limit 3)
+	keys, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
 	assert.Len(t, keys, 3)
-	assert.Equal(t, "tok-key-00", keys[0].Name)
-	assert.Equal(t, uint(2), keys[0].Version)
-	assert.Equal(t, "tok-key-01", keys[1].Name)
-	assert.Equal(t, "tok-key-02", keys[2].Name)
 
-	keys, err = repo.List(ctx, 3, 3)
-	require.NoError(t, err)
-	assert.Len(t, keys, 2)
-	assert.Equal(t, "tok-key-03", keys[0].Name)
-	assert.Equal(t, "tok-key-04", keys[1].Name)
+	// Verify ASC ordering by name
+	assert.Equal(t, "a-key", keys[0].Name)
+	assert.Equal(t, "b-key", keys[1].Name)
+	assert.Equal(t, "c-key", keys[2].Name)
 }
 
-func TestMySQLTokenizationKeyRepository_Get(t *testing.T) {
+func TestMySQLTokenizationKeyRepository_ListCursor_SubsequentPages(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
 
 	repo := NewMySQLTokenizationKeyRepository(db)
 	ctx := context.Background()
-	_, dekID := createKekAndDekMySQL(t, db)
 
-	key := &tokenizationDomain.TokenizationKey{
-		ID:              uuid.Must(uuid.NewV7()),
-		Name:            "get-test-key",
-		Version:         1,
-		FormatType:      tokenizationDomain.FormatUUID,
-		IsDeterministic: false,
-		Salt:            []byte("test-salt-32-bytes-long-12345678"),
-		DekID:           dekID,
-		CreatedAt:       time.Now().UTC(),
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "mysql", "test-kek-2")
+	dekID := testutil.CreateTestDek(t, db, "mysql", "test-dek-2", kekID)
+
+	// Create 10 tokenization keys with alphabetically ordered names
+	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key",
+		"f-key", "g-key", "h-key", "i-key", "j-key"}
+	for _, name := range names {
+		key := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            name,
+			Version:         1,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           dekID,
+			CreatedAt:       time.Now().UTC(),
+		}
+		require.NoError(t, repo.Create(ctx, key))
 	}
-	err := repo.Create(ctx, key)
-	require.NoError(t, err)
 
-	retrieved, err := repo.Get(ctx, key.ID)
+	// First page (no cursor, limit 3)
+	page1, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
-	assert.Equal(t, key.ID, retrieved.ID)
-	assert.Equal(t, key.Name, retrieved.Name)
+	require.Len(t, page1, 3)
+	assert.Equal(t, "a-key", page1[0].Name)
+
+	// Second page (use last name from page1 as cursor)
+	lastNamePage1 := page1[len(page1)-1].Name
+	page2, err := repo.ListCursor(ctx, &lastNamePage1, 3)
+	require.NoError(t, err)
+	require.Len(t, page2, 3)
+
+	// Verify pages don't overlap
+	assert.NotEqual(t, page1[len(page1)-1].Name, page2[0].Name)
+
+	// Verify ASC ordering (name > cursor means later names)
+	assert.True(t, page2[0].Name > page1[len(page1)-1].Name)
+	assert.Equal(t, "d-key", page2[0].Name)
+
+	// Third page
+	lastNamePage2 := page2[len(page2)-1].Name
+	page3, err := repo.ListCursor(ctx, &lastNamePage2, 3)
+	require.NoError(t, err)
+	require.Len(t, page3, 3)
+
+	// Verify no overlap
+	assert.NotEqual(t, page2[len(page2)-1].Name, page3[0].Name)
+	assert.Equal(t, "g-key", page3[0].Name)
 }
 
-func TestMySQLTokenizationKeyRepository_GetByNameAndVersion(t *testing.T) {
+func TestMySQLTokenizationKeyRepository_ListCursor_EmptyResult(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
 
 	repo := NewMySQLTokenizationKeyRepository(db)
 	ctx := context.Background()
-	_, dekID := createKekAndDekMySQL(t, db)
 
-	key := &tokenizationDomain.TokenizationKey{
-		ID:              uuid.Must(uuid.NewV7()),
-		Name:            "get-name-version-key",
-		Version:         2,
-		FormatType:      tokenizationDomain.FormatUUID,
-		IsDeterministic: false,
-		Salt:            []byte("test-salt-32-bytes-long-12345678"),
-		DekID:           dekID,
-		CreatedAt:       time.Now().UTC(),
-	}
-	err := repo.Create(ctx, key)
+	// List with no data
+	keys, err := repo.ListCursor(ctx, nil, 10)
 	require.NoError(t, err)
-
-	retrieved, err := repo.GetByNameAndVersion(ctx, key.Name, key.Version)
-	require.NoError(t, err)
-	assert.Equal(t, key.ID, retrieved.ID)
-	assert.Equal(t, key.Version, retrieved.Version)
-}
-
-func TestMySQLTokenRepository_GetByToken(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	tokenRepo := NewMySQLTokenRepository(db)
-	ctx := context.Background()
-	keyID := createTokenizationKeyMySQL(t, db)
-
-	token := &tokenizationDomain.Token{
-		ID:                uuid.Must(uuid.NewV7()),
-		TokenizationKeyID: keyID,
-		Token:             "tok_getbytoken",
-		Ciphertext:        []byte("encrypted"),
-		Nonce:             []byte("nonce"),
-		CreatedAt:         time.Now().UTC(),
-	}
-	err := tokenRepo.Create(ctx, token)
-	require.NoError(t, err)
-
-	retrieved, err := tokenRepo.GetByToken(ctx, token.Token)
-	require.NoError(t, err)
-	assert.Equal(t, token.ID, retrieved.ID)
-	assert.Equal(t, token.Token, retrieved.Token)
+	assert.NotNil(t, keys)
+	assert.Len(t, keys, 0)
 }

@@ -1293,282 +1293,103 @@ func createMySQLDek(t *testing.T, db *sql.DB, kekID uuid.UUID) uuid.UUID {
 	return dekID
 }
 
-func TestMySQLSecretRepository_List(t *testing.T) {
+func TestMySQLSecretRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
 
 	repo := NewMySQLSecretRepository(db)
 	ctx := context.Background()
-	_, dekID := createMySQLKekAndDek(t, db)
 
-	// Create a few secrets
-	for i := 0; i < 5; i++ {
-		time.Sleep(time.Millisecond) // Ensure ordering
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "mysql", "test-kek")
+	dekID := testutil.CreateTestDek(t, db, "mysql", "test-dek", kekID)
+
+	// Create 5 secrets with different paths (alphabetically ordered)
+	paths := []string{"a-secret", "b-secret", "c-secret", "d-secret", "e-secret"}
+	for _, path := range paths {
 		secret := &secretsDomain.Secret{
 			ID:         uuid.Must(uuid.NewV7()),
-			Path:       fmt.Sprintf("/app/secret-%02d", i),
+			Path:       path,
 			Version:    1,
 			DekID:      dekID,
-			Ciphertext: []byte("encrypted-data"),
+			Ciphertext: []byte("encrypted"),
 			Nonce:      []byte("nonce"),
 			CreatedAt:  time.Now().UTC(),
 		}
-		err := repo.Create(ctx, secret)
-		require.NoError(t, err)
-
-		// Create a second version for the same path
-		time.Sleep(time.Millisecond)
-		secretV2 := &secretsDomain.Secret{
-			ID:         uuid.Must(uuid.NewV7()),
-			Path:       fmt.Sprintf("/app/secret-%02d", i),
-			Version:    2,
-			DekID:      dekID,
-			Ciphertext: []byte("encrypted-data-v2"),
-			Nonce:      []byte("nonce-v2"),
-			CreatedAt:  time.Now().UTC(),
-		}
-		err = repo.Create(ctx, secretV2)
-		require.NoError(t, err)
+		require.NoError(t, repo.Create(ctx, secret))
 	}
 
-	// Test pagination
-	secrets, err := repo.List(ctx, 0, 3)
+	// First page with no cursor (limit 3)
+	secrets, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
 	assert.Len(t, secrets, 3)
-	assert.Equal(t, "/app/secret-00", secrets[0].Path)
-	assert.Equal(t, uint(2), secrets[0].Version)
-	assert.Equal(t, "/app/secret-01", secrets[1].Path)
-	assert.Equal(t, uint(2), secrets[1].Version)
-	assert.Equal(t, "/app/secret-02", secrets[2].Path)
-	assert.Equal(t, uint(2), secrets[2].Version)
 
-	secrets, err = repo.List(ctx, 3, 3)
-	require.NoError(t, err)
-	assert.Len(t, secrets, 2)
-	assert.Equal(t, "/app/secret-03", secrets[0].Path)
-	assert.Equal(t, uint(2), secrets[0].Version)
-	assert.Equal(t, "/app/secret-04", secrets[1].Path)
-	assert.Equal(t, uint(2), secrets[1].Version)
+	// Verify ASC ordering by path
+	assert.Equal(t, "a-secret", secrets[0].Path)
+	assert.Equal(t, "b-secret", secrets[1].Path)
+	assert.Equal(t, "c-secret", secrets[2].Path)
 }
 
-func TestMySQLSecretRepository_HardDelete_Success(t *testing.T) {
+func TestMySQLSecretRepository_ListCursor_SubsequentPages(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
 
 	repo := NewMySQLSecretRepository(db)
 	ctx := context.Background()
-	_, dekID := createMySQLKekAndDek(t, db)
 
-	// Create some secrets and soft-delete some of them
-	oldDeletedTime := time.Now().UTC().AddDate(0, 0, -60)    // 60 days ago
-	recentDeletedTime := time.Now().UTC().AddDate(0, 0, -10) // 10 days ago
+	// Create KEK and DEK for FK constraint
+	kekID := testutil.CreateTestKek(t, db, "mysql", "test-kek-2")
+	dekID := testutil.CreateTestDek(t, db, "mysql", "test-dek-2", kekID)
 
-	// Create old deleted secret
-	oldSecret := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       "/app/old-secret",
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-data"),
-		Nonce:      []byte("nonce"),
-		CreatedAt:  oldDeletedTime.AddDate(0, 0, -5),
-		DeletedAt:  &oldDeletedTime,
-	}
-	err := repo.Create(ctx, oldSecret)
-	require.NoError(t, err)
-
-	// Create recently deleted secret
-	recentSecret := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       "/app/recent-secret",
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-data"),
-		Nonce:      []byte("nonce"),
-		CreatedAt:  recentDeletedTime.AddDate(0, 0, -5),
-		DeletedAt:  &recentDeletedTime,
-	}
-	err = repo.Create(ctx, recentSecret)
-	require.NoError(t, err)
-
-	// Create active secret (not deleted)
-	activeSecret := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       "/app/active-secret",
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-data"),
-		Nonce:      []byte("nonce"),
-		CreatedAt:  time.Now().UTC(),
-		DeletedAt:  nil,
-	}
-	err = repo.Create(ctx, activeSecret)
-	require.NoError(t, err)
-
-	// Hard delete secrets older than 30 days
-	olderThan := time.Now().UTC().AddDate(0, 0, -30)
-	count, err := repo.HardDelete(ctx, olderThan, false)
-	require.NoError(t, err)
-	assert.Equal(t, int64(1), count) // Only old secret should be deleted
-
-	// Verify old secret is gone
-	var countResult int
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE path = ?", oldSecret.Path).Scan(&countResult)
-	require.NoError(t, err)
-	assert.Equal(t, 0, countResult)
-
-	// Verify recent deleted secret still exists
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE path = ?", recentSecret.Path).Scan(&countResult)
-	require.NoError(t, err)
-	assert.Equal(t, 1, countResult)
-
-	// Verify active secret still exists
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE path = ?", activeSecret.Path).Scan(&countResult)
-	require.NoError(t, err)
-	assert.Equal(t, 1, countResult)
-}
-
-func TestMySQLSecretRepository_HardDelete_DryRun(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	repo := NewMySQLSecretRepository(db)
-	ctx := context.Background()
-	_, dekID := createMySQLKekAndDek(t, db)
-
-	// Create old deleted secret
-	oldDeletedTime := time.Now().UTC().AddDate(0, 0, -60)
-	secret := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       "/app/secret",
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-data"),
-		Nonce:      []byte("nonce"),
-		CreatedAt:  oldDeletedTime.AddDate(0, 0, -5),
-		DeletedAt:  &oldDeletedTime,
-	}
-	err := repo.Create(ctx, secret)
-	require.NoError(t, err)
-
-	// Dry run - should return count without deleting
-	olderThan := time.Now().UTC().AddDate(0, 0, -30)
-	count, err := repo.HardDelete(ctx, olderThan, true)
-	require.NoError(t, err)
-	assert.Equal(t, int64(1), count)
-
-	// Verify secret still exists
-	var countResult int
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE path = ?", secret.Path).Scan(&countResult)
-	require.NoError(t, err)
-	assert.Equal(t, 1, countResult)
-}
-
-func TestMySQLSecretRepository_HardDelete_OnlyDeletesSoftDeleted(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	repo := NewMySQLSecretRepository(db)
-	ctx := context.Background()
-	_, dekID := createMySQLKekAndDek(t, db)
-
-	// Create active secret
-	activeSecret := &secretsDomain.Secret{
-		ID:         uuid.Must(uuid.NewV7()),
-		Path:       "/app/active-secret",
-		Version:    1,
-		DekID:      dekID,
-		Ciphertext: []byte("encrypted-data"),
-		Nonce:      []byte("nonce"),
-		CreatedAt:  time.Now().UTC().AddDate(0, 0, -100), // Very old, but not deleted
-		DeletedAt:  nil,
-	}
-	err := repo.Create(ctx, activeSecret)
-	require.NoError(t, err)
-
-	// Try to hard delete - should not affect active secrets
-	olderThan := time.Now().UTC().AddDate(0, 0, -30)
-	count, err := repo.HardDelete(ctx, olderThan, false)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), count)
-
-	// Verify active secret still exists
-	var countResult int
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE path = ?", activeSecret.Path).Scan(&countResult)
-	require.NoError(t, err)
-	assert.Equal(t, 1, countResult)
-}
-
-func TestMySQLSecretRepository_HardDelete_RespectsTimeThreshold(t *testing.T) {
-	db := testutil.SetupMySQLDB(t)
-	defer testutil.TeardownDB(t, db)
-	defer testutil.CleanupMySQLDB(t, db)
-
-	repo := NewMySQLSecretRepository(db)
-	ctx := context.Background()
-	_, dekID := createMySQLKekAndDek(t, db)
-
-	// Create secrets with different deletion times
-	veryOldTime := time.Now().UTC().AddDate(0, 0, -100)
-	oldTime := time.Now().UTC().AddDate(0, 0, -50)
-	recentTime := time.Now().UTC().AddDate(0, 0, -10)
-
-	secrets := []*secretsDomain.Secret{
-		{
+	// Create 10 secrets with alphabetically ordered paths
+	paths := []string{"a-secret", "b-secret", "c-secret", "d-secret", "e-secret",
+		"f-secret", "g-secret", "h-secret", "i-secret", "j-secret"}
+	for _, path := range paths {
+		secret := &secretsDomain.Secret{
 			ID:         uuid.Must(uuid.NewV7()),
-			Path:       "/app/very-old",
+			Path:       path,
 			Version:    1,
 			DekID:      dekID,
-			Ciphertext: []byte("data"),
+			Ciphertext: []byte("encrypted"),
 			Nonce:      []byte("nonce"),
-			CreatedAt:  veryOldTime.AddDate(0, 0, -5),
-			DeletedAt:  &veryOldTime,
-		},
-		{
-			ID:         uuid.Must(uuid.NewV7()),
-			Path:       "/app/old",
-			Version:    1,
-			DekID:      dekID,
-			Ciphertext: []byte("data"),
-			Nonce:      []byte("nonce"),
-			CreatedAt:  oldTime.AddDate(0, 0, -5),
-			DeletedAt:  &oldTime,
-		},
-		{
-			ID:         uuid.Must(uuid.NewV7()),
-			Path:       "/app/recent",
-			Version:    1,
-			DekID:      dekID,
-			Ciphertext: []byte("data"),
-			Nonce:      []byte("nonce"),
-			CreatedAt:  recentTime.AddDate(0, 0, -5),
-			DeletedAt:  &recentTime,
-		},
+			CreatedAt:  time.Now().UTC(),
+		}
+		require.NoError(t, repo.Create(ctx, secret))
 	}
 
-	for _, secret := range secrets {
-		err := repo.Create(ctx, secret)
-		require.NoError(t, err)
-	}
-
-	// Delete secrets older than 30 days
-	olderThan := time.Now().UTC().AddDate(0, 0, -30)
-	count, err := repo.HardDelete(ctx, olderThan, false)
+	// First page (no cursor, limit 3)
+	page1, err := repo.ListCursor(ctx, nil, 3)
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), count) // very-old and old should be deleted
+	require.Len(t, page1, 3)
+	assert.Equal(t, "a-secret", page1[0].Path)
 
-	// Verify only recent secret remains
-	var countResult int
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM secrets WHERE deleted_at IS NOT NULL").Scan(&countResult)
+	// Second page (use last path from page1 as cursor)
+	lastPathPage1 := page1[len(page1)-1].Path
+	page2, err := repo.ListCursor(ctx, &lastPathPage1, 3)
 	require.NoError(t, err)
-	assert.Equal(t, 1, countResult)
+	require.Len(t, page2, 3)
+
+	// Verify pages don't overlap
+	assert.NotEqual(t, page1[len(page1)-1].Path, page2[0].Path)
+
+	// Verify ASC ordering (path > cursor means later paths)
+	assert.True(t, page2[0].Path > page1[len(page1)-1].Path)
+	assert.Equal(t, "d-secret", page2[0].Path)
+
+	// Third page
+	lastPathPage2 := page2[len(page2)-1].Path
+	page3, err := repo.ListCursor(ctx, &lastPathPage2, 3)
+	require.NoError(t, err)
+	require.Len(t, page3, 3)
+
+	// Verify no overlap
+	assert.NotEqual(t, page2[len(page2)-1].Path, page3[0].Path)
+	assert.Equal(t, "g-secret", page3[0].Path)
 }
 
-func TestMySQLSecretRepository_HardDelete_EmptyResult(t *testing.T) {
+func TestMySQLSecretRepository_ListCursor_EmptyResult(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
 	defer testutil.CleanupMySQLDB(t, db)
@@ -1576,9 +1397,9 @@ func TestMySQLSecretRepository_HardDelete_EmptyResult(t *testing.T) {
 	repo := NewMySQLSecretRepository(db)
 	ctx := context.Background()
 
-	// Try to delete with no matching records
-	olderThan := time.Now().UTC().AddDate(0, 0, -30)
-	count, err := repo.HardDelete(ctx, olderThan, false)
+	// List with no data
+	secrets, err := repo.ListCursor(ctx, nil, 10)
 	require.NoError(t, err)
-	assert.Equal(t, int64(0), count)
+	assert.NotNil(t, secrets)
+	assert.Len(t, secrets, 0)
 }

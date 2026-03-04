@@ -37,17 +37,19 @@ func MapClientToResponse(client *authDomain.Client) ClientResponse {
 
 // ListClientsResponse represents a paginated list of clients in API responses.
 type ListClientsResponse struct {
-	Data []ClientResponse `json:"data"`
+	Data       []ClientResponse `json:"data"`
+	NextCursor *string          `json:"next_cursor,omitempty"`
 }
 
 // MapClientsToListResponse converts a slice of domain clients to a list API response.
-func MapClientsToListResponse(clients []*authDomain.Client) ListClientsResponse {
+func MapClientsToListResponse(clients []*authDomain.Client, nextCursor *string) ListClientsResponse {
 	clientResponses := make([]ClientResponse, 0, len(clients))
 	for _, client := range clients {
 		clientResponses = append(clientResponses, MapClientToResponse(client))
 	}
 	return ListClientsResponse{
-		Data: clientResponses,
+		Data:       clientResponses,
+		NextCursor: nextCursor,
 	}
 }
 
@@ -102,16 +104,18 @@ func MapAuditLogToResponse(auditLog *authDomain.AuditLog) AuditLogResponse {
 
 // ListAuditLogsResponse represents a paginated list of audit logs in API responses.
 type ListAuditLogsResponse struct {
-	Data []AuditLogResponse `json:"data"`
+	Data       []AuditLogResponse `json:"data"`
+	NextCursor *string            `json:"next_cursor,omitempty"`
 }
 
 // MapAuditLogsToListResponse converts a slice of domain audit logs to a list API response.
-func MapAuditLogsToListResponse(auditLogs []*authDomain.AuditLog) ListAuditLogsResponse {
+func MapAuditLogsToListResponse(auditLogs []*authDomain.AuditLog, nextCursor *string) ListAuditLogsResponse {
 	auditLogResponses := make([]AuditLogResponse, 0, len(auditLogs))
 	for _, auditLog := range auditLogs {
 		auditLogResponses = append(auditLogResponses, MapAuditLogToResponse(auditLog))
 	}
 	return ListAuditLogsResponse{
-		Data: auditLogResponses,
+		Data:       auditLogResponses,
+		NextCursor: nextCursor,
 	}
 }

@@ -31,15 +31,15 @@ func NewAuditLogHandler(
 	}
 }
 
-// ListHandler retrieves audit logs with pagination support and optional time-based filtering.
-// GET /v1/audit-logs?offset=0&limit=50&created_at_from=2026-02-01T00:00:00Z&created_at_to=2026-02-14T23:59:59Z
+// ListHandler retrieves audit logs with cursor pagination and optional time-based filtering.
+// GET /v1/audit-logs?after_id=<uuid>&limit=50&created_at_from=2026-02-01T00:00:00Z&created_at_to=2026-02-14T23:59:59Z
 // Requires ReadCapability on path /v1/audit-logs. Returns 200 OK with paginated audit log list
 // ordered by created_at descending (newest first). Accepts optional created_at_from and
 // created_at_to query parameters in RFC3339 format. Timestamps are converted to UTC. Both
-// boundaries are inclusive (>= and <=).
+// boundaries are inclusive (>= and <=). Uses cursor-based pagination with after_id parameter.
 func (h *AuditLogHandler) ListHandler(c *gin.Context) {
-	// Parse offset and limit query parameters
-	offset, limit, err := httputil.ParsePagination(c)
+	// Parse cursor and limit query parameters
+	afterID, limit, err := httputil.ParseUUIDCursorPagination(c, "after_id")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
@@ -81,14 +81,29 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case
-	auditLogs, err := h.auditLogUseCase.List(c.Request.Context(), offset, limit, createdAtFrom, createdAtTo)
+	// Call use case with limit + 1 to detect if there are more results
+	auditLogs, err := h.auditLogUseCase.ListCursor(
+		c.Request.Context(),
+		afterID,
+		limit+1,
+		createdAtFrom,
+		createdAtTo,
+	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
+	// Determine if there are more results and set next cursor
+	var nextCursor *string
+	if len(auditLogs) > limit {
+		// More results exist, use the last visible item's ID as cursor
+		auditLogs = auditLogs[:limit]
+		cursorValue := auditLogs[len(auditLogs)-1].ID.String()
+		nextCursor = &cursorValue
+	}
+
 	// Map to response
-	response := dto.MapAuditLogsToListResponse(auditLogs)
+	response := dto.MapAuditLogsToListResponse(auditLogs, nextCursor)
 	c.JSON(http.StatusOK, response)
 }

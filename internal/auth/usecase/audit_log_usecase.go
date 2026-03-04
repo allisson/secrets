@@ -79,18 +79,19 @@ func (a *auditLogUseCase) Create(
 	return nil
 }
 
-// List retrieves audit logs ordered by created_at descending (newest first) with pagination
-// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional filters
-// (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps are expected
-// in UTC. Returns empty slice if no audit logs found.
-func (a *auditLogUseCase) List(
+// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
+// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
+// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
+func (a *auditLogUseCase) ListCursor(
 	ctx context.Context,
-	offset, limit int,
+	afterID *uuid.UUID,
+	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 ) ([]*authDomain.AuditLog, error) {
-	auditLogs, err := a.auditLogRepo.List(ctx, offset, limit, createdAtFrom, createdAtTo)
+	auditLogs, err := a.auditLogRepo.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "failed to list audit logs")
+		return nil, apperrors.Wrap(err, "failed to list audit logs with cursor")
 	}
 
 	return auditLogs, nil
@@ -153,13 +154,13 @@ func (a *auditLogUseCase) VerifyBatch(
 		InvalidLogs: []uuid.UUID{},
 	}
 
-	// Paginate through logs in batches
+	// Paginate through logs in batches using cursor-based pagination
 	const pageSize = 1000
-	offset := 0
+	var afterID *uuid.UUID
 
 	for {
 		// Retrieve logs in time range
-		logs, err := a.auditLogRepo.List(ctx, offset, pageSize, &startTime, &endTime)
+		logs, err := a.auditLogRepo.ListCursor(ctx, afterID, pageSize, &startTime, &endTime)
 		if err != nil {
 			return nil, apperrors.Wrap(err, "failed to list audit logs")
 		}
@@ -198,7 +199,15 @@ func (a *auditLogUseCase) VerifyBatch(
 			report.ValidCount++
 		}
 
-		offset += pageSize
+		// Check if we have more pages
+		// If we got fewer items than requested, we've reached the end
+		if len(logs) < pageSize {
+			break
+		}
+
+		// Set cursor to last log's ID for next page
+		lastLog := logs[len(logs)-1]
+		afterID = &lastLog.ID
 	}
 
 	return report, nil

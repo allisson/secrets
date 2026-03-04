@@ -6,13 +6,15 @@ import (
 
 // ListTokenizationKeysResponse represents the response for listing tokenization keys.
 type ListTokenizationKeysResponse struct {
-	Data []TokenizationKeyResponse `json:"data"`
+	Data       []TokenizationKeyResponse `json:"data"`
+	NextCursor *string                   `json:"next_cursor,omitempty"`
 }
 
 // MapTokenizationKeysToListResponse maps a slice of TokenizationKey domain entities to a ListTokenizationKeysResponse DTO.
 // Returns an empty list instead of null when there are no items to match API conventions.
 func MapTokenizationKeysToListResponse(
 	keys []*tokenizationDomain.TokenizationKey,
+	nextCursor *string,
 ) ListTokenizationKeysResponse {
 	items := make([]TokenizationKeyResponse, 0, len(keys))
 	for _, key := range keys {
@@ -20,6 +22,7 @@ func MapTokenizationKeysToListResponse(
 	}
 
 	return ListTokenizationKeysResponse{
-		Data: items,
+		Data:       items,
+		NextCursor: nextCursor,
 	}
 }

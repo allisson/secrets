@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-03-03
+
+### Added
+- Added secret purge command (`purge-secrets`) with dry-run and formatting support.
+- Added configurable server read/write/idle timeouts for better resource management and security.
+- Added KMS connectivity validation at server startup.
+- Added security scanning tools to CI and development workflow.
+- Updated documentation and CI configuration to enforce coverage and code quality standards.
+
+### Fixed
+- Corrected `rotate-master-key` CLI flags (`kms-provider` and `kms-key-uri`) and documentation to ensure consistency and completeness.
+- Fixed integration tests setup by separating them out from unit tests.
+
 ## [0.24.0] - 2026-03-03
 
 ### Changed
@@ -415,6 +428,8 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.25.0]: https://github.com/allisson/secrets/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/allisson/secrets/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/allisson/secrets/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/allisson/secrets/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/allisson/secrets/compare/v0.21.0...v0.22.0

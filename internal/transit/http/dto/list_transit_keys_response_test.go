@@ -28,16 +28,29 @@ func TestMapTransitKeysToListResponse(t *testing.T) {
 		},
 	}
 
-	response := dto.MapTransitKeysToListResponse(keys)
+	t.Run("WithoutCursor", func(t *testing.T) {
+		response := dto.MapTransitKeysToListResponse(keys, nil)
 
-	assert.Len(t, response.Data, 2)
-	assert.Equal(t, keys[0].ID.String(), response.Data[0].ID)
-	assert.Equal(t, keys[0].Name, response.Data[0].Name)
-	assert.Equal(t, keys[0].Version, response.Data[0].Version)
-	assert.Equal(t, keys[0].CreatedAt, response.Data[0].CreatedAt)
+		assert.Len(t, response.Data, 2)
+		assert.Equal(t, keys[0].ID.String(), response.Data[0].ID)
+		assert.Equal(t, keys[0].Name, response.Data[0].Name)
+		assert.Equal(t, keys[0].Version, response.Data[0].Version)
+		assert.Equal(t, keys[0].CreatedAt, response.Data[0].CreatedAt)
 
-	assert.Equal(t, keys[1].ID.String(), response.Data[1].ID)
-	assert.Equal(t, keys[1].Name, response.Data[1].Name)
-	assert.Equal(t, keys[1].Version, response.Data[1].Version)
-	assert.Equal(t, keys[1].CreatedAt, response.Data[1].CreatedAt)
+		assert.Equal(t, keys[1].ID.String(), response.Data[1].ID)
+		assert.Equal(t, keys[1].Name, response.Data[1].Name)
+		assert.Equal(t, keys[1].Version, response.Data[1].Version)
+		assert.Equal(t, keys[1].CreatedAt, response.Data[1].CreatedAt)
+
+		assert.Nil(t, response.NextCursor)
+	})
+
+	t.Run("WithCursor", func(t *testing.T) {
+		cursor := "key-2"
+		response := dto.MapTransitKeysToListResponse(keys, &cursor)
+
+		assert.Len(t, response.Data, 2)
+		assert.NotNil(t, response.NextCursor)
+		assert.Equal(t, cursor, *response.NextCursor)
+	})
 }

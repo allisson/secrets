@@ -98,8 +98,58 @@ Example decrypt response (`200 OK`):
 
 ### List and Delete Keys
 
-- `GET /v1/transit/keys` (Capability: `read`)
-- `DELETE /v1/transit/keys/:id` (Capability: `delete`)
+#### List Transit Keys
+
+- **Endpoint**: `GET /v1/transit/keys`
+- **Capability**: `read`
+- **Query Params**:
+  - `after_name` (optional) - Cursor for pagination. Omit for first page.
+  - `limit` (default 50, max 1000) - Number of items per page.
+- **Success**: `200 OK`
+
+```bash
+# First page
+curl "http://localhost:8080/v1/transit/keys?limit=50" \
+  -H "Authorization: Bearer <token>"
+
+# Subsequent pages (use next_cursor from previous response)
+curl "http://localhost:8080/v1/transit/keys?after_name=main-encryption&limit=50" \
+  -H "Authorization: Bearer <token>"
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "data": [
+    {
+      "id": "0194f4e1-c3ab-7d8e-a9f2-5cde3b8fa6c1",
+      "name": "app-encryption",
+      "algorithm": "aes256-gcm96",
+      "version": 3,
+      "created_at": "2026-02-27T22:00:00Z",
+      "updated_at": "2026-02-28T12:00:00Z"
+    },
+    {
+      "id": "0194f4f2-d5bc-7a1f-b8c3-6def4c9eb7d2",
+      "name": "main-encryption",
+      "algorithm": "chacha20-poly1305",
+      "version": 1,
+      "created_at": "2026-02-27T23:15:00Z",
+      "updated_at": "2026-02-27T23:15:00Z"
+    }
+  ],
+  "next_cursor": "main-encryption"
+}
+```
+
+**Note**: The `next_cursor` field is only present when there are more pages available.
+
+#### Delete Transit Key
+
+- **Endpoint**: `DELETE /v1/transit/keys/:name`
+- **Capability**: `delete`
+- **Success**: `204 No Content`
 
 ## Relevant CLI Commands
 

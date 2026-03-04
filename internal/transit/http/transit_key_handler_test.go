@@ -380,7 +380,7 @@ func TestTransitKeyHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 100).
+			ListCursor(mock.Anything, (*string)(nil), 101).
 			Return(expectedKeys, nil).
 			Once()
 
@@ -398,16 +398,18 @@ func TestTransitKeyHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidPaginationParams", func(t *testing.T) {
-		handler, _ := setupTestTransitKeyHandler(t)
+		handler, mockUseCase := setupTestTransitKeyHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*string)(nil), 51).
+			Return([]*transitDomain.TransitKey{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/transit/keys?offset=invalid", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }

@@ -521,56 +521,56 @@ func (_c *MockSecretRepository_HardDelete_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
-// List provides a mock function for the type MockSecretRepository
-func (_mock *MockSecretRepository) List(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error) {
-	ret := _mock.Called(ctx, offset, limit)
+// ListCursor provides a mock function for the type MockSecretRepository
+func (_mock *MockSecretRepository) ListCursor(ctx context.Context, afterPath *string, limit int) ([]*domain0.Secret, error) {
+	ret := _mock.Called(ctx, afterPath, limit)
 
 	if len(ret) == 0 {
-		panic("no return value specified for List")
+		panic("no return value specified for ListCursor")
 	}
 
 	var r0 []*domain0.Secret
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.Secret, error)); ok {
-		return returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *string, int) ([]*domain0.Secret, error)); ok {
+		return returnFunc(ctx, afterPath, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.Secret); ok {
-		r0 = returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *string, int) []*domain0.Secret); ok {
+		r0 = returnFunc(ctx, afterPath, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*domain0.Secret)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
-		r1 = returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *string, int) error); ok {
+		r1 = returnFunc(ctx, afterPath, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockSecretRepository_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
-type MockSecretRepository_List_Call struct {
+// MockSecretRepository_ListCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCursor'
+type MockSecretRepository_ListCursor_Call struct {
 	*mock.Call
 }
 
-// List is a helper method to define mock.On call
+// ListCursor is a helper method to define mock.On call
 //   - ctx context.Context
-//   - offset int
+//   - afterPath *string
 //   - limit int
-func (_e *MockSecretRepository_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockSecretRepository_List_Call {
-	return &MockSecretRepository_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+func (_e *MockSecretRepository_Expecter) ListCursor(ctx interface{}, afterPath interface{}, limit interface{}) *MockSecretRepository_ListCursor_Call {
+	return &MockSecretRepository_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterPath, limit)}
 }
 
-func (_c *MockSecretRepository_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockSecretRepository_List_Call {
+func (_c *MockSecretRepository_ListCursor_Call) Run(run func(ctx context.Context, afterPath *string, limit int)) *MockSecretRepository_ListCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 *string
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(*string)
 		}
 		var arg2 int
 		if args[2] != nil {
@@ -585,12 +585,12 @@ func (_c *MockSecretRepository_List_Call) Run(run func(ctx context.Context, offs
 	return _c
 }
 
-func (_c *MockSecretRepository_List_Call) Return(secrets []*domain0.Secret, err error) *MockSecretRepository_List_Call {
+func (_c *MockSecretRepository_ListCursor_Call) Return(secrets []*domain0.Secret, err error) *MockSecretRepository_ListCursor_Call {
 	_c.Call.Return(secrets, err)
 	return _c
 }
 
-func (_c *MockSecretRepository_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error)) *MockSecretRepository_List_Call {
+func (_c *MockSecretRepository_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterPath *string, limit int) ([]*domain0.Secret, error)) *MockSecretRepository_ListCursor_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -895,56 +895,56 @@ func (_c *MockSecretUseCase_GetByVersion_Call) RunAndReturn(run func(ctx context
 	return _c
 }
 
-// List provides a mock function for the type MockSecretUseCase
-func (_mock *MockSecretUseCase) List(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error) {
-	ret := _mock.Called(ctx, offset, limit)
+// ListCursor provides a mock function for the type MockSecretUseCase
+func (_mock *MockSecretUseCase) ListCursor(ctx context.Context, afterPath *string, limit int) ([]*domain0.Secret, error) {
+	ret := _mock.Called(ctx, afterPath, limit)
 
 	if len(ret) == 0 {
-		panic("no return value specified for List")
+		panic("no return value specified for ListCursor")
 	}
 
 	var r0 []*domain0.Secret
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) ([]*domain0.Secret, error)); ok {
-		return returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *string, int) ([]*domain0.Secret, error)); ok {
+		return returnFunc(ctx, afterPath, limit)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) []*domain0.Secret); ok {
-		r0 = returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *string, int) []*domain0.Secret); ok {
+		r0 = returnFunc(ctx, afterPath, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*domain0.Secret)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
-		r1 = returnFunc(ctx, offset, limit)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *string, int) error); ok {
+		r1 = returnFunc(ctx, afterPath, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// MockSecretUseCase_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
-type MockSecretUseCase_List_Call struct {
+// MockSecretUseCase_ListCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCursor'
+type MockSecretUseCase_ListCursor_Call struct {
 	*mock.Call
 }
 
-// List is a helper method to define mock.On call
+// ListCursor is a helper method to define mock.On call
 //   - ctx context.Context
-//   - offset int
+//   - afterPath *string
 //   - limit int
-func (_e *MockSecretUseCase_Expecter) List(ctx interface{}, offset interface{}, limit interface{}) *MockSecretUseCase_List_Call {
-	return &MockSecretUseCase_List_Call{Call: _e.mock.On("List", ctx, offset, limit)}
+func (_e *MockSecretUseCase_Expecter) ListCursor(ctx interface{}, afterPath interface{}, limit interface{}) *MockSecretUseCase_ListCursor_Call {
+	return &MockSecretUseCase_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterPath, limit)}
 }
 
-func (_c *MockSecretUseCase_List_Call) Run(run func(ctx context.Context, offset int, limit int)) *MockSecretUseCase_List_Call {
+func (_c *MockSecretUseCase_ListCursor_Call) Run(run func(ctx context.Context, afterPath *string, limit int)) *MockSecretUseCase_ListCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 *string
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(*string)
 		}
 		var arg2 int
 		if args[2] != nil {
@@ -959,12 +959,12 @@ func (_c *MockSecretUseCase_List_Call) Run(run func(ctx context.Context, offset 
 	return _c
 }
 
-func (_c *MockSecretUseCase_List_Call) Return(secrets []*domain0.Secret, err error) *MockSecretUseCase_List_Call {
+func (_c *MockSecretUseCase_ListCursor_Call) Return(secrets []*domain0.Secret, err error) *MockSecretUseCase_ListCursor_Call {
 	_c.Call.Return(secrets, err)
 	return _c
 }
 
-func (_c *MockSecretUseCase_List_Call) RunAndReturn(run func(ctx context.Context, offset int, limit int) ([]*domain0.Secret, error)) *MockSecretUseCase_List_Call {
+func (_c *MockSecretUseCase_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterPath *string, limit int) ([]*domain0.Secret, error)) *MockSecretUseCase_ListCursor_Call {
 	_c.Call.Return(run)
 	return _c
 }

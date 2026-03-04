@@ -589,7 +589,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
 			Return(expectedClients, nil).
 			Once()
 
@@ -617,7 +617,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		expectedClients := []*authDomain.Client{}
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 10, 20).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 21).
 			Return(expectedClients, nil).
 			Once()
 
@@ -638,7 +638,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		handler, mockUseCase := setupTestHandler(t)
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
 			Return([]*authDomain.Client{}, nil).
 			Once()
 
@@ -655,33 +655,35 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidOffset_Negative", func(t *testing.T) {
-		handler, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
+			Return([]*authDomain.Client{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/clients?offset=-1", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("Error_InvalidOffset_NonNumeric", func(t *testing.T) {
-		handler, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
+
+		// Mock expectation - handler will proceed with defaults since offset is not a valid parameter
+		mockUseCase.EXPECT().
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
+			Return([]*authDomain.Client{}, nil).
+			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/clients?offset=abc", nil)
 
 		handler.ListHandler(c)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("Error_InvalidLimit_Zero", func(t *testing.T) {
@@ -704,7 +706,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 
 		// Mock usecase to expect clamped limit of 1000
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 1000).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 1001).
 			Return([]*authDomain.Client{}, nil).
 			Once()
 
@@ -736,7 +738,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 		expectedErr := errors.New("database error")
 
 		mockUseCase.EXPECT().
-			List(mock.Anything, 0, 50).
+			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
 			Return(nil, expectedErr).
 			Once()
 

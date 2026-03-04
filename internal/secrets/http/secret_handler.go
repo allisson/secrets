@@ -177,25 +177,35 @@ func (h *SecretHandler) DeleteHandler(c *gin.Context) {
 	c.Data(http.StatusNoContent, "application/json", nil)
 }
 
-// ListHandler retrieves secrets with pagination support.
-// GET /v1/secrets?offset=0&limit=50 - Requires ReadCapability.
+// ListHandler retrieves secrets with cursor-based pagination support.
+// GET /v1/secrets?after_path=/path/to/secret&limit=50 - Requires ReadCapability.
 // Returns 200 OK with paginated secret list (excludes plaintext value for security).
+// Ordered by path ascending. Uses cursor pagination with after_path parameter.
 func (h *SecretHandler) ListHandler(c *gin.Context) {
-	// Parse offset and limit query parameters
-	offset, limit, err := httputil.ParsePagination(c)
+	// Parse cursor and limit query parameters
+	afterPath, limit, err := httputil.ParseStringCursorPagination(c, "after_path")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
 	}
 
-	// Call use case
-	secrets, err := h.secretUseCase.List(c.Request.Context(), offset, limit)
+	// Call use case with limit + 1 to detect if there are more results
+	secrets, err := h.secretUseCase.ListCursor(c.Request.Context(), afterPath, limit+1)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
+	// Determine if there are more results and set next cursor
+	var nextCursor *string
+	if len(secrets) > limit {
+		// More results exist, use the last visible item's path as cursor
+		secrets = secrets[:limit]
+		cursorValue := secrets[len(secrets)-1].Path
+		nextCursor = &cursorValue
+	}
+
 	// Map to response
-	response := dto.MapSecretsToListResponse(secrets)
+	response := dto.MapSecretsToListResponse(secrets, nextCursor)
 	c.JSON(http.StatusOK, response)
 }

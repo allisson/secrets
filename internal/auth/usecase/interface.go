@@ -22,9 +22,10 @@ type ClientRepository interface {
 	// Get retrieves a client by ID. Returns ErrClientNotFound if not found.
 	Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error)
 
-	// List retrieves clients ordered by ID descending (newest first) with pagination.
-	// Uses offset and limit for pagination control. Returns empty slice if no clients found.
-	List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error)
+	// ListCursor retrieves clients ordered by ID descending (newest first) with cursor-based pagination.
+	// If afterID is provided, returns clients with ID less than afterID (DESC order).
+	// Returns empty slice if no clients found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterID *uuid.UUID, limit int) ([]*authDomain.Client, error)
 
 	// UpdateLockState atomically updates the failed attempt counter and lock expiry.
 	// Pass failedAttempts=0 and lockedUntil=nil to reset the lock on successful auth.
@@ -59,13 +60,14 @@ type AuditLogRepository interface {
 	// Used for signature verification of specific audit logs.
 	Get(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error)
 
-	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
-	// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional
-	// filters (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps
-	// are expected in UTC. Returns empty slice if no audit logs found.
-	List(
+	// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
+	// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
+	// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+	// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
+	ListCursor(
 		ctx context.Context,
-		offset, limit int,
+		afterID *uuid.UUID,
+		limit int,
 		createdAtFrom, createdAtTo *time.Time,
 	) ([]*authDomain.AuditLog, error)
 
@@ -110,9 +112,10 @@ type ClientUseCase interface {
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error)
 
-	// List retrieves clients ordered by ID descending (newest first) with pagination.
-	// Uses offset and limit for pagination control. Returns empty slice if no clients found.
-	List(ctx context.Context, offset, limit int) ([]*authDomain.Client, error)
+	// ListCursor retrieves clients ordered by ID descending (newest first) with cursor-based pagination.
+	// If afterID is provided, returns clients with ID less than afterID (DESC order).
+	// Returns empty slice if no clients found. Limit is pre-validated (1-1000).
+	ListCursor(ctx context.Context, afterID *uuid.UUID, limit int) ([]*authDomain.Client, error)
 
 	// Delete performs a soft delete by setting IsActive to false, preventing authentication
 	// while preserving the client record for audit purposes. The client's data remains in
@@ -160,13 +163,14 @@ type AuditLogUseCase interface {
 		metadata map[string]any,
 	) error
 
-	// List retrieves audit logs ordered by created_at descending (newest first) with pagination
-	// and optional time-based filtering. Accepts createdAtFrom and createdAtTo as optional
-	// filters (nil means no filter). Both boundaries are inclusive (>= and <=). All timestamps
-	// are expected in UTC. Returns empty slice if no audit logs found.
-	List(
+	// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
+	// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
+	// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+	// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
+	ListCursor(
 		ctx context.Context,
-		offset, limit int,
+		afterID *uuid.UUID,
+		limit int,
 		createdAtFrom, createdAtTo *time.Time,
 	) ([]*authDomain.AuditLog, error)
 

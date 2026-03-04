@@ -61,10 +61,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: offset
+        - name: after_id
           in: query
+          description: Cursor for pagination (UUID of last item from previous page)
           schema:
-            type: integer
+            type: string
+            format: uuid
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -223,10 +225,11 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: offset
+        - name: after_path
           in: query
+          description: Cursor for pagination (path of last item from previous page)
           schema:
-            type: integer
+            type: string
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -337,10 +340,11 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: offset
+        - name: after_name
           in: query
+          description: Cursor for pagination (name of last item from previous page)
           schema:
-            type: integer
+            type: string
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -361,6 +365,9 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/TransitKeyResponse"
+                  next_cursor:
+                    type: string
+                    description: Cursor for the next page (present only if more results exist)
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -585,10 +592,11 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: offset
+        - name: after_name
           in: query
+          description: Cursor for pagination (name of last item from previous page)
           schema:
-            type: integer
+            type: string
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -609,6 +617,9 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/TokenizationKeyResponse"
+                  next_cursor:
+                    type: string
+                    description: Cursor for the next page (present only if more results exist)
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -851,10 +862,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: offset
+        - name: after_id
           in: query
+          description: Cursor for pagination (UUID of last item from previous page)
           schema:
-            type: integer
+            type: string
+            format: uuid
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -1088,6 +1101,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AuditLogResponse"
+        next_cursor:
+          type: string
+          format: uuid
+          description: Cursor for the next page (present only if more results exist)
       required: [data]
     ListSecretsResponse:
       type: object
@@ -1096,6 +1113,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SecretWriteResponse"
+        next_cursor:
+          type: string
+          description: Cursor for the next page (present only if more results exist)
       required: [data]
     ClientResponse:
       type: object
@@ -1138,6 +1158,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ClientResponse"
+        next_cursor:
+          type: string
+          format: uuid
+          description: Cursor for the next page (present only if more results exist)
       required: [data]
     ClientUpdateRequest:
       type: object

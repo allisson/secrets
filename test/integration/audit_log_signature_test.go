@@ -80,7 +80,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create audit log")
 
 				// Retrieve the created log
-				logs, err := auditLogUseCase.List(ctx, 0, 1, nil, nil)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 
@@ -113,7 +113,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create audit log")
 
 				// Retrieve the log
-				logs, err := auditLogUseCase.List(ctx, 0, 1, nil, nil)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 
@@ -208,7 +208,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 
 				// Get the created logs
 				endTime := time.Now().UTC().Add(1 * time.Second)
-				logs, err := auditLogUseCase.List(ctx, 0, 3, &startTime, &endTime)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 3, &startTime, &endTime)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 3, "expected 3 audit logs")
 
@@ -264,7 +264,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create legacy audit log")
 
 				// Retrieve the log
-				logs, err := legacyUseCase.List(ctx, 0, 1, nil, nil)
+				logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 
