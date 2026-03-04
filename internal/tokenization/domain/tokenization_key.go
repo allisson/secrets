@@ -59,7 +59,7 @@ func (tk *TokenizationKey) Validate() error {
 		return ErrTokenizationKeyDekIDInvalid
 	}
 	if tk.CreatedAt.IsZero() {
-		return ErrInvalidFormatType // Using existing error for now
+		return ErrTokenizationKeyCreatedAtInvalid
 	}
 	return nil
 }

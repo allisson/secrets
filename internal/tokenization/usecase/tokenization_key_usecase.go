@@ -124,7 +124,9 @@ func (t *tokenizationKeyUseCase) Create(
 	return tokenizationKey, nil
 }
 
-// Rotate creates a new version of an existing tokenization key.
+// Rotate creates a new version of an existing tokenization key by incrementing the version number.
+// Generates a new DEK for the new version while preserving old versions for detokenization.
+// If the key doesn't exist, it creates the first version.
 func (t *tokenizationKeyUseCase) Rotate(
 	ctx context.Context,
 	name string,
@@ -151,56 +153,16 @@ func (t *tokenizationKeyUseCase) Rotate(
 			return apperrors.Wrap(err, "failed to get current tokenization key")
 		}
 
-		// Get active KEK from chain
-		activeKek, err := getKek(t.kekChain, t.kekChain.ActiveKekID())
-		if err != nil {
-			return apperrors.Wrap(err, "failed to get active KEK")
-		}
-
-		// Create new DEK encrypted with active KEK
-		dek, err := t.keyManager.CreateDek(activeKek, alg)
-		if err != nil {
-			return apperrors.Wrap(err, "failed to create DEK")
-		}
-
-		// Persist new DEK
-		if err := t.dekRepo.Create(txCtx, &dek); err != nil {
-			return apperrors.Wrap(err, "failed to persist DEK")
-		}
-
-		// Create new tokenization key with incremented version
-		keyID, err := uuid.NewV7()
-		if err != nil {
-			return apperrors.Wrap(err, "failed to generate UUID for tokenization key")
-		}
-
-		// Generate salt for deterministic hashing
-		salt := make([]byte, 32)
-		if _, err := rand.Read(salt); err != nil {
-			return apperrors.Wrap(err, "failed to generate salt")
-		}
-
-		newKey = &tokenizationDomain.TokenizationKey{
-			ID:              keyID,
-			Name:            name,
-			Version:         currentKey.Version + 1,
-			FormatType:      formatType,
-			IsDeterministic: isDeterministic,
-			Salt:            salt,
-			DekID:           dek.ID,
-			CreatedAt:       time.Now().UTC(),
-		}
-
-		// Validate tokenization key fields
-		if err := newKey.Validate(); err != nil {
-			return apperrors.Wrap(err, "tokenization key validation failed")
-		}
-
-		// Persist new tokenization key
-		if err := t.tokenizationKeyRepo.Create(txCtx, newKey); err != nil {
-			return apperrors.Wrap(err, "failed to persist rotated tokenization key")
-		}
-		return nil
+		// Create new tokenization key version using helper
+		newKey, err = t.createTokenizationKey(
+			txCtx,
+			name,
+			currentKey.Version+1,
+			formatType,
+			isDeterministic,
+			alg,
+		)
+		return err
 	})
 
 	if err != nil {
@@ -210,7 +172,7 @@ func (t *tokenizationKeyUseCase) Rotate(
 	return newKey, nil
 }
 
-// Delete soft-deletes a tokenization key by setting its deleted_at timestamp.
+// Delete soft-deletes a tokenization key and all its versions by setting its deleted_at timestamp.
 func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) error {
 	err := t.tokenizationKeyRepo.Delete(ctx, keyID)
 	if err != nil {
@@ -219,7 +181,8 @@ func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) er
 	return nil
 }
 
-// ListCursor retrieves tokenization keys ordered by name ascending with cursor pagination.
+// ListCursor retrieves tokenization keys ordered by name ascending with cursor-based pagination.
+// Returns the latest version for each key name.
 func (t *tokenizationKeyUseCase) ListCursor(
 	ctx context.Context,
 	afterName *string,
@@ -232,8 +195,9 @@ func (t *tokenizationKeyUseCase) ListCursor(
 	return keys, nil
 }
 
-// PurgeDeleted permanently removes soft-deleted tokenization keys older than specified days.
-// It also removes all tokens associated with those keys.
+// PurgeDeleted permanently removes soft-deleted tokenization keys and their associated tokens.
+// Only keys deleted longer than olderThanDays ago are affected.
+// If dryRun is true, returns the count of items that would be deleted without performing the operation.
 func (t *tokenizationKeyUseCase) PurgeDeleted(
 	ctx context.Context,
 	olderThanDays int,

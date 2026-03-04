@@ -176,6 +176,96 @@ func TestMySQLTokenizationKeyRepository_GetByName(t *testing.T) {
 	assert.Equal(t, uint(2), retrieved.Version)
 }
 
+func TestMySQLTokenizationKeyRepository_Get(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+
+	// Create DEK dependency
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	key := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "get-test",
+		Version:         1,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		Salt:            []byte("test-salt-32-bytes-long-12345678"),
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+		DeletedAt:       nil,
+	}
+
+	err := repo.Create(ctx, key)
+	require.NoError(t, err)
+
+	// Test Get
+	retrieved, err := repo.Get(ctx, key.ID)
+	require.NoError(t, err)
+	assert.Equal(t, key.ID, retrieved.ID)
+	assert.Equal(t, key.Name, retrieved.Name)
+
+	// Test Get NotFound
+	_, err = repo.Get(ctx, uuid.Must(uuid.NewV7()))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, tokenizationDomain.ErrTokenizationKeyNotFound)
+}
+
+func TestMySQLTokenizationKeyRepository_GetByNameAndVersion(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenizationKeyRepository(db)
+	ctx := context.Background()
+
+	// Create DEK dependency
+	_, dekID := createKekAndDekMySQL(t, db)
+
+	key1 := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "version-test",
+		Version:         1,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		Salt:            []byte("test-salt-32-bytes-long-12345678"),
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+		DeletedAt:       nil,
+	}
+	require.NoError(t, repo.Create(ctx, key1))
+
+	key2 := &tokenizationDomain.TokenizationKey{
+		ID:              uuid.Must(uuid.NewV7()),
+		Name:            "version-test",
+		Version:         2,
+		FormatType:      tokenizationDomain.FormatUUID,
+		IsDeterministic: false,
+		Salt:            []byte("test-salt-32-bytes-long-12345678"),
+		DekID:           dekID,
+		CreatedAt:       time.Now().UTC(),
+		DeletedAt:       nil,
+	}
+	require.NoError(t, repo.Create(ctx, key2))
+
+	// Test GetByNameAndVersion
+	retrieved, err := repo.GetByNameAndVersion(ctx, "version-test", 1)
+	require.NoError(t, err)
+	assert.Equal(t, key1.ID, retrieved.ID)
+
+	retrieved, err = repo.GetByNameAndVersion(ctx, "version-test", 2)
+	require.NoError(t, err)
+	assert.Equal(t, key2.ID, retrieved.ID)
+
+	// Test NotFound
+	_, err = repo.GetByNameAndVersion(ctx, "version-test", 3)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, tokenizationDomain.ErrTokenizationKeyNotFound)
+}
+
 func TestMySQLTokenizationKeyRepository_Delete(t *testing.T) {
 	db := testutil.SetupMySQLDB(t)
 	defer testutil.TeardownDB(t, db)
