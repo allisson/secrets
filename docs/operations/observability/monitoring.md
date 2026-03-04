@@ -1,9 +1,12 @@
 # 📊 Monitoring
 
-This document describes the metrics instrumentation and monitoring capabilities in the Secrets application.
+This guide shows you how to set up monitoring for the Secrets application using Prometheus and Grafana.
+
+**For a complete reference of all metrics**, see the **[Metrics Reference](../../observability/metrics-reference.md)**.
 
 **Related guides**:
 
+- **[Metrics Reference](../../observability/metrics-reference.md)** - Complete catalog of all metrics and Prometheus queries
 - **[Health Check Endpoints](health-checks.md)** - Liveness and readiness probes for container orchestration
 - **[Incident Response](incident-response.md)** - Troubleshooting production issues
 
@@ -12,23 +15,28 @@ This document describes the metrics instrumentation and monitoring capabilities 
 - [Overview](#overview)
 - [Configuration](#configuration)
 - [Quickstart (Prometheus + Grafana)](#quickstart-prometheus--grafana)
-- [Metrics Endpoint](#metrics-endpoint)
-- [Available Metrics](#available-metrics)
-- [Business Domains and Operations](#business-domains-and-operations)
 - [Prometheus Configuration](#prometheus-configuration)
 - [Grafana Dashboard](#grafana-dashboard)
 - [Alerting](#alerting)
 - [Disabling Metrics](#disabling-metrics)
-- [Performance Considerations](#performance-considerations)
 - [Troubleshooting](#troubleshooting)
 - [See Also](#see-also)
 
 ## Overview
 
+The Secrets application exposes Prometheus-compatible metrics at `http://localhost:8081/metrics`. This guide walks you through:
+
+1. Configuring metrics collection
+2. Setting up Prometheus to scrape metrics
+3. Creating Grafana dashboards
+4. Configuring alerts
+
+**For detailed information about available metrics**, see the **[Metrics Reference](../../observability/metrics-reference.md)**.
+
 The application uses OpenTelemetry for metrics instrumentation with a Prometheus-compatible export endpoint. Metrics can be enabled/disabled via configuration and cover two main areas:
 
-1. **Business Operations** - Domain-specific operation counters and durations
-2. **HTTP Requests** - Request counts and response times
+1. **HTTP Request Metrics** - Request counts, durations, and status codes for all API endpoints
+2. **Business Operation Metrics** - Domain-specific operation counters and durations (auth, secrets, transit, tokenization)
 
 **Health monitoring**: For liveness and readiness probes, see [Health Check Endpoints](health-checks.md).
 
@@ -96,169 +104,7 @@ Suggested first panel query (requests/sec by route):
 sum(rate(secrets_http_requests_total[5m])) by (method, path)
 ```
 
-## Metrics Endpoint
-
-The metrics are exposed at the `/metrics` endpoint in Prometheus exposition format:
-
-```bash
-curl http://localhost:8081/metrics
-```
-
-**Key Points:**
-
-- **No Authentication Required** - The `/metrics` endpoint is public (standard Prometheus practice)
-- **Prometheus Compatible** - Supports both text format and OpenMetrics format
-- **Located Outside API Versioning** - Available at `/metrics`, not `/v1/metrics`
-
-## Available Metrics
-
-### Metrics Naming Contract
-
-These metrics are treated as stable for dashboard and alert compatibility.
-
-| Metric | Type | Labels | Stability |
-| --- | --- | --- | --- |
-| `{namespace}_http_requests_total` | Counter | `method`, `path`, `status_code` | Stable |
-| `{namespace}_http_request_duration_seconds` | Histogram | `method`, `path`, `status_code` | Stable |
-| `{namespace}_operations_total` | Counter | `domain`, `operation`, `status` | Stable |
-| `{namespace}_operation_duration_seconds` | Histogram | `domain`, `operation`, `status` | Stable |
-
-Compatibility note:
-
-- Renaming metric names or labels is considered a breaking observability change
-- Additive changes (new metrics/new label values) are generally non-breaking
-
-### Business Operation Metrics
-
-#### `{namespace}_operations_total`
-
-**Type:** Counter  
-**Description:** Total number of business operations executed  
-**Labels:**
-
-- `domain` - Business domain (auth, secrets, transit, tokenization)
-- `operation` - Operation name (e.g., client_create, secret_get, transit_encrypt)
-- `status` - Operation result (success, error)
-
-**Example:**
-
-```prometheus
-secrets_operations_total{domain="auth",operation="client_create",status="success"} 42
-secrets_operations_total{domain="secrets",operation="secret_get",status="success"} 1337
-secrets_operations_total{domain="transit",operation="transit_key_rotate",status="error"} 2
-```
-
-#### `{namespace}_operation_duration_seconds`
-
-**Type:** Histogram  
-**Description:** Duration of business operations in seconds  
-**Labels:**
-
-- `domain` - Business domain (auth, secrets, transit, tokenization)
-- `operation` - Operation name
-- `status` - Operation result (success, error)
-
-**Example:**
-
-```prometheus
-secrets_operation_duration_seconds_bucket{domain="auth",operation="client_create",status="success",le="0.005"} 15
-secrets_operation_duration_seconds_bucket{domain="auth",operation="client_create",status="success",le="0.01"} 28
-secrets_operation_duration_seconds_sum{domain="auth",operation="client_create",status="success"} 1.25
-secrets_operation_duration_seconds_count{domain="auth",operation="client_create",status="success"} 42
-```
-
-### HTTP Request Metrics
-
-#### `{namespace}_http_requests_total`
-
-**Type:** Counter  
-**Description:** Total number of HTTP requests received  
-**Labels:**
-
-- `method` - HTTP method (GET, POST, PUT, DELETE)
-- `path` - Route pattern (e.g., `/v1/secrets/*path`, `/v1/tokenization/keys/:name/tokenize`)
-- `status_code` - HTTP status code (200, 404, 500, etc.)
-
-Route-template note:
-
-- OpenAPI pages use `{name}` parameter syntax
-- Runtime HTTP metrics typically expose Gin-style patterns like `:name` and wildcard `*path`
-
-**Example:**
-
-```prometheus
-secrets_http_requests_total{method="GET",path="/v1/secrets/*path",status_code="200"} 1234
-secrets_http_requests_total{method="POST",path="/v1/clients",status_code="201"} 56
-secrets_http_requests_total{method="GET",path="/health",status_code="200"} 9999
-```
-
-#### `{namespace}_http_request_duration_seconds`
-
-**Type:** Histogram  
-**Description:** Duration of HTTP requests in seconds  
-**Labels:**
-
-- `method` - HTTP method
-- `path` - Route pattern
-- `status_code` - HTTP status code
-
-**Example:**
-
-```prometheus
-secrets_http_request_duration_seconds_bucket{method="GET",path="/v1/secrets/*path",status_code="200",le="0.005"} 800
-secrets_http_request_duration_seconds_bucket{method="GET",path="/v1/secrets/*path",status_code="200",le="0.01"} 1100
-secrets_http_request_duration_seconds_sum{method="GET",path="/v1/secrets/*path",status_code="200"} 6.789
-secrets_http_request_duration_seconds_count{method="GET",path="/v1/secrets/*path",status_code="200"} 1234
-```
-
-## Business Domains and Operations
-
-### Auth Domain
-
-| Operation | Description |
-|-----------|-------------|
-| `client_create` | Create new API client |
-| `client_get` | Retrieve client by ID |
-| `client_update` | Update client configuration |
-| `client_delete` | Delete API client |
-| `client_list` | List all clients |
-| `token_issue` | Issue authentication token |
-| `token_authenticate` | Validate token |
-| `audit_log_create` | Record audit log entry |
-| `audit_log_list` | List audit logs |
-| `audit_log_delete` | Delete audit logs older than retention |
-
-### Secrets Domain
-
-| Operation | Description |
-|-----------|-------------|
-| `secret_create` | Create or update secret |
-| `secret_get` | Retrieve secret value |
-| `secret_get_version` | Retrieve secret by explicit version |
-| `secret_delete` | Delete secret |
-
-### Transit Domain
-
-| Operation | Description |
-|-----------|-------------|
-| `transit_key_create` | Create new transit key |
-| `transit_key_rotate` | Rotate transit key to new version |
-| `transit_key_delete` | Delete transit key |
-| `transit_encrypt` | Encrypt data with transit key |
-| `transit_decrypt` | Decrypt data with transit key |
-
-### Tokenization Domain
-
-| Operation | Description |
-|-----------|-------------|
-| `tokenization_key_create` | Create new tokenization key |
-| `tokenization_key_rotate` | Rotate tokenization key to new version |
-| `tokenization_key_delete` | Delete tokenization key |
-| `tokenize` | Generate token for plaintext |
-| `detokenize` | Resolve token back to plaintext |
-| `validate` | Validate token lifecycle state |
-| `revoke` | Revoke token |
-| `cleanup_expired` | Delete expired tokens older than retention |
+For more Prometheus queries, see the **[Prometheus Query Library](../../observability/metrics-reference.md#prometheus-query-library)** in the Metrics Reference.
 
 ## Prometheus Configuration
 
@@ -275,7 +121,17 @@ scrape_configs:
     scrape_interval: 15s
 ```
 
+**Configuration notes:**
+
+- **Port 8081** - Metrics are exposed on a separate port from the main API (8080)
+- **No authentication** - The `/metrics` endpoint is public (standard Prometheus practice)
+- **Scrape interval** - 15-30 seconds is recommended for most deployments
+
+For a complete list of available metrics, see the **[Metrics Reference](../../observability/metrics-reference.md#metric-catalog)**.
+
 ### Example Queries
+
+This section provides commonly used queries for monitoring. For a comprehensive query library, see the **[Prometheus Query Library](../../observability/metrics-reference.md#prometheus-query-library)** in the Metrics Reference.
 
 **Total requests per second (rate over 5 minutes):**
 
@@ -301,7 +157,9 @@ rate(secrets_operations_total{status="error"}[5m]) / rate(secrets_operations_tot
 topk(5, rate(secrets_operation_duration_seconds_sum[5m]) / rate(secrets_operation_duration_seconds_count[5m]))
 ```
 
-### Rate Limiting Observability Queries
+For more query examples including rate limiting, tokenization-specific queries, and SLO queries, see the **[Metrics Reference](../../observability/metrics-reference.md#prometheus-query-library)**.
+
+### Rate Limiting and Security Queries
 
 **429 rate by route (5m):**
 
@@ -337,103 +195,72 @@ sum(rate(secrets_http_requests_total{path="/v1/token"}[5m]))
 sum(rate(secrets_http_requests_total{path="/v1/token"}[5m])) by (status_code)
 ```
 
-**Token issuance success ratio (5m):**
-
-```promql
-sum(rate(secrets_http_requests_total{path="/v1/token",status_code="201"}[5m]))
-/
-sum(rate(secrets_http_requests_total{path="/v1/token"}[5m]))
-```
-
-Rate-limit interpretation notes:
-
-- Stable low-volume `429` can be normal under bursty workloads
-- Rising `429` with rising latency usually indicates saturation or mis-tuned clients
-- Tune `RATE_LIMIT_REQUESTS_PER_SEC` and `RATE_LIMIT_BURST` only after retry behavior is verified
-- For token issuance spikes, tune `RATE_LIMIT_TOKEN_REQUESTS_PER_SEC` and `RATE_LIMIT_TOKEN_BURST`
-
-Token endpoint alert starters:
-
-| Signal | Warning | Critical | Interpretation |
-| --- | --- | --- | --- |
-| `/v1/token` `429` ratio (5m) | `> 0.05` for 10m | `> 0.20` for 10m | Shared egress saturation, attack traffic, or strict limits |
-| `/v1/token` success ratio (5m) | `< 0.95` for 10m | `< 0.80` for 10m | Legitimate token issuance degradation |
-
-### Tokenization-focused Queries
-
-**Detokenize error rate (5m):**
-
-```promql
-rate(secrets_operations_total{domain="tokenization",operation="detokenize",status="error"}[5m])
-/
-rate(secrets_operations_total{domain="tokenization",operation="detokenize"}[5m])
-```
-
-**Tokenization p95 latency (tokenize path):**
-
-```promql
-histogram_quantile(
-  0.95,
-  sum by (le) (
-    rate(secrets_http_request_duration_seconds_bucket{path="/v1/tokenization/keys/:name/tokenize"}[5m])
-  )
-)
-```
-
-**Expired-token cleanup throughput (rows per second):**
-
-```promql
-rate(secrets_operations_total{domain="tokenization",operation="cleanup_expired",status="success"}[15m])
-```
-
-### SLO Starters (Tokenization)
-
-- `POST /v1/tokenization/keys/:name/tokenize` latency: p95 < 300 ms
-- `POST /v1/tokenization/detokenize` latency: p95 < 400 ms
-- Tokenization server errors: < 0.2% across tokenization operations
+**Additional rate limiting queries** including 429 analysis, token endpoint health, and throttle pressure metrics are available in the **[Metrics Reference](../../observability/metrics-reference.md#rate-limiting-queries)**.
 
 ## Grafana Dashboard
 
 ### Dashboard Artifacts
 
-Starter Grafana dashboard JSON artifacts are available for local bootstrap:
+Starter Grafana dashboard JSON artifacts are available for quick setup:
 
-**Artifacts:**
+**Available dashboards:**
 
-- `secrets-overview.json` - Baseline request/error/latency view
-- `secrets-rate-limiting.json` - `429` behavior and throttle pressure view
+- **`secrets-overview.json`** - Baseline request/error/latency view
+- **`secrets-rate-limiting.json`** - 429 behavior and throttle pressure view
 
-**Import Instructions:**
+**Location:** `docs/operations/dashboards/`
 
-1. Open Grafana
-2. Go to Dashboards → Import
-3. Upload one of the JSON files from `docs/operations/dashboards/`
-4. Select your Prometheus datasource
+**Import instructions:**
+
+1. Open Grafana (default: `http://localhost:3000`)
+2. Go to **Dashboards** → **Import**
+3. Click **Upload JSON file**
+4. Select a dashboard file from `docs/operations/dashboards/`
+5. Select your Prometheus datasource
+6. Click **Import**
 
 **Notes:**
 
 - Treat these dashboards as starter templates
 - Adjust panel thresholds and time windows for your traffic profile
 
+For detailed panel recommendations and configuration tips, see the **[Grafana Dashboards](../../observability/metrics-reference.md#grafana-dashboards)** section in the Metrics Reference.
+
 ### Recommended Panels
 
-1. **Request Rate** - Line graph showing HTTP requests/sec
-2. **Error Rate** - Percentage of failed operations by domain
-3. **Latency Heatmap** - Distribution of request durations
-4. **Operation Counts** - Table showing top operations by volume
-5. **Status Code Distribution** - Pie chart of HTTP status codes
+When creating custom dashboards, consider including:
 
-### Example Panel Query (Request Rate)
+| Panel Type | Metric | Purpose |
+|------------|--------|---------|
+| Time Series | `rate(secrets_http_requests_total[5m])` | Request rate by route |
+| Time Series | `histogram_quantile(0.95, ...)` | p95 latency by route |
+| Stat | 5xx error rate | Current server error rate |
+| Gauge | API availability | Availability percentage with SLO threshold |
+| Table | Top operations by volume | Identify hottest paths |
+| Heatmap | Request duration buckets | Latency distribution visualization |
+
+**Example panel query (request rate by route):**
 
 ```promql
 sum(rate(secrets_http_requests_total[5m])) by (method, path)
 ```
 
+For more panel examples and configuration guidance, see the **[Metrics Reference](../../observability/metrics-reference.md#grafana-dashboards)**.
+
 ## Alerting
 
 ### Recommended Alerts
 
-### Ownership and Escalation Guidance
+This section provides production-ready alert rules for Prometheus Alertmanager.
+
+**Alert configuration tips:**
+
+- Start with warning thresholds and tune based on your environment
+- Use appropriate `for` durations to avoid alert flapping
+- Include actionable descriptions in annotations
+- Link to runbooks or documentation in annotations
+
+### Alert Ownership and Escalation
 
 | Alert class | Default severity | Primary owner | Escalate if unresolved |
 | --- | --- | --- | --- |
@@ -557,15 +384,6 @@ When disabled:
 - HTTP metrics middleware is not applied
 - Business metrics use a no-op implementation
 
-## Performance Considerations
-
-- **Low Overhead** - OpenTelemetry metrics have minimal performance impact
-- **Cardinality Control** - Labels are carefully chosen to avoid high cardinality
-  - Paths use route patterns (e.g., `/v1/secrets/*path`) instead of actual values
-  - Operations are predefined, not dynamic
-  - Status values are limited to "success" and "error"
-- **Memory Usage** - Metrics are stored in-memory until scraped by Prometheus
-
 ## Troubleshooting
 
 ### Metrics endpoint returns 404
@@ -588,6 +406,7 @@ When disabled:
 
 ## See Also
 
+- **[Metrics Reference](../../observability/metrics-reference.md)** - Complete catalog of all metrics, operations, and queries
 - [Production Deployment](../deployment/docker-hardened.md)
 - [Operator drills](../runbooks/README.md#operator-drills-quarterly)
 - [Incident response guide](../observability/incident-response.md)

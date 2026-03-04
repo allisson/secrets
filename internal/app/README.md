@@ -11,7 +11,6 @@ The DI container centralizes the creation and wiring of all application dependen
 - Repositories (data access layer)
 - Use cases (business logic layer)
 - HTTP servers and handlers
-- Background workers
 
 ## Key Features
 
@@ -65,27 +64,32 @@ Container
 │   └── depends on: Config.DB*
 ├── TxManager
 │   └── depends on: Database
-├── Repositories
-│   ├── UserRepository (interface from usecase package)
-│   │   ├── MySQLUserRepository (concrete implementation)
-│   │   ├── PostgreSQLUserRepository (concrete implementation)
+├── Crypto Services
+│   ├── KMS Provider
+│   │   └── depends on: Config.KMS*
+│   └── Encryption Service
+│       └── depends on: KMS Provider
+├── Repositories (by domain)
+│   ├── AuthRepository
 │   │   └── depends on: Database
-│   └── OutboxRepository (interface from usecase package)
-│       ├── MySQLOutboxEventRepository (concrete implementation)
-│       ├── PostgreSQLOutboxEventRepository (concrete implementation)
+│   ├── SecretsRepository
+│   │   └── depends on: Database
+│   ├── TransitRepository
+│   │   └── depends on: Database
+│   └── TokenizationRepository
 │       └── depends on: Database
-├── Use Cases
-│   └── UserUseCase
-│       ├── depends on: TxManager
-│       ├── depends on: UserRepository
-│       └── depends on: OutboxRepository
-├── HTTP Server
-│   ├── depends on: Logger
-│   └── depends on: UserUseCase
-└── Event Worker
-    ├── depends on: Logger
-    ├── depends on: TxManager
-    └── depends on: OutboxRepository
+├── Use Cases (by domain)
+│   ├── AuthUseCase
+│   │   └── depends on: AuthRepository, Crypto
+│   ├── SecretsUseCase
+│   │   └── depends on: SecretsRepository, Crypto
+│   ├── TransitUseCase
+│   │   └── depends on: TransitRepository, Crypto
+│   └── TokenizationUseCase
+│       └── depends on: TokenizationRepository, Crypto
+└── HTTP Server
+    ├── depends on: Logger, Config
+    └── depends on: All Use Cases
 ```
 
 ### Layer Separation
@@ -95,7 +99,7 @@ The container enforces clean architecture by managing dependencies at each layer
 1. **Infrastructure Layer**: Database connections, logger, transaction manager
 2. **Data Layer**: Repositories for data access
 3. **Business Layer**: Use cases with business logic
-4. **Presentation Layer**: HTTP handlers and workers
+4. **Presentation Layer**: HTTP handlers and API endpoints
 
 ## Usage Examples
 
@@ -124,26 +128,6 @@ func runServer(ctx context.Context) error {
 
     // Start server
     return server.Start(ctx)
-}
-```
-
-### Starting the Worker
-
-```go
-func runWorker(ctx context.Context) error {
-    cfg := config.Load()
-    container := app.NewContainer(cfg)
-    logger := container.Logger()
-
-    defer closeContainer(container, logger)
-
-    // Get event worker (initializes required dependencies)
-    eventWorker, err := container.EventWorker()
-    if err != nil {
-        return fmt.Errorf("failed to initialize event worker: %w", err)
-    }
-
-    return eventWorker.Start(ctx)
 }
 ```
 
@@ -294,7 +278,7 @@ server, err := container.HTTPServer()
 The container can be easily tested and mocked for integration tests.
 
 ### 4. Consistency
-All parts of the application (server, worker, migrations) use the same dependency initialization logic.
+All parts of the application (server, CLI commands, migrations) use the same dependency initialization logic.
 
 ### 5. Scalability
 Adding new domains (orders, products, etc.) is straightforward - just add methods to the container.

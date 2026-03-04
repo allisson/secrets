@@ -49,8 +49,10 @@ Welcome to the full documentation for Secrets. Pick a path and dive in 🚀
 
 **Operations: Observability:**
 
-- 📊 [operations/observability/monitoring.md](operations/observability/monitoring.md)
-- 🚑 [operations/observability/incident-response.md](operations/observability/incident-response.md)
+- 📊 [observability/metrics-reference.md](observability/metrics-reference.md) - Complete metrics catalog and Prometheus query library
+- 📈 [operations/observability/monitoring.md](operations/observability/monitoring.md) - Prometheus and Grafana setup guide
+- 🚑 [operations/observability/incident-response.md](operations/observability/incident-response.md) - Production troubleshooting runbook
+- 🏥 [operations/observability/health-checks.md](operations/observability/health-checks.md) - Liveness and readiness probes
 
 **Operations: Deployment:**
 

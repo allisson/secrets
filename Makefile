@@ -1,4 +1,13 @@
-.PHONY: help build run test lint clean migrate-up migrate-down docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate mocks docs-lint docs-check-examples test-coverage-check test-integration-coverage-check
+.PHONY: help \
+	build clean deps mocks \
+	run-server run-migrate \
+	test test-all test-coverage test-coverage-check test-integration test-integration-coverage-check test-with-db test-db-up test-db-down \
+	lint \
+	migrate-up migrate-down \
+	docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate \
+	dev-postgres dev-mysql dev-stop \
+	docs-lint docs-check-examples \
+	release-snapshot release-check
 
 APP_NAME := app
 BINARY_DIR := bin
@@ -25,10 +34,6 @@ build: ## Build the application
 run-server: build ## Build and run the HTTP server
 	@echo "Running server..."
 	@$(BINARY) server
-
-run-worker: build ## Build and run the worker
-	@echo "Running worker..."
-	@$(BINARY) worker
 
 run-migrate: build ## Build and run database migrations
 	@echo "Running migrations..."
