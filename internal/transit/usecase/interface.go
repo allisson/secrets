@@ -62,15 +62,22 @@ type TransitKeyUseCase interface {
 	Delete(ctx context.Context, transitKeyID uuid.UUID) error
 
 	// Encrypt encrypts plaintext using the latest version of the named transit key.
+	// Optional context (AAD) can be provided for additional security.
 	// Returns an EncryptedBlob with format "version:base64-ciphertext" for storage or transmission.
-	Encrypt(ctx context.Context, name string, plaintext []byte) (*transitDomain.EncryptedBlob, error)
+	Encrypt(ctx context.Context, name string, plaintext, context []byte) (*transitDomain.EncryptedBlob, error)
 
 	// Decrypt decrypts ciphertext using the version specified in the encrypted blob.
+	// Optional context (AAD) MUST match the one used during encryption.
 	// The ciphertext parameter should be in format "version:base64-ciphertext".
 	//
 	// Security Note: The returned EncryptedBlob contains plaintext data in the Plaintext field.
 	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
-	Decrypt(ctx context.Context, name string, ciphertext string) (*transitDomain.EncryptedBlob, error)
+	Decrypt(
+		ctx context.Context,
+		name string,
+		ciphertext string,
+		context []byte,
+	) (*transitDomain.EncryptedBlob, error)
 
 	// ListCursor retrieves transit keys ordered by name ascending with cursor-based pagination.
 	// If afterName is provided, returns keys with name greater than afterName (ASC order).

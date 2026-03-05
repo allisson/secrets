@@ -783,7 +783,7 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext)
+		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
 
 		// Assert
 		assert.NoError(t, err)
@@ -818,7 +818,7 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext)
+		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -858,7 +858,7 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext)
+		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -903,7 +903,7 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext)
+		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -911,7 +911,7 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
 	})
 
-	t.Run("Error_EncryptionFails", func(t *testing.T) {
+	t.Run("Success_EncryptWithContext", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
@@ -928,8 +928,10 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 		dek := createTestDek(kek.ID)
 		transitKey := createTestTransitKey("test-key", 1, dek.ID)
 		plaintext := []byte("sensitive data")
+		contextAAD := []byte("aead context")
 		dekKey := make([]byte, 32)
-		expectedError := errors.New("encryption failed")
+		ciphertext := []byte("encrypted-data")
+		nonce := []byte("random-nonce")
 
 		// Setup expectations
 		mockTransitRepo.EXPECT().
@@ -953,24 +955,20 @@ func TestTransitKeyUseCase_Encrypt(t *testing.T) {
 			Once()
 
 		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(nil, nil, expectedError).
+			Encrypt(plaintext, contextAAD).
+			Return(ciphertext, nonce, nil).
 			Once()
 
 		// Execute
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext)
+		blob, err := uc.Encrypt(ctx, "test-key", plaintext, contextAAD)
 
 		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, blob)
+		assert.NoError(t, err)
+		assert.NotNil(t, blob)
+		mockCipher.AssertExpectations(t)
 	})
 }
 
@@ -1043,7 +1041,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1118,7 +1116,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
 
 		// Assert
 		assert.NoError(t, err)
@@ -1146,7 +1144,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		blob, err := uc.Decrypt(ctx, "test-key", invalidCiphertext)
+		blob, err := uc.Decrypt(ctx, "test-key", invalidCiphertext, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -1184,7 +1182,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -1247,7 +1245,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -1255,7 +1253,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
 	})
 
-	t.Run("Error_DecryptionFails", func(t *testing.T) {
+	t.Run("Error_DecryptWithWrongContext", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
@@ -1272,6 +1270,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		dek := createTestDek(kek.ID)
 		transitKey := createTestTransitKey("test-key", 1, dek.ID)
 		dekKey := make([]byte, 32)
+		wrongContext := []byte("wrong context")
 
 		// Create a valid encrypted blob string
 		nonce := []byte("012345678901")
@@ -1311,7 +1310,7 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 			Maybe()
 
 		mockCipher.EXPECT().
-			Decrypt(ciphertext, nonce, mock.Anything).
+			Decrypt(ciphertext, nonce, wrongContext).
 			Return(nil, errors.New("authentication failed")).
 			Once()
 
@@ -1319,12 +1318,13 @@ func TestTransitKeyUseCase_Decrypt(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr)
+		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, wrongContext)
 
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, resultBlob)
 		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
+		mockCipher.AssertExpectations(t)
 	})
 }
 

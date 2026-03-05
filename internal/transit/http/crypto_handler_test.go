@@ -49,7 +49,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Encrypt(mock.Anything, "test-key", plaintext).
+			Encrypt(mock.Anything, "test-key", plaintext, mock.Anything).
 			Return(encryptedBlob, nil).
 			Once()
 
@@ -65,6 +65,40 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, encryptedBlob.String(), response.Ciphertext)
 		assert.Equal(t, uint(1), response.Version)
+	})
+
+	t.Run("Success_EncryptWithContext", func(t *testing.T) {
+		handler, mockUseCase := setupTestCryptoHandler(t)
+
+		plaintext := []byte("my secret data")
+		contextAAD := []byte("aead context")
+
+		request := dto.EncryptRequest{
+			Plaintext: base64.StdEncoding.EncodeToString(plaintext),
+			Context:   base64.StdEncoding.EncodeToString(contextAAD),
+		}
+
+		encryptedBlob := &transitDomain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: []byte("encrypted-data"),
+		}
+
+		mockUseCase.EXPECT().
+			Encrypt(mock.Anything, "test-key", plaintext, contextAAD).
+			Return(encryptedBlob, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/transit/keys/test-key/encrypt", request)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.EncryptHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.EncryptResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, encryptedBlob.String(), response.Ciphertext)
 	})
 
 	t.Run("Error_EmptyName", func(t *testing.T) {
@@ -154,7 +188,7 @@ func TestCryptoHandler_EncryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Encrypt(mock.Anything, "nonexistent-key", plaintext).
+			Encrypt(mock.Anything, "nonexistent-key", plaintext, mock.Anything).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
 			Once()
 
@@ -188,7 +222,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Decrypt(mock.Anything, "test-key", ciphertextString).
+			Decrypt(mock.Anything, "test-key", ciphertextString, mock.Anything).
 			Return(decryptedBlob, nil).
 			Once()
 
@@ -204,6 +238,45 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, base64.StdEncoding.EncodeToString(expectedPlaintext), response.Plaintext)
 		assert.Equal(t, uint(1), response.Version)
+	})
+
+	t.Run("Success_DecryptWithContext", func(t *testing.T) {
+		handler, mockUseCase := setupTestCryptoHandler(t)
+
+		plaintext := []byte("my secret data")
+		expectedPlaintext := make([]byte, len(plaintext))
+		copy(expectedPlaintext, plaintext)
+		ciphertext := []byte("encrypted-data")
+		ciphertextString := "1:ZW5jcnlwdGVkLWRhdGE="
+		contextAAD := []byte("aead context")
+
+		request := dto.DecryptRequest{
+			Ciphertext: ciphertextString,
+			Context:    base64.StdEncoding.EncodeToString(contextAAD),
+		}
+
+		decryptedBlob := &transitDomain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: ciphertext,
+			Plaintext:  plaintext,
+		}
+
+		mockUseCase.EXPECT().
+			Decrypt(mock.Anything, "test-key", ciphertextString, contextAAD).
+			Return(decryptedBlob, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/transit/keys/test-key/decrypt", request)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.DecryptHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.DecryptResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(expectedPlaintext), response.Plaintext)
 	})
 
 	t.Run("Error_EmptyName", func(t *testing.T) {
@@ -271,7 +344,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Decrypt(mock.Anything, "test-key", "invalid-format").
+			Decrypt(mock.Anything, "test-key", "invalid-format", mock.Anything).
 			Return(nil, transitDomain.ErrInvalidBlobFormat).
 			Once()
 
@@ -291,7 +364,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Decrypt(mock.Anything, "test-key", "1:invalid-base64!!!").
+			Decrypt(mock.Anything, "test-key", "1:invalid-base64!!!", mock.Anything).
 			Return(nil, transitDomain.ErrInvalidBlobBase64).
 			Once()
 
@@ -313,7 +386,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Decrypt(mock.Anything, "nonexistent-key", ciphertextString).
+			Decrypt(mock.Anything, "nonexistent-key", ciphertextString, mock.Anything).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
 			Once()
 
@@ -335,7 +408,7 @@ func TestCryptoHandler_DecryptHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Decrypt(mock.Anything, "test-key", ciphertextString).
+			Decrypt(mock.Anything, "test-key", ciphertextString, mock.Anything).
 			Return(nil, apperrors.ErrInvalidInput).
 			Once()
 

@@ -235,8 +235,69 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, plaintext1, decoded)
 			})
 
-			// [8/8] Test DELETE /v1/transit/keys/:id - Delete transit key
-			t.Run("08_DeleteTransitKey", func(t *testing.T) {
+			// [8/8] Test AEAD Context
+			t.Run("08_AEADContext", func(t *testing.T) {
+				contextAAD := []byte("integration-test-context")
+				wrongContext := []byte("wrong-context")
+
+				// 1. Encrypt with context
+				encryptRequest := transitDTO.EncryptRequest{
+					Plaintext: base64.StdEncoding.EncodeToString(plaintext1),
+					Context:   base64.StdEncoding.EncodeToString(contextAAD),
+				}
+				resp, body := ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/transit/keys/"+transitKeyName+"/encrypt",
+					encryptRequest,
+					true,
+				)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var encryptResponse transitDTO.EncryptResponse
+				err := json.Unmarshal(body, &encryptResponse)
+				require.NoError(t, err)
+				ciphertextWithContext := encryptResponse.Ciphertext
+
+				// 2. Decrypt with correct context
+				decryptRequest := transitDTO.DecryptRequest{
+					Ciphertext: ciphertextWithContext,
+					Context:    base64.StdEncoding.EncodeToString(contextAAD),
+				}
+				resp, body = ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/transit/keys/"+transitKeyName+"/decrypt",
+					decryptRequest,
+					true,
+				)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var decryptResponse transitDTO.DecryptResponse
+				err = json.Unmarshal(body, &decryptResponse)
+				require.NoError(t, err)
+				decoded, err := base64.StdEncoding.DecodeString(decryptResponse.Plaintext)
+				require.NoError(t, err)
+				assert.Equal(t, plaintext1, decoded)
+
+				// 3. Decrypt with wrong context (should fail)
+				decryptRequestWrong := transitDTO.DecryptRequest{
+					Ciphertext: ciphertextWithContext,
+					Context:    base64.StdEncoding.EncodeToString(wrongContext),
+				}
+				resp, _ = ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/transit/keys/"+transitKeyName+"/decrypt",
+					decryptRequestWrong,
+					true,
+				)
+				// Should return 422 Unprocessable Entity (decryption failed)
+				assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
+			})
+
+			// [9/9] Test DELETE /v1/transit/keys/:id - Delete transit key
+			t.Run("09_DeleteTransitKey", func(t *testing.T) {
 				resp, body := ctx.makeRequest(
 					t,
 					http.MethodDelete,
@@ -248,7 +309,7 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Empty(t, body)
 			})
 
-			t.Logf("All 8 transit endpoint tests passed for %s", tc.dbDriver)
+			t.Logf("All 9 transit endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

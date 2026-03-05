@@ -85,10 +85,10 @@ func (t *transitKeyUseCaseWithMetrics) Delete(ctx context.Context, transitKeyID 
 func (t *transitKeyUseCaseWithMetrics) Encrypt(
 	ctx context.Context,
 	name string,
-	plaintext []byte,
+	plaintext, context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
 	start := time.Now()
-	blob, err := t.next.Encrypt(ctx, name, plaintext)
+	blob, err := t.next.Encrypt(ctx, name, plaintext, context)
 
 	status := "success"
 	if err != nil {
@@ -106,9 +106,10 @@ func (t *transitKeyUseCaseWithMetrics) Decrypt(
 	ctx context.Context,
 	name string,
 	ciphertext string,
+	context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
 	start := time.Now()
-	blob, err := t.next.Decrypt(ctx, name, ciphertext)
+	blob, err := t.next.Decrypt(ctx, name, ciphertext, context)
 
 	status := "success"
 	if err != nil {

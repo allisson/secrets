@@ -154,3 +154,43 @@ Example response (`200 OK`):
 ## Relevant CLI Commands
 
 - `rewrap-deks`: Rewraps transit key DEKs when rotating the KEK.
+
+## AEAD Context (Associated Data)
+
+The Transit API supports Authenticated Encryption with Associated Data (AEAD). This allows you to provide an optional `context` (also known as AAD - Additional Authenticated Data) that is cryptographically bound to the ciphertext but not encrypted itself.
+
+### Why use AEAD Context?
+
+AEAD context prevents ciphertext substitution attacks. By providing a context (e.g., a user ID, a transaction ID, or a resource type), you ensure that the ciphertext can only be decrypted if the *same* context is provided during the decryption operation.
+
+### Using Context in API
+
+Both `encrypt` and `decrypt` endpoints accept an optional `context` field in the JSON body. The context must be **base64-encoded**.
+
+#### Encrypt with context
+
+```bash
+curl -X POST http://localhost:8080/v1/transit/keys/payment-data/encrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plaintext": "c2Vuc2l0aXZlLWRhdGE=",
+    "context": "dXNlci0xMjM="
+  }'
+```
+
+#### Decrypt with context
+
+To successfully decrypt, you MUST provide the exact same context used during encryption:
+
+```bash
+curl -X POST http://localhost:8080/v1/transit/keys/payment-data/decrypt \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ciphertext": "1:ZW5jcnlwdGVkLWJ5dGVzLi4u",
+    "context": "dXNlci0xMjM="
+  }'
+```
+
+If the context does not match, the API will return a `422 Unprocessable Entity` error indicating that decryption failed.
