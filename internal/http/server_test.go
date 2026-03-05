@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -51,6 +52,19 @@ func createMinimalRouter(server *Server) *gin.Engine {
 	router.GET("/health", server.healthHandler)
 	router.GET("/ready", server.readinessHandler)
 
+	return router
+}
+
+// createRouterWithBodyLimit creates a minimal router with body size limit middleware.
+func createRouterWithBodyLimit(server *Server, limit int64) *gin.Engine {
+	router := gin.New()
+	router.Use(CustomRecoveryMiddleware(server.logger))
+	router.Use(MaxRequestBodySizeMiddleware(limit))
+	router.POST("/test", func(c *gin.Context) {
+		// Read body to trigger middleware wrapper
+		_, _ = io.ReadAll(c.Request.Body)
+		c.Status(http.StatusOK)
+	})
 	return router
 }
 
@@ -142,6 +156,40 @@ func TestRouter_NotFoundEndpoint(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestRouter_MaxRequestBodySize tests the body size limit middleware integrated into a router.
+func TestRouter_MaxRequestBodySize(t *testing.T) {
+	server := createTestServer()
+	limit := int64(10)
+	router := createRouterWithBodyLimit(server, limit)
+
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedStatus int
+	}{
+		{
+			name:           "within limit",
+			requestBody:    "small",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "exceeds limit",
+			requestBody:    "too large body",
+			expectedStatus: http.StatusRequestEntityTooLarge,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(tt.requestBody))
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+		})
+	}
 }
 
 // TestServer_ShutdownGracefully tests graceful server shutdown.
