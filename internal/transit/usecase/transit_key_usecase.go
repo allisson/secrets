@@ -160,7 +160,7 @@ func (t *transitKeyUseCase) Delete(ctx context.Context, transitKeyID uuid.UUID) 
 func (t *transitKeyUseCase) Encrypt(
 	ctx context.Context,
 	name string,
-	plaintext []byte,
+	plaintext, context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
 	// Get latest transit key version
 	transitKey, err := t.transitRepo.GetByName(ctx, name)
@@ -193,8 +193,8 @@ func (t *transitKeyUseCase) Encrypt(
 		return nil, err
 	}
 
-	// Encrypt plaintext
-	ciphertext, nonce, err := cipher.Encrypt(plaintext, nil)
+	// Encrypt plaintext with optional context
+	ciphertext, nonce, err := cipher.Encrypt(plaintext, context)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to encrypt plaintext")
 	}
@@ -217,6 +217,7 @@ func (t *transitKeyUseCase) Decrypt(
 	ctx context.Context,
 	name string,
 	ciphertext string,
+	context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
 	// Parse encrypted blob from ciphertext string format "version:base64..."
 	blob, err := transitDomain.NewEncryptedBlob(ciphertext)
@@ -265,8 +266,8 @@ func (t *transitKeyUseCase) Decrypt(
 	nonce := blob.Ciphertext[:nonceSize]
 	encryptedData := blob.Ciphertext[nonceSize:]
 
-	// Decrypt ciphertext
-	plaintext, err := cipher.Decrypt(encryptedData, nonce, nil)
+	// Decrypt ciphertext with optional context
+	plaintext, err := cipher.Decrypt(encryptedData, nonce, context)
 	if err != nil {
 		return nil, cryptoDomain.ErrDecryptionFailed
 	}

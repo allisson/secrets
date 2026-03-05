@@ -500,6 +500,9 @@ paths:
                 plaintext:
                   type: string
                   description: Base64-encoded plaintext
+                context:
+                  type: string
+                  description: Optional base64-encoded context (AAD)
               required: [plaintext]
       responses:
         "200":
@@ -549,12 +552,20 @@ paths:
                 ciphertext:
                   type: string
                   description: Versioned ciphertext in format "<version>:<base64-ciphertext>"
+                context:
+                  type: string
+                  description: Optional base64-encoded context (AAD)
               required: [ciphertext]
             examples:
               validCiphertext:
                 summary: Versioned ciphertext from encrypt response
                 value:
                   ciphertext: "1:ZW5jcnlwdGVkLWJ5dGVzLi4u"
+              validCiphertextWithContext:
+                summary: Decryption with context
+                value:
+                  ciphertext: "1:ZW5jcnlwdGVkLWJ5dGVzLi4u"
+                  context: "YmVhcmVy"
               invalidCiphertext:
                 summary: Invalid ciphertext format
                 value:

@@ -210,14 +210,14 @@ func TestTransitKeyUseCaseWithMetrics_Encrypt(t *testing.T) {
 			Ciphertext: []byte("encrypted data"),
 		}
 
-		mockNext.EXPECT().Encrypt(ctx, name, plaintext).Return(expectedBlob, nil).Once()
+		mockNext.EXPECT().Encrypt(ctx, name, plaintext, mock.Anything).Return(expectedBlob, nil).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_encrypt", "success").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_encrypt", mock.AnythingOfType("time.Duration"), "success").
 			Return().
 			Once()
 
 		// Act
-		result, err := uc.Encrypt(ctx, name, plaintext)
+		result, err := uc.Encrypt(ctx, name, plaintext, nil)
 
 		// Assert
 		assert.NoError(t, err)
@@ -230,14 +230,14 @@ func TestTransitKeyUseCaseWithMetrics_Encrypt(t *testing.T) {
 		// Arrange
 		expectedErr := errors.New("encryption failed")
 
-		mockNext.EXPECT().Encrypt(ctx, name, plaintext).Return(nil, expectedErr).Once()
+		mockNext.EXPECT().Encrypt(ctx, name, plaintext, mock.Anything).Return(nil, expectedErr).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_encrypt", "error").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_encrypt", mock.AnythingOfType("time.Duration"), "error").
 			Return().
 			Once()
 
 		// Act
-		result, err := uc.Encrypt(ctx, name, plaintext)
+		result, err := uc.Encrypt(ctx, name, plaintext, nil)
 
 		// Assert
 		assert.Error(t, err)
@@ -264,14 +264,14 @@ func TestTransitKeyUseCaseWithMetrics_Decrypt(t *testing.T) {
 			Plaintext: []byte("secret data"),
 		}
 
-		mockNext.EXPECT().Decrypt(ctx, name, ciphertext).Return(expectedBlob, nil).Once()
+		mockNext.EXPECT().Decrypt(ctx, name, ciphertext, mock.Anything).Return(expectedBlob, nil).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_decrypt", "success").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_decrypt", mock.AnythingOfType("time.Duration"), "success").
 			Return().
 			Once()
 
 		// Act
-		result, err := uc.Decrypt(ctx, name, ciphertext)
+		result, err := uc.Decrypt(ctx, name, ciphertext, nil)
 
 		// Assert
 		assert.NoError(t, err)
@@ -284,14 +284,14 @@ func TestTransitKeyUseCaseWithMetrics_Decrypt(t *testing.T) {
 		// Arrange
 		expectedErr := errors.New("decryption failed")
 
-		mockNext.EXPECT().Decrypt(ctx, name, ciphertext).Return(nil, expectedErr).Once()
+		mockNext.EXPECT().Decrypt(ctx, name, ciphertext, mock.Anything).Return(nil, expectedErr).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_decrypt", "error").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_decrypt", mock.AnythingOfType("time.Duration"), "error").
 			Return().
 			Once()
 
 		// Act
-		result, err := uc.Decrypt(ctx, name, ciphertext)
+		result, err := uc.Decrypt(ctx, name, ciphertext, nil)
 
 		// Assert
 		assert.Error(t, err)

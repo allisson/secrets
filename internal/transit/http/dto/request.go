@@ -52,6 +52,7 @@ func (r *RotateTransitKeyRequest) Validate() error {
 // EncryptRequest contains the parameters for encrypting data.
 type EncryptRequest struct {
 	Plaintext string `json:"plaintext"` // Base64-encoded plaintext
+	Context   string `json:"context"`   // Optional base64-encoded context (AAD)
 }
 
 // Validate checks if the encrypt request is valid.
@@ -62,12 +63,16 @@ func (r *EncryptRequest) Validate() error {
 			customValidation.NotBlank,
 			customValidation.Base64,
 		),
+		validation.Field(&r.Context,
+			customValidation.Base64,
+		),
 	)
 }
 
 // DecryptRequest contains the parameters for decrypting data.
 type DecryptRequest struct {
 	Ciphertext string `json:"ciphertext"` // Format: "version:base64-ciphertext"
+	Context    string `json:"context"`    // Optional base64-encoded context (AAD)
 }
 
 // Validate checks if the decrypt request is valid.
@@ -76,6 +81,9 @@ func (r *DecryptRequest) Validate() error {
 		validation.Field(&r.Ciphertext,
 			validation.Required,
 			customValidation.NotBlank,
+		),
+		validation.Field(&r.Context,
+			customValidation.Base64,
 		),
 	)
 }

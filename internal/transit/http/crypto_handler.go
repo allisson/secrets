@@ -62,15 +62,26 @@ func (h *CryptoHandler) EncryptHandler(c *gin.Context) {
 		return
 	}
 
-	// Decode base64 plaintext
+	// Decode plaintext
 	plaintext, err := base64.StdEncoding.DecodeString(req.Plaintext)
 	if err != nil {
 		httputil.HandleBadRequestGin(c, fmt.Errorf("invalid base64 plaintext: %w", err), h.logger)
 		return
 	}
 
+	// Decode optional context
+	var contextAAD []byte
+	if req.Context != "" {
+		var err error
+		contextAAD, err = base64.StdEncoding.DecodeString(req.Context)
+		if err != nil {
+			httputil.HandleBadRequestGin(c, fmt.Errorf("invalid base64 context: %w", err), h.logger)
+			return
+		}
+	}
+
 	// Call use case
-	encryptedBlob, err := h.transitKeyUseCase.Encrypt(c.Request.Context(), name, plaintext)
+	encryptedBlob, err := h.transitKeyUseCase.Encrypt(c.Request.Context(), name, plaintext, contextAAD)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
@@ -113,8 +124,19 @@ func (h *CryptoHandler) DecryptHandler(c *gin.Context) {
 		return
 	}
 
+	// Decode optional context
+	var contextAAD []byte
+	if req.Context != "" {
+		var err error
+		contextAAD, err = base64.StdEncoding.DecodeString(req.Context)
+		if err != nil {
+			httputil.HandleBadRequestGin(c, fmt.Errorf("invalid base64 context: %w", err), h.logger)
+			return
+		}
+	}
+
 	// Call use case with ciphertext string (format: "version:base64-ciphertext")
-	decryptedBlob, err := h.transitKeyUseCase.Decrypt(c.Request.Context(), name, req.Ciphertext)
+	decryptedBlob, err := h.transitKeyUseCase.Decrypt(c.Request.Context(), name, req.Ciphertext, contextAAD)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
