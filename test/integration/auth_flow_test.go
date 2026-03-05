@@ -207,7 +207,99 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 				assert.False(t, response.IsActive, "client should be inactive after deletion")
 			})
 
-			t.Logf("All 8 auth endpoint tests passed for %s", tc.dbDriver)
+			// [9/10] Test DELETE /v1/token - Self-revocation
+			t.Run("09_SelfRevokeToken", func(t *testing.T) {
+				// Create a temporary client and token
+				clientRequest := authDTO.CreateClientRequest{
+					Name:     "Revoke Test Client",
+					IsActive: true,
+					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
+				}
+				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/clients", clientRequest, true)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var clientResponse authDTO.CreateClientResponse
+				err := json.Unmarshal(body, &clientResponse)
+				require.NoError(t, err)
+
+				issueRequest := authDTO.IssueTokenRequest{
+					ClientID:     clientResponse.ID,
+					ClientSecret: clientResponse.Secret,
+				}
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var tokenResponse authDTO.IssueTokenResponse
+				err = json.Unmarshal(body, &tokenResponse)
+				require.NoError(t, err)
+				tempToken := tokenResponse.Token
+
+				// Verify token works
+				req, _ := http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+clientResponse.ID, nil)
+				req.Header.Set("Authorization", "Bearer "+tempToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				// Revoke token
+				req, _ = http.NewRequest(http.MethodDelete, ctx.server.URL+"/v1/token", nil)
+				req.Header.Set("Authorization", "Bearer "+tempToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+				// Verify token NO LONGER works
+				req, _ = http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+clientResponse.ID, nil)
+				req.Header.Set("Authorization", "Bearer "+tempToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			})
+
+			// [10/10] Test DELETE /v1/clients/:id/tokens - Client-wide revocation
+			t.Run("10_ClientWideRevocation", func(t *testing.T) {
+				// Create a temporary client
+				clientRequest := authDTO.CreateClientRequest{
+					Name:     "Multi Revoke Test Client",
+					IsActive: true,
+					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
+				}
+				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/clients", clientRequest, true)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var clientResponse authDTO.CreateClientResponse
+				err := json.Unmarshal(body, &clientResponse)
+				require.NoError(t, err)
+
+				// Issue 2 tokens
+				issueRequest := authDTO.IssueTokenRequest{
+					ClientID:     clientResponse.ID,
+					ClientSecret: clientResponse.Secret,
+				}
+				
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				var t1 authDTO.IssueTokenResponse
+				json.Unmarshal(body, &t1)
+				
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				var t2 authDTO.IssueTokenResponse
+				json.Unmarshal(body, &t2)
+
+				// Revoke all tokens for this client
+				resp, _ = ctx.makeRequest(t, http.MethodDelete, "/v1/clients/"+clientResponse.ID+"/tokens", nil, true)
+				assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+				// Verify BOTH tokens are rejected
+				for _, token := range []string{t1.Token, t2.Token} {
+					req, _ := http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+clientResponse.ID, nil)
+					req.Header.Set("Authorization", "Bearer "+token)
+					resp, err = http.DefaultClient.Do(req)
+					require.NoError(t, err)
+					assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+				}
+			})
+
+			t.Logf("All 10 auth endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

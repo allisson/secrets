@@ -586,6 +586,186 @@ func (_c *MockTokenRepository_GetByTokenHash_Call) RunAndReturn(run func(ctx con
 	return _c
 }
 
+// PurgeExpiredAndRevoked provides a mock function for the type MockTokenRepository
+func (_mock *MockTokenRepository) PurgeExpiredAndRevoked(ctx context.Context, olderThan time.Time) (int64, error) {
+	ret := _mock.Called(ctx, olderThan)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PurgeExpiredAndRevoked")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) (int64, error)); ok {
+		return returnFunc(ctx, olderThan)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) int64); ok {
+		r0 = returnFunc(ctx, olderThan)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = returnFunc(ctx, olderThan)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenRepository_PurgeExpiredAndRevoked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PurgeExpiredAndRevoked'
+type MockTokenRepository_PurgeExpiredAndRevoked_Call struct {
+	*mock.Call
+}
+
+// PurgeExpiredAndRevoked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - olderThan time.Time
+func (_e *MockTokenRepository_Expecter) PurgeExpiredAndRevoked(ctx interface{}, olderThan interface{}) *MockTokenRepository_PurgeExpiredAndRevoked_Call {
+	return &MockTokenRepository_PurgeExpiredAndRevoked_Call{Call: _e.mock.On("PurgeExpiredAndRevoked", ctx, olderThan)}
+}
+
+func (_c *MockTokenRepository_PurgeExpiredAndRevoked_Call) Run(run func(ctx context.Context, olderThan time.Time)) *MockTokenRepository_PurgeExpiredAndRevoked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_PurgeExpiredAndRevoked_Call) Return(n int64, err error) *MockTokenRepository_PurgeExpiredAndRevoked_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockTokenRepository_PurgeExpiredAndRevoked_Call) RunAndReturn(run func(ctx context.Context, olderThan time.Time) (int64, error)) *MockTokenRepository_PurgeExpiredAndRevoked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RevokeByClientID provides a mock function for the type MockTokenRepository
+func (_mock *MockTokenRepository) RevokeByClientID(ctx context.Context, clientID uuid.UUID) error {
+	ret := _mock.Called(ctx, clientID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeByClientID")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTokenRepository_RevokeByClientID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeByClientID'
+type MockTokenRepository_RevokeByClientID_Call struct {
+	*mock.Call
+}
+
+// RevokeByClientID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - clientID uuid.UUID
+func (_e *MockTokenRepository_Expecter) RevokeByClientID(ctx interface{}, clientID interface{}) *MockTokenRepository_RevokeByClientID_Call {
+	return &MockTokenRepository_RevokeByClientID_Call{Call: _e.mock.On("RevokeByClientID", ctx, clientID)}
+}
+
+func (_c *MockTokenRepository_RevokeByClientID_Call) Run(run func(ctx context.Context, clientID uuid.UUID)) *MockTokenRepository_RevokeByClientID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_RevokeByClientID_Call) Return(err error) *MockTokenRepository_RevokeByClientID_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTokenRepository_RevokeByClientID_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) error) *MockTokenRepository_RevokeByClientID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RevokeByTokenID provides a mock function for the type MockTokenRepository
+func (_mock *MockTokenRepository) RevokeByTokenID(ctx context.Context, tokenID uuid.UUID) error {
+	ret := _mock.Called(ctx, tokenID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeByTokenID")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, tokenID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTokenRepository_RevokeByTokenID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeByTokenID'
+type MockTokenRepository_RevokeByTokenID_Call struct {
+	*mock.Call
+}
+
+// RevokeByTokenID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokenID uuid.UUID
+func (_e *MockTokenRepository_Expecter) RevokeByTokenID(ctx interface{}, tokenID interface{}) *MockTokenRepository_RevokeByTokenID_Call {
+	return &MockTokenRepository_RevokeByTokenID_Call{Call: _e.mock.On("RevokeByTokenID", ctx, tokenID)}
+}
+
+func (_c *MockTokenRepository_RevokeByTokenID_Call) Run(run func(ctx context.Context, tokenID uuid.UUID)) *MockTokenRepository_RevokeByTokenID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_RevokeByTokenID_Call) Return(err error) *MockTokenRepository_RevokeByTokenID_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTokenRepository_RevokeByTokenID_Call) RunAndReturn(run func(ctx context.Context, tokenID uuid.UUID) error) *MockTokenRepository_RevokeByTokenID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function for the type MockTokenRepository
 func (_mock *MockTokenRepository) Update(ctx context.Context, token *domain.Token) error {
 	ret := _mock.Called(ctx, token)
@@ -1247,6 +1427,63 @@ func (_c *MockClientUseCase_ListCursor_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
+// RevokeTokens provides a mock function for the type MockClientUseCase
+func (_mock *MockClientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) error {
+	ret := _mock.Called(ctx, clientID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeTokens")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, clientID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClientUseCase_RevokeTokens_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeTokens'
+type MockClientUseCase_RevokeTokens_Call struct {
+	*mock.Call
+}
+
+// RevokeTokens is a helper method to define mock.On call
+//   - ctx context.Context
+//   - clientID uuid.UUID
+func (_e *MockClientUseCase_Expecter) RevokeTokens(ctx interface{}, clientID interface{}) *MockClientUseCase_RevokeTokens_Call {
+	return &MockClientUseCase_RevokeTokens_Call{Call: _e.mock.On("RevokeTokens", ctx, clientID)}
+}
+
+func (_c *MockClientUseCase_RevokeTokens_Call) Run(run func(ctx context.Context, clientID uuid.UUID)) *MockClientUseCase_RevokeTokens_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClientUseCase_RevokeTokens_Call) Return(err error) *MockClientUseCase_RevokeTokens_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClientUseCase_RevokeTokens_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) error) *MockClientUseCase_RevokeTokens_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unlock provides a mock function for the type MockClientUseCase
 func (_mock *MockClientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
 	ret := _mock.Called(ctx, clientID)
@@ -1526,6 +1763,129 @@ func (_c *MockTokenUseCase_Issue_Call) Return(issueTokenOutput *domain.IssueToke
 }
 
 func (_c *MockTokenUseCase_Issue_Call) RunAndReturn(run func(ctx context.Context, issueTokenInput *domain.IssueTokenInput) (*domain.IssueTokenOutput, error)) *MockTokenUseCase_Issue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PurgeExpiredAndRevoked provides a mock function for the type MockTokenUseCase
+func (_mock *MockTokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (int64, error) {
+	ret := _mock.Called(ctx, days)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PurgeExpiredAndRevoked")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) (int64, error)); ok {
+		return returnFunc(ctx, days)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) int64); ok {
+		r0 = returnFunc(ctx, days)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = returnFunc(ctx, days)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenUseCase_PurgeExpiredAndRevoked_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PurgeExpiredAndRevoked'
+type MockTokenUseCase_PurgeExpiredAndRevoked_Call struct {
+	*mock.Call
+}
+
+// PurgeExpiredAndRevoked is a helper method to define mock.On call
+//   - ctx context.Context
+//   - days int
+func (_e *MockTokenUseCase_Expecter) PurgeExpiredAndRevoked(ctx interface{}, days interface{}) *MockTokenUseCase_PurgeExpiredAndRevoked_Call {
+	return &MockTokenUseCase_PurgeExpiredAndRevoked_Call{Call: _e.mock.On("PurgeExpiredAndRevoked", ctx, days)}
+}
+
+func (_c *MockTokenUseCase_PurgeExpiredAndRevoked_Call) Run(run func(ctx context.Context, days int)) *MockTokenUseCase_PurgeExpiredAndRevoked_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenUseCase_PurgeExpiredAndRevoked_Call) Return(n int64, err error) *MockTokenUseCase_PurgeExpiredAndRevoked_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockTokenUseCase_PurgeExpiredAndRevoked_Call) RunAndReturn(run func(ctx context.Context, days int) (int64, error)) *MockTokenUseCase_PurgeExpiredAndRevoked_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Revoke provides a mock function for the type MockTokenUseCase
+func (_mock *MockTokenUseCase) Revoke(ctx context.Context, tokenHash string) error {
+	ret := _mock.Called(ctx, tokenHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Revoke")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, tokenHash)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTokenUseCase_Revoke_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Revoke'
+type MockTokenUseCase_Revoke_Call struct {
+	*mock.Call
+}
+
+// Revoke is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokenHash string
+func (_e *MockTokenUseCase_Expecter) Revoke(ctx interface{}, tokenHash interface{}) *MockTokenUseCase_Revoke_Call {
+	return &MockTokenUseCase_Revoke_Call{Call: _e.mock.On("Revoke", ctx, tokenHash)}
+}
+
+func (_c *MockTokenUseCase_Revoke_Call) Run(run func(ctx context.Context, tokenHash string)) *MockTokenUseCase_Revoke_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenUseCase_Revoke_Call) Return(err error) *MockTokenUseCase_Revoke_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTokenUseCase_Revoke_Call) RunAndReturn(run func(ctx context.Context, tokenHash string) error) *MockTokenUseCase_Revoke_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -758,3 +758,160 @@ func TestMySQLTokenRepository_GetByTokenHash_WithTransaction(t *testing.T) {
 	assert.Nil(t, retrievedToken2)
 	assert.ErrorIs(t, err, authDomain.ErrTokenNotFound)
 }
+
+func TestMySQLTokenRepository_RevokeByTokenID(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	clientRepo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	client := &authDomain.Client{
+		ID:        uuid.Must(uuid.NewV7()),
+		Secret:    "test-secret",
+		Name:      "test-client-revoke-token-mysql",
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+	}
+	err := clientRepo.Create(ctx, client)
+	require.NoError(t, err)
+
+	tokenRepo := NewMySQLTokenRepository(db)
+
+	token := &authDomain.Token{
+		ID:        uuid.Must(uuid.NewV7()),
+		TokenHash: "token-to-revoke-mysql",
+		ClientID:  client.ID,
+		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+		RevokedAt: nil,
+		CreatedAt: time.Now().UTC(),
+	}
+
+	err = tokenRepo.Create(ctx, token)
+	require.NoError(t, err)
+
+	// Revoke the token
+	err = tokenRepo.RevokeByTokenID(ctx, token.ID)
+	require.NoError(t, err)
+
+	// Verify the revocation
+	retrievedToken, err := tokenRepo.Get(ctx, token.ID)
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedToken.RevokedAt)
+}
+
+func TestMySQLTokenRepository_RevokeByClientID(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	clientRepo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	client := &authDomain.Client{
+		ID:        uuid.Must(uuid.NewV7()),
+		Secret:    "test-secret",
+		Name:      "test-client-revoke-all-mysql",
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+	}
+	err := clientRepo.Create(ctx, client)
+	require.NoError(t, err)
+
+	tokenRepo := NewMySQLTokenRepository(db)
+
+	// Create multiple tokens
+	for i := 0; i < 3; i++ {
+		token := &authDomain.Token{
+			ID:        uuid.Must(uuid.NewV7()),
+			TokenHash: uuid.New().String(),
+			ClientID:  client.ID,
+			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+			RevokedAt: nil,
+			CreatedAt: time.Now().UTC(),
+		}
+		err = tokenRepo.Create(ctx, token)
+		require.NoError(t, err)
+	}
+
+	// Revoke all tokens for the client
+	err = tokenRepo.RevokeByClientID(ctx, client.ID)
+	require.NoError(t, err)
+
+	// Verify all tokens are revoked
+	// Since we don't have a ListByClient, we'll check via query
+	clientIDBytes, err := client.ID.MarshalBinary()
+	require.NoError(t, err)
+
+	var count int
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tokens WHERE client_id = ? AND revoked_at IS NOT NULL", clientIDBytes).Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 3, count)
+}
+
+func TestMySQLTokenRepository_PurgeExpiredAndRevoked(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	clientRepo := NewMySQLClientRepository(db)
+	ctx := context.Background()
+
+	client := &authDomain.Client{
+		ID:        uuid.Must(uuid.NewV7()),
+		Secret:    "test-secret",
+		Name:      "test-client-purge-mysql",
+		IsActive:  true,
+		CreatedAt: time.Now().UTC(),
+	}
+	err := clientRepo.Create(ctx, client)
+	require.NoError(t, err)
+
+	tokenRepo := NewMySQLTokenRepository(db)
+
+	now := time.Now().UTC()
+
+	// 1. Valid token (should keep)
+	token1 := &authDomain.Token{
+		ID:        uuid.Must(uuid.NewV7()),
+		TokenHash: "valid-mysql",
+		ClientID:  client.ID,
+		ExpiresAt: now.Add(24 * time.Hour),
+		CreatedAt: now,
+	}
+	require.NoError(t, tokenRepo.Create(ctx, token1))
+
+	// 2. Expired token (should purge)
+	token2 := &authDomain.Token{
+		ID:        uuid.Must(uuid.NewV7()),
+		TokenHash: "expired-mysql",
+		ClientID:  client.ID,
+		ExpiresAt: now.Add(-1 * time.Hour),
+		CreatedAt: now.Add(-2 * time.Hour),
+	}
+	require.NoError(t, tokenRepo.Create(ctx, token2))
+
+	// 3. Revoked token (should purge)
+	revokedAt := now.Add(-1 * time.Hour)
+	token3 := &authDomain.Token{
+		ID:        uuid.Must(uuid.NewV7()),
+		TokenHash: "revoked-mysql",
+		ClientID:  client.ID,
+		ExpiresAt: now.Add(24 * time.Hour),
+		RevokedAt: &revokedAt,
+		CreatedAt: now.Add(-2 * time.Hour),
+	}
+	require.NoError(t, tokenRepo.Create(ctx, token3))
+
+	// Purge
+	count, err := tokenRepo.PurgeExpiredAndRevoked(ctx, now)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), count)
+
+	// Verify only valid token remains
+	var remainingCount int
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tokens").Scan(&remainingCount)
+	require.NoError(t, err)
+	assert.Equal(t, 1, remainingCount)
+}

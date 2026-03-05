@@ -231,3 +231,26 @@ func (h *ClientHandler) ListHandler(c *gin.Context) {
 	response := dto.MapClientsToListResponse(clients, nextCursor)
 	c.JSON(http.StatusOK, response)
 }
+
+// RevokeTokensHandler revokes all active tokens for a client.
+// DELETE /v1/clients/:id/tokens - Requires DeleteCapability.
+// Returns 204 No Content.
+func (h *ClientHandler) RevokeTokensHandler(c *gin.Context) {
+	// Parse and validate UUID
+	clientID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httputil.HandleBadRequestGin(c,
+			fmt.Errorf("invalid client ID format: must be a valid UUID"),
+			h.logger)
+		return
+	}
+
+	// Call use case
+	if err := h.clientUseCase.RevokeTokens(c.Request.Context(), clientID); err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Return 204 No Content
+	c.Data(http.StatusNoContent, "application/json", nil)
+}

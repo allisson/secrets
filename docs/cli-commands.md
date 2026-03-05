@@ -531,6 +531,30 @@ Flags:
   --format json
 ```
 
+### `purge-auth-tokens`
+
+Permanently deletes expired and revoked authentication tokens older than a specified number of days.
+
+Flags:
+
+- `--days`, `-d` (default `30`): delete tokens created more than this many days ago that are already expired or revoked
+- `--dry-run`, `-n` (default `false`): preview count without deleting (Note: currently only shows notice)
+- `--format`, `-f`: `text` (default) or `json`
+
+Examples:
+
+```bash
+# Execute deletion with default 30 days threshold
+./bin/app purge-auth-tokens
+
+# Execute deletion with custom threshold and JSON output
+./bin/app purge-auth-tokens --days 7 --format json
+
+# Docker form
+docker run --rm --network secrets-net --env-file .env allisson/secrets \
+  purge-auth-tokens --days 30
+```
+
 ## Audit Logs
 
 ### `verify-audit-logs`

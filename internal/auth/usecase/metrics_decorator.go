@@ -131,6 +131,22 @@ func (c *clientUseCaseWithMetrics) Unlock(ctx context.Context, clientID uuid.UUI
 	return err
 }
 
+// RevokeTokens records metrics for client token revocation operations.
+func (c *clientUseCaseWithMetrics) RevokeTokens(ctx context.Context, clientID uuid.UUID) error {
+	start := time.Now()
+	err := c.next.RevokeTokens(ctx, clientID)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	c.metrics.RecordOperation(ctx, "auth", "client_revoke_tokens", status)
+	c.metrics.RecordDuration(ctx, "auth", "client_revoke_tokens", time.Since(start), status)
+
+	return err
+}
+
 // tokenUseCaseWithMetrics decorates TokenUseCase with metrics instrumentation.
 type tokenUseCaseWithMetrics struct {
 	next    TokenUseCase
@@ -181,6 +197,38 @@ func (t *tokenUseCaseWithMetrics) Authenticate(
 	t.metrics.RecordDuration(ctx, "auth", "token_authenticate", time.Since(start), status)
 
 	return client, err
+}
+
+// Revoke records metrics for token revocation operations.
+func (t *tokenUseCaseWithMetrics) Revoke(ctx context.Context, tokenHash string) error {
+	start := time.Now()
+	err := t.next.Revoke(ctx, tokenHash)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "auth", "token_revoke", status)
+	t.metrics.RecordDuration(ctx, "auth", "token_revoke", time.Since(start), status)
+
+	return err
+}
+
+// PurgeExpiredAndRevoked records metrics for token purging operations.
+func (t *tokenUseCaseWithMetrics) PurgeExpiredAndRevoked(ctx context.Context, days int) (int64, error) {
+	start := time.Now()
+	count, err := t.next.PurgeExpiredAndRevoked(ctx, days)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "auth", "token_purge", status)
+	t.metrics.RecordDuration(ctx, "auth", "token_purge", time.Since(start), status)
+
+	return count, err
 }
 
 // auditLogUseCaseWithMetrics decorates AuditLogUseCase with metrics instrumentation.

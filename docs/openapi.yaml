@@ -54,6 +54,18 @@ paths:
           $ref: "#/components/responses/Locked"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [auth]
+      summary: Revoke current bearer token
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Token revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/clients:
     get:
       tags: [clients]
@@ -178,6 +190,30 @@ paths:
       responses:
         "204":
           description: Client deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/clients/{id}/tokens:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [clients]
+      summary: Revoke all tokens for a client
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: All client tokens revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

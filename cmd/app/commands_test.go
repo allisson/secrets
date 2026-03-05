@@ -27,7 +27,7 @@ func TestGetAuthCommands(t *testing.T) {
 	cmds := getAuthCommands()
 	require.NotEmpty(t, cmds)
 
-	expectedCmds := []string{"clean-expired-tokens", "create-client", "update-client"}
+	expectedCmds := []string{"purge-auth-tokens", "clean-expired-tokens", "create-client", "update-client"}
 	for _, name := range expectedCmds {
 		found := false
 		for _, cmd := range cmds {
@@ -37,6 +37,22 @@ func TestGetAuthCommands(t *testing.T) {
 			}
 		}
 		require.Truef(t, found, "command %s not found", name)
+	}
+
+	// Flag checks
+	for _, cmd := range cmds {
+		switch cmd.Name {
+		case "purge-auth-tokens", "clean-expired-tokens":
+			require.NotEmpty(t, cmd.Flags)
+			hasDaysFlag := false
+			for _, flag := range cmd.Flags {
+				if flag.Names()[0] == "days" {
+					hasDaysFlag = true
+					break
+				}
+			}
+			require.True(t, hasDaysFlag, "command %s missing --days flag", cmd.Name)
+		}
 	}
 }
 

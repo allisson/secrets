@@ -15,11 +15,12 @@ import (
 
 // tokenUseCase implements TokenUseCase interface for managing authentication tokens.
 type tokenUseCase struct {
-	config        *config.Config
-	clientRepo    ClientRepository
-	tokenRepo     TokenRepository
-	secretService authService.SecretService
-	tokenService  authService.TokenService
+	config          *config.Config
+	clientRepo      ClientRepository
+	tokenRepo       TokenRepository
+	auditLogUseCase AuditLogUseCase
+	secretService   authService.SecretService
+	tokenService    authService.TokenService
 }
 
 // Issue authenticates a client and generates a new authentication token.
@@ -144,19 +145,65 @@ func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*aut
 	return client, nil
 }
 
+// Revoke marks a specific token as revoked using its hash value.
+func (t *tokenUseCase) Revoke(ctx context.Context, tokenHash string) error {
+	// Get the token by hash
+	token, err := t.tokenRepo.GetByTokenHash(ctx, tokenHash)
+	if err != nil {
+		return err
+	}
+
+	// Revoke the token
+	if err := t.tokenRepo.RevokeByTokenID(ctx, token.ID); err != nil {
+		return err
+	}
+
+	// Record audit log
+	// Note: RequestID is generated here as it's not currently available in the context
+	// from the authentication middleware.
+	_ = t.auditLogUseCase.Create(
+		ctx,
+		uuid.Must(uuid.NewV7()),
+		token.ClientID,
+		authDomain.DeleteCapability,
+		"/v1/token",
+		map[string]any{
+			"token_id": token.ID.String(),
+			"action":   "token_revoked",
+		},
+	)
+
+	return nil
+}
+
+// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
+// and were created before the specified number of days ago.
+func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (int64, error) {
+	// Standard project validation for days/retention parameters
+	// If days is 0, it means delete anything that is already expired or revoked.
+	if days < 0 {
+		return 0, errors.New("days must be greater than or equal to 0")
+	}
+
+	olderThan := time.Now().UTC().AddDate(0, 0, -days)
+	return t.tokenRepo.PurgeExpiredAndRevoked(ctx, olderThan)
+}
+
 // NewTokenUseCase creates a new TokenUseCase with the provided dependencies.
 func NewTokenUseCase(
 	config *config.Config,
 	clientRepo ClientRepository,
 	tokenRepo TokenRepository,
+	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
 	tokenService authService.TokenService,
 ) TokenUseCase {
 	return &tokenUseCase{
-		config:        config,
-		clientRepo:    clientRepo,
-		tokenRepo:     tokenRepo,
-		secretService: secretService,
-		tokenService:  tokenService,
+		config:          config,
+		clientRepo:      clientRepo,
+		tokenRepo:       tokenRepo,
+		auditLogUseCase: auditLogUseCase,
+		secretService:   secretService,
+		tokenService:    tokenService,
 	}
 }

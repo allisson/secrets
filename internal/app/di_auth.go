@@ -223,9 +223,25 @@ func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUs
 		return nil, fmt.Errorf("failed to get client repository for client use case: %w", err)
 	}
 
+	tokenRepository, err := c.TokenRepository(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token repository for client use case: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for client use case: %w", err)
+	}
+
 	secretService := c.SecretService()
 
-	baseUseCase := authUseCase.NewClientUseCase(txManager, clientRepository, secretService)
+	baseUseCase := authUseCase.NewClientUseCase(
+		txManager,
+		clientRepository,
+		tokenRepository,
+		auditLogUseCase,
+		secretService,
+	)
 
 	// Wrap with metrics if enabled
 	if c.config.MetricsEnabled {
@@ -290,6 +306,11 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 		return nil, fmt.Errorf("failed to get token repository for token use case: %w", err)
 	}
 
+	auditLogUseCase, err := c.AuditLogUseCase(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for token use case: %w", err)
+	}
+
 	secretService := c.SecretService()
 	tokenService := c.TokenService()
 
@@ -297,6 +318,7 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 		c.config,
 		clientRepository,
 		tokenRepository,
+		auditLogUseCase,
 		secretService,
 		tokenService,
 	)
@@ -367,9 +389,10 @@ func (c *Container) initTokenHandler(ctx context.Context) (*authHTTP.TokenHandle
 		return nil, fmt.Errorf("failed to get token use case for token handler: %w", err)
 	}
 
+	tokenService := c.TokenService()
 	logger := c.Logger()
 
-	return authHTTP.NewTokenHandler(tokenUseCase, logger), nil
+	return authHTTP.NewTokenHandler(tokenUseCase, tokenService, logger), nil
 }
 
 // initAuditLogHandler creates the audit log HTTP handler with all its dependencies.

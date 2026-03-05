@@ -19,6 +19,7 @@ Ready-to-use policy templates for common service roles.
 - [6) Break-glass admin (emergency)](#6-break-glass-admin-emergency)
 - [7) Key operator](#7-key-operator)
 - [8) Tokenization operator](#8-tokenization-operator)
+- [9) Token manager](#9-token-manager)
 - [Copy-safe split-role snippets](#copy-safe-split-role-snippets)
 - [Pre-deploy policy automation](#pre-deploy-policy-automation)
 - [Policy mismatch example (wrong vs fixed)](#policy-mismatch-example-wrong-vs-fixed)
@@ -106,7 +107,7 @@ Endpoint capability intent (quick map, condensed from [Capability matrix](../con
 | --- | --- |
 | `GET /v1/clients`, `GET /v1/audit-logs`, `POST /v1/tokenization/validate` | `read` |
 | `POST /v1/clients`, `PUT /v1/clients/:id`, `POST /v1/transit/keys`, `POST /v1/tokenization/keys` | `write` |
-| `DELETE /v1/clients/:id`, `DELETE /v1/transit/keys/:id`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/revoke` | `delete` |
+| `DELETE /v1/token`, `DELETE /v1/clients/:id/tokens`, `DELETE /v1/clients/:id`, `DELETE /v1/transit/keys/:id`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/revoke` | `delete` |
 | `POST /v1/secrets/*path`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/tokenization/keys/:name/tokenize` | `encrypt` |
 | `GET /v1/secrets/*path`, `POST /v1/transit/keys/:name/decrypt`, `POST /v1/tokenization/detokenize` | `decrypt` |
 | `POST /v1/transit/keys/:name/rotate`, `POST /v1/tokenization/keys/:name/rotate` | `rotate` |
@@ -123,6 +124,7 @@ Use these as starter profiles for common operational personas.
 | Transit decrypt worker | Controlled decrypt runtime | [4) Transit decrypt-only service](#4-transit-decrypt-only-service) |
 | Audit/compliance reader | Audit log retrieval | [5) Audit log reader](#5-audit-log-reader) |
 | Key operator | Transit/tokenization key lifecycle | [7) Key operator](#7-key-operator) + [8) Tokenization operator](#8-tokenization-operator) |
+| Token administrator | Broad token revocation | [9) Token manager](#9-token-manager) |
 | Break-glass admin | Emergency broad access | [6) Break-glass admin (emergency)](#6-break-glass-admin-emergency) |
 
 Persona composition tips:
@@ -285,6 +287,34 @@ Use for services that manage tokenization keys and token lifecycle operations.
 ```
 
 Risk note: avoid wildcard tokenization access for application clients that only need tokenize or detokenize.
+
+## 9) Token manager
+
+Use for administrators that need to revoke authentication tokens.
+
+Self-revocation only:
+
+```json
+[
+  {
+    "path": "/v1/token",
+    "capabilities": ["delete"]
+  }
+]
+```
+
+Broad token revocation (all clients):
+
+```json
+[
+  {
+    "path": "/v1/clients/*/tokens",
+    "capabilities": ["delete"]
+  }
+]
+```
+
+Risk note: broad token revocation can immediately disconnect all sessions for specified clients.
 
 ## Copy-safe split-role snippets
 

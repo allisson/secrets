@@ -195,6 +195,9 @@ func (s *Server) registerAuthRoutes(
 		v1.POST("/token", tokenHandler.IssueTokenHandler)
 	}
 
+	// Token revocation endpoint (requires authentication)
+	v1.DELETE("/token", authMiddleware, tokenHandler.RevokeTokenHandler)
+
 	// Client management endpoints
 	clients := v1.Group("/clients")
 	clients.Use(authMiddleware)
@@ -225,6 +228,10 @@ func (s *Server) registerAuthRoutes(
 		clients.POST("/:id/unlock",
 			authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
 			clientHandler.UnlockHandler,
+		)
+		clients.DELETE("/:id/tokens",
+			authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
+			clientHandler.RevokeTokensHandler,
 		)
 	}
 

@@ -9,6 +9,8 @@ packages:
   github.com/allisson/secrets/internal/auth/service:
     interfaces:
       SecretService: {}
+      TokenService: {}
+      AuditSigner: {}
   github.com/allisson/secrets/internal/auth/usecase:
     interfaces:
       AuditLogRepository: {}
