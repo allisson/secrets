@@ -2,6 +2,8 @@
 package http
 
 import (
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -61,4 +63,35 @@ func CustomRecoveryMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		}()
 		c.Next()
 	}
+}
+
+// MaxRequestBodySizeMiddleware restricts the request body size.
+func MaxRequestBodySizeMiddleware(limit int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.ContentLength > limit {
+			c.AbortWithStatus(http.StatusRequestEntityTooLarge)
+			return
+		}
+		c.Request.Body = &maxBytesBody{
+			ctx:        c,
+			ReadCloser: http.MaxBytesReader(c.Writer, c.Request.Body, limit),
+		}
+		c.Next()
+	}
+}
+
+type maxBytesBody struct {
+	ctx *gin.Context
+	io.ReadCloser
+}
+
+func (b *maxBytesBody) Read(p []byte) (n int, err error) {
+	n, err = b.ReadCloser.Read(p)
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			b.ctx.AbortWithStatus(http.StatusRequestEntityTooLarge)
+		}
+	}
+	return n, err
 }
