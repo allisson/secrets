@@ -42,6 +42,7 @@ const (
 	DefaultLockoutMaxAttempts     = 10
 	DefaultLockoutDuration        = 30 // minutes
 	DefaultMaxRequestBodySize     = 1048576
+	DefaultSecretValueSizeLimit   = 524288
 )
 
 // Config holds all application configuration.
@@ -113,6 +114,8 @@ type Config struct {
 	LockoutDuration time.Duration
 	// MaxRequestBodySize is the maximum size of the request body in bytes.
 	MaxRequestBodySize int64
+	// SecretValueSizeLimitBytes is the maximum size of a secret value in bytes.
+	SecretValueSizeLimitBytes int
 }
 
 // Validate checks if the configuration is valid.
@@ -170,6 +173,7 @@ func (c *Config) Validate() error {
 			validation.When(c.RateLimitTokenEnabled, validation.Required, validation.Min(0.1)),
 		),
 		validation.Field(&c.MaxRequestBodySize, validation.Required, validation.Min(int64(1))),
+		validation.Field(&c.SecretValueSizeLimitBytes, validation.Required, validation.Min(1)),
 	)
 }
 
@@ -259,6 +263,12 @@ func Load() (*Config, error) {
 
 		// Request Body Size
 		MaxRequestBodySize: env.GetInt64("MAX_REQUEST_BODY_SIZE", DefaultMaxRequestBodySize),
+
+		// Secret Value Size Limit
+		SecretValueSizeLimitBytes: env.GetInt(
+			"SECRET_VALUE_SIZE_LIMIT_BYTES",
+			DefaultSecretValueSizeLimit,
+		),
 	}
 
 	// Validate configuration

@@ -49,6 +49,9 @@ METRICS_PORT=8081
 # Account lockout
 LOCKOUT_MAX_ATTEMPTS=10
 LOCKOUT_DURATION_MINUTES=30
+
+# Secret value size limit
+SECRET_VALUE_SIZE_LIMIT_BYTES=524288
 ```
 
 ## Database configuration
@@ -151,6 +154,12 @@ This timeout controls how long idle connections are kept open between requests.
 ### LOG_LEVEL
 
 Logging level. Supported values: `debug`, `info`, `warn`, `error`, `fatal`, `panic` (default: `info`).
+
+### SECRET_VALUE_SIZE_LIMIT_BYTES
+
+Maximum size allowed for a secret value in bytes (default: `524288` - 512 KB).
+
+This limit is enforced before encryption and storage to prevent denial-of-service attacks using large secret payloads. If exceeded, the API returns a `413 Payload Too Large` error.
 
 ## Master key configuration
 

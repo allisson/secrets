@@ -70,6 +70,13 @@ func HandleErrorGin(c *gin.Context, err error, logger *slog.Logger) {
 			Message: "You don't have permission to access this resource",
 		}
 
+	case apperrors.Is(err, apperrors.ErrTooLarge):
+		statusCode = http.StatusRequestEntityTooLarge
+		errorResponse = ErrorResponse{
+			Error:   "payload_too_large",
+			Message: err.Error(),
+		}
+
 	case apperrors.Is(err, apperrors.ErrInternal):
 		statusCode = http.StatusInternalServerError
 		errorResponse = ErrorResponse{

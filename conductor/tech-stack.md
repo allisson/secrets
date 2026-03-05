@@ -14,6 +14,7 @@
 - **Envelope Encryption:** [gocloud.dev/secrets](https://gocloud.dev/howto/secrets/) - Abstracted access to various KMS providers for root-of-trust encryption.
 - **Password Hashing:** [go-pwdhash](https://github.com/allisson/go-pwdhash) - Argon2id hashing for secure storage of client secrets and passwords.
 - **Request Body Size Limiting:** Middleware to prevent DoS attacks from large payloads.
+- **Secret Value Size Limiting:** Global limit on individual secret values to ensure predictable storage and memory usage.
 - **Audit Signing:** HMAC-SHA256 for tamper-evident cryptographic audit logs.
 
 ## KMS Providers (Native Support)

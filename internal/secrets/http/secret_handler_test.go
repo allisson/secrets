@@ -228,6 +228,31 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "internal_error", response["error"])
 	})
+
+	t.Run("Error_SecretValueTooLarge", func(t *testing.T) {
+		t.Parallel()
+		handler, mockUseCase := setupTestHandler(t)
+
+		path := "database/password"
+		value := []byte("too-large-password")
+
+		request := dto.CreateOrUpdateSecretRequest{
+			Value: base64.StdEncoding.EncodeToString(value),
+		}
+
+		mockUseCase.EXPECT().
+			CreateOrUpdate(mock.Anything, path, value).
+			Return(nil, secretsDomain.ErrSecretValueTooLarge).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/secrets/"+path, request)
+		c.Params = gin.Params{{Key: "path", Value: "/" + path}}
+
+		handler.CreateOrUpdateHandler(c)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.Contains(t, w.Body.String(), "secret value too large")
+	})
 }
 
 func TestSecretHandler_GetHandler(t *testing.T) {

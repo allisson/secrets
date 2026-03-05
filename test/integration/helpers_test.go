@@ -153,8 +153,9 @@ func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.Maste
 
 	// Load master key chain using KMS
 	cfg := &config.Config{
-		KMSProvider: "localsecrets",
-		KMSKeyURI:   kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
@@ -217,8 +218,9 @@ func createMasterKeyChainWithKMS(
 
 	// Load master key chain using KMS
 	cfg := &config.Config{
-		KMSProvider: "localsecrets",
-		KMSKeyURI:   kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
@@ -262,6 +264,7 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 		LogLevel:             "error",
 		AuthTokenExpiration:  time.Hour,
 		MaxRequestBodySize:   1024 * 1024,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -375,6 +378,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		LogLevel:             "error",
 		AuthTokenExpiration:  time.Hour,
 		MaxRequestBodySize:   1024 * 1024,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -497,6 +501,7 @@ func setupIntegrationTestWithTokenExpiration(
 		LogLevel:             "error",
 		AuthTokenExpiration:  tokenExpiration, // Custom expiration
 		MaxRequestBodySize:   1024 * 1024,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -621,6 +626,7 @@ func setupIntegrationTestWithLockout(
 		LockoutMaxAttempts:   maxAttempts,
 		LockoutDuration:      lockoutDuration,
 		MaxRequestBodySize:   1024 * 1024,
+		SecretValueSizeLimitBytes: 1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}

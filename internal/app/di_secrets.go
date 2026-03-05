@@ -152,6 +152,7 @@ func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.Secre
 		aeadManager,
 		keyManager,
 		cryptoDomain.AESGCM,
+		c.config.SecretValueSizeLimitBytes,
 	)
 
 	// Wrap with metrics if enabled

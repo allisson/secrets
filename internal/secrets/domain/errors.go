@@ -9,4 +9,7 @@ import (
 var (
 	// ErrSecretNotFound indicates the secret was not found at the specified path.
 	ErrSecretNotFound = errors.Wrap(errors.ErrNotFound, "secret not found")
+
+	// ErrSecretValueTooLarge indicates the secret value exceeds the maximum allowed size.
+	ErrSecretValueTooLarge = errors.Wrap(errors.ErrTooLarge, "secret value too large")
 )

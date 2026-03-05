@@ -122,6 +122,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		secret, err := uc.CreateOrUpdate(ctx, path, value)
 
@@ -242,6 +243,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		secret, err := uc.CreateOrUpdate(ctx, path, value)
 
@@ -278,6 +280,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		secret, err := uc.CreateOrUpdate(ctx, path, value)
 
@@ -336,6 +339,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		secret, err := uc.CreateOrUpdate(ctx, path, value)
 
@@ -400,6 +404,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		secret, err := uc.CreateOrUpdate(ctx, path, value)
 
@@ -407,6 +412,40 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, secret)
 		assert.Equal(t, expectedError, err)
+	})
+
+	t.Run("Error_SecretValueTooLarge", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		path := "/app/api-key"
+		value := make([]byte, 10) // 10 bytes
+
+		// Use a limit of 5 bytes
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+			5,
+		)
+		secret, err := uc.CreateOrUpdate(ctx, path, value)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, secret)
+		assert.True(t, errors.Is(err, secretsDomain.ErrSecretValueTooLarge))
 	})
 }
 
@@ -502,6 +541,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.Get(ctx, path)
 
@@ -552,6 +592,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.Get(ctx, path)
 
@@ -617,6 +658,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.Get(ctx, path)
 
@@ -692,6 +734,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.Get(ctx, path)
 
@@ -787,6 +830,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.Get(ctx, path)
 
@@ -842,6 +886,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		err := uc.Delete(ctx, path)
 
@@ -889,6 +934,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		err := uc.Delete(ctx, path)
 
@@ -938,6 +984,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		err := uc.Delete(ctx, path)
 
@@ -1040,6 +1087,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.GetByVersion(ctx, path, version)
 
@@ -1092,6 +1140,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.GetByVersion(ctx, path, version)
 
@@ -1187,6 +1236,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.GetByVersion(ctx, path, version)
 
@@ -1253,6 +1303,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.GetByVersion(ctx, path, version)
 
@@ -1329,6 +1380,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		result, err := uc.GetByVersion(ctx, path, version)
 
@@ -1375,6 +1427,7 @@ func TestSecretUseCase_PurgeDeleted(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
 
@@ -1414,6 +1467,7 @@ func TestSecretUseCase_PurgeDeleted(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
 
@@ -1453,6 +1507,7 @@ func TestSecretUseCase_PurgeDeleted(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
 
@@ -1485,6 +1540,7 @@ func TestSecretUseCase_PurgeDeleted(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
 
@@ -1525,6 +1581,7 @@ func TestSecretUseCase_PurgeDeleted(t *testing.T) {
 			mockAEADManager,
 			mockKeyManager,
 			cryptoDomain.AESGCM,
+			524288,
 		)
 		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
 
