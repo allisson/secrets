@@ -1,10 +1,10 @@
 # Implementation Plan: HTTP Request Body Size Limit Middleware
 
 ## Phase 1: Configuration Updates
-- [ ] Task: Update Application Configuration
-    - [ ] Add `MaxRequestBodySize` to the main configuration struct.
-    - [ ] Update config parsing to read `MAX_REQUEST_BODY_SIZE` from environment variables, defaulting to 1 MB (1048576 bytes).
-    - [ ] Write unit tests to verify configuration loading and defaults.
+- [x] Task: Update Application Configuration 26ce68b
+    - [x] Add `MaxRequestBodySize` to the main configuration struct.
+    - [x] Update config parsing to read `MAX_REQUEST_BODY_SIZE` from environment variables, defaulting to 1 MB (1048576 bytes).
+    - [x] Write unit tests to verify configuration loading and defaults.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Configuration Updates' (Protocol in workflow.md)
 
 ## Phase 2: Middleware Implementation
