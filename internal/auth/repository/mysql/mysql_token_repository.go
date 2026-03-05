@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -178,6 +179,62 @@ func (m *MySQLTokenRepository) GetByTokenHash(
 	}
 
 	return &token, nil
+}
+
+// RevokeByTokenID marks a specific token as revoked by setting its revoked_at timestamp.
+func (m *MySQLTokenRepository) RevokeByTokenID(ctx context.Context, tokenID uuid.UUID) error {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `UPDATE tokens SET revoked_at = ? WHERE id = ?`
+
+	id, err := tokenID.MarshalBinary()
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal token id")
+	}
+
+	_, err = querier.ExecContext(ctx, query, time.Now().UTC(), id)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to revoke token")
+	}
+
+	return nil
+}
+
+// RevokeByClientID marks all active tokens for a specific client as revoked.
+func (m *MySQLTokenRepository) RevokeByClientID(ctx context.Context, clientID uuid.UUID) error {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `UPDATE tokens SET revoked_at = ? WHERE client_id = ? AND revoked_at IS NULL`
+
+	id, err := clientID.MarshalBinary()
+	if err != nil {
+		return apperrors.Wrap(err, "failed to marshal client id")
+	}
+
+	_, err = querier.ExecContext(ctx, query, time.Now().UTC(), id)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to revoke tokens by client id")
+	}
+
+	return nil
+}
+
+// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
+// and were created before the specified timestamp. Returns the number of deleted tokens.
+func (m *MySQLTokenRepository) PurgeExpiredAndRevoked(
+	ctx context.Context,
+	olderThan time.Time,
+) (int64, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	query := `DELETE FROM tokens WHERE expires_at < ? OR revoked_at < ?`
+
+	result, err := querier.ExecContext(ctx, query, olderThan, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to purge tokens")
+	}
+
+	return result.RowsAffected()
 }
 
 // NewMySQLTokenRepository creates a new MySQL Token repository.

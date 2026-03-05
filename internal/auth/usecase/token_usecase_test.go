@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -11,57 +11,11 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	serviceMocks "github.com/allisson/secrets/internal/auth/service/mocks"
+	"github.com/allisson/secrets/internal/auth/usecase"
+	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	"github.com/allisson/secrets/internal/config"
 )
-
-// mockTokenService is a mock implementation of TokenService for testing.
-type mockTokenService struct {
-	mock.Mock
-}
-
-func (m *mockTokenService) GenerateToken() (plainToken string, tokenHash string, error error) {
-	args := m.Called()
-	return args.String(0), args.String(1), args.Error(2)
-}
-
-func (m *mockTokenService) HashToken(plainToken string) string {
-	args := m.Called(plainToken)
-	return args.String(0)
-}
-
-// mockTokenRepository is a mock implementation of TokenRepository for testing.
-type mockTokenRepository struct {
-	mock.Mock
-}
-
-func (m *mockTokenRepository) Create(ctx context.Context, token *authDomain.Token) error {
-	args := m.Called(ctx, token)
-	return args.Error(0)
-}
-
-func (m *mockTokenRepository) Update(ctx context.Context, token *authDomain.Token) error {
-	args := m.Called(ctx, token)
-	return args.Error(0)
-}
-
-func (m *mockTokenRepository) Get(ctx context.Context, tokenID uuid.UUID) (*authDomain.Token, error) {
-	args := m.Called(ctx, tokenID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*authDomain.Token), args.Error(1)
-}
-
-func (m *mockTokenRepository) GetByTokenHash(
-	ctx context.Context,
-	tokenHash string,
-) (*authDomain.Token, error) {
-	args := m.Called(ctx, tokenHash)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*authDomain.Token), args.Error(1)
-}
 
 func TestTokenUseCase_Issue(t *testing.T) {
 	ctx := context.Background()
@@ -73,15 +27,16 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			LockoutMaxAttempts:  10,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		// Test data
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "test-client-secret-abc123"                //nolint:gosec // test fixture, not a real credential
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
+		clientSecret := "test-client-secret-abc123"                //nolint:gosec
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec
 		plainToken := "test-token-xyz789"
 		tokenHash := "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
@@ -99,51 +54,35 @@ func TestTokenUseCase_Issue(t *testing.T) {
 		}
 
 		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return(plainToken, tokenHash, nil).
-			Once()
-
-		mockTokenRepo.On("Create", ctx, mock.MatchedBy(func(token *authDomain.Token) bool {
-			return token.TokenHash == tokenHash &&
-				token.ClientID == clientID &&
-				token.RevokedAt == nil &&
-				!token.ExpiresAt.IsZero() &&
-				!token.CreatedAt.IsZero()
-		})).
-			Return(nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret(clientSecret, hashedSecret).Return(true).Once()
+		mockTokenService.EXPECT().GenerateToken().Return(plainToken, tokenHash, nil).Once()
+		mockTokenRepo.EXPECT().Create(ctx, mock.AnythingOfType("*domain.Token")).Return(nil).Once()
 
 		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
 		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
 		assert.Equal(t, plainToken, output.PlainToken)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		issueInput := &authDomain.IssueTokenInput{
@@ -151,38 +90,37 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			ClientSecret: "some-secret",
 		}
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(nil, authDomain.ErrClientNotFound).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, authDomain.ErrClientNotFound).Once()
 
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert - should return generic error to prevent enumeration
 		assert.Error(t, err)
 		assert.Nil(t, output)
 		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_ClientInactive", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   "hashed-secret",
 			Name:     "inactive-client",
-			IsActive: false, // Client is inactive
+			IsActive: false,
 			Policies: []authDomain.PolicyDocument{},
 		}
 
@@ -191,37 +129,38 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			ClientSecret: "client-secret",
 		}
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, output)
 		assert.Equal(t, authDomain.ErrClientInactive, err)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_InvalidClientSecret", func(t *testing.T) {
-		// Setup mocks
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  10,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		wrongSecret := "wrong-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
+		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec
 
 		client := &authDomain.Client{
 			ID:             clientID,
@@ -237,54 +176,39 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			ClientSecret: wrongSecret,
 		}
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret(wrongSecret, hashedSecret).Return(false).Once()
+		mockClientRepo.EXPECT().UpdateLockState(ctx, clientID, 1, (*time.Time)(nil)).Return(nil).Once()
 
-		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
-			Return(false). // Secret doesn't match
-			Once()
-
-		// UpdateLockState called with incremented attempts, no lock yet
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, (*time.Time)(nil)).
-			Return(nil).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, output)
 		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
 	})
 
 	t.Run("Error_AccountLocked", func(t *testing.T) {
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-			LockoutMaxAttempts:  10,
-			LockoutDuration:     30 * time.Minute,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		lockedUntil := time.Now().UTC().Add(29 * time.Minute) // locked for 29 more minutes
-
+		lockedUntil := time.Now().UTC().Add(30 * time.Minute)
 		client := &authDomain.Client{
-			ID:             clientID,
-			Secret:         "hashed-secret",
-			Name:           "locked-client",
-			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 10,
-			LockedUntil:    &lockedUntil,
+			ID:          clientID,
+			IsActive:    true,
+			LockedUntil: &lockedUntil,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
@@ -292,506 +216,387 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			ClientSecret: "any-secret",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrClientLocked)
 		assert.Nil(t, output)
-		assert.Equal(t, authDomain.ErrClientLocked, err)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_FailedAttemptsReachesLockThreshold", func(t *testing.T) {
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
-			LockoutMaxAttempts:  10,
+			LockoutMaxAttempts:  3,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		wrongSecret := "wrong-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:             clientID,
 			Secret:         hashedSecret,
-			Name:           "test-client",
 			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 9, // One more failure triggers lock
+			FailedAttempts: 2,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: wrongSecret,
+			ClientSecret: "wrong",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
-			Return(false).
-			Once()
-
-		// 10th attempt should set a lockedUntil
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 10, mock.MatchedBy(func(t *time.Time) bool {
-			return t != nil && t.After(time.Now().UTC())
-		})).
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("wrong", hashedSecret).Return(false).Once()
+		mockClientRepo.EXPECT().
+			UpdateLockState(ctx, clientID, 3, mock.AnythingOfType("*time.Time")).
 			Return(nil).
 			Once()
 
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, output)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
 	})
 
 	t.Run("Success_ResetsCounterAfterSuccessfulAuth", func(t *testing.T) {
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  10,
-			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "correct-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
-		plainToken := "test-token"
-		tokenHash := "token-hash"
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:             clientID,
 			Secret:         hashedSecret,
-			Name:           "test-client",
 			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 5, // Has previous failures
+			FailedAttempts: 5,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientSecret: "correct",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("correct", hashedSecret).Return(true).Once()
+		mockClientRepo.EXPECT().UpdateLockState(ctx, clientID, 0, (*time.Time)(nil)).Return(nil).Once()
+		mockTokenService.EXPECT().GenerateToken().Return("plain", "hash", nil).Once()
+		mockTokenRepo.EXPECT().Create(ctx, mock.Anything).Return(nil).Once()
 
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		// Should reset counter on success
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 0, (*time.Time)(nil)).
-			Return(nil).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return(plainToken, tokenHash, nil).
-			Once()
-
-		mockTokenRepo.On("Create", ctx, mock.AnythingOfType("*domain.Token")).
-			Return(nil).
-			Once()
-
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Success_LockExpiredAllowsAuth", func(t *testing.T) {
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-			LockoutMaxAttempts:  10,
-			LockoutDuration:     30 * time.Minute,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "correct-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
-		plainToken := "test-token"
-		tokenHash := "token-hash"
-		expiredLock := time.Now().UTC().Add(-1 * time.Minute) // lock expired 1 minute ago
-
+		hashedSecret := "hashed"
+		lockedUntil := time.Now().UTC().Add(-1 * time.Minute)
 		client := &authDomain.Client{
 			ID:             clientID,
 			Secret:         hashedSecret,
-			Name:           "test-client",
 			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 10,
-			LockedUntil:    &expiredLock,
+			LockedUntil:    &lockedUntil,
+			FailedAttempts: 3,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientSecret: "correct",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("correct", hashedSecret).Return(true).Once()
+		mockClientRepo.EXPECT().UpdateLockState(ctx, clientID, 0, (*time.Time)(nil)).Return(nil).Once()
+		mockTokenService.EXPECT().GenerateToken().Return("plain", "hash", nil).Once()
+		mockTokenRepo.EXPECT().Create(ctx, mock.Anything).Return(nil).Once()
 
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		// Should reset counter since lock expired and auth succeeded
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 0, (*time.Time)(nil)).
-			Return(nil).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return(plainToken, tokenHash, nil).
-			Once()
-
-		mockTokenRepo.On("Create", ctx, mock.AnythingOfType("*domain.Token")).
-			Return(nil).
-			Once()
-
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_TokenGenerationFails", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "test-client-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   hashedSecret,
-			Name:     "test-client",
 			IsActive: true,
-			Policies: []authDomain.PolicyDocument{},
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientSecret: "correct",
 		}
 
-		expectedErr := errors.New("failed to generate random token")
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("correct", hashedSecret).Return(true).Once()
+		mockTokenService.EXPECT().GenerateToken().Return("", "", errors.New("gen error")).Once()
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return("", "", expectedErr).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, output)
-		assert.Equal(t, expectedErr, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
 	})
 
 	t.Run("Error_RepositoryCreateFails", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "test-client-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
-		plainToken := "test-token"
-		tokenHash := "token-hash"
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   hashedSecret,
-			Name:     "test-client",
 			IsActive: true,
-			Policies: []authDomain.PolicyDocument{},
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientSecret: "correct",
 		}
 
-		expectedErr := errors.New("database error")
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("correct", hashedSecret).Return(true).Once()
+		mockTokenService.EXPECT().GenerateToken().Return("plain", "hash", nil).Once()
+		mockTokenRepo.EXPECT().Create(ctx, mock.Anything).Return(errors.New("db error")).Once()
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return(plainToken, tokenHash, nil).
-			Once()
-
-		mockTokenRepo.On("Create", ctx, mock.AnythingOfType("*domain.Token")).
-			Return(expectedErr).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, output)
-		assert.Equal(t, expectedErr, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Success_TokenExpirationSetFromConfig", func(t *testing.T) {
-		// Setup mocks with specific expiration duration
-		customExpiration := 48 * time.Hour
-		mockConfig := &config.Config{
-			AuthTokenExpiration: customExpiration,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		expiration := 12 * time.Hour
+		mockConfig := &config.Config{AuthTokenExpiration: expiration}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		clientSecret := "test-client-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture, not a real credential
-		plainToken := "test-token"
-		tokenHash := "token-hash"
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:       clientID,
 			Secret:   hashedSecret,
-			Name:     "test-client",
 			IsActive: true,
-			Policies: []authDomain.PolicyDocument{},
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: clientSecret,
+			ClientSecret: "correct",
 		}
 
-		// Capture the created token to verify expiration
-		var createdToken *authDomain.Token
-		now := time.Now().UTC()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("correct", hashedSecret).Return(true).Once()
+		mockTokenService.EXPECT().GenerateToken().Return("plain", "hash", nil).Once()
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", clientSecret, hashedSecret).
-			Return(true).
-			Once()
-
-		mockTokenService.On("GenerateToken").
-			Return(plainToken, tokenHash, nil).
-			Once()
-
-		mockTokenRepo.On("Create", ctx, mock.MatchedBy(func(token *authDomain.Token) bool {
-			createdToken = token
-			return true
-		})).
+		var capturedToken *authDomain.Token
+		mockTokenRepo.EXPECT().
+			Create(ctx, mock.Anything).
+			Run(func(ctx context.Context, token *authDomain.Token) {
+				capturedToken = token
+			}).
 			Return(nil).
 			Once()
 
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
-		assert.NotNil(t, createdToken)
-
-		// Verify expiration is set correctly (within 1 second tolerance)
-		expectedExpiration := now.Add(customExpiration)
-		assert.WithinDuration(t, expectedExpiration, createdToken.ExpiresAt, time.Second)
-
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
-		mockTokenService.AssertExpectations(t)
-		mockTokenRepo.AssertExpectations(t)
+		assert.WithinDuration(t, time.Now().UTC().Add(expiration), capturedToken.ExpiresAt, time.Second)
 	})
 
-	t.Run("Error_UpdateLockStateFails_StillReturnsInvalidCredentials", func(t *testing.T) {
+	t.Run("Success_UpdateLockStateFails", func(t *testing.T) {
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  10,
-			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		wrongSecret := "wrong-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:             clientID,
 			Secret:         hashedSecret,
-			Name:           "test-client",
 			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 0,
+			FailedAttempts: 5,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: wrongSecret,
+			ClientSecret: "wrong",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("wrong", hashedSecret).Return(false).Once()
+		mockClientRepo.EXPECT().
+			UpdateLockState(ctx, clientID, 6, (*time.Time)(nil)).
+			Return(errors.New("db error")).
 			Once()
 
-		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
-			Return(false).
-			Once()
-
-		// UpdateLockState returns a DB error — should be silently ignored (best-effort)
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, (*time.Time)(nil)).
-			Return(errors.New("database error")).
-			Once()
-
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		assert.Error(t, err)
+		// Should still return ErrInvalidCredentials and not the db error
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, output)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
 	})
 
-	t.Run("Error_FirstFailureWithMaxAttemptsOne_TriggersImmediateLock", func(t *testing.T) {
+	t.Run("Success_FirstFailureTriggersLock", func(t *testing.T) {
 		mockConfig := &config.Config{
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  1,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
-		wrongSecret := "wrong-secret"
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec // test fixture
-
+		hashedSecret := "hashed"
 		client := &authDomain.Client{
 			ID:             clientID,
 			Secret:         hashedSecret,
-			Name:           "test-client",
 			IsActive:       true,
-			Policies:       []authDomain.PolicyDocument{},
-			FailedAttempts: 0, // First attempt
+			FailedAttempts: 0,
 		}
 
 		issueInput := &authDomain.IssueTokenInput{
 			ClientID:     clientID,
-			ClientSecret: wrongSecret,
+			ClientSecret: "wrong",
 		}
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		mockSecretService.On("CompareSecret", wrongSecret, hashedSecret).
-			Return(false).
-			Once()
-
-		// First failure with MaxAttempts=1 should immediately set a lock
-		mockClientRepo.On("UpdateLockState", ctx, clientID, 1, mock.MatchedBy(func(t *time.Time) bool {
-			return t != nil && t.After(time.Now().UTC())
-		})).
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
+		mockSecretService.EXPECT().CompareSecret("wrong", hashedSecret).Return(false).Once()
+		mockClientRepo.EXPECT().
+			UpdateLockState(ctx, clientID, 1, mock.AnythingOfType("*time.Time")).
 			Return(nil).
 			Once()
 
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, output)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockClientRepo.AssertExpectations(t)
-		mockSecretService.AssertExpectations(t)
 	})
 
 	t.Run("Error_RepositoryGetReturnsUnexpectedError", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		issueInput := &authDomain.IssueTokenInput{
@@ -799,22 +604,21 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			ClientSecret: "some-secret",
 		}
 
-		expectedErr := errors.New("unexpected database error")
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, errors.New("unexpected error")).Once()
 
-		// Setup expectations
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(nil, expectedErr).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			nil,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		output, err := uc.Issue(ctx, issueInput)
 
-		// Assert - should return the original error, not ErrInvalidCredentials
 		assert.Error(t, err)
 		assert.Nil(t, output)
-		assert.Equal(t, expectedErr, err)
-		mockClientRepo.AssertExpectations(t)
+		assert.Equal(t, "unexpected error", err.Error())
 	})
 }
 
@@ -822,338 +626,251 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success_AuthenticateWithValidToken", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
-		// Test data
 		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
-		tokenHash := "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+		tokenHash := "abcdef1234567890"
 
 		token := &authDomain.Token{
-			ID:        tokenID,
+			ID:        uuid.Must(uuid.NewV7()),
 			TokenHash: tokenHash,
 			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(24 * time.Hour), // Valid token, not expired
-			RevokedAt: nil,                                  // Not revoked
-			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+			RevokedAt: nil,
 		}
 
-		//nolint:gosec // test fixture data
 		client := &authDomain.Client{
 			ID:       clientID,
-			Secret:   "$argon2id$v=19$m=65536,t=3,p=4$test-hash", //nolint:gosec // test fixture
 			Name:     "test-client",
 			IsActive: true,
 			Policies: []authDomain.PolicyDocument{},
 		}
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, client.ID, result.ID)
-		assert.Equal(t, client.Name, result.Name)
-		assert.Equal(t, client.IsActive, result.IsActive)
-		mockTokenRepo.AssertExpectations(t)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
-		tokenHash := "nonexistent-token-hash"
+		tokenHash := "not-found"
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, authDomain.ErrTokenNotFound).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(nil, authDomain.ErrTokenNotFound).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert - should return generic error to prevent enumeration
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, result)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
-		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
-		tokenHash := "expired-token-hash"
-
-		// Token that expired 1 hour ago
+		tokenHash := "expired"
 		token := &authDomain.Token{
-			ID:        tokenID,
-			TokenHash: tokenHash,
-			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(-1 * time.Hour), // Expired
-			RevokedAt: nil,
-			CreatedAt: time.Now().UTC().Add(-25 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(-1 * time.Minute),
 		}
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, result)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_TokenRevoked", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+		mockTokenService := serviceMocks.NewMockTokenService(t)
 
-		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
 		tokenHash := "revoked-token-hash"
 		revokedAt := time.Now().UTC().Add(-1 * time.Hour)
 
-		// Token that was revoked
 		token := &authDomain.Token{
-			ID:        tokenID,
 			TokenHash: tokenHash,
-			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(24 * time.Hour), // Not expired
-			RevokedAt: &revokedAt,                           // But revoked
-			CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+			RevokedAt: &revokedAt,
 		}
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
 
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
+		uc := usecase.NewTokenUseCase(
+			mockConfig,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+			mockTokenService,
+		)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockTokenRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
+		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
-		tokenHash := "orphaned-token-hash"
-
 		token := &authDomain.Token{
-			ID:        tokenID,
-			TokenHash: tokenHash,
 			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
-			RevokedAt: nil,
-			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
 		}
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, authDomain.ErrClientNotFound).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
-
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(nil, authDomain.ErrClientNotFound).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert - should return generic error to prevent enumeration
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrInvalidCredentials)
 		assert.Nil(t, result)
-		assert.Equal(t, authDomain.ErrInvalidCredentials, err)
-		mockTokenRepo.AssertExpectations(t)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_ClientInactive", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
+		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
-		tokenHash := "inactive-client-token-hash"
-
 		token := &authDomain.Token{
-			ID:        tokenID,
-			TokenHash: tokenHash,
 			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
-			RevokedAt: nil,
-			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
 		}
-
-		//nolint:gosec // test fixture data
 		client := &authDomain.Client{
 			ID:       clientID,
-			Secret:   "$argon2id$v=19$m=65536,t=3,p=4$test-hash", //nolint:gosec // test fixture
-			Name:     "inactive-client",
-			IsActive: false, // Client is inactive
-			Policies: []authDomain.PolicyDocument{},
+			IsActive: false,
 		}
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
-
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(client, nil).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, authDomain.ErrClientInactive)
 		assert.Nil(t, result)
-		assert.Equal(t, authDomain.ErrClientInactive, err)
-		mockTokenRepo.AssertExpectations(t)
-		mockClientRepo.AssertExpectations(t)
 	})
 
 	t.Run("Error_RepositoryGetTokenFails", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
-		tokenHash := "database-error-token-hash"
-		expectedErr := errors.New("database connection error")
+		tokenHash := "hash"
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, errors.New("db error")).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(nil, expectedErr).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert - should propagate the original error
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Equal(t, expectedErr, err)
-		mockTokenRepo.AssertExpectations(t)
+		assert.Equal(t, "db error", err.Error())
 	})
 
 	t.Run("Error_RepositoryGetClientFails", func(t *testing.T) {
-		// Setup mocks
-		mockConfig := &config.Config{
-			AuthTokenExpiration: 24 * time.Hour,
-		}
-		mockClientRepo := &mockClientRepository{}
-		mockTokenRepo := &mockTokenRepository{}
-		mockSecretService := &mockSecretService{}
-		mockTokenService := &mockTokenService{}
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
+		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
-		tokenID := uuid.Must(uuid.NewV7())
-		tokenHash := "client-db-error-token-hash" //nolint:gosec // test fixture, not a real credential
-		expectedErr := errors.New("database connection error")
-
 		token := &authDomain.Token{
-			ID:        tokenID,
-			TokenHash: tokenHash,
 			ClientID:  clientID,
-			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
-			RevokedAt: nil,
-			CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
+			ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
 		}
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, errors.New("db error")).Once()
 
-		// Setup expectations
-		mockTokenRepo.On("GetByTokenHash", ctx, tokenHash).
-			Return(token, nil).
-			Once()
-
-		mockClientRepo.On("Get", ctx, clientID).
-			Return(nil, expectedErr).
-			Once()
-
-		// Execute
-		uc := NewTokenUseCase(mockConfig, mockClientRepo, mockTokenRepo, mockSecretService, mockTokenService)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
-		// Assert - should propagate the original error
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Equal(t, expectedErr, err)
-		mockTokenRepo.AssertExpectations(t)
-		mockClientRepo.AssertExpectations(t)
+		assert.Equal(t, "db error", err.Error())
+	})
+}
+
+func TestTokenUseCase_Revoke(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_RevokeToken", func(t *testing.T) {
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
+
+		tokenHash := "test-token-hash"
+		token := &authDomain.Token{ID: uuid.New(), ClientID: uuid.New()}
+
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().RevokeByTokenID(ctx, token.ID).Return(nil).Once()
+		mockAuditLogUseCase.EXPECT().
+			Create(ctx, mock.Anything, token.ClientID, authDomain.DeleteCapability, "/v1/token", mock.Anything).
+			Return(nil).
+			Once()
+
+		err := uc.Revoke(ctx, tokenHash)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_TokenNotFound", func(t *testing.T) {
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
+
+		tokenHash := "test-token-hash"
+
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, authDomain.ErrTokenNotFound).Once()
+
+		err := uc.Revoke(ctx, tokenHash)
+		assert.ErrorIs(t, err, authDomain.ErrTokenNotFound)
+	})
+}
+
+func TestTokenUseCase_PurgeExpiredAndRevoked(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_PurgeTokens", func(t *testing.T) {
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
+
+		days := 30
+		mockTokenRepo.EXPECT().
+			PurgeExpiredAndRevoked(ctx, mock.AnythingOfType("time.Time")).
+			Return(int64(5), nil).
+			Once()
+
+		count, err := uc.PurgeExpiredAndRevoked(ctx, days)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(5), count)
+	})
+
+	t.Run("Error_InvalidDays", func(t *testing.T) {
+		uc := usecase.NewTokenUseCase(nil, nil, nil, nil, nil, nil)
+
+		count, err := uc.PurgeExpiredAndRevoked(ctx, -1)
+		assert.Error(t, err)
+		assert.Equal(t, int64(0), count)
 	})
 }

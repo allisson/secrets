@@ -6,6 +6,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -367,8 +368,8 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 		LogLevel:             "error",
 		MetricsEnabled:       false,
 		ServerPort:           8080,
-		KMSProvider:          "",
-		KMSKeyURI:            "",
+		KMSProvider:          "localsecrets",
+		KMSKeyURI:            os.Getenv("KMS_KEY_URI"),
 		AuthTokenExpiration:  24 * time.Hour,
 	}
 

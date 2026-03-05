@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -131,6 +132,52 @@ func (p *PostgreSQLTokenRepository) GetByTokenHash(
 	}
 
 	return &token, nil
+}
+
+// RevokeByTokenID marks a specific token as revoked by setting its revoked_at timestamp.
+func (p *PostgreSQLTokenRepository) RevokeByTokenID(ctx context.Context, tokenID uuid.UUID) error {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `UPDATE tokens SET revoked_at = $1 WHERE id = $2`
+
+	_, err := querier.ExecContext(ctx, query, time.Now().UTC(), tokenID)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to revoke token")
+	}
+
+	return nil
+}
+
+// RevokeByClientID marks all active tokens for a specific client as revoked.
+func (p *PostgreSQLTokenRepository) RevokeByClientID(ctx context.Context, clientID uuid.UUID) error {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `UPDATE tokens SET revoked_at = $1 WHERE client_id = $2 AND revoked_at IS NULL`
+
+	_, err := querier.ExecContext(ctx, query, time.Now().UTC(), clientID)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to revoke tokens by client id")
+	}
+
+	return nil
+}
+
+// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
+// and were created before the specified timestamp. Returns the number of deleted tokens.
+func (p *PostgreSQLTokenRepository) PurgeExpiredAndRevoked(
+	ctx context.Context,
+	olderThan time.Time,
+) (int64, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `DELETE FROM tokens WHERE expires_at < $1 OR revoked_at < $1`
+
+	result, err := querier.ExecContext(ctx, query, olderThan)
+	if err != nil {
+		return 0, apperrors.Wrap(err, "failed to purge tokens")
+	}
+
+	return result.RowsAffected()
 }
 
 // NewPostgreSQLTokenRepository creates a new PostgreSQL Token repository.

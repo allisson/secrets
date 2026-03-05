@@ -14,6 +14,51 @@ import (
 func getAuthCommands() []*cli.Command {
 	return []*cli.Command{
 		{
+			Name:  "purge-auth-tokens",
+			Usage: "Permanently delete expired and revoked authentication tokens older than specified days",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:    "days",
+					Aliases: []string{"d"},
+					Value:   30,
+					Usage:   "Delete tokens older than this many days",
+				},
+				&cli.BoolFlag{
+					Name:    "dry-run",
+					Aliases: []string{"n"},
+					Value:   false,
+					Usage:   "Show how many tokens would be deleted without deleting",
+				},
+				&cli.StringFlag{
+					Name:    "format",
+					Aliases: []string{"f"},
+					Value:   "text",
+					Usage:   "Output format: 'text' or 'json'",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						tokenUseCase, err := container.TokenUseCase(ctx)
+						if err != nil {
+							return err
+						}
+
+						return commands.RunPurgeAuthTokens(
+							ctx,
+							tokenUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							int(cmd.Int("days")),
+							cmd.Bool("dry-run"),
+							cmd.String("format"),
+						)
+					},
+				)
+			},
+		},
+		{
 			Name:  "clean-expired-tokens",
 			Usage: "Delete expired tokens older than specified days",
 			Flags: []cli.Flag{

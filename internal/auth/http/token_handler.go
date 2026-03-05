@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
+	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/httputil"
 	customValidation "github.com/allisson/secrets/internal/validation"
 )
@@ -20,16 +23,19 @@ import (
 // It coordinates token issuance with the TokenUseCase.
 type TokenHandler struct {
 	tokenUseCase authUseCase.TokenUseCase
+	tokenService authService.TokenService
 	logger       *slog.Logger
 }
 
 // NewTokenHandler creates a new token handler with required dependencies.
 func NewTokenHandler(
 	tokenUseCase authUseCase.TokenUseCase,
+	tokenService authService.TokenService,
 	logger *slog.Logger,
 ) *TokenHandler {
 	return &TokenHandler{
 		tokenUseCase: tokenUseCase,
+		tokenService: tokenService,
 		logger:       logger,
 	}
 }
@@ -81,4 +87,35 @@ func (h *TokenHandler) IssueTokenHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, response)
+}
+
+// RevokeTokenHandler revokes the current authentication token.
+// DELETE /v1/token - Requires authentication.
+// Returns 204 No Content on success.
+func (h *TokenHandler) RevokeTokenHandler(c *gin.Context) {
+	// Extract token from Authorization header
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		httputil.HandleErrorGin(c, apperrors.ErrUnauthorized, h.logger)
+		return
+	}
+
+	const bearerPrefix = "Bearer "
+	if len(authHeader) < len(bearerPrefix) ||
+		!strings.EqualFold(authHeader[:len(bearerPrefix)], bearerPrefix) {
+		httputil.HandleErrorGin(c, apperrors.ErrUnauthorized, h.logger)
+		return
+	}
+	token := authHeader[len(bearerPrefix):]
+
+	// Hash the token for lookup
+	tokenHash := h.tokenService.HashToken(token)
+
+	// Call use case
+	if err := h.tokenUseCase.Revoke(c.Request.Context(), tokenHash); err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	c.Data(http.StatusNoContent, "application/json", nil)
 }

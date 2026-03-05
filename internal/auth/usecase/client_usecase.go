@@ -14,9 +14,11 @@ import (
 
 // clientUseCase implements ClientUseCase interface for managing client authentication.
 type clientUseCase struct {
-	txManager     database.TxManager
-	clientRepo    ClientRepository
-	secretService authService.SecretService
+	txManager       database.TxManager
+	clientRepo      ClientRepository
+	tokenRepo       TokenRepository
+	auditLogUseCase AuditLogUseCase
+	secretService   authService.SecretService
 }
 
 // Create generates and persists a new Client with a random secret.
@@ -118,15 +120,46 @@ func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
 	return c.clientRepo.UpdateLockState(ctx, clientID, 0, nil)
 }
 
+// RevokeTokens marks all active tokens for a specific client as revoked.
+func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) error {
+	// Check if client exists
+	if _, err := c.clientRepo.Get(ctx, clientID); err != nil {
+		return err
+	}
+
+	// Revoke all tokens for the client
+	if err := c.tokenRepo.RevokeByClientID(ctx, clientID); err != nil {
+		return err
+	}
+
+	// Record audit log
+	_ = c.auditLogUseCase.Create(
+		ctx,
+		uuid.Must(uuid.NewV7()),
+		clientID,
+		authDomain.DeleteCapability,
+		"/v1/clients/"+clientID.String()+"/tokens",
+		map[string]any{
+			"action": "client_tokens_revoked",
+		},
+	)
+
+	return nil
+}
+
 // NewClientUseCase creates a new ClientUseCase with the provided dependencies.
 func NewClientUseCase(
 	txManager database.TxManager,
 	clientRepo ClientRepository,
+	tokenRepo TokenRepository,
+	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
 ) ClientUseCase {
 	return &clientUseCase{
-		txManager:     txManager,
-		clientRepo:    clientRepo,
-		secretService: secretService,
+		txManager:       txManager,
+		clientRepo:      clientRepo,
+		tokenRepo:       tokenRepo,
+		auditLogUseCase: auditLogUseCase,
+		secretService:   secretService,
 	}
 }

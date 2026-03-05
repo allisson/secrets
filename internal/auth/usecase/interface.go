@@ -47,6 +47,16 @@ type TokenRepository interface {
 	// GetByTokenHash retrieves a token by its SHA-256 hash value.
 	// Returns ErrTokenNotFound if no token matches the hash.
 	GetByTokenHash(ctx context.Context, tokenHash string) (*authDomain.Token, error)
+
+	// RevokeByTokenID marks a specific token as revoked by setting its revoked_at timestamp.
+	RevokeByTokenID(ctx context.Context, tokenID uuid.UUID) error
+
+	// RevokeByClientID marks all active tokens for a specific client as revoked.
+	RevokeByClientID(ctx context.Context, clientID uuid.UUID) error
+
+	// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
+	// and were created before the specified timestamp. Returns the number of deleted tokens.
+	PurgeExpiredAndRevoked(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 // AuditLogRepository defines persistence operations for audit logs.
@@ -127,6 +137,13 @@ type ClientUseCase interface {
 	// Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	Unlock(ctx context.Context, clientID uuid.UUID) error
+
+	// RevokeTokens marks all active tokens for a specific client as revoked.
+	// This operation is typically performed by an administrator to immediately
+	// invalidate all sessions for a compromised client.
+	//
+	// Returns ErrClientNotFound if the specified client doesn't exist.
+	RevokeTokens(ctx context.Context, clientID uuid.UUID) error
 }
 
 // TokenUseCase defines business logic operations for token management.
@@ -146,6 +163,17 @@ type TokenUseCase interface {
 	// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
 	// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
 	Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
+
+	// Revoke marks a specific token as revoked using its hash value.
+	// This is typically used by a client to logout and invalidate their current token.
+	//
+	// Returns ErrTokenNotFound if no token matches the hash.
+	Revoke(ctx context.Context, tokenHash string) error
+
+	// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
+	// and were created before the specified number of days ago.
+	// Returns the number of deleted tokens.
+	PurgeExpiredAndRevoked(ctx context.Context, days int) (int64, error)
 }
 
 // AuditLogUseCase defines business logic operations for audit logging.
