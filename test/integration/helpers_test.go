@@ -261,6 +261,7 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 		ServerPort:           8080,
 		LogLevel:             "error",
 		AuthTokenExpiration:  time.Hour,
+		MaxRequestBodySize:   1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -373,6 +374,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		ServerPort:           8080,
 		LogLevel:             "error",
 		AuthTokenExpiration:  time.Hour,
+		MaxRequestBodySize:   1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -494,6 +496,7 @@ func setupIntegrationTestWithTokenExpiration(
 		ServerPort:           8080,
 		LogLevel:             "error",
 		AuthTokenExpiration:  tokenExpiration, // Custom expiration
+		MaxRequestBodySize:   1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}
@@ -617,6 +620,7 @@ func setupIntegrationTestWithLockout(
 		AuthTokenExpiration:  time.Hour,
 		LockoutMaxAttempts:   maxAttempts,
 		LockoutDuration:      lockoutDuration,
+		MaxRequestBodySize:   1024 * 1024,
 		KMSProvider:          "localsecrets",
 		KMSKeyURI:            kmsKeyURI,
 	}

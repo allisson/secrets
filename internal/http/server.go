@@ -86,6 +86,7 @@ func (s *Server) SetupRouter(
 
 	// Apply custom middleware
 	router.Use(CustomRecoveryMiddleware(s.logger)) // Custom slog panic recovery
+	router.Use(MaxRequestBodySizeMiddleware(cfg.MaxRequestBodySize))
 
 	// Add CORS middleware if enabled
 	if corsMiddleware := createCORSMiddleware(

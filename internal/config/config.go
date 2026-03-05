@@ -41,6 +41,7 @@ const (
 	DefaultMetricsPort            = 8081
 	DefaultLockoutMaxAttempts     = 10
 	DefaultLockoutDuration        = 30 // minutes
+	DefaultMaxRequestBodySize     = 1048576
 )
 
 // Config holds all application configuration.
@@ -110,6 +111,8 @@ type Config struct {
 	LockoutMaxAttempts int
 	// LockoutDuration is the duration for which an account is locked out after maximum attempts.
 	LockoutDuration time.Duration
+	// MaxRequestBodySize is the maximum size of the request body in bytes.
+	MaxRequestBodySize int64
 }
 
 // Validate checks if the configuration is valid.
@@ -166,6 +169,7 @@ func (c *Config) Validate() error {
 			&c.RateLimitTokenRequestsPerSec,
 			validation.When(c.RateLimitTokenEnabled, validation.Required, validation.Min(0.1)),
 		),
+		validation.Field(&c.MaxRequestBodySize, validation.Required, validation.Min(int64(1))),
 	)
 }
 
@@ -252,6 +256,9 @@ func Load() (*Config, error) {
 		// Account Lockout
 		LockoutMaxAttempts: env.GetInt("LOCKOUT_MAX_ATTEMPTS", DefaultLockoutMaxAttempts),
 		LockoutDuration:    env.GetDuration("LOCKOUT_DURATION_MINUTES", DefaultLockoutDuration, time.Minute),
+
+		// Request Body Size
+		MaxRequestBodySize: env.GetInt64("MAX_REQUEST_BODY_SIZE", DefaultMaxRequestBodySize),
 	}
 
 	// Validate configuration
