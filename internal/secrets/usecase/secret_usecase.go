@@ -18,13 +18,14 @@ import (
 
 // secretUseCase implements the SecretUseCase interface for managing secrets.
 type secretUseCase struct {
-	txManager    database.TxManager
-	dekRepo      DekRepository
-	secretRepo   SecretRepository
-	kekChain     *cryptoDomain.KekChain
-	aeadManager  cryptoService.AEADManager
-	keyManager   cryptoService.KeyManager
-	dekAlgorithm cryptoDomain.Algorithm
+	txManager            database.TxManager
+	dekRepo              DekRepository
+	secretRepo           SecretRepository
+	kekChain             *cryptoDomain.KekChain
+	aeadManager          cryptoService.AEADManager
+	keyManager           cryptoService.KeyManager
+	dekAlgorithm         cryptoDomain.Algorithm
+	secretValueSizeLimit int
 }
 
 // CreateOrUpdate creates a new secret or creates a new version of an existing secret.
@@ -33,6 +34,11 @@ func (s *secretUseCase) CreateOrUpdate(
 	path string,
 	value []byte,
 ) (*secretsDomain.Secret, error) {
+	// Check if the secret value size exceeds the limit
+	if len(value) > s.secretValueSizeLimit {
+		return nil, secretsDomain.ErrSecretValueTooLarge
+	}
+
 	activeKek, found := s.kekChain.Get(s.kekChain.ActiveKekID())
 	if !found {
 		return nil, cryptoDomain.ErrKekNotFound
@@ -222,14 +228,16 @@ func NewSecretUseCase(
 	aeadManager cryptoService.AEADManager,
 	keyManager cryptoService.KeyManager,
 	dekAlgorithm cryptoDomain.Algorithm,
+	secretValueSizeLimit int,
 ) SecretUseCase {
 	return &secretUseCase{
-		txManager:    txManager,
-		dekRepo:      dekRepo,
-		secretRepo:   secretRepo,
-		kekChain:     kekChain,
-		aeadManager:  aeadManager,
-		keyManager:   keyManager,
-		dekAlgorithm: dekAlgorithm,
+		txManager:            txManager,
+		dekRepo:              dekRepo,
+		secretRepo:           secretRepo,
+		kekChain:             kekChain,
+		aeadManager:          aeadManager,
+		keyManager:           keyManager,
+		dekAlgorithm:         dekAlgorithm,
+		secretValueSizeLimit: secretValueSizeLimit,
 	}
 }

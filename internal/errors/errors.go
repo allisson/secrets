@@ -26,6 +26,9 @@ var (
 	// ErrLocked indicates the resource is temporarily locked.
 	ErrLocked = errors.New("locked")
 
+	// ErrTooLarge indicates the request payload or a value exceeds the maximum allowed size.
+	ErrTooLarge = errors.New("too large")
+
 	// ErrInternal indicates an unexpected internal server error.
 	ErrInternal = errors.New("internal server error")
 )
