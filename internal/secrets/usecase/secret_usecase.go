@@ -34,6 +34,11 @@ func (s *secretUseCase) CreateOrUpdate(
 	path string,
 	value []byte,
 ) (*secretsDomain.Secret, error) {
+	// Validate secret path
+	if err := validateSecretPath(path); err != nil {
+		return nil, err
+	}
+
 	// Check if the secret value size exceeds the limit
 	if len(value) > s.secretValueSizeLimit {
 		return nil, secretsDomain.ErrSecretValueTooLarge

@@ -12,4 +12,7 @@ var (
 
 	// ErrSecretValueTooLarge indicates the secret value exceeds the maximum allowed size.
 	ErrSecretValueTooLarge = errors.Wrap(errors.ErrTooLarge, "secret value too large")
+
+	// ErrInvalidSecretPath indicates the secret path fails validation.
+	ErrInvalidSecretPath = errors.Wrap(errors.ErrInvalidInput, "invalid secret path format")
 )
