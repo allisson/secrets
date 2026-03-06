@@ -228,6 +228,36 @@ func TestSecretHandler_CreateOrUpdateHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "internal_error", response["error"])
 	})
+
+	t.Run("Error_InvalidSecretPath", func(t *testing.T) {
+		t.Parallel()
+		handler, mockUseCase := setupTestHandler(t)
+
+		path := "app@1"
+		value := []byte("value")
+
+		request := dto.CreateOrUpdateSecretRequest{
+			Value: base64.StdEncoding.EncodeToString(value),
+		}
+
+		mockUseCase.EXPECT().
+			CreateOrUpdate(mock.Anything, path, value).
+			Return(nil, secretsDomain.ErrInvalidSecretPath).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/secrets/"+path, request)
+		c.Params = gin.Params{{Key: "path", Value: "/" + path}}
+
+		handler.CreateOrUpdateHandler(c)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "invalid_input", response["error"])
+		assert.Contains(t, response["message"], "invalid secret path")
+	})
 }
 
 func TestSecretHandler_GetHandler(t *testing.T) {

@@ -12,7 +12,7 @@ To provide a secure, developer-friendly, and lightweight secrets management plat
 - **Security Compliance Teams:** Who require tamper-resistant audit trails for compliance audits (PCI-DSS, SOC2).
 
 ## Core Features
-- **Secret Management (Storage):** Versioned, envelope-encrypted storage with support for arbitrary key-value pairs.
+- **Secret Management (Storage):** Versioned, envelope-encrypted storage with support for arbitrary key-value pairs and validated hierarchical paths (e.g., `prod/db/password`).
 - **Transit Engine (EaaS):** On-the-fly encryption/decryption of application data without database storage.
 - **Tokenization Engine:** Format-preserving tokens for sensitive data types like credit card numbers.
 - **Auth Token Revocation:** Immediate invalidation of authentication tokens (single or client-wide) with full state management.

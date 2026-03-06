@@ -23,6 +23,39 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	t.Run("ErrInvalidSecretPath", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create usecase
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			nil,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+		)
+
+		// Create test data
+		path := "invalid path with spaces"
+		value := []byte("secret-value")
+
+		// Execute
+		secret, err := uc.CreateOrUpdate(ctx, path, value)
+
+		// Assertions
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, secretsDomain.ErrInvalidSecretPath)
+		assert.Nil(t, secret)
+	})
+
 	t.Run("Success_CreateNewSecret", func(t *testing.T) {
 		t.Parallel()
 		// Setup mocks

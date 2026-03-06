@@ -22,6 +22,14 @@ graph TD
     C -->|Invalid| H[401/403 Error]
 ```
 
+## Path Constraints
+
+Secret paths must adhere to the following constraints:
+
+- **Maximum Length:** 255 characters.
+- **Allowed Characters:** Alphanumeric (`a-z`, `A-Z`, `0-9`), hyphens (`-`), underscores (`_`), and forward slashes (`/`).
+- **Validation:** Requests with invalid paths will return a `422 Unprocessable Entity` error.
+
 ## Endpoints
 
 All endpoints require `Authorization: Bearer <token>`.

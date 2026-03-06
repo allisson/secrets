@@ -4,9 +4,15 @@
 package domain
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	// secretPathRegex matches only alphanumeric characters, hyphens, underscores, and forward slashes.
+	secretPathRegex = regexp.MustCompile(`^[a-zA-Z0-9\-_/]+$`)
 )
 
 // Secret represents an encrypted secret with versioning and metadata.
@@ -34,4 +40,21 @@ type Secret struct {
 // IsDeleted returns true if the secret has been soft-deleted.
 func (s *Secret) IsDeleted() bool {
 	return s.DeletedAt != nil
+}
+
+// Validate checks if the secret path adheres to the required format and constraints.
+func (s *Secret) Validate() error {
+	if s.Path == "" {
+		return ErrInvalidSecretPath
+	}
+
+	if len(s.Path) > 255 {
+		return ErrInvalidSecretPath
+	}
+
+	if !secretPathRegex.MatchString(s.Path) {
+		return ErrInvalidSecretPath
+	}
+
+	return nil
 }

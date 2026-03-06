@@ -294,6 +294,8 @@ paths:
         required: true
         schema:
           type: string
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9\-_/]+$'
     post:
       tags: [secrets]
       summary: Create or update secret

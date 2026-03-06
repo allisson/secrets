@@ -33,6 +33,12 @@ func (s *secretUseCase) CreateOrUpdate(
 	path string,
 	value []byte,
 ) (*secretsDomain.Secret, error) {
+	// Validate secret path
+	dummySecret := &secretsDomain.Secret{Path: path}
+	if err := dummySecret.Validate(); err != nil {
+		return nil, err
+	}
+
 	activeKek, found := s.kekChain.Get(s.kekChain.ActiveKekID())
 	if !found {
 		return nil, cryptoDomain.ErrKekNotFound

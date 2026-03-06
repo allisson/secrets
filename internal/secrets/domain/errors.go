@@ -9,4 +9,6 @@ import (
 var (
 	// ErrSecretNotFound indicates the secret was not found at the specified path.
 	ErrSecretNotFound = errors.Wrap(errors.ErrNotFound, "secret not found")
+	// ErrInvalidSecretPath indicates the secret path does not meet the required criteria.
+	ErrInvalidSecretPath = errors.Wrap(errors.ErrInvalidInput, "invalid secret path")
 )
