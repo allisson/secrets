@@ -18,6 +18,8 @@ func TestParseCapabilities(t *testing.T) {
 	}{
 		{"read,write", []authDomain.Capability{"read", "write"}, false},
 		{"read , write ", []authDomain.Capability{"read", "write"}, false},
+		{"read,invalid", nil, true},
+		{"READ", nil, true},
 		{"", nil, true},
 		{" , ", nil, true},
 	}
@@ -65,5 +67,14 @@ func TestPromptForPolicies(t *testing.T) {
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "path cannot be empty")
+	})
+
+	t.Run("invalid-capability", func(t *testing.T) {
+		input := "secret/*\ninvalid\n"
+		var output bytes.Buffer
+		_, err := PromptForPolicies(strings.NewReader(input), &output)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid capability: 'invalid'")
 	})
 }

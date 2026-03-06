@@ -15,6 +15,7 @@
 - **Password Hashing:** [go-pwdhash](https://github.com/allisson/go-pwdhash) - Argon2id hashing for secure storage of client secrets and passwords.
 - **Request Body Size Limiting:** Middleware to prevent DoS attacks from large payloads.
 - **Secret Value Size Limiting:** Global limit on individual secret values to ensure predictable storage and memory usage.
+- **Strict Capability Validation:** Centralized domain helpers for validating policy capabilities (`read`, `write`, `delete`, `encrypt`, `decrypt`, `rotate`) in CLI and API layers.
 - **Secret Path Validation:** Strict naming rules for secret paths (alphanumeric, -, _, /) to ensure consistency and security.
 - **Audit Signing:** HMAC-SHA256 for tamper-evident cryptographic audit logs.
 
