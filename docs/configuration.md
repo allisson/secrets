@@ -151,6 +151,12 @@ This timeout controls how long idle connections are kept open between requests.
 | High-security/low-trust | 5 | 5 | 30 | Aggressive timeouts reduce attack surface |
 | Large payload operations | 60 | 60 | 120 | Accommodate large secret transfers |
 
+### MAX_REQUEST_BODY_SIZE
+
+Maximum size of incoming HTTP request bodies in bytes (default: `1048576` - 1 MB).
+
+This limit protects the server from Denial-of-Service (DoS) attacks via excessively large payloads. Requests exceeding this limit receive a `413 Payload Too Large` error.
+
 ### LOG_LEVEL
 
 Logging level. Supported values: `debug`, `info`, `warn`, `error`, `fatal`, `panic` (default: `info`).
