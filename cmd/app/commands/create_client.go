@@ -31,6 +31,7 @@ func (r *CreateClientResult) ToText() string {
 
 // ToJSON returns a JSON representation of the creation result.
 func (r *CreateClientResult) ToJSON() string {
+	// #nosec G117 - Intentionally marshaling secret for CLI output. This is shown once during client creation.
 	jsonBytes, _ := json.MarshalIndent(r, "", "  ")
 	return string(jsonBytes)
 }

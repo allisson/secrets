@@ -55,6 +55,7 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
+		// #nosec G117 - Test code with hardcoded test fixtures, not real secrets
 		body, _ := json.Marshal(request)
 		c.Request, _ = http.NewRequest(http.MethodPost, "/v1/token", bytes.NewBuffer(body))
 
