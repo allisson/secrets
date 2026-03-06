@@ -222,6 +222,35 @@ paths:
           description: Client not found
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /v1/clients/{id}/rotate-secret:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [clients]
+      summary: Rotate client secret
+      description: Generates a new secret for the client and revokes all its active tokens.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Client secret rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Client not found
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/clients/{id}/unlock:
     post:
       tags: [clients]
@@ -1229,7 +1258,28 @@ components:
           format: uuid
         secret:
           type: string
-      required: [id, secret]
+        name:
+          type: string
+        is_active:
+          type: boolean
+        policies:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                minLength: 1
+                maxLength: 255
+                pattern: '^[a-zA-Z0-9\-_/]+$'
+              capabilities:
+                type: array
+                items:
+                  type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [id, secret, name, is_active, policies, created_at]
     ListClientsResponse:
       type: object
       properties:

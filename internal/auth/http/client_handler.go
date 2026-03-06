@@ -12,6 +12,7 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/httputil"
 	customValidation "github.com/allisson/secrets/internal/validation"
 )
@@ -70,12 +71,7 @@ func (h *ClientHandler) CreateHandler(c *gin.Context) {
 	}
 
 	// Return response with plain secret
-	response := dto.CreateClientResponse{
-		ID:     output.ID.String(),
-		Secret: output.PlainSecret,
-	}
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, dto.MapCreateClientOutputToResponse(output))
 }
 
 // GetHandler retrieves a client by ID.
@@ -253,4 +249,45 @@ func (h *ClientHandler) RevokeTokensHandler(c *gin.Context) {
 
 	// Return 204 No Content
 	c.Data(http.StatusNoContent, "application/json", nil)
+}
+
+// RotateSecretHandler rotates the secret for a client.
+// It supports two modes:
+// 1. Self-service: POST /v1/auth/clients/self/rotate-secret (id from authenticated client)
+// 2. Administrative: POST /v1/auth/clients/:id/rotate-secret (id from URL parameter)
+// Both modes require RotateCapability on the respective path.
+func (h *ClientHandler) RotateSecretHandler(c *gin.Context) {
+	var clientID uuid.UUID
+	var err error
+
+	// Determine if this is a self-service or administrative request
+	idParam := c.Param("id")
+	if idParam == "self" {
+		// Self-service mode: get ID from authenticated client
+		client, ok := GetClient(c.Request.Context())
+		if !ok || client == nil {
+			httputil.HandleErrorGin(c, apperrors.ErrUnauthorized, h.logger)
+			return
+		}
+		clientID = client.ID
+	} else {
+		// Administrative mode: get ID from URL parameter
+		clientID, err = uuid.Parse(idParam)
+		if err != nil {
+			httputil.HandleBadRequestGin(c,
+				fmt.Errorf("invalid client ID format: must be a valid UUID"),
+				h.logger)
+			return
+		}
+	}
+
+	// Call use case
+	output, err := h.clientUseCase.RotateSecret(c.Request.Context(), clientID)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Return response with new plain secret and metadata
+	c.JSON(http.StatusOK, dto.MapCreateClientOutputToResponse(output))
 }

@@ -53,6 +53,10 @@ func (c *clientUseCase) Create(
 	return &authDomain.CreateClientOutput{
 		ID:          client.ID,
 		PlainSecret: plainSecret,
+		Name:        client.Name,
+		IsActive:    client.IsActive,
+		Policies:    client.Policies,
+		CreatedAt:   client.CreatedAt,
 	}, nil
 }
 
@@ -145,6 +149,68 @@ func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) er
 	)
 
 	return nil
+}
+
+// RotateSecret generates a new secret for a client and revokes all active tokens.
+func (c *clientUseCase) RotateSecret(
+	ctx context.Context,
+	clientID uuid.UUID,
+) (*authDomain.CreateClientOutput, error) {
+	var output *authDomain.CreateClientOutput
+
+	err := c.txManager.WithTx(ctx, func(ctx context.Context) error {
+		// Get the existing client
+		client, err := c.clientRepo.Get(ctx, clientID)
+		if err != nil {
+			return err
+		}
+
+		// Generate a new secure random secret
+		plainSecret, hashedSecret, err := c.secretService.GenerateSecret()
+		if err != nil {
+			return err
+		}
+
+		// Update the client entity
+		client.Secret = hashedSecret
+		if err := c.clientRepo.Update(ctx, client); err != nil {
+			return err
+		}
+
+		// Revoke all tokens for the client
+		if err := c.tokenRepo.RevokeByClientID(ctx, clientID); err != nil {
+			return err
+		}
+
+		// Record audit log
+		_ = c.auditLogUseCase.Create(
+			ctx,
+			uuid.Must(uuid.NewV7()),
+			clientID,
+			authDomain.RotateCapability,
+			"/v1/clients/"+clientID.String()+"/rotate-secret",
+			map[string]any{
+				"action": "client_secret_rotated",
+			},
+		)
+
+		output = &authDomain.CreateClientOutput{
+			ID:          client.ID,
+			PlainSecret: plainSecret,
+			Name:        client.Name,
+			IsActive:    client.IsActive,
+			Policies:    client.Policies,
+			CreatedAt:   client.CreatedAt,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
 
 // NewClientUseCase creates a new ClientUseCase with the provided dependencies.

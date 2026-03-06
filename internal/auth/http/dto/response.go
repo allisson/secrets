@@ -8,11 +8,27 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 )
 
-// CreateClientResponse contains the result of creating a new client.
+// CreateClientResponse contains the result of creating or rotating a client.
 // SECURITY: The secret is only returned once and must be saved securely.
 type CreateClientResponse struct {
-	ID     string `json:"id"`     // Unique identifier (UUID)
-	Secret string `json:"secret"` //nolint:gosec // returned once on creation
+	ID        string                      `json:"id"`         // Unique identifier (UUID)
+	Secret    string                      `json:"secret"`     //nolint:gosec // returned once on creation/rotation
+	Name      string                      `json:"name"`       // Client name
+	IsActive  bool                        `json:"is_active"`  // Whether client is active
+	Policies  []authDomain.PolicyDocument `json:"policies"`   // Client policies
+	CreatedAt time.Time                   `json:"created_at"` // Client creation timestamp
+}
+
+// MapCreateClientOutputToResponse converts a domain output to an API response.
+func MapCreateClientOutputToResponse(output *authDomain.CreateClientOutput) CreateClientResponse {
+	return CreateClientResponse{
+		ID:        output.ID.String(),
+		Secret:    output.PlainSecret,
+		Name:      output.Name,
+		IsActive:  output.IsActive,
+		Policies:  output.Policies,
+		CreatedAt: output.CreatedAt,
+	}
 }
 
 // ClientResponse represents a client in API responses (excludes secret).

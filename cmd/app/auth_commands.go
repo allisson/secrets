@@ -212,5 +212,43 @@ func getAuthCommands() []*cli.Command {
 				)
 			},
 		},
+		{
+			Name:  "rotate-client-secret",
+			Usage: "Generate a new secret for a client and revoke all its active tokens",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "id",
+					Aliases:  []string{"i"},
+					Required: true,
+					Usage:    "Client ID (UUID)",
+				},
+				&cli.StringFlag{
+					Name:    "format",
+					Aliases: []string{"f"},
+					Value:   "text",
+					Usage:   "Output format: 'text' or 'json'",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return commands.ExecuteWithContainer(
+					ctx,
+					func(ctx context.Context, container *app.Container) error {
+						clientUseCase, err := container.ClientUseCase(ctx)
+						if err != nil {
+							return err
+						}
+
+						return commands.RunRotateClientSecret(
+							ctx,
+							clientUseCase,
+							container.Logger(),
+							commands.DefaultIO().Writer,
+							cmd.String("id"),
+							cmd.String("format"),
+						)
+					},
+				)
+			},
+		},
 	}
 }

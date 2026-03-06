@@ -149,6 +149,46 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				assert.ErrorIs(t, err, authDomain.ErrSignatureInvalid, "error should be ErrSignatureInvalid")
 			})
 
+			t.Run("VerifyRotationAuditLog", func(t *testing.T) {
+				// Setup UseCases
+				clientUseCase, _ := testCtx.container.ClientUseCase(ctx)
+				auditLogUseCase, _ := testCtx.container.AuditLogUseCase(ctx)
+
+				// Create a client to rotate
+				clientRequest := &authDomain.CreateClientInput{
+					Name:     "Rotation Audit Test",
+					IsActive: true,
+					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
+				}
+				createOutput, err := clientUseCase.Create(ctx, clientRequest)
+				require.NoError(t, err)
+
+				// Perform rotation
+				_, err = clientUseCase.RotateSecret(ctx, createOutput.ID)
+				require.NoError(t, err)
+
+				// List audit logs for this client and path
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 10, nil, nil)
+				require.NoError(t, err)
+
+				var rotationLog *authDomain.AuditLog
+				expectedPath := "/v1/clients/" + createOutput.ID.String() + "/rotate-secret"
+				for _, log := range logs {
+					if log.ClientID == createOutput.ID && log.Path == expectedPath {
+						rotationLog = log
+						break
+					}
+				}
+
+				require.NotNil(t, rotationLog, "rotation audit log not found")
+				assert.True(t, rotationLog.IsSigned, "rotation audit log should be signed")
+				assert.Equal(t, authDomain.RotateCapability, rotationLog.Capability)
+
+				// Verify integrity
+				err = auditLogUseCase.VerifyIntegrity(ctx, rotationLog.ID)
+				assert.NoError(t, err, "rotation audit log signature should be valid")
+			})
+
 			t.Run("VerifyBatch_AllValid", func(t *testing.T) {
 				// Create multiple signed audit logs
 				startTime := time.Now().UTC()

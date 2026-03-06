@@ -147,6 +147,25 @@ func (c *clientUseCaseWithMetrics) RevokeTokens(ctx context.Context, clientID uu
 	return err
 }
 
+// RotateSecret records metrics for client secret rotation operations.
+func (c *clientUseCaseWithMetrics) RotateSecret(
+	ctx context.Context,
+	clientID uuid.UUID,
+) (*authDomain.CreateClientOutput, error) {
+	start := time.Now()
+	output, err := c.next.RotateSecret(ctx, clientID)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	c.metrics.RecordOperation(ctx, "auth", "client_rotate_secret", status)
+	c.metrics.RecordDuration(ctx, "auth", "client_rotate_secret", time.Since(start), status)
+
+	return output, err
+}
+
 // tokenUseCaseWithMetrics decorates TokenUseCase with metrics instrumentation.
 type tokenUseCaseWithMetrics struct {
 	next    TokenUseCase

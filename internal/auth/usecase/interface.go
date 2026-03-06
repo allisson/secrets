@@ -144,6 +144,21 @@ type ClientUseCase interface {
 	//
 	// Returns ErrClientNotFound if the specified client doesn't exist.
 	RevokeTokens(ctx context.Context, clientID uuid.UUID) error
+
+	// RotateSecret generates a new cryptographically secure secret for a client,
+	// invalidating the previous secret and revoking all active authentication tokens.
+	//
+	// This operation is typically performed when a client's secret is suspected
+	// to be compromised or as part of a regular security rotation policy.
+	//
+	// Returns the client ID and the new plain text secret. The plain secret is only
+	// returned once and should be securely transmitted to the client administrator.
+	//
+	// Security Note: All existing tokens for the client are immediately revoked
+	// upon successful rotation to ensure session security.
+	//
+	// Returns ErrClientNotFound if the specified client doesn't exist.
+	RotateSecret(ctx context.Context, clientID uuid.UUID) (*authDomain.CreateClientOutput, error)
 }
 
 // TokenUseCase defines business logic operations for token management.

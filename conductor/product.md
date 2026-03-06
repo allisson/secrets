@@ -16,6 +16,7 @@ To provide a secure, developer-friendly, and lightweight secrets management plat
 - **Transit Engine (EaaS):** On-the-fly encryption/decryption of application data without database storage.
 - **Tokenization Engine:** Format-preserving tokens for sensitive data types like credit card numbers.
 - **Auth Token Revocation:** Immediate invalidation of authentication tokens (single or client-wide) with full state management.
+- **Client Secret Rotation:** Self-service and administrative rotation of client secrets with automatic auth token revocation.
 - **Audit Logs:** HMAC-signed audit trails capturing every access attempt and policy evaluation.
 - **KMS Integration:** Native support for AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault.
 

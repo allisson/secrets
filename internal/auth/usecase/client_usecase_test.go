@@ -256,3 +256,93 @@ func TestClientUseCase_Unlock(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestClientUseCase_RotateSecret(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_RotateClientSecret", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		oldHashedSecret := "old-hash"
+		newPlainSecret := "new-plain-secret"
+		newHashedSecret := "new-hash"
+
+		existingClient := &authDomain.Client{
+			ID:       clientID,
+			Secret:   oldHashedSecret,
+			IsActive: true,
+		}
+
+		// Setup expectations
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(existingClient, nil).Once()
+		mockSecretService.EXPECT().GenerateSecret().Return(newPlainSecret, newHashedSecret, nil).Once()
+		mockClientRepo.EXPECT().Update(ctx, mock.MatchedBy(func(client *authDomain.Client) bool {
+			return client.ID == clientID && client.Secret == newHashedSecret
+		})).Return(nil).Once()
+		mockTokenRepo.EXPECT().RevokeByClientID(ctx, clientID).Return(nil).Once()
+		mockAuditLogUseCase.EXPECT().
+			Create(ctx, mock.Anything, clientID, authDomain.RotateCapability, "/v1/clients/"+clientID.String()+"/rotate-secret", mock.Anything).
+			Return(nil).
+			Once()
+
+		// Execute
+		uc := usecase.NewClientUseCase(
+			mockTxManager,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+		)
+		output, err := uc.RotateSecret(ctx, clientID)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotNil(t, output)
+		assert.Equal(t, clientID, output.ID)
+		assert.Equal(t, newPlainSecret, output.PlainSecret)
+	})
+
+	t.Run("Error_ClientNotFound", func(t *testing.T) {
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
+		mockSecretService := serviceMocks.NewMockSecretService(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+
+		mockTxManager.EXPECT().
+			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
+			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			}).
+			Once()
+
+		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, authDomain.ErrClientNotFound).Once()
+
+		uc := usecase.NewClientUseCase(
+			mockTxManager,
+			mockClientRepo,
+			mockTokenRepo,
+			mockAuditLogUseCase,
+			mockSecretService,
+		)
+		output, err := uc.RotateSecret(ctx, clientID)
+
+		assert.ErrorIs(t, err, authDomain.ErrClientNotFound)
+		assert.Nil(t, output)
+	})
+}

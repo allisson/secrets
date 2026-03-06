@@ -33,13 +33,13 @@
 # ==============================================================================
 
 # Go version for builder stage (matches go.mod)
-ARG GO_VERSION=1.26.0
+ARG GO_VERSION=1.26.1
 
 # ==============================================================================
 # Stage 1: Builder
 # ==============================================================================
 # Purpose: Compile the Go application into a static binary
-# Base: golang:1.26.0-trixie (Debian 13 Trixie for glibc version consistency)
+# Base: golang:1.26.1-trixie (Debian 13 Trixie for glibc version consistency)
 # Output: /app/bin/app (static binary with version metadata injected)
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-trixie AS builder

@@ -4,6 +4,7 @@ package integration
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -299,7 +300,81 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 				}
 			})
 
-			t.Logf("All 10 auth endpoint tests passed for %s", tc.dbDriver)
+			// [11/11] Test POST /v1/clients/:id/rotate-secret - Client secret rotation
+			t.Run("11_ClientSecretRotation", func(t *testing.T) {
+				// Create a temporary client
+				clientRequest := authDTO.CreateClientRequest{
+					Name:     "Rotation Test Client",
+					IsActive: true,
+					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability, authDomain.RotateCapability}}},
+				}
+				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/clients", clientRequest, true)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var clientResponse authDTO.CreateClientResponse
+				err := json.Unmarshal(body, &clientResponse)
+				require.NoError(t, err)
+				originalSecret := clientResponse.Secret
+
+				// Issue a token
+				issueRequest := authDTO.IssueTokenRequest{
+					ClientID:     clientResponse.ID,
+					ClientSecret: originalSecret,
+				}
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+				var tokenResponse authDTO.IssueTokenResponse
+				json.Unmarshal(body, &tokenResponse)
+				originalToken := tokenResponse.Token
+
+				// Verify token works
+				req, _ := http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+clientResponse.ID, nil)
+				req.Header.Set("Authorization", "Bearer "+originalToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				// Rotate secret (Self-service)
+				req, _ = http.NewRequest(http.MethodPost, ctx.server.URL+"/v1/clients/self/rotate-secret", nil)
+				req.Header.Set("Authorization", "Bearer "+originalToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+				body, _ = io.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				var rotateResponse authDTO.CreateClientResponse
+				err = json.Unmarshal(body, &rotateResponse)
+				require.NoError(t, err)
+				newSecret := rotateResponse.Secret
+				assert.NotEqual(t, originalSecret, newSecret)
+				assert.Equal(t, "Rotation Test Client", rotateResponse.Name)
+
+				// Verify original token NO LONGER works
+				req, _ = http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+clientResponse.ID, nil)
+				req.Header.Set("Authorization", "Bearer "+originalToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+				// Verify original secret NO LONGER works for issuing new tokens
+				resp, _ = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+				// Verify NEW secret works for issuing new tokens
+				newIssueRequest := authDTO.IssueTokenRequest{
+					ClientID:     clientResponse.ID,
+					ClientSecret: newSecret,
+				}
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", newIssueRequest, false)
+				assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var newTokenResponse authDTO.IssueTokenResponse
+				json.Unmarshal(body, &newTokenResponse)
+				assert.NotEmpty(t, newTokenResponse.Token)
+			})
+
+			t.Logf("All 11 auth endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

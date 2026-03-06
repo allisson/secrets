@@ -1,7 +1,7 @@
 # Tech Stack: Secrets
 
 ## Core Technologies
-- **Language:** [Go](https://go.dev/) (v1.26.0+) - Chosen for its high concurrency, strong typing, and performance.
+- **Language:** [Go](https://go.dev/) (v1.26.1+) - Chosen for its high concurrency, strong typing, and performance.
 - **Web Framework:** [Gin](https://github.com/gin-gonic/gin) - A high-performance HTTP web framework with a fast HTTP router and custom middleware support.
 - **CLI Framework:** [urfave/cli/v3](https://github.com/urfave/cli) - A library for building command-line applications in Go.
 

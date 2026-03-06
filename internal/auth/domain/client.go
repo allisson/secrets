@@ -131,8 +131,12 @@ type CreateClientInput struct {
 // SECURITY: The PlainSecret is only returned once and must be securely transmitted
 // to the client. It will never be retrievable again after this response.
 type CreateClientOutput struct {
-	ID          uuid.UUID // Unique identifier for the created client (UUIDv7)
-	PlainSecret string    // Plain text secret for authentication (transmit securely, never log)
+	ID          uuid.UUID        // Unique identifier for the created client (UUIDv7)
+	PlainSecret string           // Plain text secret for authentication (transmit securely, never log)
+	Name        string           // Human-readable client name
+	IsActive    bool             // Whether the client can authenticate
+	Policies    []PolicyDocument // Authorization policies for this client
+	CreatedAt   time.Time        // Creation timestamp
 }
 
 // UpdateClientInput contains the mutable fields for updating an existing client.

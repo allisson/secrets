@@ -773,3 +773,117 @@ func TestClientHandler_RevokeTokensHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }
+
+func TestClientHandler_RotateSecretHandler(t *testing.T) {
+	t.Run("Success_Administrative", func(t *testing.T) {
+		handler, mockUseCase, _ := setupTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		expectedOutput := &authDomain.CreateClientOutput{
+			ID:          clientID,
+			PlainSecret: "new-plain-secret",
+			Name:        "Test Client",
+			IsActive:    true,
+			Policies:    []authDomain.PolicyDocument{},
+			CreatedAt:   time.Now().UTC(),
+		}
+
+		mockUseCase.EXPECT().
+			RotateSecret(mock.Anything, clientID).
+			Return(expectedOutput, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/"+clientID.String()+"/rotate-secret", nil)
+		c.Params = gin.Params{{Key: "id", Value: clientID.String()}}
+
+		handler.RotateSecretHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.CreateClientResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, clientID.String(), response.ID)
+		assert.Equal(t, "new-plain-secret", response.Secret)
+		assert.Equal(t, "Test Client", response.Name)
+	})
+
+	t.Run("Success_SelfService", func(t *testing.T) {
+		handler, mockUseCase, _ := setupTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+		authenticatedClient := &authDomain.Client{
+			ID: clientID,
+		}
+		expectedOutput := &authDomain.CreateClientOutput{
+			ID:          clientID,
+			PlainSecret: "new-plain-secret",
+			Name:        "Self Client",
+			IsActive:    true,
+			Policies:    []authDomain.PolicyDocument{},
+			CreatedAt:   time.Now().UTC(),
+		}
+
+		mockUseCase.EXPECT().
+			RotateSecret(mock.Anything, clientID).
+			Return(expectedOutput, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/self/rotate-secret", nil)
+		c.Params = gin.Params{{Key: "id", Value: "self"}}
+
+		// Set authenticated client in context
+		ctx := WithClient(c.Request.Context(), authenticatedClient)
+		c.Request = c.Request.WithContext(ctx)
+
+		handler.RotateSecretHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.CreateClientResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, clientID.String(), response.ID)
+		assert.Equal(t, "new-plain-secret", response.Secret)
+	})
+
+	t.Run("Error_SelfService_NoClientInContext", func(t *testing.T) {
+		handler, _, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/self/rotate-secret", nil)
+		c.Params = gin.Params{{Key: "id", Value: "self"}}
+
+		handler.RotateSecretHandler(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("Error_InvalidUUID", func(t *testing.T) {
+		handler, _, _ := setupTestHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/invalid-uuid/rotate-secret", nil)
+		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
+
+		handler.RotateSecretHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Error_ClientNotFound", func(t *testing.T) {
+		handler, mockUseCase, _ := setupTestHandler(t)
+
+		clientID := uuid.Must(uuid.NewV7())
+
+		mockUseCase.EXPECT().
+			RotateSecret(mock.Anything, clientID).
+			Return(nil, authDomain.ErrClientNotFound).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/clients/"+clientID.String()+"/rotate-secret", nil)
+		c.Params = gin.Params{{Key: "id", Value: clientID.String()}}
+
+		handler.RotateSecretHandler(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}

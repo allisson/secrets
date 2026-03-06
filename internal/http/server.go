@@ -234,6 +234,10 @@ func (s *Server) registerAuthRoutes(
 			authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),
 			clientHandler.UnlockHandler,
 		)
+		clients.POST("/:id/rotate-secret",
+			authHTTP.AuthorizationMiddleware(authDomain.RotateCapability, auditLogUseCase, s.logger),
+			clientHandler.RotateSecretHandler,
+		)
 		clients.DELETE("/:id/tokens",
 			authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 			clientHandler.RevokeTokensHandler,

@@ -531,6 +531,21 @@ Flags:
   --format json
 ```
 
+### `rotate-client-secret`
+
+Generates a new secret for a client and revokes all its active tokens.
+
+Flags:
+
+- `--id`, `-i` (required): client UUID
+- `--format`, `-f`: `text` (default) or `json`
+
+```bash
+./bin/app rotate-client-secret \
+  --id <client-uuid> \
+  --format json
+```
+
 ### `purge-auth-tokens`
 
 Permanently deletes expired and revoked authentication tokens older than a specified number of days.

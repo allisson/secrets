@@ -130,7 +130,7 @@ This section documents key architectural decisions with their context, rationale
 
 - ✅ Linux and macOS environments for local development and operations
 - ✅ Docker-based runtime recommended for all environments
-- ✅ CI validates with Go `1.26.0`, PostgreSQL `16-alpine`, and MySQL `8.0`
+- ✅ CI validates with Go `1.26.1`, PostgreSQL `16-alpine`, and MySQL `8.0`
 - ℹ️ Project compatibility targets include PostgreSQL `12+` and MySQL `8.0+`
 
 ## 💡 Practical Examples
