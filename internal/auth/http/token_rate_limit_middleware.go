@@ -39,20 +39,26 @@ type tokenRateLimiterEntry struct {
 //   - Direct connection remote address
 //
 // Configuration:
+//   - ctx: Application context for cleanup goroutine
 //   - rps: Requests per second allowed per IP address
 //   - burst: Maximum burst capacity for temporary spikes
 //
 // Returns:
 //   - 429 Too Many Requests: Rate limit exceeded (includes Retry-After header)
 //   - Continues: Request allowed within rate limit
-func TokenRateLimitMiddleware(rps float64, burst int, logger *slog.Logger) gin.HandlerFunc {
+func TokenRateLimitMiddleware(
+	ctx context.Context,
+	rps float64,
+	burst int,
+	logger *slog.Logger,
+) gin.HandlerFunc {
 	store := &tokenRateLimiterStore{
 		rps:   rps,
 		burst: burst,
 	}
 
 	// Start cleanup goroutine for stale limiters (every 5 minutes)
-	go store.cleanupStale(context.Background(), 5*time.Minute)
+	go store.cleanupStale(ctx, 5*time.Minute)
 
 	return func(c *gin.Context) {
 		// Get client IP address

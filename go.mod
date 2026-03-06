@@ -23,6 +23,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.41.0
 	go.opentelemetry.io/otel/sdk v1.41.0
 	go.opentelemetry.io/otel/sdk/metric v1.41.0
+	go.uber.org/goleak v1.3.0
 	gocloud.dev v0.45.0
 	gocloud.dev/secrets/hashivault v0.45.0
 	golang.org/x/crypto v0.48.0

@@ -66,6 +66,7 @@ func NewServer(
 // SetupRouter configures the Gin router with all routes and middleware.
 // This method is called during server initialization with all required dependencies.
 func (s *Server) SetupRouter(
+	ctx context.Context,
 	cfg *config.Config,
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
@@ -125,6 +126,7 @@ func (s *Server) SetupRouter(
 		var rateLimitMiddleware gin.HandlerFunc
 		if cfg.RateLimitEnabled {
 			rateLimitMiddleware = authHTTP.RateLimitMiddleware(
+				ctx,
 				cfg.RateLimitRequestsPerSec,
 				cfg.RateLimitBurst,
 				s.logger,
@@ -132,6 +134,7 @@ func (s *Server) SetupRouter(
 		}
 
 		s.registerAuthRoutes(
+			ctx,
 			v1,
 			cfg,
 			clientHandler,
@@ -167,6 +170,7 @@ func (s *Server) SetupRouter(
 
 // registerAuthRoutes configures the v1 authentication-related endpoints.
 func (s *Server) registerAuthRoutes(
+	ctx context.Context,
 	v1 *gin.RouterGroup,
 	cfg *config.Config,
 	clientHandler *authHTTP.ClientHandler,
@@ -182,6 +186,7 @@ func (s *Server) registerAuthRoutes(
 	var tokenRateLimitMiddleware gin.HandlerFunc
 	if cfg.RateLimitTokenEnabled {
 		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
+			ctx,
 			cfg.RateLimitTokenRequestsPerSec,
 			cfg.RateLimitTokenBurst,
 			s.logger,
