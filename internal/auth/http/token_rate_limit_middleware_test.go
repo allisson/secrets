@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +17,7 @@ func TestTokenRateLimitMiddleware_AllowsRequestsWithinLimit(t *testing.T) {
 
 	// Create middleware with generous limits
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(10.0, 20, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 10.0, 20, logger)
 
 	// Create test router
 	router := gin.New()
@@ -40,7 +41,7 @@ func TestTokenRateLimitMiddleware_BlocksRequestsExceedingLimit(t *testing.T) {
 
 	// Create middleware with very low limits
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(1.0, 2, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 1.0, 2, logger)
 
 	// Create test router
 	router := gin.New()
@@ -70,7 +71,7 @@ func TestTokenRateLimitMiddleware_Returns429WithRetryAfterHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(0.5, 1, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 0.5, 1, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -101,7 +102,7 @@ func TestTokenRateLimitMiddleware_IndependentLimitsPerIP(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(1.0, 1, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 1.0, 1, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -136,7 +137,7 @@ func TestTokenRateLimitMiddleware_BurstCapacityWorks(t *testing.T) {
 
 	logger := slog.Default()
 	// Low rate but higher burst
-	middleware := TokenRateLimitMiddleware(1.0, 5, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 1.0, 5, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -163,7 +164,7 @@ func TestTokenRateLimitMiddleware_NoAuthenticationRequired(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(10.0, 20, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 10.0, 20, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -226,7 +227,7 @@ func TestTokenRateLimitMiddleware_HandlesXForwardedFor(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.Default()
-	middleware := TokenRateLimitMiddleware(1.0, 1, logger)
+	middleware := TokenRateLimitMiddleware(context.Background(), 1.0, 1, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -292,7 +293,7 @@ func TestTokenRateLimitMiddleware_RespectsConfiguredLimits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := slog.Default()
-			middleware := TokenRateLimitMiddleware(tt.rps, tt.burst, logger)
+			middleware := TokenRateLimitMiddleware(context.Background(), tt.rps, tt.burst, logger)
 
 			router := gin.New()
 			router.Use(middleware)

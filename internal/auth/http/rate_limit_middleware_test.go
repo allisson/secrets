@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ func TestRateLimitMiddleware_AllowsRequestsWithinLimit(t *testing.T) {
 
 	// Create middleware with generous limits
 	logger := slog.Default()
-	middleware := RateLimitMiddleware(10.0, 20, logger)
+	middleware := RateLimitMiddleware(context.Background(), 10.0, 20, logger)
 
 	// Create test router
 	router := gin.New()
@@ -61,7 +62,7 @@ func TestRateLimitMiddleware_BlocksRequestsExceedingLimit(t *testing.T) {
 
 	// Create middleware with very low limits
 	logger := slog.Default()
-	middleware := RateLimitMiddleware(1.0, 2, logger)
+	middleware := RateLimitMiddleware(context.Background(), 1.0, 2, logger)
 
 	// Create test router
 	router := gin.New()
@@ -101,7 +102,7 @@ func TestRateLimitMiddleware_Returns429WithRetryAfterHeader(t *testing.T) {
 	}
 
 	logger := slog.Default()
-	middleware := RateLimitMiddleware(0.5, 1, logger)
+	middleware := RateLimitMiddleware(context.Background(), 0.5, 1, logger)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -143,7 +144,7 @@ func TestRateLimitMiddleware_IndependentLimitsPerClient(t *testing.T) {
 	}
 
 	logger := slog.Default()
-	middleware := RateLimitMiddleware(1.0, 1, logger)
+	middleware := RateLimitMiddleware(context.Background(), 1.0, 1, logger)
 
 	router := gin.New()
 	router.Use(middleware)
@@ -187,7 +188,7 @@ func TestRateLimitMiddleware_BurstCapacityWorks(t *testing.T) {
 
 	logger := slog.Default()
 	// Low rate but higher burst
-	middleware := RateLimitMiddleware(1.0, 5, logger)
+	middleware := RateLimitMiddleware(context.Background(), 1.0, 5, logger)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -219,7 +220,7 @@ func TestRateLimitMiddleware_RequiresAuthentication(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.Default()
-	middleware := RateLimitMiddleware(10.0, 20, logger)
+	middleware := RateLimitMiddleware(context.Background(), 10.0, 20, logger)
 
 	router := gin.New()
 	router.Use(middleware)

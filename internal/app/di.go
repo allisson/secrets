@@ -469,6 +469,7 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 
 	// Setup router with dependencies
 	server.SetupRouter(
+		ctx,
 		c.config,
 		clientHandler,
 		tokenHandler,
