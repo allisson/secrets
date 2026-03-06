@@ -266,6 +266,9 @@ paths:
           description: Cursor for pagination (path of last item from previous page)
           schema:
             type: string
+            minLength: 1
+            maxLength: 255
+            pattern: '^[a-zA-Z0-9\-_/]+$'
         - name: limit
           in: query
           description: Maximum number of items to return (clamped to 1000)
@@ -294,6 +297,9 @@ paths:
         required: true
         schema:
           type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9\-_/]+$'
     post:
       tags: [secrets]
       summary: Create or update secret
@@ -1048,6 +1054,9 @@ components:
             properties:
               path:
                 type: string
+                minLength: 1
+                maxLength: 255
+                pattern: '^[a-zA-Z0-9\-_/]+$'
               capabilities:
                 type: array
                 items:
@@ -1067,6 +1076,9 @@ components:
           type: string
         path:
           type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9\-_/]+$'
         version:
           type: integer
         created_at:
@@ -1079,6 +1091,9 @@ components:
           type: string
         path:
           type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9\-_/]+$'
         version:
           type: integer
         value:
@@ -1136,6 +1151,9 @@ components:
           type: string
         path:
           type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[a-zA-Z0-9\-_/]+$'
         metadata:
           type: object
           additionalProperties: true
@@ -1192,6 +1210,9 @@ components:
             properties:
               path:
                 type: string
+                minLength: 1
+                maxLength: 255
+                pattern: '^[a-zA-Z0-9\-_/]+$'
               capabilities:
                 type: array
                 items:
@@ -1235,6 +1256,9 @@ components:
             properties:
               path:
                 type: string
+                minLength: 1
+                maxLength: 255
+                pattern: '^[a-zA-Z0-9\-_/]+$'
               capabilities:
                 type: array
                 items:

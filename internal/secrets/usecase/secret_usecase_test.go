@@ -48,7 +48,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := []byte("secret-value")
 
 		dekID := uuid.Must(uuid.NewV7())
@@ -159,7 +159,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := []byte("new-secret-value")
 
 		existingSecret := &secretsDomain.Secret{
@@ -268,7 +268,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := []byte("secret-value")
 
 		// Execute
@@ -313,7 +313,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := []byte("secret-value")
 		expectedError := errors.New("database error")
 
@@ -372,7 +372,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := []byte("secret-value")
 		expectedError := errors.New("failed to create dek")
 
@@ -426,7 +426,7 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		value := make([]byte, 10) // 10 bytes
 
 		// Use a limit of 5 bytes
@@ -446,6 +446,40 @@ func TestSecretUseCase_CreateOrUpdate(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, secret)
 		assert.True(t, errors.Is(err, secretsDomain.ErrSecretValueTooLarge))
+	})
+
+	t.Run("Error_InvalidPath", func(t *testing.T) {
+		t.Parallel()
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockDekRepo := secretsUsecaseMocks.NewMockDekRepository(t)
+		mockSecretRepo := secretsUsecaseMocks.NewMockSecretRepository(t)
+		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		kekChain := createKekChain([]*cryptoDomain.Kek{})
+		defer kekChain.Close()
+
+		path := "/invalid/path"
+		value := []byte("secret-value")
+
+		// Execute
+		uc := NewSecretUseCase(
+			mockTxManager,
+			mockDekRepo,
+			mockSecretRepo,
+			kekChain,
+			mockAEADManager,
+			mockKeyManager,
+			cryptoDomain.AESGCM,
+			524288,
+		)
+		secret, err := uc.CreateOrUpdate(ctx, path, value)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, secret)
+		assert.Equal(t, "invalid secret path format: invalid input", err.Error())
 	})
 }
 
@@ -479,7 +513,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		dekID := uuid.Must(uuid.NewV7())
 		ciphertext := []byte("encrypted-secret")
 		nonce := []byte("secret-nonce")
@@ -575,7 +609,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/nonexistent"
+		path := "app/nonexistent"
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
@@ -625,7 +659,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		dekID := uuid.Must(uuid.NewV7())
 
 		secret := &secretsDomain.Secret{
@@ -691,7 +725,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		dekID := uuid.Must(uuid.NewV7())
 		differentKekID := uuid.Must(uuid.NewV7())
 
@@ -769,7 +803,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		dekID := uuid.Must(uuid.NewV7())
 		ciphertext := []byte("encrypted-secret")
 		nonce := []byte("secret-nonce")
@@ -869,7 +903,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
@@ -917,7 +951,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/nonexistent"
+		path := "app/nonexistent"
 
 		// Setup expectations
 		mockSecretRepo.EXPECT().
@@ -966,7 +1000,7 @@ func TestSecretUseCase_Delete(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		expectedError := errors.New("database error")
 
 		// Setup expectations
@@ -1024,7 +1058,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		version := uint(2)
 		dekID := uuid.Must(uuid.NewV7())
 		ciphertext := []byte("encrypted-secret")
@@ -1122,7 +1156,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/nonexistent"
+		path := "app/nonexistent"
 		version := uint(1)
 
 		// Setup expectations
@@ -1174,7 +1208,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		version := uint(1)
 		dekID := uuid.Must(uuid.NewV7())
 		ciphertext := []byte("encrypted-secret")
@@ -1269,7 +1303,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		version := uint(1)
 		dekID := uuid.Must(uuid.NewV7())
 
@@ -1336,7 +1370,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 		kekChain := createKekChain([]*cryptoDomain.Kek{kek})
 		defer kekChain.Close()
 
-		path := "/app/api-key"
+		path := "app/api-key"
 		version := uint(1)
 		dekID := uuid.Must(uuid.NewV7())
 		differentKekID := uuid.Must(uuid.NewV7()) // Different KEK ID

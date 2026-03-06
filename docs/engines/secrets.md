@@ -22,6 +22,19 @@ graph TD
     C -->|Invalid| H[401/403 Error]
 ```
 
+## Path Validation
+
+All secret paths are subject to strict validation rules:
+
+- **Character Set**: Only alphanumeric characters (`a-z`, `A-Z`, `0-9`), hyphens (`-`), underscores (`_`), and forward slashes (`/`) are allowed.
+- **Length**: Paths must be between 1 and 255 characters.
+- **Formatting Constraints**:
+  - **No leading or trailing slashes**: Paths cannot start or end with `/`.
+  - **No consecutive slashes**: Paths cannot contain `//`.
+  - **No consecutive symbols**: Paths cannot contain consecutive hyphens (`--`) or underscores (`__`).
+
+Failure to comply with these rules results in a `400 Bad Request` with the error message `invalid secret path format`.
+
 ## Endpoints
 
 All endpoints require `Authorization: Bearer <token>`.
