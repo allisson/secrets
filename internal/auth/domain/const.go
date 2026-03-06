@@ -25,3 +25,27 @@ const (
 	// RotateCapability allows rotating cryptographic keys.
 	RotateCapability Capability = "rotate"
 )
+
+// ValidCapabilities returns a list of all defined capabilities in the system.
+// Used for validation and UI generation.
+func ValidCapabilities() []Capability {
+	return []Capability{
+		ReadCapability,
+		WriteCapability,
+		DeleteCapability,
+		EncryptCapability,
+		DecryptCapability,
+		RotateCapability,
+	}
+}
+
+// IsValidCapability checks if a capability is valid and exists in the system.
+// Used for strict validation in policy parsing.
+func IsValidCapability(cap Capability) bool {
+	for _, valid := range ValidCapabilities() {
+		if cap == valid {
+			return true
+		}
+	}
+	return false
+}

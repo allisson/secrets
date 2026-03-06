@@ -104,15 +104,22 @@ func PromptForPoliciesUpdate(
 }
 
 // ParseCapabilities converts a comma-separated string into a slice of Capability.
+// Performs strict validation against valid domain capabilities.
 func ParseCapabilities(input string) ([]authDomain.Capability, error) {
 	parts := strings.Split(input, ",")
 	capabilities := make([]authDomain.Capability, 0, len(parts))
 
 	for _, part := range parts {
-		cap := authDomain.Capability(strings.TrimSpace(part))
-		if cap != "" {
-			capabilities = append(capabilities, cap)
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
 		}
+
+		cap := authDomain.Capability(trimmed)
+		if !authDomain.IsValidCapability(cap) {
+			return nil, fmt.Errorf("invalid capability: '%s'", trimmed)
+		}
+		capabilities = append(capabilities, cap)
 	}
 
 	if len(capabilities) == 0 {

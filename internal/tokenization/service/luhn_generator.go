@@ -43,6 +43,7 @@ func (g *luhnGenerator) Generate(length int) (string, error) {
 	// Convert to string
 	token := make([]byte, length)
 	for i, d := range digits {
+		// #nosec G115 - Safe conversion: d is guaranteed to be 0-9, so '0'+d produces ASCII 48-57 (well within byte range)
 		token[i] = byte('0' + d)
 	}
 
