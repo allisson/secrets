@@ -100,6 +100,28 @@ Rate limiting note:
 - `POST /v1/token` is rate-limited per client IP when `RATE_LIMIT_TOKEN_ENABLED=true`
 - Protected endpoints called with issued tokens are rate-limited per authenticated client
 
+## Token Revocation
+
+Tokens can be revoked before they naturally expire. Revoked tokens are immediately rejected by the authentication middleware.
+
+**Revoke Current Token:**
+
+```bash
+curl -X DELETE http://localhost:8080/v1/token \
+  -H "Authorization: Bearer <current-token>"
+```
+
+**Revoke All Tokens for a Client:**
+
+Requires `delete` capability on `/v1/clients/:id/tokens`.
+
+```bash
+curl -X DELETE http://localhost:8080/v1/clients/<target-client-id>/tokens \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+*Note: Expired and revoked tokens can be permanently deleted from the database using the `purge-auth-tokens` CLI command.*
+
 ## Account Lockout
 
 `POST /v1/token` enforces account lockout to prevent brute-force attacks.
