@@ -1,7 +1,7 @@
 # Implementation Plan: Transit Key Retrieval API
 
 ## Phase 1: Repository Layer
-- [ ] Task: Define `GetTransitKey` in `internal/transit/domain/repository.go` and repository interface.
+- [x] Task: Define `GetTransitKey` in `internal/transit/domain/repository.go` and repository interface. b201be6
 - [ ] Task: Implement `GetTransitKey` in `internal/transit/repository/postgresql/transit_key_repository.go`.
 - [ ] Task: Implement `GetTransitKey` in `internal/transit/repository/mysql/transit_key_repository.go`.
 - [ ] Task: Write integration tests for `GetTransitKey` in both PostgreSQL and MySQL repositories.
