@@ -16,10 +16,10 @@ Expose the new functionality through a REST endpoint.
 - [x] Task: Register the new route `GET /v1/tokenization/keys/:name`. b8170b6
 - [x] Task: Conductor - User Manual Verification 'Phase 2: HTTP Layer' (Protocol in workflow.md) 5047107
 
-## Phase 3: Integration and Documentation
+## Phase 3: Integration and Documentation [checkpoint: 8ab39bd]
 Ensure end-to-end functionality and update documentation.
 
 - [x] Task: Update integration tests in `test/integration/tokenization_flow_test.go`. d506864
 - [x] Task: Update project documentation `docs/engines/tokenization.md`. cca1f42
 - [x] Task: Update OpenAPI specification `docs/openapi.yaml`. 17dc1eb
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Integration and Documentation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Integration and Documentation' (Protocol in workflow.md) 046ad84
