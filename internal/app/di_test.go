@@ -266,6 +266,37 @@ func TestContainerServerComponents(t *testing.T) {
 	}
 }
 
+// TestContainerMetricsServer_CustomTimeouts verifies that the metrics server is initialized with custom timeouts from config.
+func TestContainerMetricsServer_CustomTimeouts(t *testing.T) {
+	cfg := &config.Config{
+		MetricsEnabled:              true,
+		MetricsPort:                 8082,
+		MetricsServerReadTimeout:    5 * time.Second,
+		MetricsServerWriteTimeout:   10 * time.Second,
+		MetricsServerIdleTimeout:    30 * time.Second,
+	}
+	container := NewContainer(cfg)
+
+	server, err := container.MetricsServer(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error for metrics server: %v", err)
+	}
+
+	if server == nil {
+		t.Fatal("expected non-nil metrics server")
+	}
+
+	if server.Server().ReadTimeout != cfg.MetricsServerReadTimeout {
+		t.Errorf("expected read timeout %v, got %v", cfg.MetricsServerReadTimeout, server.Server().ReadTimeout)
+	}
+	if server.Server().WriteTimeout != cfg.MetricsServerWriteTimeout {
+		t.Errorf("expected write timeout %v, got %v", cfg.MetricsServerWriteTimeout, server.Server().WriteTimeout)
+	}
+	if server.Server().IdleTimeout != cfg.MetricsServerIdleTimeout {
+		t.Errorf("expected idle timeout %v, got %v", cfg.MetricsServerIdleTimeout, server.Server().IdleTimeout)
+	}
+}
+
 // TestContainerKekRepositoryErrors verifies that KEK repository initialization errors are properly handled.
 func TestContainerKekRepositoryErrors(t *testing.T) {
 	// Create a container with invalid database configuration

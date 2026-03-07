@@ -14,9 +14,9 @@ Introduce the new configuration options for Metrics Server timeouts and update t
 ## Phase 2: Metrics Server Implementation
 Refactor the Metrics Server to accept configurable timeouts instead of using hardcoded defaults.
 
-- [ ] Task: Write failing tests in `internal/http/metrics_server_test.go` to verify custom timeout initialization.
-- [ ] Task: Update `NewDefaultMetricsServer` or adjust its usage in `internal/http/metrics_server.go` to use passed values.
-- [ ] Task: Refactor `MetricsServer` initialization to ensure values are propagated correctly.
+- [x] Task: Write failing tests in `internal/http/metrics_server_test.go` to verify custom timeout initialization. a091f59
+- [x] Task: Update `NewDefaultMetricsServer` or adjust its usage in `internal/http/metrics_server.go` to use passed values. a091f59
+- [x] Task: Refactor `MetricsServer` initialization to ensure values are propagated correctly. a091f59
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Metrics Server Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Dependency Injection Integration

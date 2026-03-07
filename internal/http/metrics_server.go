@@ -74,6 +74,11 @@ func NewDefaultMetricsServer(
 	)
 }
 
+// Server returns the underlying http.Server for testing purposes.
+func (s *MetricsServer) Server() *http.Server {
+	return s.server
+}
+
 // GetHandler returns the http.Handler for testing purposes.
 func (s *MetricsServer) GetHandler() http.Handler {
 	return s.server.Handler

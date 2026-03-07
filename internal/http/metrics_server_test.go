@@ -127,16 +127,16 @@ func TestMetricsServer_Timeouts(t *testing.T) {
 	metricsServer := NewMetricsServer("localhost", 0, logger, nil, readTimeout, writeTimeout, idleTimeout)
 	require.NotNil(t, metricsServer)
 
-	assert.Equal(t, readTimeout, metricsServer.server.ReadTimeout)
-	assert.Equal(t, writeTimeout, metricsServer.server.WriteTimeout)
-	assert.Equal(t, idleTimeout, metricsServer.server.IdleTimeout)
+	assert.Equal(t, readTimeout, metricsServer.Server().ReadTimeout)
+	assert.Equal(t, writeTimeout, metricsServer.Server().WriteTimeout)
+	assert.Equal(t, idleTimeout, metricsServer.Server().IdleTimeout)
 
 	// Test NewDefaultMetricsServer (currently hardcoded)
 	defaultMetricsServer := NewDefaultMetricsServer("localhost", 0, logger, nil, 5*time.Second, 10*time.Second, 30*time.Second)
 	require.NotNil(t, defaultMetricsServer)
 
 	// These should now pass
-	assert.Equal(t, 5*time.Second, defaultMetricsServer.server.ReadTimeout)
-	assert.Equal(t, 10*time.Second, defaultMetricsServer.server.WriteTimeout)
-	assert.Equal(t, 30*time.Second, defaultMetricsServer.server.IdleTimeout)
+	assert.Equal(t, 5*time.Second, defaultMetricsServer.Server().ReadTimeout)
+	assert.Equal(t, 10*time.Second, defaultMetricsServer.Server().WriteTimeout)
+	assert.Equal(t, 30*time.Second, defaultMetricsServer.Server().IdleTimeout)
 }

@@ -508,6 +508,9 @@ func (c *Container) initMetricsServer(ctx context.Context) (*http.MetricsServer,
 		c.config.MetricsPort,
 		logger,
 		provider,
+		c.config.MetricsServerReadTimeout,
+		c.config.MetricsServerWriteTimeout,
+		c.config.MetricsServerIdleTimeout,
 	)
 
 	return server, nil
