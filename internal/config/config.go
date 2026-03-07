@@ -167,6 +167,24 @@ func (c *Config) Validate() error {
 			validation.NotIn(c.ServerPort),
 		),
 		validation.Field(
+			&c.MetricsServerReadTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.MetricsServerWriteTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.MetricsServerIdleTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
 			&c.LogLevel,
 			validation.Required,
 			validation.In("debug", "info", "warn", "error", "fatal", "panic"),
@@ -273,6 +291,21 @@ func Load() (*Config, error) {
 		MetricsEnabled:   env.GetBool("METRICS_ENABLED", DefaultMetricsEnabled),
 		MetricsNamespace: env.GetString("METRICS_NAMESPACE", DefaultMetricsNamespace),
 		MetricsPort:      env.GetInt("METRICS_PORT", DefaultMetricsPort),
+		MetricsServerReadTimeout: env.GetDuration(
+			"METRICS_SERVER_READ_TIMEOUT_SECONDS",
+			DefaultMetricsServerReadTimeout,
+			time.Second,
+		),
+		MetricsServerWriteTimeout: env.GetDuration(
+			"METRICS_SERVER_WRITE_TIMEOUT_SECONDS",
+			DefaultMetricsServerWriteTimeout,
+			time.Second,
+		),
+		MetricsServerIdleTimeout: env.GetDuration(
+			"METRICS_SERVER_IDLE_TIMEOUT_SECONDS",
+			DefaultMetricsServerIdleTimeout,
+			time.Second,
+		),
 
 		// KMS configuration
 		KMSProvider: env.GetString("KMS_PROVIDER", ""),
