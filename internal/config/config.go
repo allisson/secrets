@@ -24,26 +24,29 @@ const (
 	DefaultDBConnectionString    = "postgres://user:password@localhost:5432/mydb?sslmode=disable" //nolint:gosec
 	DefaultDBMaxOpenConnections  = 25
 
-	DefaultDBMaxIdleConnections   = 5
-	DefaultDBConnMaxLifetime      = 5 // minutes
-	DefaultDBConnMaxIdleTime      = 5 // minutes
-	DefaultLogLevel               = "info"
-	DefaultAuthTokenExpiration    = 14400 // seconds
-	DefaultRateLimitEnabled       = true
-	DefaultRateLimitRequests      = 10.0
-	DefaultRateLimitBurst         = 20
-	DefaultRateLimitTokenEnabled  = true
-	DefaultRateLimitTokenRequests = 5.0
-	DefaultRateLimitTokenBurst    = 10
-	DefaultCORSEnabled            = false
-	DefaultCORSAllowOrigins       = ""
-	DefaultMetricsEnabled         = true
-	DefaultMetricsNamespace       = "secrets"
-	DefaultMetricsPort            = 8081
-	DefaultLockoutMaxAttempts     = 10
-	DefaultLockoutDuration        = 30 // minutes
-	DefaultMaxRequestBodySize     = 1048576
-	DefaultSecretValueSizeLimit   = 524288
+	DefaultDBMaxIdleConnections      = 5
+	DefaultDBConnMaxLifetime         = 5 // minutes
+	DefaultDBConnMaxIdleTime         = 5 // minutes
+	DefaultLogLevel                  = "info"
+	DefaultAuthTokenExpiration       = 14400 // seconds
+	DefaultRateLimitEnabled          = true
+	DefaultRateLimitRequests         = 10.0
+	DefaultRateLimitBurst            = 20
+	DefaultRateLimitTokenEnabled     = true
+	DefaultRateLimitTokenRequests    = 5.0
+	DefaultRateLimitTokenBurst       = 10
+	DefaultCORSEnabled               = false
+	DefaultCORSAllowOrigins          = ""
+	DefaultMetricsEnabled            = true
+	DefaultMetricsNamespace          = "secrets"
+	DefaultMetricsPort               = 8081
+	DefaultMetricsServerReadTimeout  = 15 // seconds
+	DefaultMetricsServerWriteTimeout = 15 // seconds
+	DefaultMetricsServerIdleTimeout  = 60 // seconds
+	DefaultLockoutMaxAttempts        = 10
+	DefaultLockoutDuration           = 30 // minutes
+	DefaultMaxRequestBodySize        = 1048576
+	DefaultSecretValueSizeLimit      = 524288
 )
 
 // Config holds all application configuration.
@@ -105,6 +108,12 @@ type Config struct {
 	MetricsNamespace string
 	// MetricsPort is the port number for the metrics server.
 	MetricsPort int
+	// MetricsServerReadTimeout is the maximum duration for reading the entire request, including the body.
+	MetricsServerReadTimeout time.Duration
+	// MetricsServerWriteTimeout is the maximum duration before timing out writes of the response.
+	MetricsServerWriteTimeout time.Duration
+	// MetricsServerIdleTimeout is the maximum time to wait for the next request when keep-alives are enabled.
+	MetricsServerIdleTimeout time.Duration
 
 	// KMSProvider is the KMS provider to use (e.g., "google", "aws", "azure", "hashivault", "localsecrets").
 	KMSProvider string
@@ -156,6 +165,24 @@ func (c *Config) Validate() error {
 			validation.Min(1),
 			validation.Max(65535),
 			validation.NotIn(c.ServerPort),
+		),
+		validation.Field(
+			&c.MetricsServerReadTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.MetricsServerWriteTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
+		),
+		validation.Field(
+			&c.MetricsServerIdleTimeout,
+			validation.Required,
+			validation.Min(1*time.Second),
+			validation.Max(300*time.Second),
 		),
 		validation.Field(
 			&c.LogLevel,
@@ -264,6 +291,21 @@ func Load() (*Config, error) {
 		MetricsEnabled:   env.GetBool("METRICS_ENABLED", DefaultMetricsEnabled),
 		MetricsNamespace: env.GetString("METRICS_NAMESPACE", DefaultMetricsNamespace),
 		MetricsPort:      env.GetInt("METRICS_PORT", DefaultMetricsPort),
+		MetricsServerReadTimeout: env.GetDuration(
+			"METRICS_SERVER_READ_TIMEOUT_SECONDS",
+			DefaultMetricsServerReadTimeout,
+			time.Second,
+		),
+		MetricsServerWriteTimeout: env.GetDuration(
+			"METRICS_SERVER_WRITE_TIMEOUT_SECONDS",
+			DefaultMetricsServerWriteTimeout,
+			time.Second,
+		),
+		MetricsServerIdleTimeout: env.GetDuration(
+			"METRICS_SERVER_IDLE_TIMEOUT_SECONDS",
+			DefaultMetricsServerIdleTimeout,
+			time.Second,
+		),
 
 		// KMS configuration
 		KMSProvider: env.GetString("KMS_PROVIDER", ""),

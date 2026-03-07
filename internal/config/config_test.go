@@ -27,6 +27,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:            15 * time.Second,
 				ServerWriteTimeout:           15 * time.Second,
 				ServerIdleTimeout:            60 * time.Second,
+				MetricsServerReadTimeout:     15 * time.Second,
+				MetricsServerWriteTimeout:    15 * time.Second,
+				MetricsServerIdleTimeout:     60 * time.Second,
 				RateLimitEnabled:             true,
 				RateLimitRequestsPerSec:      10,
 				RateLimitTokenEnabled:        true,
@@ -47,6 +50,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 0,
 			},
@@ -118,6 +124,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSKeyURI:                 "gcpkms://...",
@@ -135,6 +144,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "google",
@@ -168,6 +180,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "invalid_provider",
@@ -186,6 +201,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "localsecrets",
@@ -204,6 +222,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "gcpkms",
@@ -222,6 +243,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "awskms",
@@ -240,6 +264,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "azurekeyvault",
@@ -258,6 +285,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 				KMSProvider:               "hashivault",
@@ -276,6 +306,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         15 * time.Second,
 				ServerWriteTimeout:        15 * time.Second,
 				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 			},
@@ -292,6 +325,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         1 * time.Second,
 				ServerWriteTimeout:        1 * time.Second,
 				ServerIdleTimeout:         1 * time.Second,
+				MetricsServerReadTimeout:  1 * time.Second,
+				MetricsServerWriteTimeout: 1 * time.Second,
+				MetricsServerIdleTimeout:  1 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 			},
@@ -308,6 +344,9 @@ func TestConfig_Validate(t *testing.T) {
 				ServerReadTimeout:         300 * time.Second,
 				ServerWriteTimeout:        300 * time.Second,
 				ServerIdleTimeout:         300 * time.Second,
+				MetricsServerReadTimeout:  300 * time.Second,
+				MetricsServerWriteTimeout: 300 * time.Second,
+				MetricsServerIdleTimeout:  300 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
 			},
@@ -423,6 +462,9 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 15*time.Second, cfg.ServerReadTimeout)
 				assert.Equal(t, 15*time.Second, cfg.ServerWriteTimeout)
 				assert.Equal(t, 60*time.Second, cfg.ServerIdleTimeout)
+				assert.Equal(t, 15*time.Second, cfg.MetricsServerReadTimeout)
+				assert.Equal(t, 15*time.Second, cfg.MetricsServerWriteTimeout)
+				assert.Equal(t, 60*time.Second, cfg.MetricsServerIdleTimeout)
 				assert.Equal(t, int64(1048576), cfg.MaxRequestBodySize)
 				assert.Equal(t, 524288, cfg.SecretValueSizeLimitBytes)
 			},
@@ -469,6 +511,19 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 30*time.Second, cfg.ServerReadTimeout)
 				assert.Equal(t, 45*time.Second, cfg.ServerWriteTimeout)
 				assert.Equal(t, 120*time.Second, cfg.ServerIdleTimeout)
+			},
+		},
+		{
+			name: "load custom metrics server timeout configuration",
+			envVars: map[string]string{
+				"METRICS_SERVER_READ_TIMEOUT_SECONDS":  "30",
+				"METRICS_SERVER_WRITE_TIMEOUT_SECONDS": "45",
+				"METRICS_SERVER_IDLE_TIMEOUT_SECONDS":  "120",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, 30*time.Second, cfg.MetricsServerReadTimeout)
+				assert.Equal(t, 45*time.Second, cfg.MetricsServerWriteTimeout)
+				assert.Equal(t, 120*time.Second, cfg.MetricsServerIdleTimeout)
 			},
 		},
 		{

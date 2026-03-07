@@ -27,7 +27,15 @@ func TestMetricsServer_Endpoints(t *testing.T) {
 	}()
 
 	// Create metrics server
-	metricsServer := NewDefaultMetricsServer("localhost", 8081, logger, provider)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		8081,
+		logger,
+		provider,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 	require.NotNil(t, metricsServer)
 
 	// Test the handler from metricsServer exactly as it's configured
@@ -51,7 +59,15 @@ func TestMetricsServer_Lifecycle(t *testing.T) {
 	}()
 
 	// Create metrics server with random port
-	metricsServer := NewDefaultMetricsServer("localhost", 0, logger, provider)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		provider,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 	require.NotNil(t, metricsServer)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -89,7 +105,15 @@ func TestMetricsServer_ContextCancellation(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	// Create metrics server
-	metricsServer := NewDefaultMetricsServer("localhost", 0, logger, nil)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		nil,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -112,4 +136,39 @@ func TestMetricsServer_ContextCancellation(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Start did not return after context cancellation")
 	}
+}
+
+// TestMetricsServer_Timeouts verifies that the metrics server is initialized with the correct timeouts.
+func TestMetricsServer_Timeouts(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// Define custom timeouts
+	readTimeout := 5 * time.Second
+	writeTimeout := 10 * time.Second
+	idleTimeout := 30 * time.Second
+
+	// Create metrics server with custom timeouts using NewMetricsServer
+	metricsServer := NewMetricsServer("localhost", 0, logger, nil, readTimeout, writeTimeout, idleTimeout)
+	require.NotNil(t, metricsServer)
+
+	assert.Equal(t, readTimeout, metricsServer.Server().ReadTimeout)
+	assert.Equal(t, writeTimeout, metricsServer.Server().WriteTimeout)
+	assert.Equal(t, idleTimeout, metricsServer.Server().IdleTimeout)
+
+	// Test NewDefaultMetricsServer (currently hardcoded)
+	defaultMetricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		nil,
+		5*time.Second,
+		10*time.Second,
+		30*time.Second,
+	)
+	require.NotNil(t, defaultMetricsServer)
+
+	// These should now pass
+	assert.Equal(t, 5*time.Second, defaultMetricsServer.Server().ReadTimeout)
+	assert.Equal(t, 10*time.Second, defaultMetricsServer.Server().WriteTimeout)
+	assert.Equal(t, 30*time.Second, defaultMetricsServer.Server().IdleTimeout)
 }
