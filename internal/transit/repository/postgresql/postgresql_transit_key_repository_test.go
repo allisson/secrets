@@ -806,6 +806,75 @@ func createTestDek(t *testing.T, db *sql.DB) uuid.UUID {
 	return dekID
 }
 
+func TestPostgreSQLTransitKeyRepository_GetTransitKey(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLTransitKeyRepository(db)
+	ctx := context.Background()
+
+	// Create prerequisite KEK and DEK
+	dekID := createTestDek(t, db)
+	algorithm := cryptoDomain.AESGCM
+
+	name := "test-key"
+
+	// Create version 1
+	key1 := &transitDomain.TransitKey{
+		ID:        uuid.Must(uuid.NewV7()),
+		Name:      name,
+		Version:   1,
+		DekID:     dekID,
+		CreatedAt: time.Now().UTC(),
+	}
+	err := repo.Create(ctx, key1)
+	require.NoError(t, err)
+
+	// Create version 2
+	key2 := &transitDomain.TransitKey{
+		ID:        uuid.Must(uuid.NewV7()),
+		Name:      name,
+		Version:   2,
+		DekID:     dekID,
+		CreatedAt: time.Now().UTC().Add(time.Hour),
+	}
+	err = repo.Create(ctx, key2)
+	require.NoError(t, err)
+
+	t.Run("Get latest version", func(t *testing.T) {
+		tk, alg, err := repo.GetTransitKey(ctx, name, 0)
+		require.NoError(t, err)
+		assert.Equal(t, key2.ID, tk.ID)
+		assert.Equal(t, name, tk.Name)
+		assert.Equal(t, uint(2), tk.Version)
+		assert.Equal(t, algorithm, alg)
+	})
+
+	t.Run("Get specific version", func(t *testing.T) {
+		tk, alg, err := repo.GetTransitKey(ctx, name, 1)
+		require.NoError(t, err)
+		assert.Equal(t, key1.ID, tk.ID)
+		assert.Equal(t, name, tk.Name)
+		assert.Equal(t, uint(1), tk.Version)
+		assert.Equal(t, algorithm, alg)
+	})
+
+	t.Run("Key not found", func(t *testing.T) {
+		tk, alg, err := repo.GetTransitKey(ctx, "non-existent", 0)
+		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
+		assert.Nil(t, tk)
+		assert.Empty(t, alg)
+	})
+
+	t.Run("Version not found", func(t *testing.T) {
+		tk, alg, err := repo.GetTransitKey(ctx, name, 3)
+		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
+		assert.Nil(t, tk)
+		assert.Empty(t, alg)
+	})
+}
+
 func TestPostgreSQLTransitKeyRepository_ListCursor_FirstPage(t *testing.T) {
 	db := testutil.SetupPostgresDB(t)
 	defer testutil.TeardownDB(t, db)
