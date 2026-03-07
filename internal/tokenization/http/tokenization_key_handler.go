@@ -163,6 +163,31 @@ func (h *TokenizationKeyHandler) DeleteHandler(c *gin.Context) {
 	c.Data(http.StatusNoContent, "application/json", nil)
 }
 
+// GetByNameHandler retrieves a single tokenization key by its name.
+// GET /v1/tokenization/keys/:name - Requires ReadCapability.
+// Returns 200 OK with key details.
+func (h *TokenizationKeyHandler) GetByNameHandler(c *gin.Context) {
+	// Get key name from URL parameter
+	keyName := c.Param("name")
+	if keyName == "" {
+		httputil.HandleBadRequestGin(c,
+			fmt.Errorf("key name is required in URL path"),
+			h.logger)
+		return
+	}
+
+	// Call use case
+	key, err := h.keyUseCase.GetByName(c.Request.Context(), keyName)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Map to response
+	response := dto.MapTokenizationKeyToResponse(key)
+	c.JSON(http.StatusOK, response)
+}
+
 // ListHandler retrieves tokenization keys with cursor-based pagination support.
 // GET /v1/tokenization/keys?after_name=key-name&limit=50 - Requires ReadCapability.
 // Returns 200 OK with paginated tokenization key list ordered by name ascending.
