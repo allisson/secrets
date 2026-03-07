@@ -1,6 +1,6 @@
 # Implementation Plan: Fix Metrics Server Hardcoded Timeouts
 
-## Phase 1: Configuration and Environment
+## Phase 1: Configuration and Environment [checkpoint: 4ec5660]
 Introduce the new configuration options for Metrics Server timeouts and update the environment files.
 
 - [x] Task: Update `internal/config/config.go` with new constants and fields for Metrics Server timeouts. 10f5e4c
@@ -9,7 +9,7 @@ Introduce the new configuration options for Metrics Server timeouts and update t
 - [x] Task: Update `.env.example` to include the new `METRICS_SERVER_*` variables. f27dd3f
 - [x] Task: Write failing unit tests for new configuration loading and validation in `internal/config/config_test.go`. f27dd3f
 - [x] Task: Implement changes to pass the tests in `internal/config/config.go`. f27dd3f
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Configuration and Environment' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Configuration and Environment' (Protocol in workflow.md) 4ec5660
 
 ## Phase 2: Metrics Server Implementation
 Refactor the Metrics Server to accept configurable timeouts instead of using hardcoded defaults.
