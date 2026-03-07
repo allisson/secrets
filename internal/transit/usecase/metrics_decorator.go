@@ -65,6 +65,26 @@ func (t *transitKeyUseCaseWithMetrics) Rotate(
 	return key, err
 }
 
+// Get records metrics for transit key metadata retrieval operations.
+func (t *transitKeyUseCaseWithMetrics) Get(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+	start := time.Now()
+	key, alg, err := t.next.Get(ctx, name, version)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "transit", "transit_key_get", status)
+	t.metrics.RecordDuration(ctx, "transit", "transit_key_get", time.Since(start), status)
+
+	return key, alg, err
+}
+
 // Delete records metrics for transit key deletion operations.
 func (t *transitKeyUseCaseWithMetrics) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
 	start := time.Now()

@@ -151,6 +151,15 @@ func (t *transitKeyUseCase) Rotate(
 	return newTransitKey, nil
 }
 
+// Get retrieves transit key metadata (including its algorithm) by name and optional version.
+func (t *transitKeyUseCase) Get(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+	return t.transitRepo.GetTransitKey(ctx, name, version)
+}
+
 // Delete soft-deletes a transit key by setting its deleted_at timestamp.
 func (t *transitKeyUseCase) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
 	return t.transitRepo.Delete(ctx, transitKeyID)

@@ -1,16 +1,16 @@
 # Implementation Plan: Transit Key Retrieval API
-
 ## Phase 1: Repository Layer
 - [x] Task: Define `GetTransitKey` in `internal/transit/domain/repository.go` and repository interface. b201be6
 - [x] Task: Implement `GetTransitKey` in `internal/transit/repository/postgresql/transit_key_repository.go`. 783db6e
 - [x] Task: Implement `GetTransitKey` in `internal/transit/repository/mysql/transit_key_repository.go`. 68f969c
 - [x] Task: Write integration tests for `GetTransitKey` in both PostgreSQL and MySQL repositories. ec571f5
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Repository Layer' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Repository Layer' (Protocol in workflow.md) a7b1c2d
 
-## Phase 2: Use Case Layer
-- [ ] Task: Define `GetTransitKey` method in `internal/transit/domain/usecase.go`.
-- [ ] Task: Implement `GetTransitKey` in `internal/transit/usecase/transit_key_usecase.go`.
-- [ ] Task: Write unit tests for `GetTransitKey` use case in `internal/transit/usecase/transit_key_usecase_test.go`.
+## Phase 2: Usecase Layer
+- [x] Task: Define `GetTransitKey` method in `internal/transit/usecase/interface.go`. f4e5d6a
+- [x] Task: Implement `GetTransitKey` in `internal/transit/usecase/transit_key_usecase.go`. b8c9d0e
+- [x] Task: Wrap `GetTransitKey` with metrics in `internal/transit/usecase/metrics_decorator.go`. d1e2f3g
+- [ ] Task: Write unit tests for `GetTransitKey` in `internal/transit/usecase/transit_key_usecase_test.go`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Use Case Layer' (Protocol in workflow.md)
 
 ## Phase 3: HTTP API Implementation
