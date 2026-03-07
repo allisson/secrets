@@ -470,3 +470,91 @@ func TestTokenizationKeyHandler_ListHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
+
+func TestTokenizationKeyHandler_GetByNameHandler(t *testing.T) {
+	t.Run("Success_GetKeyByName", func(t *testing.T) {
+		handler, mockUseCase := setupTestKeyHandler(t)
+
+		keyID := uuid.Must(uuid.NewV7())
+		expectedKey := &tokenizationDomain.TokenizationKey{
+			ID:              keyID,
+			Name:            "test-key",
+			Version:         1,
+			FormatType:      tokenizationDomain.FormatUUID,
+			IsDeterministic: false,
+			DekID:           uuid.Must(uuid.NewV7()),
+			CreatedAt:       time.Now().UTC(),
+		}
+
+		mockUseCase.EXPECT().
+			GetByName(mock.Anything, "test-key").
+			Return(expectedKey, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys/test-key", nil)
+		c.Params = gin.Params{{Key: "name", Value: "test-key"}}
+
+		handler.GetByNameHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.TokenizationKeyResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, keyID.String(), response.ID)
+		assert.Equal(t, "test-key", response.Name)
+		assert.Equal(t, uint(1), response.Version)
+		assert.Equal(t, "uuid", response.FormatType)
+		assert.False(t, response.IsDeterministic)
+	})
+
+	t.Run("Error_MissingKeyNameInURL", func(t *testing.T) {
+		handler, _ := setupTestKeyHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys/", nil)
+		c.Params = gin.Params{{Key: "name", Value: ""}}
+
+		handler.GetByNameHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "bad_request", response["error"])
+	})
+
+	t.Run("Error_KeyNotFound", func(t *testing.T) {
+		handler, mockUseCase := setupTestKeyHandler(t)
+
+		mockUseCase.EXPECT().
+			GetByName(mock.Anything, "nonexistent-key").
+			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys/nonexistent-key", nil)
+		c.Params = gin.Params{{Key: "name", Value: "nonexistent-key"}}
+
+		handler.GetByNameHandler(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("Error_UseCaseError", func(t *testing.T) {
+		handler, mockUseCase := setupTestKeyHandler(t)
+
+		dbError := errors.New("database error")
+
+		mockUseCase.EXPECT().
+			GetByName(mock.Anything, "test-key").
+			Return(nil, dbError).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/tokenization/keys/test-key", nil)
+		c.Params = gin.Params{{Key: "name", Value: "test-key"}}
+
+		handler.GetByNameHandler(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}

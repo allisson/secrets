@@ -91,6 +91,10 @@ type TokenizationKeyUseCase interface {
 	// Delete soft deletes a tokenization key and all its versions by key ID.
 	Delete(ctx context.Context, keyID uuid.UUID) error
 
+	// GetByName retrieves a single tokenization key by its name.
+	// Returns the latest version for the key. Filters out soft-deleted keys.
+	GetByName(ctx context.Context, name string) (*tokenizationDomain.TokenizationKey, error)
+
 	// ListCursor retrieves tokenization keys ordered by name ascending with cursor-based pagination.
 	// If afterName is provided, returns keys with name greater than afterName (ASC order).
 	// Returns the latest version for each key. Filters out soft-deleted keys.

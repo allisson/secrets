@@ -379,6 +379,12 @@ func (s *Server) registerTokenizationRoutes(
 				tokenizationKeyHandler.ListHandler,
 			)
 
+			// Get individual tokenization key
+			keys.GET("/:name",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				tokenizationKeyHandler.GetByNameHandler,
+			)
+
 			// Create new tokenization key
 			keys.POST("",
 				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),

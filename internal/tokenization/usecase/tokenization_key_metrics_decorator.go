@@ -88,6 +88,25 @@ func (t *tokenizationKeyUseCaseWithMetrics) Delete(ctx context.Context, tokeniza
 	return err
 }
 
+// GetByName records metrics for tokenization key retrieval operations.
+func (t *tokenizationKeyUseCaseWithMetrics) GetByName(
+	ctx context.Context,
+	name string,
+) (*tokenizationDomain.TokenizationKey, error) {
+	start := time.Now()
+	key, err := t.next.GetByName(ctx, name)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "tokenization", "tokenization_key_get", status)
+	t.metrics.RecordDuration(ctx, "tokenization", "tokenization_key_get", time.Since(start), status)
+
+	return key, err
+}
+
 // List records metrics for tokenization key listing operations.
 func (t *tokenizationKeyUseCaseWithMetrics) ListCursor(
 	ctx context.Context,

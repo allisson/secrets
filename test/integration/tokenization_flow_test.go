@@ -400,7 +400,27 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 				assert.Empty(t, body)
 			})
 
-			t.Logf("All 12 tokenization endpoint tests passed for %s", tc.dbDriver)
+			// [13/13] Test GET /v1/tokenization/keys/:name - Get tokenization key by name
+			t.Run("13_GetTokenizationKeyByName", func(t *testing.T) {
+				resp, body := ctx.makeRequest(
+					t,
+					http.MethodGet,
+					"/v1/tokenization/keys/"+tokenizationKeyName1,
+					nil,
+					true,
+				)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response tokenizationDTO.TokenizationKeyResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Equal(t, tokenizationKeyName1, response.Name)
+				assert.Equal(t, uint(2), response.Version) // It was rotated in step 10
+				assert.Equal(t, "uuid", response.FormatType)
+				assert.False(t, response.IsDeterministic)
+			})
+
+			t.Logf("All 13 tokenization endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

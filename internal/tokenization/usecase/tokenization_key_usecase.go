@@ -181,6 +181,22 @@ func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) er
 	return nil
 }
 
+// GetByName retrieves a single tokenization key by its name.
+// Returns the latest version for the key. Filters out soft-deleted keys.
+func (t *tokenizationKeyUseCase) GetByName(
+	ctx context.Context,
+	name string,
+) (*tokenizationDomain.TokenizationKey, error) {
+	key, err := t.tokenizationKeyRepo.GetByName(ctx, name)
+	if err != nil {
+		if apperrors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound) {
+			return nil, err
+		}
+		return nil, apperrors.Wrap(err, "failed to get tokenization key")
+	}
+	return key, nil
+}
+
 // ListCursor retrieves tokenization keys ordered by name ascending with cursor-based pagination.
 // Returns the latest version for each key name.
 func (t *tokenizationKeyUseCase) ListCursor(

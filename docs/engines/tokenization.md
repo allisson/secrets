@@ -29,9 +29,9 @@ All endpoints require `Authorization: Bearer <token>`.
 - **Body**: `name`, `format_type` (`uuid`, `numeric`, `luhn-preserving`, `alphanumeric`), `is_deterministic`, `algorithm`.
 
 ```bash
-curl -X POST http://localhost:8080/v1/tokenization/keys 
-  -H "Authorization: Bearer <token>" 
-  -H "Content-Type: application/json" 
+curl -X POST http://localhost:8080/v1/tokenization/keys \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
   -d '{
     "name": "payment-cards",
     "format_type": "luhn-preserving",
@@ -52,9 +52,9 @@ curl -X POST http://localhost:8080/v1/tokenization/keys
 - **Body**: `plaintext` (base64), `metadata` (optional object), `ttl` (optional seconds).
 
 ```bash
-curl -X POST http://localhost:8080/v1/tokenization/keys/payment-cards/tokenize 
-  -H "Authorization: Bearer <token>" 
-  -H "Content-Type: application/json" 
+curl -X POST http://localhost:8080/v1/tokenization/keys/payment-cards/tokenize \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
   -d '{
     "plaintext": "NDUzMjAxNTExMjgzMDM2Ng==",
     "metadata": { "last_four": "0366" }
@@ -125,7 +125,8 @@ Example response (`200 OK`):
     {
       "id": "0194f4c1-82de-7f9a-c2b3-9def1a7bc5d8",
       "name": "customer-ids",
-      "algorithm": "uuid_v7",
+      "format_type": "uuid",
+      "algorithm": "aes-gcm",
       "is_deterministic": true,
       "version": 2,
       "created_at": "2026-02-27T20:10:00Z",
@@ -134,7 +135,8 @@ Example response (`200 OK`):
     {
       "id": "0194f4d3-a5bc-7e2f-d8a1-4bef2c9ad7e1",
       "name": "payment-tokens",
-      "algorithm": "luhn_preserving",
+      "format_type": "luhn-preserving",
+      "algorithm": "chacha20-poly1305",
       "is_deterministic": false,
       "version": 1,
       "created_at": "2026-02-27T21:45:00Z",
@@ -147,9 +149,30 @@ Example response (`200 OK`):
 
 **Note**: The `next_cursor` field is only present when there are more pages available.
 
+#### Get Tokenization Key by Name
+
+- **Endpoint**: `GET /v1/tokenization/keys/:name`
+- **Capability**: `read`
+- **Success**: `200 OK`
+
+Example response (`200 OK`):
+
+```json
+{
+  "id": "0194f4c1-82de-7f9a-c2b3-9def1a7bc5d8",
+  "name": "customer-ids",
+  "format_type": "uuid",
+  "algorithm": "aes-gcm",
+  "is_deterministic": true,
+  "version": 2,
+  "created_at": "2026-02-27T20:10:00Z",
+  "updated_at": "2026-02-28T10:30:00Z"
+}
+```
+
 #### Delete Tokenization Key
 
-- **Endpoint**: `DELETE /v1/tokenization/keys/:name`
+- **Endpoint**: `DELETE /v1/tokenization/keys/:id`
 - **Capability**: `delete`
 - **Success**: `204 No Content`
 

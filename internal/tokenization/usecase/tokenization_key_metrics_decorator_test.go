@@ -260,6 +260,86 @@ func TestTokenizationKeyUseCaseWithMetrics_Rotate(t *testing.T) {
 	}
 }
 
+func TestTokenizationKeyUseCaseWithMetrics_GetByName(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupMocks     func(*tokenizationMocks.MockTokenizationKeyUseCase, *mockBusinessMetrics)
+		keyName        string
+		expectedKey    *tokenizationDomain.TokenizationKey
+		expectedErr    error
+		expectedStatus string
+	}{
+		{
+			name: "Success_RecordsSuccessMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationKeyUseCase, mockMetrics *mockBusinessMetrics) {
+				key := &tokenizationDomain.TokenizationKey{
+					ID:              uuid.New(),
+					Name:            "test-key",
+					Version:         1,
+					FormatType:      tokenizationDomain.FormatUUID,
+					IsDeterministic: false,
+					CreatedAt:       time.Now().UTC(),
+				}
+				mockUseCase.EXPECT().
+					GetByName(mock.Anything, "test-key").
+					Return(key, nil).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenization_key_get", "success").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenization_key_get", mock.AnythingOfType("time.Duration"), "success").
+					Once()
+			},
+			keyName: "test-key",
+			expectedKey: &tokenizationDomain.TokenizationKey{
+				Name: "test-key",
+			},
+			expectedErr:    nil,
+			expectedStatus: "success",
+		},
+		{
+			name: "Error_RecordsErrorMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationKeyUseCase, mockMetrics *mockBusinessMetrics) {
+				mockUseCase.EXPECT().
+					GetByName(mock.Anything, "test-key").
+					Return(nil, errors.New("key not found")).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenization_key_get", "error").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenization_key_get", mock.AnythingOfType("time.Duration"), "error").
+					Once()
+			},
+			keyName:        "test-key",
+			expectedKey:    nil,
+			expectedErr:    errors.New("key not found"),
+			expectedStatus: "error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := tokenizationMocks.NewMockTokenizationKeyUseCase(t)
+			mockMetrics := &mockBusinessMetrics{}
+			tt.setupMocks(mockUseCase, mockMetrics)
+
+			decorator := NewTokenizationKeyUseCaseWithMetrics(mockUseCase, mockMetrics)
+
+			key, err := decorator.GetByName(context.Background(), tt.keyName)
+
+			if tt.expectedErr != nil {
+				assert.Error(t, err)
+				assert.Nil(t, key)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, key)
+				assert.Equal(t, tt.expectedKey.Name, key.Name)
+			}
+
+			mockMetrics.AssertExpectations(t)
+			mockUseCase.AssertExpectations(t)
+		})
+	}
+}
+
 func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 	tests := []struct {
 		name           string

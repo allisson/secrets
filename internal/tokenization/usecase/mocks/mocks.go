@@ -1332,6 +1332,74 @@ func (_c *MockTokenizationKeyUseCase_Delete_Call) RunAndReturn(run func(ctx cont
 	return _c
 }
 
+// GetByName provides a mock function for the type MockTokenizationKeyUseCase
+func (_mock *MockTokenizationKeyUseCase) GetByName(ctx context.Context, name string) (*domain0.TokenizationKey, error) {
+	ret := _mock.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByName")
+	}
+
+	var r0 *domain0.TokenizationKey
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*domain0.TokenizationKey, error)); ok {
+		return returnFunc(ctx, name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *domain0.TokenizationKey); ok {
+		r0 = returnFunc(ctx, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain0.TokenizationKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenizationKeyUseCase_GetByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByName'
+type MockTokenizationKeyUseCase_GetByName_Call struct {
+	*mock.Call
+}
+
+// GetByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *MockTokenizationKeyUseCase_Expecter) GetByName(ctx interface{}, name interface{}) *MockTokenizationKeyUseCase_GetByName_Call {
+	return &MockTokenizationKeyUseCase_GetByName_Call{Call: _e.mock.On("GetByName", ctx, name)}
+}
+
+func (_c *MockTokenizationKeyUseCase_GetByName_Call) Run(run func(ctx context.Context, name string)) *MockTokenizationKeyUseCase_GetByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenizationKeyUseCase_GetByName_Call) Return(tokenizationKey *domain0.TokenizationKey, err error) *MockTokenizationKeyUseCase_GetByName_Call {
+	_c.Call.Return(tokenizationKey, err)
+	return _c
+}
+
+func (_c *MockTokenizationKeyUseCase_GetByName_Call) RunAndReturn(run func(ctx context.Context, name string) (*domain0.TokenizationKey, error)) *MockTokenizationKeyUseCase_GetByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListCursor provides a mock function for the type MockTokenizationKeyUseCase
 func (_mock *MockTokenizationKeyUseCase) ListCursor(ctx context.Context, afterName *string, limit int) ([]*domain0.TokenizationKey, error) {
 	ret := _mock.Called(ctx, afterName, limit)
