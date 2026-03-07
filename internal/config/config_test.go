@@ -410,6 +410,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 25, cfg.DBMaxOpenConnections)
 				assert.Equal(t, 5, cfg.DBMaxIdleConnections)
 				assert.Equal(t, 5*time.Minute, cfg.DBConnMaxLifetime)
+				assert.Equal(t, 5*time.Minute, cfg.DBConnMaxIdleTime)
 				assert.Equal(t, "info", cfg.LogLevel)
 				assert.Equal(t, 14400*time.Second, cfg.AuthTokenExpiration)
 				assert.Equal(t, true, cfg.RateLimitEnabled)
@@ -473,11 +474,12 @@ func TestLoad(t *testing.T) {
 		{
 			name: "load custom database configuration",
 			envVars: map[string]string{
-				"DB_DRIVER":                    "mysql",
-				"DB_CONNECTION_STRING":         "user:password@tcp(localhost:3306)/testdb",
-				"DB_MAX_OPEN_CONNECTIONS":      "50",
-				"DB_MAX_IDLE_CONNECTIONS":      "10",
-				"DB_CONN_MAX_LIFETIME_MINUTES": "10",
+				"DB_DRIVER":                     "mysql",
+				"DB_CONNECTION_STRING":          "user:password@tcp(localhost:3306)/testdb",
+				"DB_MAX_OPEN_CONNECTIONS":       "50",
+				"DB_MAX_IDLE_CONNECTIONS":       "10",
+				"DB_CONN_MAX_LIFETIME_MINUTES":  "10",
+				"DB_CONN_MAX_IDLE_TIME_MINUTES": "10",
 			},
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, "mysql", cfg.DBDriver)
@@ -485,6 +487,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 50, cfg.DBMaxOpenConnections)
 				assert.Equal(t, 10, cfg.DBMaxIdleConnections)
 				assert.Equal(t, 10*time.Minute, cfg.DBConnMaxLifetime)
+				assert.Equal(t, 10*time.Minute, cfg.DBConnMaxIdleTime)
 			},
 		},
 		{

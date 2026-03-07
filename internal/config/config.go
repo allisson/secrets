@@ -26,6 +26,7 @@ const (
 
 	DefaultDBMaxIdleConnections   = 5
 	DefaultDBConnMaxLifetime      = 5 // minutes
+	DefaultDBConnMaxIdleTime      = 5 // minutes
 	DefaultLogLevel               = "info"
 	DefaultAuthTokenExpiration    = 14400 // seconds
 	DefaultRateLimitEnabled       = true
@@ -70,6 +71,8 @@ type Config struct {
 	DBMaxIdleConnections int
 	// DBConnMaxLifetime is the maximum amount of time a connection may be reused.
 	DBConnMaxLifetime time.Duration
+	// DBConnMaxIdleTime is the maximum amount of time a connection may be idle.
+	DBConnMaxIdleTime time.Duration
 
 	// LogLevel is the logging level (e.g., "debug", "info", "warn", "error", "fatal", "panic").
 	LogLevel string
@@ -124,6 +127,10 @@ func (c *Config) Validate() error {
 		c,
 		validation.Field(&c.DBDriver, validation.Required, validation.In("postgres", "mysql")),
 		validation.Field(&c.DBConnectionString, validation.Required),
+		validation.Field(&c.DBMaxOpenConnections, validation.Min(0)),
+		validation.Field(&c.DBMaxIdleConnections, validation.Min(0)),
+		validation.Field(&c.DBConnMaxLifetime, validation.Min(0*time.Second)),
+		validation.Field(&c.DBConnMaxIdleTime, validation.Min(0*time.Second)),
 		validation.Field(&c.ServerPort, validation.Required, validation.Min(1), validation.Max(65535)),
 		validation.Field(
 			&c.ServerReadTimeout,
@@ -218,6 +225,11 @@ func Load() (*Config, error) {
 		DBConnMaxLifetime: env.GetDuration(
 			"DB_CONN_MAX_LIFETIME_MINUTES",
 			DefaultDBConnMaxLifetime,
+			time.Minute,
+		),
+		DBConnMaxIdleTime: env.GetDuration(
+			"DB_CONN_MAX_IDLE_TIME_MINUTES",
+			DefaultDBConnMaxIdleTime,
 			time.Minute,
 		),
 

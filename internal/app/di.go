@@ -340,6 +340,7 @@ func (c *Container) initDB(ctx context.Context) (*sql.DB, error) {
 		MaxOpenConnections: c.config.DBMaxOpenConnections,
 		MaxIdleConnections: c.config.DBMaxIdleConnections,
 		ConnMaxLifetime:    c.config.DBConnMaxLifetime,
+		ConnMaxIdleTime:    c.config.DBConnMaxIdleTime,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
