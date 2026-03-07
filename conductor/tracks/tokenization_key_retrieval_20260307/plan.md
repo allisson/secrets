@@ -21,5 +21,5 @@ Ensure end-to-end functionality and update documentation.
 
 - [x] Task: Update integration tests in `test/integration/tokenization_flow_test.go`. d506864
 - [x] Task: Update project documentation `docs/engines/tokenization.md`. cca1f42
-- [~] Task: Update OpenAPI specification `docs/openapi.yaml`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration and Documentation' (Protocol in workflow.md)
+- [x] Task: Update OpenAPI specification `docs/openapi.yaml`. 17dc1eb
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Integration and Documentation' (Protocol in workflow.md)
