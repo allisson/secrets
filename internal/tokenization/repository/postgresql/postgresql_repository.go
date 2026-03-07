@@ -52,12 +52,12 @@ func (p *PostgreSQLTokenizationKeyRepository) Create(
 }
 
 // Delete soft-deletes a tokenization key by setting its deleted_at timestamp.
-func (p *PostgreSQLTokenizationKeyRepository) Delete(ctx context.Context, keyID uuid.UUID) error {
+func (p *PostgreSQLTokenizationKeyRepository) Delete(ctx context.Context, name string) error {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `UPDATE tokenization_keys SET deleted_at = NOW() WHERE id = $1`
+	query := `UPDATE tokenization_keys SET deleted_at = NOW() WHERE name = $1`
 
-	_, err := querier.ExecContext(ctx, query, keyID)
+	_, err := querier.ExecContext(ctx, query, name)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete tokenization key")
 	}

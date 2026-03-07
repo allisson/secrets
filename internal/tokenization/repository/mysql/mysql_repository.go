@@ -60,17 +60,12 @@ func (m *MySQLTokenizationKeyRepository) Create(
 }
 
 // Delete soft-deletes a tokenization key by setting its deleted_at timestamp.
-func (m *MySQLTokenizationKeyRepository) Delete(ctx context.Context, keyID uuid.UUID) error {
+func (m *MySQLTokenizationKeyRepository) Delete(ctx context.Context, name string) error {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `UPDATE tokenization_keys SET deleted_at = NOW() WHERE id = ?`
+	query := `UPDATE tokenization_keys SET deleted_at = NOW() WHERE name = ?`
 
-	id, err := keyID.MarshalBinary()
-	if err != nil {
-		return apperrors.Wrap(err, "failed to marshal tokenization key id")
-	}
-
-	_, err = querier.ExecContext(ctx, query, id)
+	_, err := querier.ExecContext(ctx, query, name)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete tokenization key")
 	}

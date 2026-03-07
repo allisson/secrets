@@ -172,9 +172,9 @@ func (t *tokenizationKeyUseCase) Rotate(
 	return newKey, nil
 }
 
-// Delete soft-deletes a tokenization key and all its versions by setting its deleted_at timestamp.
-func (t *tokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) error {
-	err := t.tokenizationKeyRepo.Delete(ctx, keyID)
+// Delete soft deletes a tokenization key and all its versions by name.
+func (t *tokenizationKeyUseCase) Delete(ctx context.Context, name string) error {
+	err := t.tokenizationKeyRepo.Delete(ctx, name)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete tokenization key")
 	}

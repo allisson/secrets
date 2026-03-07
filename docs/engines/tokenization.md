@@ -172,7 +172,7 @@ Example response (`200 OK`):
 
 #### Delete Tokenization Key
 
-- **Endpoint**: `DELETE /v1/tokenization/keys/:id`
+- **Endpoint**: `DELETE /v1/tokenization/keys/:name`
 - **Capability**: `delete`
 - **Success**: `204 No Content`
 

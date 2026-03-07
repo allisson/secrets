@@ -44,7 +44,6 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 				tokenizationKeyName1 = "integration-test-key-uuid"
 				tokenizationKeyName2 = "integration-test-key-deterministic"
 				tokenizationKeyID1   uuid.UUID
-				tokenizationKeyID2   uuid.UUID
 				testToken            string
 				deterministicToken1  string
 				deterministicToken2  string
@@ -229,11 +228,6 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 				assert.Equal(t, uint(1), response.Version)
 				assert.Equal(t, "alphanumeric", response.FormatType)
 				assert.True(t, response.IsDeterministic)
-
-				// Store ID for later operations
-				parsedID, err := uuid.Parse(response.ID)
-				require.NoError(t, err)
-				tokenizationKeyID2 = parsedID
 			})
 
 			// [8/12] Test POST /v1/tokenization/keys/:name/tokenize - Deterministic tokenization
@@ -387,12 +381,12 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 				assert.Equal(t, base64.StdEncoding.EncodeToString(newPlaintext), detokenizeResponse.Plaintext)
 			})
 
-			// [12/12] Test DELETE /v1/tokenization/keys/:id - Delete tokenization key
+			// [12/12] Test DELETE /v1/tokenization/keys/:name - Delete tokenization key
 			t.Run("12_DeleteTokenizationKey", func(t *testing.T) {
 				resp, body := ctx.makeRequest(
 					t,
 					http.MethodDelete,
-					"/v1/tokenization/keys/"+tokenizationKeyID2.String(),
+					"/v1/tokenization/keys/"+tokenizationKeyName2,
 					nil,
 					true,
 				)

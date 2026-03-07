@@ -335,16 +335,16 @@ func (_c *MockTokenizationKeyRepository_Create_Call) RunAndReturn(run func(ctx c
 }
 
 // Delete provides a mock function for the type MockTokenizationKeyRepository
-func (_mock *MockTokenizationKeyRepository) Delete(ctx context.Context, keyID uuid.UUID) error {
-	ret := _mock.Called(ctx, keyID)
+func (_mock *MockTokenizationKeyRepository) Delete(ctx context.Context, name string) error {
+	ret := _mock.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, keyID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, name)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -358,20 +358,20 @@ type MockTokenizationKeyRepository_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - keyID uuid.UUID
-func (_e *MockTokenizationKeyRepository_Expecter) Delete(ctx interface{}, keyID interface{}) *MockTokenizationKeyRepository_Delete_Call {
-	return &MockTokenizationKeyRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, keyID)}
+//   - name string
+func (_e *MockTokenizationKeyRepository_Expecter) Delete(ctx interface{}, name interface{}) *MockTokenizationKeyRepository_Delete_Call {
+	return &MockTokenizationKeyRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, name)}
 }
 
-func (_c *MockTokenizationKeyRepository_Delete_Call) Run(run func(ctx context.Context, keyID uuid.UUID)) *MockTokenizationKeyRepository_Delete_Call {
+func (_c *MockTokenizationKeyRepository_Delete_Call) Run(run func(ctx context.Context, name string)) *MockTokenizationKeyRepository_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -386,7 +386,7 @@ func (_c *MockTokenizationKeyRepository_Delete_Call) Return(err error) *MockToke
 	return _c
 }
 
-func (_c *MockTokenizationKeyRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, keyID uuid.UUID) error) *MockTokenizationKeyRepository_Delete_Call {
+func (_c *MockTokenizationKeyRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, name string) error) *MockTokenizationKeyRepository_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1276,16 +1276,16 @@ func (_c *MockTokenizationKeyUseCase_Create_Call) RunAndReturn(run func(ctx cont
 }
 
 // Delete provides a mock function for the type MockTokenizationKeyUseCase
-func (_mock *MockTokenizationKeyUseCase) Delete(ctx context.Context, keyID uuid.UUID) error {
-	ret := _mock.Called(ctx, keyID)
+func (_mock *MockTokenizationKeyUseCase) Delete(ctx context.Context, name string) error {
+	ret := _mock.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, keyID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, name)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1299,20 +1299,20 @@ type MockTokenizationKeyUseCase_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - keyID uuid.UUID
-func (_e *MockTokenizationKeyUseCase_Expecter) Delete(ctx interface{}, keyID interface{}) *MockTokenizationKeyUseCase_Delete_Call {
-	return &MockTokenizationKeyUseCase_Delete_Call{Call: _e.mock.On("Delete", ctx, keyID)}
+//   - name string
+func (_e *MockTokenizationKeyUseCase_Expecter) Delete(ctx interface{}, name interface{}) *MockTokenizationKeyUseCase_Delete_Call {
+	return &MockTokenizationKeyUseCase_Delete_Call{Call: _e.mock.On("Delete", ctx, name)}
 }
 
-func (_c *MockTokenizationKeyUseCase_Delete_Call) Run(run func(ctx context.Context, keyID uuid.UUID)) *MockTokenizationKeyUseCase_Delete_Call {
+func (_c *MockTokenizationKeyUseCase_Delete_Call) Run(run func(ctx context.Context, name string)) *MockTokenizationKeyUseCase_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -1327,7 +1327,7 @@ func (_c *MockTokenizationKeyUseCase_Delete_Call) Return(err error) *MockTokeniz
 	return _c
 }
 
-func (_c *MockTokenizationKeyUseCase_Delete_Call) RunAndReturn(run func(ctx context.Context, keyID uuid.UUID) error) *MockTokenizationKeyUseCase_Delete_Call {
+func (_c *MockTokenizationKeyUseCase_Delete_Call) RunAndReturn(run func(ctx context.Context, name string) error) *MockTokenizationKeyUseCase_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
