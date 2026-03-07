@@ -753,3 +753,123 @@ func TestTokenizationKeyUseCase_PurgeDeleted(t *testing.T) {
 		assert.True(t, errors.Is(err, expectedError))
 	})
 }
+
+// TestTokenizationKeyUseCase_GetByName tests the GetByName method.
+func TestTokenizationKeyUseCase_GetByName(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_GetByName", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		expectedKey := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.Must(uuid.NewV7()),
+			Name:            "test-key",
+			FormatType:      tokenizationDomain.FormatUUID,
+			Version:         1,
+			IsDeterministic: false,
+			DekID:           uuid.Must(uuid.NewV7()),
+		}
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			GetByName(ctx, "test-key").
+			Return(expectedKey, nil).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		key, err := uc.GetByName(ctx, "test-key")
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedKey, key)
+	})
+
+	t.Run("Error_NotFound", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		expectedError := tokenizationDomain.ErrTokenizationKeyNotFound
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			GetByName(ctx, "non-existent").
+			Return(nil, expectedError).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		key, err := uc.GetByName(ctx, "non-existent")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, key)
+		assert.True(t, errors.Is(err, expectedError))
+	})
+
+	t.Run("Error_RepositoryFails", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
+		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
+		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
+
+		// Create test data
+		masterKey := tokenizationTesting.CreateMasterKey()
+		kekChain := tokenizationTesting.CreateKekChain(masterKey)
+		defer kekChain.Close()
+
+		expectedError := errors.New("database error")
+
+		// Setup expectations
+		mockTokenizationKeyRepo.EXPECT().
+			GetByName(ctx, "test-key").
+			Return(nil, expectedError).
+			Once()
+
+		// Execute
+		uc := NewTokenizationKeyUseCase(
+			mockTxManager,
+			mockTokenizationKeyRepo,
+			mockDekRepo,
+			mockKeyManager,
+			kekChain,
+		)
+		key, err := uc.GetByName(ctx, "test-key")
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, key)
+		assert.True(t, errors.Is(err, expectedError))
+		assert.Contains(t, err.Error(), "failed to get tokenization key")
+	})
+}
