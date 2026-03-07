@@ -6,10 +6,8 @@ This plan outlines the steps to add a new endpoint `GET /v1/tokenization/keys/:n
 Add the `GetByName` functionality to the use case layer.
 
 - [x] Task: Add `GetByName` to `TokenizationKeyUseCase` interface. 2fe4a7a
-- [~] Task: Implement `GetByName` in `tokenizationKeyUseCase` struct.
-    - File: `internal/tokenization/usecase/tokenization_key_usecase.go`
-    - TDD: Write failing unit tests in `internal/tokenization/usecase/tokenization_key_usecase_test.go` first.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Domain and Use Case Layer' (Protocol in workflow.md)
+- [x] Task: Implement `GetByName` in `tokenizationKeyUseCase` struct. 3ae4bf7
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Domain and Use Case Layer' (Protocol in workflow.md)
 
 ## Phase 2: HTTP Layer
 Expose the new functionality through a REST endpoint.
