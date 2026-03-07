@@ -22,6 +22,6 @@ Refactor the Metrics Server to accept configurable timeouts instead of using har
 ## Phase 3: Dependency Injection Integration
 Connect the new configuration to the Metrics Server initialization within the DI container.
 
-- [ ] Task: Update `internal/app/di.go` to pass the configured timeouts from `Config` to the Metrics Server.
-- [ ] Task: Write tests in `internal/app/di_test.go` (or verify via integration) that the server is correctly initialized.
+- [x] Task: Update `internal/app/di.go` to pass the configured timeouts from `Config` to the Metrics Server. 0e3de70
+- [x] Task: Write tests in `internal/app/di_test.go` (or verify via integration) that the server is correctly initialized. 0e3de70
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Dependency Injection Integration' (Protocol in workflow.md)

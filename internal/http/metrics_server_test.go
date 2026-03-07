@@ -27,7 +27,15 @@ func TestMetricsServer_Endpoints(t *testing.T) {
 	}()
 
 	// Create metrics server
-	metricsServer := NewDefaultMetricsServer("localhost", 8081, logger, provider, 15*time.Second, 15*time.Second, 60*time.Second)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		8081,
+		logger,
+		provider,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 	require.NotNil(t, metricsServer)
 
 	// Test the handler from metricsServer exactly as it's configured
@@ -51,7 +59,15 @@ func TestMetricsServer_Lifecycle(t *testing.T) {
 	}()
 
 	// Create metrics server with random port
-	metricsServer := NewDefaultMetricsServer("localhost", 0, logger, provider, 15*time.Second, 15*time.Second, 60*time.Second)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		provider,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 	require.NotNil(t, metricsServer)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -89,7 +105,15 @@ func TestMetricsServer_ContextCancellation(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	// Create metrics server
-	metricsServer := NewDefaultMetricsServer("localhost", 0, logger, nil, 15*time.Second, 15*time.Second, 60*time.Second)
+	metricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		nil,
+		15*time.Second,
+		15*time.Second,
+		60*time.Second,
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -132,7 +156,15 @@ func TestMetricsServer_Timeouts(t *testing.T) {
 	assert.Equal(t, idleTimeout, metricsServer.Server().IdleTimeout)
 
 	// Test NewDefaultMetricsServer (currently hardcoded)
-	defaultMetricsServer := NewDefaultMetricsServer("localhost", 0, logger, nil, 5*time.Second, 10*time.Second, 30*time.Second)
+	defaultMetricsServer := NewDefaultMetricsServer(
+		"localhost",
+		0,
+		logger,
+		nil,
+		5*time.Second,
+		10*time.Second,
+		30*time.Second,
+	)
 	require.NotNil(t, defaultMetricsServer)
 
 	// These should now pass

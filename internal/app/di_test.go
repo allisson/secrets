@@ -269,11 +269,11 @@ func TestContainerServerComponents(t *testing.T) {
 // TestContainerMetricsServer_CustomTimeouts verifies that the metrics server is initialized with custom timeouts from config.
 func TestContainerMetricsServer_CustomTimeouts(t *testing.T) {
 	cfg := &config.Config{
-		MetricsEnabled:              true,
-		MetricsPort:                 8082,
-		MetricsServerReadTimeout:    5 * time.Second,
-		MetricsServerWriteTimeout:   10 * time.Second,
-		MetricsServerIdleTimeout:    30 * time.Second,
+		MetricsEnabled:            true,
+		MetricsPort:               8082,
+		MetricsServerReadTimeout:  5 * time.Second,
+		MetricsServerWriteTimeout: 10 * time.Second,
+		MetricsServerIdleTimeout:  30 * time.Second,
 	}
 	container := NewContainer(cfg)
 
@@ -287,13 +287,25 @@ func TestContainerMetricsServer_CustomTimeouts(t *testing.T) {
 	}
 
 	if server.Server().ReadTimeout != cfg.MetricsServerReadTimeout {
-		t.Errorf("expected read timeout %v, got %v", cfg.MetricsServerReadTimeout, server.Server().ReadTimeout)
+		t.Errorf(
+			"expected read timeout %v, got %v",
+			cfg.MetricsServerReadTimeout,
+			server.Server().ReadTimeout,
+		)
 	}
 	if server.Server().WriteTimeout != cfg.MetricsServerWriteTimeout {
-		t.Errorf("expected write timeout %v, got %v", cfg.MetricsServerWriteTimeout, server.Server().WriteTimeout)
+		t.Errorf(
+			"expected write timeout %v, got %v",
+			cfg.MetricsServerWriteTimeout,
+			server.Server().WriteTimeout,
+		)
 	}
 	if server.Server().IdleTimeout != cfg.MetricsServerIdleTimeout {
-		t.Errorf("expected idle timeout %v, got %v", cfg.MetricsServerIdleTimeout, server.Server().IdleTimeout)
+		t.Errorf(
+			"expected idle timeout %v, got %v",
+			cfg.MetricsServerIdleTimeout,
+			server.Server().IdleTimeout,
+		)
 	}
 }
 
