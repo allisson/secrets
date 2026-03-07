@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -171,5 +172,48 @@ func (h *TransitKeyHandler) ListHandler(c *gin.Context) {
 
 	// Map to response
 	response := dto.MapTransitKeysToListResponse(transitKeys, nextCursor)
+	c.JSON(http.StatusOK, response)
+}
+
+// GetHandler retrieves transit key metadata by name and optional version.
+// GET /v1/transit/keys/:name?version=1 - Requires ReadCapability.
+// Returns 200 OK with transit key metadata and algorithm.
+func (h *TransitKeyHandler) GetHandler(c *gin.Context) {
+	// Extract and validate name from URL parameter
+	name := c.Param("name")
+	if name == "" {
+		httputil.HandleBadRequestGin(
+			c,
+			fmt.Errorf("transit key name cannot be empty"),
+			h.logger,
+		)
+		return
+	}
+
+	// Extract and validate optional version from query parameter
+	version := uint(0)
+	versionStr := c.Query("version")
+	if versionStr != "" {
+		v, err := strconv.ParseUint(versionStr, 10, 32)
+		if err != nil {
+			httputil.HandleBadRequestGin(
+				c,
+				fmt.Errorf("invalid version format: must be a positive integer"),
+				h.logger,
+			)
+			return
+		}
+		version = uint(v)
+	}
+
+	// Call use case
+	transitKey, alg, err := h.transitKeyUseCase.Get(c.Request.Context(), name, version)
+	if err != nil {
+		httputil.HandleErrorGin(c, err, h.logger)
+		return
+	}
+
+	// Map to response
+	response := dto.MapTransitKeyToMetadataResponse(transitKey, string(alg))
 	c.JSON(http.StatusOK, response)
 }

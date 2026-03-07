@@ -10,8 +10,8 @@
 - [x] Task: Define `GetTransitKey` method in `internal/transit/usecase/interface.go`. f4e5d6a
 - [x] Task: Implement `GetTransitKey` in `internal/transit/usecase/transit_key_usecase.go`. 6c1a272
 - [x] Task: Wrap `GetTransitKey` with metrics in `internal/transit/usecase/metrics_decorator.go`. 6c1a272
-- [ ] Task: Write unit tests for `GetTransitKey` in `internal/transit/usecase/transit_key_usecase_test.go`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Use Case Layer' (Protocol in workflow.md)
+- [x] Task: Write unit tests for `GetTransitKey` in `internal/transit/usecase/transit_key_usecase_test.go`. 0418b36
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Use Case Layer' (Protocol in workflow.md) 0418b36
 
 ## Phase 3: HTTP API Implementation
 - [ ] Task: Create `GetTransitKeyHandler` in `internal/transit/http/transit_key_handler.go`.
