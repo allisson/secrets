@@ -316,6 +316,12 @@ func (s *Server) registerTransitRoutes(
 				transitKeyHandler.ListHandler,
 			)
 
+			// Get individual transit key
+			keys.GET("/:name",
+				authHTTP.AuthorizationMiddleware(authDomain.ReadCapability, auditLogUseCase, s.logger),
+				transitKeyHandler.GetHandler,
+			)
+
 			// Create new transit key
 			keys.POST("",
 				authHTTP.AuthorizationMiddleware(authDomain.WriteCapability, auditLogUseCase, s.logger),

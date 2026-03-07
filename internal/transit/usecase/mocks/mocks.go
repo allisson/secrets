@@ -444,11 +444,92 @@ func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) Return(transitKey *
 	return _c
 }
 
-func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain0.TransitKey, error)) *MockTransitKeyRepository_GetByNameAndVersion_Call {
+func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) RunAndReturn(run func(context.Context, string, uint) (*domain0.TransitKey, error)) *MockTransitKeyRepository_GetByNameAndVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
+// GetTransitKey provides a mock function for the type MockTransitKeyRepository
+func (_mock *MockTransitKeyRepository) GetTransitKey(ctx context.Context, name string, version uint) (*domain0.TransitKey, domain.Algorithm, error) {
+	ret := _mock.Called(ctx, name, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransitKey")
+	}
+
+	var r0 *domain0.TransitKey
+	var r1 domain.Algorithm
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain0.TransitKey, domain.Algorithm, error)); ok {
+		return returnFunc(ctx, name, version)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) *domain0.TransitKey); ok {
+		r0 = returnFunc(ctx, name, version)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain0.TransitKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) domain.Algorithm); ok {
+		r1 = returnFunc(ctx, name, version)
+	} else {
+		r1 = ret.Get(1).(domain.Algorithm)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, uint) error); ok {
+		r2 = returnFunc(ctx, name, version)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockTransitKeyRepository_GetTransitKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransitKey'
+type MockTransitKeyRepository_GetTransitKey_Call struct {
+	*mock.Call
+}
+
+// GetTransitKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - version uint
+func (_e *MockTransitKeyRepository_Expecter) GetTransitKey(ctx interface{}, name interface{}, version interface{}) *MockTransitKeyRepository_GetTransitKey_Call {
+	return &MockTransitKeyRepository_GetTransitKey_Call{Call: _e.mock.On("GetTransitKey", ctx, name, version)}
+}
+
+func (_c *MockTransitKeyRepository_GetTransitKey_Call) Run(run func(ctx context.Context, name string, version uint)) *MockTransitKeyRepository_GetTransitKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 uint
+		if args[2] != nil {
+			arg2 = args[2].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_GetTransitKey_Call) Return(_a0 *domain0.TransitKey, _a1 domain.Algorithm, _a2 error) *MockTransitKeyRepository_GetTransitKey_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockTransitKeyRepository_GetTransitKey_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain0.TransitKey, domain.Algorithm, error)) *MockTransitKeyRepository_GetTransitKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HardDelete provides a mock function for the type MockTransitKeyRepository
 // HardDelete provides a mock function for the type MockTransitKeyRepository
 func (_mock *MockTransitKeyRepository) HardDelete(ctx context.Context, olderThan time.Time, dryRun bool) (int64, error) {
 	ret := _mock.Called(ctx, olderThan, dryRun)
@@ -776,6 +857,86 @@ func (_c *MockTransitKeyUseCase_Decrypt_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// Get provides a mock function for the type MockTransitKeyUseCase
+func (_mock *MockTransitKeyUseCase) Get(ctx context.Context, name string, version uint) (*domain0.TransitKey, domain.Algorithm, error) {
+	ret := _mock.Called(ctx, name, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Get")
+	}
+
+	var r0 *domain0.TransitKey
+	var r1 domain.Algorithm
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain0.TransitKey, domain.Algorithm, error)); ok {
+		return returnFunc(ctx, name, version)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) *domain0.TransitKey); ok {
+		r0 = returnFunc(ctx, name, version)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain0.TransitKey)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) domain.Algorithm); ok {
+		r1 = returnFunc(ctx, name, version)
+	} else {
+		r1 = ret.Get(1).(domain.Algorithm)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, uint) error); ok {
+		r2 = returnFunc(ctx, name, version)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockTransitKeyUseCase_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type MockTransitKeyUseCase_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - version uint
+func (_e *MockTransitKeyUseCase_Expecter) Get(ctx interface{}, name interface{}, version interface{}) *MockTransitKeyUseCase_Get_Call {
+	return &MockTransitKeyUseCase_Get_Call{Call: _e.mock.On("Get", ctx, name, version)}
+}
+
+func (_c *MockTransitKeyUseCase_Get_Call) Run(run func(ctx context.Context, name string, version uint)) *MockTransitKeyUseCase_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 uint
+		if args[2] != nil {
+			arg2 = args[2].(uint)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_Get_Call) Return(_a0 *domain0.TransitKey, _a1 domain.Algorithm, _a2 error) *MockTransitKeyUseCase_Get_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockTransitKeyUseCase_Get_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain0.TransitKey, domain.Algorithm, error)) *MockTransitKeyUseCase_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Delete provides a mock function for the type MockTransitKeyUseCase
 func (_mock *MockTransitKeyUseCase) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
 	ret := _mock.Called(ctx, transitKeyID)
@@ -912,6 +1073,8 @@ func (_c *MockTransitKeyUseCase_Encrypt_Call) RunAndReturn(run func(ctx context.
 	_c.Call.Return(run)
 	return _c
 }
+
+// Get provides a mock function for the type MockTransitKeyUseCase
 
 // ListCursor provides a mock function for the type MockTransitKeyUseCase
 func (_mock *MockTransitKeyUseCase) ListCursor(ctx context.Context, afterName *string, limit int) ([]*domain0.TransitKey, error) {

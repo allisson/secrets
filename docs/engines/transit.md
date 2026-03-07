@@ -98,6 +98,32 @@ Example decrypt response (`200 OK`):
 
 ### List and Delete Keys
 
+#### Get Transit Key
+
+Retrieves metadata for a specific transit key and version.
+
+- **Endpoint**: `GET /v1/transit/keys/:name`
+- **Capability**: `read`
+- **Query Params**:
+  - `version` (optional) - Specific version to retrieve. If omitted, returns latest version.
+- **Success**: `200 OK`
+
+```bash
+curl "http://localhost:8080/v1/transit/keys/payment-data?version=1" \
+  -H "Authorization: Bearer <token>"
+```
+
+Example response (`200 OK`):
+
+```json
+{
+  "name": "payment-data",
+  "type": "aes-gcm",
+  "version": 1,
+  "created_at": "2026-03-07T12:00:00Z"
+}
+```
+
 #### List Transit Keys
 
 - **Endpoint**: `GET /v1/transit/keys`

@@ -1504,13 +1504,11 @@ func (_mock *MockClientUseCase) RotateSecret(ctx context.Context, clientID uuid.
 			r0 = ret.Get(0).(*domain.CreateClientOutput)
 		}
 	}
-
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
 		r1 = returnFunc(ctx, clientID)
 	} else {
 		r1 = ret.Error(1)
 	}
-
 	return r0, r1
 }
 
@@ -1536,17 +1534,20 @@ func (_c *MockClientUseCase_RotateSecret_Call) Run(run func(ctx context.Context,
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		run(arg0, arg1)
+		run(
+			arg0,
+			arg1,
+		)
 	})
 	return _c
 }
 
-func (_c *MockClientUseCase_RotateSecret_Call) Return(_a0 *domain.CreateClientOutput, _a1 error) *MockClientUseCase_RotateSecret_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockClientUseCase_RotateSecret_Call) Return(createClientOutput *domain.CreateClientOutput, err error) *MockClientUseCase_RotateSecret_Call {
+	_c.Call.Return(createClientOutput, err)
 	return _c
 }
 
-func (_c *MockClientUseCase_RotateSecret_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*domain.CreateClientOutput, error)) *MockClientUseCase_RotateSecret_Call {
+func (_c *MockClientUseCase_RotateSecret_Call) RunAndReturn(run func(ctx context.Context, clientID uuid.UUID) (*domain.CreateClientOutput, error)) *MockClientUseCase_RotateSecret_Call {
 	_c.Call.Return(run)
 	return _c
 }

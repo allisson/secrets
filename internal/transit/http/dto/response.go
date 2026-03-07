@@ -28,6 +28,27 @@ func MapTransitKeyToResponse(transitKey *transitDomain.TransitKey) TransitKeyRes
 	}
 }
 
+// TransitKeyMetadataResponse represents transit key metadata in API responses.
+type TransitKeyMetadataResponse struct {
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Version   uint      `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// MapTransitKeyToMetadataResponse converts a domain transit key and algorithm to an API metadata response.
+func MapTransitKeyToMetadataResponse(
+	transitKey *transitDomain.TransitKey,
+	alg string,
+) TransitKeyMetadataResponse {
+	return TransitKeyMetadataResponse{
+		Name:      transitKey.Name,
+		Type:      alg,
+		Version:   transitKey.Version,
+		CreatedAt: transitKey.CreatedAt,
+	}
+}
+
 // EncryptResponse contains the result of an encryption operation.
 type EncryptResponse struct {
 	Ciphertext string `json:"ciphertext"` // Format: "version:base64-ciphertext"

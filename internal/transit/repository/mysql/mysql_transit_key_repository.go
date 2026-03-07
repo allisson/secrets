@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
@@ -153,6 +154,66 @@ func (m *MySQLTransitKeyRepository) GetByNameAndVersion(
 	}
 
 	return &transitKey, nil
+}
+
+// GetTransitKey retrieves a transit key version by name and optional version (0 for latest),
+// including its associated encryption algorithm. Returns ErrTransitKeyNotFound if not found.
+func (m *MySQLTransitKeyRepository) GetTransitKey(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+	querier := database.GetTx(ctx, m.db)
+
+	var query string
+	var args []interface{}
+
+	if version == 0 {
+		query = `SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at, d.algorithm 
+				  FROM transit_keys tk
+				  JOIN deks d ON tk.dek_id = d.id
+				  WHERE tk.name = ? AND tk.deleted_at IS NULL 
+				  ORDER BY tk.version DESC 
+				  LIMIT 1`
+		args = []interface{}{name}
+	} else {
+		query = `SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at, d.algorithm 
+				  FROM transit_keys tk
+				  JOIN deks d ON tk.dek_id = d.id
+				  WHERE tk.name = ? AND tk.version = ? AND tk.deleted_at IS NULL`
+		args = []interface{}{name, version}
+	}
+
+	var transitKey transitDomain.TransitKey
+	var id []byte
+	var dekID []byte
+	var algorithm cryptoDomain.Algorithm
+
+	err := querier.QueryRowContext(ctx, query, args...).Scan(
+		&id,
+		&transitKey.Name,
+		&transitKey.Version,
+		&dekID,
+		&transitKey.CreatedAt,
+		&transitKey.DeletedAt,
+		&algorithm,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", transitDomain.ErrTransitKeyNotFound
+		}
+		return nil, "", apperrors.Wrap(err, "failed to get transit key")
+	}
+
+	if err := transitKey.ID.UnmarshalBinary(id); err != nil {
+		return nil, "", apperrors.Wrap(err, "failed to unmarshal transit key id")
+	}
+
+	if err := transitKey.DekID.UnmarshalBinary(dekID); err != nil {
+		return nil, "", apperrors.Wrap(err, "failed to unmarshal dek id")
+	}
+
+	return &transitKey, algorithm, nil
 }
 
 // ListCursor retrieves transit keys ordered by name ascending using cursor-based pagination.

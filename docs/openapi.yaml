@@ -482,6 +482,44 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /v1/transit/keys/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [transit]
+      summary: Get transit key metadata
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: version
+          in: query
+          description: Specific version to retrieve. If omitted, returns latest version.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Transit key metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransitKeyMetadataResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys/{name}/rotate:
     post:
       tags: [transit]
@@ -1164,6 +1202,20 @@ components:
           type: string
           format: date-time
       required: [id, name, version, created_at]
+    TransitKeyMetadataResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          description: Algorithm name (e.g., aes-gcm, chacha20-poly1305)
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required: [name, type, version, created_at]
     AuditLogResponse:
       type: object
       properties:

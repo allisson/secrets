@@ -413,3 +413,109 @@ func TestTransitKeyHandler_ListHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
+
+func TestTransitKeyHandler_GetHandler(t *testing.T) {
+	t.Run("Success_ValidName", func(t *testing.T) {
+		handler, mockUseCase := setupTestTransitKeyHandler(t)
+
+		now := time.Now().UTC()
+		expectedKey := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      "test-key",
+			Version:   1,
+			DekID:     uuid.Must(uuid.NewV7()),
+			CreatedAt: now,
+		}
+		expectedAlg := cryptoDomain.AESGCM
+
+		mockUseCase.EXPECT().
+			Get(mock.Anything, "test-key", uint(0)).
+			Return(expectedKey, expectedAlg, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/test-key", nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.GetHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.TransitKeyMetadataResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "test-key", response.Name)
+		assert.Equal(t, "aes-gcm", response.Type)
+		assert.Equal(t, uint(1), response.Version)
+	})
+
+	t.Run("Success_ValidNameAndVersion", func(t *testing.T) {
+		handler, mockUseCase := setupTestTransitKeyHandler(t)
+
+		now := time.Now().UTC()
+		expectedKey := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      "test-key",
+			Version:   2,
+			DekID:     uuid.Must(uuid.NewV7()),
+			CreatedAt: now,
+		}
+		expectedAlg := cryptoDomain.ChaCha20
+
+		mockUseCase.EXPECT().
+			Get(mock.Anything, "test-key", uint(2)).
+			Return(expectedKey, expectedAlg, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/test-key?version=2", nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.GetHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.TransitKeyMetadataResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, "test-key", response.Name)
+		assert.Equal(t, "chacha20-poly1305", response.Type)
+		assert.Equal(t, uint(2), response.Version)
+	})
+
+	t.Run("Error_EmptyName", func(t *testing.T) {
+		handler, _ := setupTestTransitKeyHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/", nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: ""}}
+
+		handler.GetHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Error_InvalidVersion", func(t *testing.T) {
+		handler, _ := setupTestTransitKeyHandler(t)
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/test-key?version=invalid", nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "test-key"}}
+
+		handler.GetHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Error_NotFound", func(t *testing.T) {
+		handler, mockUseCase := setupTestTransitKeyHandler(t)
+
+		mockUseCase.EXPECT().
+			Get(mock.Anything, "nonexistent", uint(0)).
+			Return(nil, cryptoDomain.Algorithm(""), transitDomain.ErrTransitKeyNotFound).
+			Once()
+
+		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/nonexistent", nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: "nonexistent"}}
+
+		handler.GetHandler(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
