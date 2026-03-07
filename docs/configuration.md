@@ -11,6 +11,7 @@ DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disabl
 DB_MAX_OPEN_CONNECTIONS=25
 DB_MAX_IDLE_CONNECTIONS=5
 DB_CONN_MAX_LIFETIME_MINUTES=5
+DB_CONN_MAX_IDLE_TIME_MINUTES=5
 
 # Server configuration
 SERVER_HOST=0.0.0.0
@@ -103,6 +104,10 @@ Maximum number of idle database connections (default: `5`).
 ### DB_CONN_MAX_LIFETIME_MINUTES
 
 Maximum lifetime of a connection in minutes (default: `5`).
+
+### DB_CONN_MAX_IDLE_TIME_MINUTES
+
+Maximum amount of time a connection may be idle in minutes (default: `5`).
 
 ## Server configuration
 
