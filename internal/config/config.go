@@ -40,6 +40,9 @@ const (
 	DefaultMetricsEnabled         = true
 	DefaultMetricsNamespace       = "secrets"
 	DefaultMetricsPort            = 8081
+	DefaultMetricsServerReadTimeout  = 15 // seconds
+	DefaultMetricsServerWriteTimeout = 15 // seconds
+	DefaultMetricsServerIdleTimeout  = 60 // seconds
 	DefaultLockoutMaxAttempts     = 10
 	DefaultLockoutDuration        = 30 // minutes
 	DefaultMaxRequestBodySize     = 1048576
@@ -105,6 +108,12 @@ type Config struct {
 	MetricsNamespace string
 	// MetricsPort is the port number for the metrics server.
 	MetricsPort int
+	// MetricsServerReadTimeout is the maximum duration for reading the entire request, including the body.
+	MetricsServerReadTimeout time.Duration
+	// MetricsServerWriteTimeout is the maximum duration before timing out writes of the response.
+	MetricsServerWriteTimeout time.Duration
+	// MetricsServerIdleTimeout is the maximum time to wait for the next request when keep-alives are enabled.
+	MetricsServerIdleTimeout time.Duration
 
 	// KMSProvider is the KMS provider to use (e.g., "google", "aws", "azure", "hashivault", "localsecrets").
 	KMSProvider string
