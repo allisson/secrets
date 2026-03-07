@@ -8,8 +8,8 @@
 
 ## Phase 2: Usecase Layer
 - [x] Task: Define `GetTransitKey` method in `internal/transit/usecase/interface.go`. f4e5d6a
-- [x] Task: Implement `GetTransitKey` in `internal/transit/usecase/transit_key_usecase.go`. b8c9d0e
-- [x] Task: Wrap `GetTransitKey` with metrics in `internal/transit/usecase/metrics_decorator.go`. d1e2f3g
+- [x] Task: Implement `GetTransitKey` in `internal/transit/usecase/transit_key_usecase.go`. 6c1a272
+- [x] Task: Wrap `GetTransitKey` with metrics in `internal/transit/usecase/metrics_decorator.go`. 6c1a272
 - [ ] Task: Write unit tests for `GetTransitKey` in `internal/transit/usecase/transit_key_usecase_test.go`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Use Case Layer' (Protocol in workflow.md)
 

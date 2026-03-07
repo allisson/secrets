@@ -301,3 +301,63 @@ func TestTransitKeyUseCaseWithMetrics_Decrypt(t *testing.T) {
 		mockMetrics.AssertExpectations(t)
 	})
 }
+
+func TestTransitKeyUseCaseWithMetrics_Get(t *testing.T) {
+	mockNext := usecaseMocks.NewMockTransitKeyUseCase(t)
+	mockMetrics := &mockBusinessMetrics{}
+	uc := usecase.NewTransitKeyUseCaseWithMetrics(mockNext, mockMetrics)
+
+	ctx := context.Background()
+	name := "test-key"
+	version := uint(1)
+
+	t.Run("Get_Success", func(t *testing.T) {
+		// Arrange
+		expectedKey := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      name,
+			Version:   1,
+			DekID:     uuid.Must(uuid.NewV7()),
+			CreatedAt: time.Now().UTC(),
+		}
+		expectedAlg := cryptoDomain.AESGCM
+
+		mockNext.EXPECT().Get(ctx, name, version).Return(expectedKey, expectedAlg, nil).Once()
+		mockMetrics.On("RecordOperation", ctx, "transit", "transit_key_get", "success").Return().Once()
+		mockMetrics.On("RecordDuration", ctx, "transit", "transit_key_get", mock.AnythingOfType("time.Duration"), "success").
+			Return().
+			Once()
+
+		// Act
+		key, alg, err := uc.Get(ctx, name, version)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedKey, key)
+		assert.Equal(t, expectedAlg, alg)
+		mockNext.AssertExpectations(t)
+		mockMetrics.AssertExpectations(t)
+	})
+
+	t.Run("Get_Error", func(t *testing.T) {
+		// Arrange
+		expectedErr := errors.New("get failed")
+
+		mockNext.EXPECT().Get(ctx, name, version).Return(nil, cryptoDomain.Algorithm(""), expectedErr).Once()
+		mockMetrics.On("RecordOperation", ctx, "transit", "transit_key_get", "error").Return().Once()
+		mockMetrics.On("RecordDuration", ctx, "transit", "transit_key_get", mock.AnythingOfType("time.Duration"), "error").
+			Return().
+			Once()
+
+		// Act
+		key, alg, err := uc.Get(ctx, name, version)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, key)
+		assert.Equal(t, cryptoDomain.Algorithm(""), alg)
+		assert.Equal(t, expectedErr, err)
+		mockNext.AssertExpectations(t)
+		mockMetrics.AssertExpectations(t)
+	})
+}

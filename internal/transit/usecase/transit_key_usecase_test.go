@@ -1462,3 +1462,75 @@ func TestTransitKeyUseCase_PurgeDeleted(t *testing.T) {
 		assert.Equal(t, expectedError, err)
 	})
 }
+
+// TestTransitKeyUseCase_Get tests the Get method of transitKeyUseCase.
+func TestTransitKeyUseCase_Get(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_GetTransitKey", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		expectedKey := createTestTransitKey("test-key", 1, uuid.Must(uuid.NewV7()))
+		expectedAlg := cryptoDomain.AESGCM
+
+		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetTransitKey(ctx, "test-key", uint(1)).
+			Return(expectedKey, expectedAlg, nil).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		key, alg, err := uc.Get(ctx, "test-key", 1)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotNil(t, key)
+		assert.Equal(t, expectedKey, key)
+		assert.Equal(t, expectedAlg, alg)
+	})
+
+	t.Run("Error_GetTransitKeyNotFound", func(t *testing.T) {
+		// Setup mocks
+		mockTxManager := databaseMocks.NewMockTxManager(t)
+		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
+		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
+		mockKeyManager := serviceMocks.NewMockKeyManager(t)
+		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+
+		// Create test data
+		kek := createTestKek()
+		kekChain := createTestKekChain(kek.ID, kek)
+		defer kekChain.Close()
+
+		// Setup expectations
+		mockTransitRepo.EXPECT().
+			GetTransitKey(ctx, "test-key", uint(1)).
+			Return(nil, cryptoDomain.Algorithm(""), transitDomain.ErrTransitKeyNotFound).
+			Once()
+
+		// Execute
+		uc := NewTransitKeyUseCase(
+			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
+		)
+		key, alg, err := uc.Get(ctx, "test-key", 1)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, key)
+		assert.Equal(t, cryptoDomain.Algorithm(""), alg)
+		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyNotFound))
+	})
+}
