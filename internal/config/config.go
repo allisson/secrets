@@ -24,29 +24,29 @@ const (
 	DefaultDBConnectionString    = "postgres://user:password@localhost:5432/mydb?sslmode=disable" //nolint:gosec
 	DefaultDBMaxOpenConnections  = 25
 
-	DefaultDBMaxIdleConnections   = 5
-	DefaultDBConnMaxLifetime      = 5 // minutes
-	DefaultDBConnMaxIdleTime      = 5 // minutes
-	DefaultLogLevel               = "info"
-	DefaultAuthTokenExpiration    = 14400 // seconds
-	DefaultRateLimitEnabled       = true
-	DefaultRateLimitRequests      = 10.0
-	DefaultRateLimitBurst         = 20
-	DefaultRateLimitTokenEnabled  = true
-	DefaultRateLimitTokenRequests = 5.0
-	DefaultRateLimitTokenBurst    = 10
-	DefaultCORSEnabled            = false
-	DefaultCORSAllowOrigins       = ""
-	DefaultMetricsEnabled         = true
-	DefaultMetricsNamespace       = "secrets"
-	DefaultMetricsPort            = 8081
+	DefaultDBMaxIdleConnections      = 5
+	DefaultDBConnMaxLifetime         = 5 // minutes
+	DefaultDBConnMaxIdleTime         = 5 // minutes
+	DefaultLogLevel                  = "info"
+	DefaultAuthTokenExpiration       = 14400 // seconds
+	DefaultRateLimitEnabled          = true
+	DefaultRateLimitRequests         = 10.0
+	DefaultRateLimitBurst            = 20
+	DefaultRateLimitTokenEnabled     = true
+	DefaultRateLimitTokenRequests    = 5.0
+	DefaultRateLimitTokenBurst       = 10
+	DefaultCORSEnabled               = false
+	DefaultCORSAllowOrigins          = ""
+	DefaultMetricsEnabled            = true
+	DefaultMetricsNamespace          = "secrets"
+	DefaultMetricsPort               = 8081
 	DefaultMetricsServerReadTimeout  = 15 // seconds
 	DefaultMetricsServerWriteTimeout = 15 // seconds
 	DefaultMetricsServerIdleTimeout  = 60 // seconds
-	DefaultLockoutMaxAttempts     = 10
-	DefaultLockoutDuration        = 30 // minutes
-	DefaultMaxRequestBodySize     = 1048576
-	DefaultSecretValueSizeLimit   = 524288
+	DefaultLockoutMaxAttempts        = 10
+	DefaultLockoutDuration           = 30 // minutes
+	DefaultMaxRequestBodySize        = 1048576
+	DefaultSecretValueSizeLimit      = 524288
 )
 
 // Config holds all application configuration.

@@ -4,11 +4,11 @@
 Introduce the new configuration options for Metrics Server timeouts and update the environment files.
 
 - [x] Task: Update `internal/config/config.go` with new constants and fields for Metrics Server timeouts. 10f5e4c
-- [ ] Task: Implement validation for Metrics Server timeouts in `internal/config/config.go`.
-- [ ] Task: Update `Load()` in `internal/config/config.go` to parse the new environment variables.
-- [ ] Task: Update `.env.example` to include the new `METRICS_SERVER_*` variables.
-- [ ] Task: Write failing unit tests for new configuration loading and validation in `internal/config/config_test.go`.
-- [ ] Task: Implement changes to pass the tests in `internal/config/config.go`.
+- [x] Task: Implement validation for Metrics Server timeouts in `internal/config/config.go`. f27dd3f
+- [x] Task: Update `Load()` in `internal/config/config.go` to parse the new environment variables. f27dd3f
+- [x] Task: Update `.env.example` to include the new `METRICS_SERVER_*` variables. f27dd3f
+- [x] Task: Write failing unit tests for new configuration loading and validation in `internal/config/config_test.go`. f27dd3f
+- [x] Task: Implement changes to pass the tests in `internal/config/config.go`. f27dd3f
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Configuration and Environment' (Protocol in workflow.md)
 
 ## Phase 2: Metrics Server Implementation
