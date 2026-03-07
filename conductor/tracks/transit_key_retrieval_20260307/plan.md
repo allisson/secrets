@@ -4,7 +4,7 @@
 - [x] Task: Define `GetTransitKey` in `internal/transit/domain/repository.go` and repository interface. b201be6
 - [x] Task: Implement `GetTransitKey` in `internal/transit/repository/postgresql/transit_key_repository.go`. 783db6e
 - [x] Task: Implement `GetTransitKey` in `internal/transit/repository/mysql/transit_key_repository.go`. 68f969c
-- [ ] Task: Write integration tests for `GetTransitKey` in both PostgreSQL and MySQL repositories.
+- [x] Task: Write integration tests for `GetTransitKey` in both PostgreSQL and MySQL repositories. ec571f5
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Repository Layer' (Protocol in workflow.md)
 
 ## Phase 2: Use Case Layer
