@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
@@ -121,6 +122,55 @@ func (p *PostgreSQLTransitKeyRepository) GetByNameAndVersion(
 	}
 
 	return &transitKey, nil
+}
+
+// GetTransitKey retrieves a transit key version by name and optional version (0 for latest), 
+// including its associated encryption algorithm. Returns ErrTransitKeyNotFound if not found.
+func (p *PostgreSQLTransitKeyRepository) GetTransitKey(
+	ctx context.Context,
+	name string,
+	version uint,
+) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	var query string
+	var args []interface{}
+
+	if version == 0 {
+		query = `SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at, d.algorithm 
+				  FROM transit_keys tk
+				  JOIN deks d ON tk.dek_id = d.id
+				  WHERE tk.name = $1 AND tk.deleted_at IS NULL 
+				  ORDER BY tk.version DESC 
+				  LIMIT 1`
+		args = []interface{}{name}
+	} else {
+		query = `SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at, d.algorithm 
+				  FROM transit_keys tk
+				  JOIN deks d ON tk.dek_id = d.id
+				  WHERE tk.name = $1 AND tk.version = $2 AND tk.deleted_at IS NULL`
+		args = []interface{}{name, version}
+	}
+
+	var transitKey transitDomain.TransitKey
+	var algorithm cryptoDomain.Algorithm
+	err := querier.QueryRowContext(ctx, query, args...).Scan(
+		&transitKey.ID,
+		&transitKey.Name,
+		&transitKey.Version,
+		&transitKey.DekID,
+		&transitKey.CreatedAt,
+		&transitKey.DeletedAt,
+		&algorithm,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", transitDomain.ErrTransitKeyNotFound
+		}
+		return nil, "", apperrors.Wrap(err, "failed to get transit key")
+	}
+
+	return &transitKey, algorithm, nil
 }
 
 // ListCursor retrieves transit keys ordered by name ascending using cursor-based pagination.
