@@ -19,7 +19,7 @@ Expose the new functionality through a REST endpoint.
 ## Phase 3: Integration and Documentation
 Ensure end-to-end functionality and update documentation.
 
-- [ ] Task: Update integration tests in `test/integration/tokenization_flow_test.go`.
-- [ ] Task: Update project documentation `docs/engines/tokenization.md`.
+- [x] Task: Update integration tests in `test/integration/tokenization_flow_test.go`. d506864
+- [~] Task: Update project documentation `docs/engines/tokenization.md`.
 - [ ] Task: Update OpenAPI specification `docs/openapi.yaml`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration and Documentation' (Protocol in workflow.md)
