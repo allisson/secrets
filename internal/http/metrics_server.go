@@ -59,15 +59,18 @@ func NewDefaultMetricsServer(
 	port int,
 	logger *slog.Logger,
 	metricsProvider *metrics.Provider,
+	readTimeout time.Duration,
+	writeTimeout time.Duration,
+	idleTimeout time.Duration,
 ) *MetricsServer {
 	return NewMetricsServer(
 		host,
 		port,
 		logger,
 		metricsProvider,
-		15*time.Second,
-		15*time.Second,
-		60*time.Second,
+		readTimeout,
+		writeTimeout,
+		idleTimeout,
 	)
 }
 
