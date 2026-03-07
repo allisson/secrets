@@ -344,16 +344,16 @@ func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupMocks     func(*tokenizationMocks.MockTokenizationKeyUseCase, *mockBusinessMetrics)
-		keyID          uuid.UUID
+		keyName        string
 		expectedErr    error
 		expectedStatus string
 	}{
 		{
 			name: "Success_RecordsSuccessMetrics",
 			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationKeyUseCase, mockMetrics *mockBusinessMetrics) {
-				keyID := uuid.New()
+				keyName := "test-key"
 				mockUseCase.EXPECT().
-					Delete(mock.Anything, keyID).
+					Delete(mock.Anything, keyName).
 					Return(nil).
 					Once()
 				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenization_key_delete", "success").
@@ -361,16 +361,16 @@ func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenization_key_delete", mock.AnythingOfType("time.Duration"), "success").
 					Once()
 			},
-			keyID:          uuid.New(),
+			keyName:        "test-key",
 			expectedErr:    nil,
 			expectedStatus: "success",
 		},
 		{
 			name: "Error_RecordsErrorMetrics",
 			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationKeyUseCase, mockMetrics *mockBusinessMetrics) {
-				keyID := uuid.New()
+				keyName := "test-key"
 				mockUseCase.EXPECT().
-					Delete(mock.Anything, keyID).
+					Delete(mock.Anything, keyName).
 					Return(errors.New("key not found")).
 					Once()
 				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenization_key_delete", "error").
@@ -378,7 +378,7 @@ func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenization_key_delete", mock.AnythingOfType("time.Duration"), "error").
 					Once()
 			},
-			keyID:          uuid.New(),
+			keyName:        "test-key",
 			expectedErr:    errors.New("key not found"),
 			expectedStatus: "error",
 		},
@@ -388,10 +388,10 @@ func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUseCase := tokenizationMocks.NewMockTokenizationKeyUseCase(t)
 			mockMetrics := &mockBusinessMetrics{}
-			// Generate a fresh UUID for each test to pass to mock setup
-			testKeyID := uuid.New()
+			// Generate a fresh key name for each test to pass to mock setup
+			testKeyName := tt.keyName
 			mockUseCase.EXPECT().
-				Delete(mock.Anything, testKeyID).
+				Delete(mock.Anything, testKeyName).
 				Return(tt.expectedErr).
 				Once()
 			mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenization_key_delete", tt.expectedStatus).
@@ -401,7 +401,7 @@ func TestTokenizationKeyUseCaseWithMetrics_Delete(t *testing.T) {
 
 			decorator := NewTokenizationKeyUseCaseWithMetrics(mockUseCase, mockMetrics)
 
-			err := decorator.Delete(context.Background(), testKeyID)
+			err := decorator.Delete(context.Background(), testKeyName)
 
 			if tt.expectedErr != nil {
 				assert.Error(t, err)

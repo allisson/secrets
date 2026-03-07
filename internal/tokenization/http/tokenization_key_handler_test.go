@@ -351,15 +351,15 @@ func TestTokenizationKeyHandler_DeleteHandler(t *testing.T) {
 	t.Run("Success_DeleteKey", func(t *testing.T) {
 		handler, mockUseCase := setupTestKeyHandler(t)
 
-		keyID := uuid.Must(uuid.NewV7())
+		keyName := "test-key"
 
 		mockUseCase.EXPECT().
-			Delete(mock.Anything, keyID).
+			Delete(mock.Anything, keyName).
 			Return(nil).
 			Once()
 
-		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyID.String(), nil)
-		c.Params = gin.Params{{Key: "id", Value: keyID.String()}}
+		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyName, nil)
+		c.Params = gin.Params{{Key: "name", Value: keyName}}
 
 		handler.DeleteHandler(c)
 
@@ -367,35 +367,18 @@ func TestTokenizationKeyHandler_DeleteHandler(t *testing.T) {
 		assert.Empty(t, w.Body.String())
 	})
 
-	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _ := setupTestKeyHandler(t)
-
-		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/invalid-uuid", nil)
-		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
-
-		handler.DeleteHandler(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
-		assert.Contains(t, response["message"], "invalid key ID format")
-	})
-
 	t.Run("Error_KeyNotFound", func(t *testing.T) {
 		handler, mockUseCase := setupTestKeyHandler(t)
 
-		keyID := uuid.Must(uuid.NewV7())
+		keyName := "non-existent-key"
 
 		mockUseCase.EXPECT().
-			Delete(mock.Anything, keyID).
+			Delete(mock.Anything, keyName).
 			Return(tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()
 
-		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyID.String(), nil)
-		c.Params = gin.Params{{Key: "id", Value: keyID.String()}}
+		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyName, nil)
+		c.Params = gin.Params{{Key: "name", Value: keyName}}
 
 		handler.DeleteHandler(c)
 
@@ -405,16 +388,16 @@ func TestTokenizationKeyHandler_DeleteHandler(t *testing.T) {
 	t.Run("Error_UseCaseError", func(t *testing.T) {
 		handler, mockUseCase := setupTestKeyHandler(t)
 
-		keyID := uuid.Must(uuid.NewV7())
+		keyName := "test-key"
 		dbError := errors.New("database error")
 
 		mockUseCase.EXPECT().
-			Delete(mock.Anything, keyID).
+			Delete(mock.Anything, keyName).
 			Return(dbError).
 			Once()
 
-		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyID.String(), nil)
-		c.Params = gin.Params{{Key: "id", Value: keyID.String()}}
+		c, w := createTestContext(http.MethodDelete, "/v1/tokenization/keys/"+keyName, nil)
+		c.Params = gin.Params{{Key: "name", Value: keyName}}
 
 		handler.DeleteHandler(c)
 

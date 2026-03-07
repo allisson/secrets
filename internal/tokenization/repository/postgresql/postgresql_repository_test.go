@@ -293,7 +293,7 @@ func TestPostgreSQLTokenizationKeyRepository_Delete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete the key
-	err = repo.Delete(ctx, key.ID)
+	err = repo.Delete(ctx, key.Name)
 	require.NoError(t, err)
 
 	// Verify soft delete - key should not be found

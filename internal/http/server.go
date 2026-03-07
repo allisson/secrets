@@ -398,7 +398,7 @@ func (s *Server) registerTokenizationRoutes(
 			)
 
 			// Delete tokenization key
-			keys.DELETE("/:id",
+			keys.DELETE("/:name",
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				tokenizationKeyHandler.DeleteHandler,
 			)

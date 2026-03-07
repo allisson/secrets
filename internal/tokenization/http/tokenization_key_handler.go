@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	"github.com/allisson/secrets/internal/httputil"
 	"github.com/allisson/secrets/internal/tokenization/http/dto"
@@ -140,21 +139,21 @@ func (h *TokenizationKeyHandler) RotateHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// DeleteHandler soft-deletes a tokenization key by ID.
-// DELETE /v1/tokenization/keys/:id - Requires DeleteCapability.
+// DeleteHandler soft-deletes a tokenization key by name.
+// DELETE /v1/tokenization/keys/:name - Requires DeleteCapability.
 // Returns 204 No Content on success.
 func (h *TokenizationKeyHandler) DeleteHandler(c *gin.Context) {
-	// Parse and validate UUID
-	keyID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	// Get key name from URL parameter
+	name := c.Param("name")
+	if name == "" {
 		httputil.HandleBadRequestGin(c,
-			fmt.Errorf("invalid key ID format: must be a valid UUID"),
+			fmt.Errorf("key name is required"),
 			h.logger)
 		return
 	}
 
 	// Call use case
-	if err := h.keyUseCase.Delete(c.Request.Context(), keyID); err != nil {
+	if err := h.keyUseCase.Delete(c.Request.Context(), name); err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}

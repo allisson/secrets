@@ -547,11 +547,11 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		keyID := uuid.Must(uuid.NewV7())
+		keyName := "test-key"
 
 		// Setup expectations
 		mockTokenizationKeyRepo.EXPECT().
-			Delete(ctx, keyID).
+			Delete(ctx, keyName).
 			Return(nil).
 			Once()
 
@@ -563,7 +563,7 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 			mockKeyManager,
 			kekChain,
 		)
-		err := uc.Delete(ctx, keyID)
+		err := uc.Delete(ctx, keyName)
 
 		// Assert
 		assert.NoError(t, err)
@@ -581,12 +581,12 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 		kekChain := tokenizationTesting.CreateKekChain(masterKey)
 		defer kekChain.Close()
 
-		keyID := uuid.Must(uuid.NewV7())
+		keyName := "test-key"
 		expectedError := errors.New("database error")
 
 		// Setup expectations
 		mockTokenizationKeyRepo.EXPECT().
-			Delete(ctx, keyID).
+			Delete(ctx, keyName).
 			Return(expectedError).
 			Once()
 
@@ -598,7 +598,7 @@ func TestTokenizationKeyUseCase_Delete(t *testing.T) {
 			mockKeyManager,
 			kekChain,
 		)
-		err := uc.Delete(ctx, keyID)
+		err := uc.Delete(ctx, keyName)
 
 		// Assert
 		assert.Error(t, err)

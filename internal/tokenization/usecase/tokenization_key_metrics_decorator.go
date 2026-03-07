@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/metrics"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
@@ -73,9 +71,9 @@ func (t *tokenizationKeyUseCaseWithMetrics) Rotate(
 }
 
 // Delete records metrics for tokenization key deletion operations.
-func (t *tokenizationKeyUseCaseWithMetrics) Delete(ctx context.Context, tokenizationKeyID uuid.UUID) error {
+func (t *tokenizationKeyUseCaseWithMetrics) Delete(ctx context.Context, name string) error {
 	start := time.Now()
-	err := t.next.Delete(ctx, tokenizationKeyID)
+	err := t.next.Delete(ctx, name)
 
 	status := "success"
 	if err != nil {

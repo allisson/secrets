@@ -21,7 +21,7 @@ type DekRepository interface {
 // TokenizationKeyRepository defines the interface for tokenization key persistence.
 type TokenizationKeyRepository interface {
 	Create(ctx context.Context, key *tokenizationDomain.TokenizationKey) error
-	Delete(ctx context.Context, keyID uuid.UUID) error
+	Delete(ctx context.Context, name string) error
 	Get(ctx context.Context, keyID uuid.UUID) (*tokenizationDomain.TokenizationKey, error)
 	GetByName(ctx context.Context, name string) (*tokenizationDomain.TokenizationKey, error)
 	GetByNameAndVersion(
@@ -88,8 +88,8 @@ type TokenizationKeyUseCase interface {
 		alg cryptoDomain.Algorithm,
 	) (*tokenizationDomain.TokenizationKey, error)
 
-	// Delete soft deletes a tokenization key and all its versions by key ID.
-	Delete(ctx context.Context, keyID uuid.UUID) error
+	// Delete soft deletes a tokenization key and all its versions by name.
+	Delete(ctx context.Context, name string) error
 
 	// GetByName retrieves a single tokenization key by its name.
 	// Returns the latest version for the key. Filters out soft-deleted keys.
