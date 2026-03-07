@@ -13,9 +13,8 @@ Add the `GetByName` functionality to the use case layer.
 Expose the new functionality through a REST endpoint.
 
 - [x] Task: Add `GetByNameHandler` to `TokenizationKeyHandler`. 7e55e0d
-- [~] Task: Register the new route `GET /v1/tokenization/keys/:name`.
-    - File: `internal/app/di_tokenization.go`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: HTTP Layer' (Protocol in workflow.md)
+- [x] Task: Register the new route `GET /v1/tokenization/keys/:name`. b8170b6
+- [~] Task: Conductor - User Manual Verification 'Phase 2: HTTP Layer' (Protocol in workflow.md)
 
 ## Phase 3: Integration and Documentation
 Ensure end-to-end functionality and update documentation.
