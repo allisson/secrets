@@ -124,7 +124,7 @@ func (p *PostgreSQLTransitKeyRepository) GetByNameAndVersion(
 	return &transitKey, nil
 }
 
-// GetTransitKey retrieves a transit key version by name and optional version (0 for latest), 
+// GetTransitKey retrieves a transit key version by name and optional version (0 for latest),
 // including its associated encryption algorithm. Returns ErrTransitKeyNotFound if not found.
 func (p *PostgreSQLTransitKeyRepository) GetTransitKey(
 	ctx context.Context,

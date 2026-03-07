@@ -28,7 +28,11 @@ type TransitKeyUseCase interface {
 
 	// Get retrieves transit key metadata (including its algorithm) by name and optional version.
 	// If version is 0, the latest version is retrieved.
-	Get(ctx context.Context, name string, version uint) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error)
+	Get(
+		ctx context.Context,
+		name string,
+		version uint,
+	) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error)
 
 	// Delete soft deletes a transit key and all its versions by transit key ID.
 	Delete(ctx context.Context, transitKeyID uuid.UUID) error

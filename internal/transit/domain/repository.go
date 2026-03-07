@@ -32,7 +32,7 @@ type TransitKeyRepository interface {
 	// GetByNameAndVersion retrieves a specific version of a transit key. Returns ErrTransitKeyNotFound if not found.
 	GetByNameAndVersion(ctx context.Context, name string, version uint) (*TransitKey, error)
 
-	// GetTransitKey retrieves a transit key version by name and optional version (0 for latest), 
+	// GetTransitKey retrieves a transit key version by name and optional version (0 for latest),
 	// including its associated encryption algorithm. Returns ErrTransitKeyNotFound if not found.
 	GetTransitKey(ctx context.Context, name string, version uint) (*TransitKey, cryptoDomain.Algorithm, error)
 

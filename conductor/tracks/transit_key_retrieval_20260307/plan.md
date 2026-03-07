@@ -14,12 +14,12 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Use Case Layer' (Protocol in workflow.md) 0418b36
 
 ## Phase 3: HTTP API Implementation
-- [ ] Task: Create `GetTransitKeyHandler` in `internal/transit/http/transit_key_handler.go`.
-- [ ] Task: Register the new route `GET /api/v1/transit/keys/:name` in `internal/transit/http/router.go`.
-- [ ] Task: Write unit tests for `GetTransitKeyHandler` in `internal/transit/http/transit_key_handler_test.go`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: HTTP API Implementation' (Protocol in workflow.md)
+- [x] Task: Create `GetTransitKeyHandler` in `internal/transit/http/transit_key_handler.go`. 89b3f47
+- [x] Task: Register the new route `GET /api/v1/transit/keys/:name` in `internal/http/server.go`. 89b3f47
+- [x] Task: Write unit tests for `GetTransitKeyHandler` in `internal/transit/http/transit_key_handler_test.go`. 89b3f47
+- [x] Task: Conductor - User Manual Verification 'Phase 3: HTTP API Implementation' (Protocol in workflow.md) 89b3f47
 
 ## Phase 4: Documentation
-- [ ] Task: Update `docs/engines/transit.md` to document the new key retrieval capability.
-- [ ] Task: Update `docs/openapi.yaml` to include the `GET /api/v1/transit/keys/:name` endpoint.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Documentation' (Protocol in workflow.md)
+- [x] Task: Update `docs/engines/transit.md` to document the new key retrieval capability. e14b2ad
+- [x] Task: Update `docs/openapi.yaml` to include the `GET /api/v1/transit/keys/:name` endpoint. e14b2ad
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Documentation' (Protocol in workflow.md) e14b2ad

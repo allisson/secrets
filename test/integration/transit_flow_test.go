@@ -75,8 +75,22 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				transitKeyID = parsedID
 			})
 
-			// [2/8] Test POST /v1/transit/keys/:name/encrypt - Encrypt with transit key
-			t.Run("02_Encrypt", func(t *testing.T) {
+			// [2/11] Test GET /v1/transit/keys/:name - Get transit key
+			t.Run("02_GetTransitKey", func(t *testing.T) {
+				resp, body := ctx.makeRequest(t, http.MethodGet, "/v1/transit/keys/"+transitKeyName, nil, true)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response transitDTO.TransitKeyMetadataResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Equal(t, transitKeyName, response.Name)
+				assert.Equal(t, "aes-gcm", response.Type)
+				assert.Equal(t, uint(1), response.Version)
+				assert.False(t, response.CreatedAt.IsZero())
+			})
+
+			// [3/11] Test POST /v1/transit/keys/:name/encrypt - Encrypt with transit key
+			t.Run("03_Encrypt", func(t *testing.T) {
 				requestBody := transitDTO.EncryptRequest{
 					Plaintext: base64.StdEncoding.EncodeToString(plaintext1),
 				}
@@ -180,8 +194,20 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, uint(2), response.Version) // Version should increment to 2
 			})
 
-			// [6/8] Test POST /v1/transit/keys/:name/encrypt - Encrypt with rotated key (version 2)
-			t.Run("06_EncryptWithRotatedKey", func(t *testing.T) {
+			// [7/11] Test GET /v1/transit/keys/:name?version=1 - Get specific version
+			t.Run("07_GetSpecificVersion", func(t *testing.T) {
+				resp, body := ctx.makeRequest(t, http.MethodGet, "/v1/transit/keys/"+transitKeyName+"?version=1", nil, true)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response transitDTO.TransitKeyMetadataResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Equal(t, transitKeyName, response.Name)
+				assert.Equal(t, uint(1), response.Version)
+			})
+
+			// [8/11] Test POST /v1/transit/keys/:name/encrypt - Encrypt with rotated key (version 2)
+			t.Run("08_EncryptWithRotatedKey", func(t *testing.T) {
 				requestBody := transitDTO.EncryptRequest{
 					Plaintext: base64.StdEncoding.EncodeToString(plaintext1),
 				}
@@ -208,8 +234,8 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.NotEqual(t, ciphertext1, ciphertextV2)
 			})
 
-			// [7/8] Test POST /v1/transit/keys/:name/decrypt - Decrypt old ciphertext (backward compatibility)
-			t.Run("07_DecryptOldCiphertext", func(t *testing.T) {
+			// [9/11] Test POST /v1/transit/keys/:name/decrypt - Decrypt old ciphertext (backward compatibility)
+			t.Run("09_DecryptOldCiphertext", func(t *testing.T) {
 				requestBody := transitDTO.DecryptRequest{
 					Ciphertext: ciphertext1, // Use version 1 ciphertext
 				}
@@ -235,8 +261,8 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, plaintext1, decoded)
 			})
 
-			// [8/8] Test AEAD Context
-			t.Run("08_AEADContext", func(t *testing.T) {
+			// [10/11] Test AEAD Context
+			t.Run("10_AEADContext", func(t *testing.T) {
 				contextAAD := []byte("integration-test-context")
 				wrongContext := []byte("wrong-context")
 
@@ -296,8 +322,8 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
 			})
 
-			// [9/9] Test DELETE /v1/transit/keys/:id - Delete transit key
-			t.Run("09_DeleteTransitKey", func(t *testing.T) {
+			// [11/11] Test DELETE /v1/transit/keys/:id - Delete transit key
+			t.Run("11_DeleteTransitKey", func(t *testing.T) {
 				resp, body := ctx.makeRequest(
 					t,
 					http.MethodDelete,
@@ -309,7 +335,8 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Empty(t, body)
 			})
 
-			t.Logf("All 9 transit endpoint tests passed for %s", tc.dbDriver)
+			t.Logf("All 11 transit endpoint tests passed for %s", tc.dbDriver)
+
 		})
 	}
 }
