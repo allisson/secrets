@@ -2,12 +2,12 @@
 
 This plan outlines the steps to add a new endpoint `GET /v1/tokenization/keys/:name` to retrieve a single tokenization key by its name.
 
-## Phase 1: Domain and Use Case Layer
+## Phase 1: Domain and Use Case Layer [checkpoint: 7385039]
 Add the `GetByName` functionality to the use case layer.
 
 - [x] Task: Add `GetByName` to `TokenizationKeyUseCase` interface. 2fe4a7a
 - [x] Task: Implement `GetByName` in `tokenizationKeyUseCase` struct. 3ae4bf7
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Domain and Use Case Layer' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Domain and Use Case Layer' (Protocol in workflow.md) d906fd8
 
 ## Phase 2: HTTP Layer
 Expose the new functionality through a REST endpoint.
