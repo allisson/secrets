@@ -293,9 +293,10 @@ func (a *auditLogUseCaseWithMetrics) ListCursor(
 	afterID *uuid.UUID,
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
+	clientID *uuid.UUID,
 ) ([]*authDomain.AuditLog, error) {
 	start := time.Now()
-	logs, err := a.next.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	logs, err := a.next.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 
 	status := "success"
 	if err != nil {

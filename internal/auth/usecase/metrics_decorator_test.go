@@ -124,4 +124,26 @@ func TestAuditLogUseCaseWithMetrics(t *testing.T) {
 		mockNext.AssertExpectations(t)
 		mockMetrics.AssertExpectations(t)
 	})
+
+	t.Run("List success", func(t *testing.T) {
+		afterID := uuid.New()
+		clientID := uuid.New()
+		from := time.Now().Add(-1 * time.Hour)
+		to := time.Now()
+		expectedLogs := []*authDomain.AuditLog{{ID: uuid.New()}}
+
+		mockNext.On("ListCursor", ctx, &afterID, 50, &from, &to, &clientID).
+			Return(expectedLogs, nil).
+			Once()
+		mockMetrics.On("RecordOperation", ctx, "auth", "audit_log_list", "success").Return().Once()
+		mockMetrics.On("RecordDuration", ctx, "auth", "audit_log_list", mock.AnythingOfType("time.Duration"), "success").
+			Return().
+			Once()
+
+		res, err := uc.ListCursor(ctx, &afterID, 50, &from, &to, &clientID)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedLogs, res)
+		mockNext.AssertExpectations(t)
+		mockMetrics.AssertExpectations(t)
+	})
 }

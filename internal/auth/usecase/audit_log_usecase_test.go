@@ -48,8 +48,9 @@ func (m *mockAuditLogRepository) ListCursor(
 	afterID *uuid.UUID,
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
+	clientID *uuid.UUID,
 ) ([]*authDomain.AuditLog, error) {
-	args := m.Called(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	args := m.Called(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -449,6 +450,67 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 		assert.Equal(t, int64(0), count)
 		assert.Contains(t, err.Error(), "failed to delete old audit logs")
 		assert.Contains(t, err.Error(), "database connection failed")
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuditLogUseCase_ListCursor(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success_ListWithAllFilters", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		afterID := uuid.Must(uuid.NewV7())
+		limit := 50
+		from := time.Now().Add(-1 * time.Hour)
+		to := time.Now()
+		clientID := uuid.Must(uuid.NewV7())
+
+		expectedLogs := []*authDomain.AuditLog{{ID: uuid.New()}}
+
+		mockRepo.On("ListCursor", ctx, &afterID, limit, &from, &to, &clientID).
+			Return(expectedLogs, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+
+		logs, err := useCase.ListCursor(ctx, &afterID, limit, &from, &to, &clientID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, expectedLogs, logs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Success_ListWithNilFilters", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		mockRepo.On("ListCursor", ctx, (*uuid.UUID)(nil), 10, (*time.Time)(nil), (*time.Time)(nil), (*uuid.UUID)(nil)).
+			Return([]*authDomain.AuditLog{}, nil).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+
+		logs, err := useCase.ListCursor(ctx, nil, 10, nil, nil, nil)
+
+		assert.NoError(t, err)
+		assert.Empty(t, logs)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Error_RepositoryFailure", func(t *testing.T) {
+		mockRepo := &mockAuditLogRepository{}
+
+		mockRepo.On("ListCursor", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, errors.New("db error")).
+			Once()
+
+		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+
+		logs, err := useCase.ListCursor(ctx, nil, 10, nil, nil, nil)
+
+		assert.Error(t, err)
+		assert.Nil(t, logs)
+		assert.Contains(t, err.Error(), "failed to list audit logs with cursor")
 		mockRepo.AssertExpectations(t)
 	})
 }

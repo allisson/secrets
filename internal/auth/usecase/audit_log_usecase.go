@@ -82,14 +82,16 @@ func (a *auditLogUseCase) Create(
 // ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
 // and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
 // Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// Accepts clientID as an optional filter (nil means no filter).
 // All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
 func (a *auditLogUseCase) ListCursor(
 	ctx context.Context,
 	afterID *uuid.UUID,
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
+	clientID *uuid.UUID,
 ) ([]*authDomain.AuditLog, error) {
-	auditLogs, err := a.auditLogRepo.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	auditLogs, err := a.auditLogRepo.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list audit logs with cursor")
 	}
@@ -160,7 +162,7 @@ func (a *auditLogUseCase) VerifyBatch(
 
 	for {
 		// Retrieve logs in time range
-		logs, err := a.auditLogRepo.ListCursor(ctx, afterID, pageSize, &startTime, &endTime)
+		logs, err := a.auditLogRepo.ListCursor(ctx, afterID, pageSize, &startTime, &endTime, nil)
 		if err != nil {
 			return nil, apperrors.Wrap(err, "failed to list audit logs")
 		}
