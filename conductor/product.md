@@ -17,7 +17,7 @@ To provide a secure, developer-friendly, and lightweight secrets management plat
 - **Tokenization Engine:** Format-preserving tokens for sensitive data types like credit card numbers.
 - **Auth Token Revocation:** Immediate invalidation of authentication tokens (single or client-wide) with full state management.
 - **Client Secret Rotation:** Self-service and administrative rotation of client secrets with automatic auth token revocation.
-- **Audit Logs:** HMAC-signed audit trails capturing every access attempt and policy evaluation.
+- **Audit Logs:** HMAC-signed audit trails capturing every access attempt and policy evaluation, with support for advanced filtering by client and date range.
 - **KMS Integration:** Native support for AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault.
 
 ## Strategic Priorities
