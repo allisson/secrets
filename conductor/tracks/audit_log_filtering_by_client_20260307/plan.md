@@ -12,7 +12,7 @@
     - [x] Create migration `000007_add_audit_log_client_id_index`.
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) a640ed9
 
-## Phase 2: Use Case Layer Update
+## Phase 2: Use Case Layer Update [checkpoint: b9f7b38]
 - [x] Task: Update `AuditLogUseCase` interface in `internal/auth/usecase/interface.go` to include `clientID *uuid.UUID` in `ListCursor`. 97bee6d
 - [x] Task: Update `auditLogUseCase` in `internal/auth/usecase/audit_log_usecase.go`. 991c9dd
     - [x] Update `ListCursor` to pass `clientID` to the repository.
@@ -20,7 +20,7 @@
 - [x] Task: Update `auditLogUseCaseWithMetrics` decorator in `internal/auth/usecase/metrics_decorator.go`. 991c9dd
     - [x] Update `ListCursor` signature and implementation.
     - [x] Update tests in `internal/auth/usecase/metrics_decorator_test.go`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) b9f7b38
 
 ## Phase 3: HTTP Handler Layer Update
 - [ ] Task: Update `AuditLogHandler.ListHandler` in `internal/auth/http/audit_log_handler.go`.
