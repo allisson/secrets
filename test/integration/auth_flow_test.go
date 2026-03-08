@@ -374,7 +374,81 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 				assert.NotEmpty(t, newTokenResponse.Token)
 			})
 
-			t.Logf("All 11 auth endpoint tests passed for %s", tc.dbDriver)
+			// [12/12] Test GET /v1/audit-logs - Filter by client ID
+			t.Run("12_AuditLogFilteringByClient", func(t *testing.T) {
+				// Create another client to have logs for a different client
+				clientRequest := authDTO.CreateClientRequest{
+					Name:     "Another Client",
+					IsActive: true,
+					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
+				}
+				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/clients", clientRequest, true)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var clientResponse authDTO.CreateClientResponse
+				err := json.Unmarshal(body, &clientResponse)
+				require.NoError(t, err)
+				anotherClientID := clientResponse.ID
+				anotherClientSecret := clientResponse.Secret
+
+				// Issue token for another client
+				issueRequest := authDTO.IssueTokenRequest{
+					ClientID:     anotherClientID,
+					ClientSecret: anotherClientSecret,
+				}
+				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
+				require.Equal(t, http.StatusCreated, resp.StatusCode)
+				var tokenResponse authDTO.IssueTokenResponse
+				json.Unmarshal(body, &tokenResponse)
+				anotherToken := tokenResponse.Token
+
+				// Perform an action with another client (GET self)
+				req, _ := http.NewRequest(http.MethodGet, ctx.server.URL+"/v1/clients/"+anotherClientID, nil)
+				req.Header.Set("Authorization", "Bearer "+anotherToken)
+				resp, err = http.DefaultClient.Do(req)
+				require.NoError(t, err)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				// List audit logs filtered by the another client (using root token)
+				resp, body = ctx.makeRequest(
+					t,
+					http.MethodGet,
+					"/v1/audit-logs?client_id="+anotherClientID,
+					nil,
+					true,
+				)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				var response authDTO.ListAuditLogsResponse
+				err = json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.NotEmpty(t, response.Data)
+
+				// All returned logs should belong to anotherClientID
+				for _, log := range response.Data {
+					assert.Equal(t, anotherClientID, log.ClientID)
+				}
+
+				// List audit logs filtered by root client
+				resp, body = ctx.makeRequest(
+					t,
+					http.MethodGet,
+					"/v1/audit-logs?client_id="+ctx.rootClient.ID.String(),
+					nil,
+					true,
+				)
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+				err = json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.NotEmpty(t, response.Data)
+
+				for _, log := range response.Data {
+					assert.Equal(t, ctx.rootClient.ID.String(), log.ClientID)
+				}
+			})
+
+			t.Logf("All 12 auth endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }
