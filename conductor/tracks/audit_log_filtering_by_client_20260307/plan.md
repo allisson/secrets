@@ -22,13 +22,13 @@
     - [x] Update tests in `internal/auth/usecase/metrics_decorator_test.go`.
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) b9f7b38
 
-## Phase 3: HTTP Handler Layer Update
+## Phase 3: HTTP Handler Layer Update [checkpoint: c2c5e8a]
 - [x] Task: Update `AuditLogHandler.ListHandler` in `internal/auth/http/audit_log_handler.go`. 4ef8ee2
     - [x] Parse `client_id` query parameter.
     - [x] Validate `client_id` is a valid UUID.
     - [x] Pass `clientID` to the use case.
     - [x] Update/Add tests in `internal/auth/http/audit_log_handler_test.go`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) c2c5e8a
 
 ## Phase 4: Documentation and Integration Testing
 - [ ] Task: Update Documentation.
