@@ -52,9 +52,13 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 	if clientIDStr := c.Query("client_id"); clientIDStr != "" {
 		parsed, err := uuid.Parse(clientIDStr)
 		if err != nil {
-			httputil.HandleBadRequestGin(c,
-				fmt.Errorf("invalid client_id format: must be a valid UUID (e.g., 550e8400-e29b-41d4-a716-446655440000)"),
-				h.logger)
+			httputil.HandleBadRequestGin(
+				c,
+				fmt.Errorf(
+					"invalid client_id format: must be a valid UUID (e.g., 550e8400-e29b-41d4-a716-446655440000)",
+				),
+				h.logger,
+			)
 			return
 		}
 		clientID = &parsed
