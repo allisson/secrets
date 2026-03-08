@@ -13,13 +13,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) a640ed9
 
 ## Phase 2: Use Case Layer Update
-- [ ] Task: Update `AuditLogUseCase` interface in `internal/auth/usecase/interface.go` to include `clientID *uuid.UUID` in `ListCursor`.
-- [ ] Task: Update `auditLogUseCase` in `internal/auth/usecase/audit_log_usecase.go`.
-    - [ ] Update `ListCursor` to pass `clientID` to the repository.
-    - [ ] Update/Add tests in `internal/auth/usecase/audit_log_usecase_test.go`.
-- [ ] Task: Update `auditLogUseCaseWithMetrics` decorator in `internal/auth/usecase/metrics_decorator.go`.
-    - [ ] Update `ListCursor` signature and implementation.
-    - [ ] Update tests in `internal/auth/usecase/metrics_decorator_test.go`.
+- [x] Task: Update `AuditLogUseCase` interface in `internal/auth/usecase/interface.go` to include `clientID *uuid.UUID` in `ListCursor`. 97bee6d
+- [x] Task: Update `auditLogUseCase` in `internal/auth/usecase/audit_log_usecase.go`. 991c9dd
+    - [x] Update `ListCursor` to pass `clientID` to the repository.
+    - [x] Update/Add tests in `internal/auth/usecase/audit_log_usecase_test.go`.
+- [x] Task: Update `auditLogUseCaseWithMetrics` decorator in `internal/auth/usecase/metrics_decorator.go`. 991c9dd
+    - [x] Update `ListCursor` signature and implementation.
+    - [x] Update tests in `internal/auth/usecase/metrics_decorator_test.go`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: HTTP Handler Layer Update
