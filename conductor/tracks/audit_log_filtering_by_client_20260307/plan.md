@@ -31,9 +31,9 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) c2c5e8a
 
 ## Phase 4: Documentation and Integration Testing
-- [ ] Task: Update Documentation.
-    - [ ] Document `client_id` filter in `docs/observability/audit-logs.md`.
-    - [ ] Update `docs/openapi.yaml` with the new query parameter.
-- [ ] Task: Update Integration Tests.
-    - [ ] Add audit log filtering test case in `test/integration/auth_flow_test.go`.
+- [x] Task: Update Documentation. bf60d39
+    - [x] Document `client_id` filter in `docs/observability/audit-logs.md`.
+    - [x] Update `docs/openapi.yaml` with the new query parameter.
+- [x] Task: Update Integration Tests. bf60d39
+    - [x] Add audit log filtering test case in `test/integration/auth_flow_test.go`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
