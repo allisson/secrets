@@ -1,13 +1,15 @@
 # Implementation Plan: Add Audit Log Filtering by Client
 
 ## Phase 1: Repository Layer Update
-- [ ] Task: Update `AuditLogRepository` interface in `internal/auth/usecase/interface.go` to include `clientID *uuid.UUID` in `ListCursor`.
-- [ ] Task: Update `PostgreSQLAuditLogRepository` in `internal/auth/repository/postgresql/postgresql_audit_log_repository.go`.
-    - [ ] Update `ListCursor` to support `client_id` filtering.
-    - [ ] Update/Add tests in `internal/auth/repository/postgresql/postgresql_audit_log_repository_test.go`.
-- [ ] Task: Update `MySQLAuditLogRepository` in `internal/auth/repository/mysql/mysql_audit_log_repository.go`.
-    - [ ] Update `ListCursor` to support `client_id` filtering.
-    - [ ] Update/Add tests in `internal/auth/repository/mysql/mysql_audit_log_repository_test.go`.
+- [x] Task: Update `AuditLogRepository` interface in `internal/auth/usecase/interface.go` to include `clientID *uuid.UUID` in `ListCursor`. 97bee6d
+- [x] Task: Update `PostgreSQLAuditLogRepository` in `internal/auth/repository/postgresql/postgresql_audit_log_repository.go`. 8501e96
+    - [x] Update `ListCursor` to support `client_id` filtering.
+    - [x] Update/Add tests in `internal/auth/repository/postgresql/postgresql_audit_log_repository_test.go`.
+- [x] Task: Update `MySQLAuditLogRepository` in `internal/auth/repository/mysql/mysql_audit_log_repository.go`. 8501e96
+    - [x] Update `ListCursor` to support `client_id` filtering.
+    - [x] Update/Add tests in `internal/auth/repository/mysql/mysql_audit_log_repository_test.go`.
+- [x] Task: Add database index for `client_id` in `audit_logs` table. c606ac9
+    - [x] Create migration `000007_add_audit_log_client_id_index`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Use Case Layer Update
