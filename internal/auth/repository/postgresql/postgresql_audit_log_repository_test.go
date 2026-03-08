@@ -353,7 +353,7 @@ func TestPostgreSQLAuditLogRepository_ListCursor_FirstPage(t *testing.T) {
 	}
 
 	// First page with no cursor (limit 3)
-	logs, err := repo.ListCursor(ctx, nil, 3, nil, nil)
+	logs, err := repo.ListCursor(ctx, nil, 3, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Len(t, logs, 3)
 
@@ -391,13 +391,13 @@ func TestPostgreSQLAuditLogRepository_ListCursor_SubsequentPages(t *testing.T) {
 	}
 
 	// First page (no cursor, limit 3)
-	page1, err := repo.ListCursor(ctx, nil, 3, nil, nil)
+	page1, err := repo.ListCursor(ctx, nil, 3, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, page1, 3)
 
 	// Second page (use last ID from page1 as cursor)
 	lastIDPage1 := page1[len(page1)-1].ID
-	page2, err := repo.ListCursor(ctx, &lastIDPage1, 3, nil, nil)
+	page2, err := repo.ListCursor(ctx, &lastIDPage1, 3, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, page2, 3)
 
@@ -410,7 +410,7 @@ func TestPostgreSQLAuditLogRepository_ListCursor_SubsequentPages(t *testing.T) {
 
 	// Third page (use last ID from page2 as cursor)
 	lastIDPage2 := page2[len(page2)-1].ID
-	page3, err := repo.ListCursor(ctx, &lastIDPage2, 3, nil, nil)
+	page3, err := repo.ListCursor(ctx, &lastIDPage2, 3, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, page3, 3)
 
@@ -427,7 +427,7 @@ func TestPostgreSQLAuditLogRepository_ListCursor_EmptyResult(t *testing.T) {
 	ctx := context.Background()
 
 	// List with no data
-	logs, err := repo.ListCursor(ctx, nil, 10, nil, nil)
+	logs, err := repo.ListCursor(ctx, nil, 10, nil, nil, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, logs)
 	assert.Len(t, logs, 0)
@@ -462,7 +462,7 @@ func TestPostgreSQLAuditLogRepository_ListCursor_WithFilters(t *testing.T) {
 
 	// Filter: created_at >= (now - 2 hours)
 	filterFrom := now.Add(-2 * time.Hour)
-	logs, err := repo.ListCursor(ctx, nil, 10, &filterFrom, nil)
+	logs, err := repo.ListCursor(ctx, nil, 10, &filterFrom, nil, nil)
 	require.NoError(t, err)
 	assert.LessOrEqual(t, len(logs), 3) // Should get logs from 0, -1, -2 hours
 
@@ -470,4 +470,67 @@ func TestPostgreSQLAuditLogRepository_ListCursor_WithFilters(t *testing.T) {
 	for _, log := range logs {
 		assert.True(t, log.CreatedAt.After(filterFrom) || log.CreatedAt.Equal(filterFrom))
 	}
+}
+
+func TestPostgreSQLAuditLogRepository_ListCursor_ByClientID(t *testing.T) {
+	db := testutil.SetupPostgresDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupPostgresDB(t, db)
+
+	repo := NewPostgreSQLAuditLogRepository(db)
+	ctx := context.Background()
+
+	// Create test clients
+	clientID1 := testutil.CreateTestClient(t, db, "postgres", "client-1")
+	clientID2 := testutil.CreateTestClient(t, db, "postgres", "client-2")
+
+	// Create logs for client 1
+	for i := 0; i < 3; i++ {
+		auditLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   clientID1,
+			Capability: authDomain.ReadCapability,
+			Path:       "/secrets/client1",
+			CreatedAt:  time.Now().UTC(),
+		}
+		require.NoError(t, repo.Create(ctx, auditLog))
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	// Create logs for client 2
+	for i := 0; i < 2; i++ {
+		auditLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   clientID2,
+			Capability: authDomain.ReadCapability,
+			Path:       "/secrets/client2",
+			CreatedAt:  time.Now().UTC(),
+		}
+		require.NoError(t, repo.Create(ctx, auditLog))
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	// Filter by client 1
+	logs, err := repo.ListCursor(ctx, nil, 10, nil, nil, &clientID1)
+	require.NoError(t, err)
+	assert.Len(t, logs, 3)
+	for _, log := range logs {
+		assert.Equal(t, clientID1, log.ClientID)
+	}
+
+	// Filter by client 2
+	logs, err = repo.ListCursor(ctx, nil, 10, nil, nil, &clientID2)
+	require.NoError(t, err)
+	assert.Len(t, logs, 2)
+	for _, log := range logs {
+		assert.Equal(t, clientID2, log.ClientID)
+	}
+
+	// Filter by non-existent client ID
+	nonExistentClientID := uuid.New()
+	logs, err = repo.ListCursor(ctx, nil, 10, nil, nil, &nonExistentClientID)
+	require.NoError(t, err)
+	assert.Len(t, logs, 0)
 }
