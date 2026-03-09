@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -313,7 +312,6 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 			ctx := setupIntegrationTest(t, tc.dbDriver)
 			defer teardownIntegrationTest(t, ctx)
 
-			var transitKeyID uuid.UUID
 			keyName := "test-delete-key"
 			plaintext := []byte("test-data")
 			plaintextB64 := base64.StdEncoding.EncodeToString(plaintext)
@@ -332,11 +330,6 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
 				assert.Equal(t, keyName, response.Name)
-
-				// Store key ID for deletion (API requires ID, not name)
-				parsedID, err := uuid.Parse(response.ID)
-				require.NoError(t, err)
-				transitKeyID = parsedID
 			})
 
 			// [2] Encrypt some data successfully
@@ -349,9 +342,9 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 				assert.Equal(t, http.StatusOK, resp.StatusCode, "encrypt should work before deletion")
 			})
 
-			// [3] Delete the key by ID (not name - API requires UUID)
+			// [3] Delete the key by name
 			t.Run("03_DeleteKey", func(t *testing.T) {
-				resp, _ := ctx.makeRequest(t, http.MethodDelete, "/v1/transit/keys/"+transitKeyID.String(), nil, true)
+				resp, _ := ctx.makeRequest(t, http.MethodDelete, "/v1/transit/keys/"+keyName, nil, true)
 				assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 			})
 

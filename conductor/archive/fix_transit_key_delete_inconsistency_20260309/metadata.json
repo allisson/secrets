@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_transit_key_delete_inconsistency_20260309",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-03-09T12:00:00Z",
+  "updated_at": "2026-03-09T12:00:00Z",
+  "description": "Fix Transit Key Delete Endpoint Inconsistency (DELETE /v1/transit/keys/:id` uses UUID while all other transit endpoints use `:name`. Make it consistent)"
+}

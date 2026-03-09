@@ -5,8 +5,6 @@ package usecase
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
@@ -34,8 +32,8 @@ type TransitKeyUseCase interface {
 		version uint,
 	) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error)
 
-	// Delete soft deletes a transit key and all its versions by transit key ID.
-	Delete(ctx context.Context, transitKeyID uuid.UUID) error
+	// Delete soft deletes a transit key and all its versions by name.
+	Delete(ctx context.Context, name string) error
 
 	// Encrypt encrypts plaintext using the latest version of the named transit key.
 	// Optional context (AAD) can be provided for additional security.

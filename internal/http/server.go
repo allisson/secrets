@@ -335,7 +335,7 @@ func (s *Server) registerTransitRoutes(
 			)
 
 			// Delete transit key
-			keys.DELETE("/:id",
+			keys.DELETE("/:name",
 				authHTTP.AuthorizationMiddleware(authDomain.DeleteCapability, auditLogUseCase, s.logger),
 				transitKeyHandler.DeleteHandler,
 			)

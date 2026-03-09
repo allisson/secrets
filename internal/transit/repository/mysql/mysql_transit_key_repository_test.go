@@ -143,30 +143,29 @@ func TestMySQLTransitKeyRepository_Delete(t *testing.T) {
 
 	dekID := createTestDekMySQL(t, db)
 
-	// Create a transit key
-	transitKey := &transitDomain.TransitKey{
-		ID:        uuid.Must(uuid.NewV7()),
-		Name:      "test-key",
-		Version:   1,
-		DekID:     dekID,
-		CreatedAt: time.Now().UTC(),
+	// Create multiple versions of a transit key
+	name := "test-key"
+	for i := 1; i <= 3; i++ {
+		transitKey := &transitDomain.TransitKey{
+			ID:        uuid.Must(uuid.NewV7()),
+			Name:      name,
+			Version:   uint(i),
+			DekID:     dekID,
+			CreatedAt: time.Now().UTC(),
+		}
+		require.NoError(t, repo.Create(ctx, transitKey))
 	}
-	err := repo.Create(ctx, transitKey)
+
+	// Delete the transit key by name (soft delete all versions)
+	err := repo.Delete(ctx, name)
 	require.NoError(t, err)
 
-	// Delete the transit key (soft delete)
-	err = repo.Delete(ctx, transitKey.ID)
+	// Verify all versions have deleted_at set
+	var count int
+	query := `SELECT COUNT(*) FROM transit_keys WHERE name = ? AND deleted_at IS NOT NULL`
+	err = db.QueryRowContext(ctx, query, name).Scan(&count)
 	require.NoError(t, err)
-
-	// Verify the key still exists but has deleted_at set
-	var deletedAt *time.Time
-	transitKeyIDBytes, err := transitKey.ID.MarshalBinary()
-	require.NoError(t, err)
-
-	query := `SELECT deleted_at FROM transit_keys WHERE id = ?`
-	err = db.QueryRowContext(ctx, query, transitKeyIDBytes).Scan(&deletedAt)
-	require.NoError(t, err)
-	assert.NotNil(t, deletedAt, "deleted_at should be set after soft delete")
+	assert.Equal(t, 3, count, "all 3 versions should be soft-deleted")
 }
 
 func TestMySQLTransitKeyRepository_GetByName_Success(t *testing.T) {
@@ -281,40 +280,42 @@ func TestMySQLTransitKeyRepository_GetByName_IgnoresDeletedKeys(t *testing.T) {
 
 	dekID := createTestDekMySQL(t, db)
 
-	// Create version 1
-	key1 := &transitDomain.TransitKey{
+	// Create version 1 of key A
+	key1A := &transitDomain.TransitKey{
 		ID:        uuid.Must(uuid.NewV7()),
-		Name:      "deleted-key-test",
+		Name:      "key-A",
 		Version:   1,
 		DekID:     dekID,
 		CreatedAt: time.Now().UTC(),
 	}
-	err := repo.Create(ctx, key1)
+	err := repo.Create(ctx, key1A)
 	require.NoError(t, err)
 
-	// Create version 2
-	time.Sleep(time.Millisecond)
-	key2 := &transitDomain.TransitKey{
+	// Create version 1 of key B
+	key1B := &transitDomain.TransitKey{
 		ID:        uuid.Must(uuid.NewV7()),
-		Name:      "deleted-key-test",
-		Version:   2,
+		Name:      "key-B",
+		Version:   1,
 		DekID:     dekID,
 		CreatedAt: time.Now().UTC(),
 	}
-	err = repo.Create(ctx, key2)
+	err = repo.Create(ctx, key1B)
 	require.NoError(t, err)
 
-	// Delete version 2 (the latest)
-	err = repo.Delete(ctx, key2.ID)
+	// Delete key B
+	err = repo.Delete(ctx, "key-B")
 	require.NoError(t, err)
 
-	// GetByName should return version 1 (since version 2 is deleted)
-	retrievedKey, err := repo.GetByName(ctx, "deleted-key-test")
-	require.NoError(t, err)
-	require.NotNil(t, retrievedKey)
+	// GetByName for key B should return not found
+	retrievedKeyB, err := repo.GetByName(ctx, "key-B")
+	assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
+	assert.Nil(t, retrievedKeyB)
 
-	assert.Equal(t, uint(1), retrievedKey.Version)
-	assert.Equal(t, key1.ID, retrievedKey.ID)
+	// GetByName for key A should still return version 1
+	retrievedKeyA, err := repo.GetByName(ctx, "key-A")
+	require.NoError(t, err)
+	require.NotNil(t, retrievedKeyA)
+	assert.Equal(t, "key-A", retrievedKeyA.Name)
 }
 
 func TestMySQLTransitKeyRepository_GetByName_AllVersionsDeleted(t *testing.T) {
@@ -328,9 +329,10 @@ func TestMySQLTransitKeyRepository_GetByName_AllVersionsDeleted(t *testing.T) {
 	dekID := createTestDekMySQL(t, db)
 
 	// Create a transit key
+	name := "all-deleted-test"
 	transitKey := &transitDomain.TransitKey{
 		ID:        uuid.Must(uuid.NewV7()),
-		Name:      "all-deleted-test",
+		Name:      name,
 		Version:   1,
 		DekID:     dekID,
 		CreatedAt: time.Now().UTC(),
@@ -338,12 +340,12 @@ func TestMySQLTransitKeyRepository_GetByName_AllVersionsDeleted(t *testing.T) {
 	err := repo.Create(ctx, transitKey)
 	require.NoError(t, err)
 
-	// Delete the key
-	err = repo.Delete(ctx, transitKey.ID)
+	// Delete the key by name
+	err = repo.Delete(ctx, name)
 	require.NoError(t, err)
 
 	// GetByName should return not found error
-	retrievedKey, err := repo.GetByName(ctx, "all-deleted-test")
+	retrievedKey, err := repo.GetByName(ctx, name)
 	assert.Error(t, err)
 	assert.Nil(t, retrievedKey)
 	assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
@@ -427,12 +429,8 @@ func TestMySQLTransitKeyRepository_Delete_WithTransaction(t *testing.T) {
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
 
-	// Marshal UUID
-	id, err := transitKey.ID.MarshalBinary()
-	require.NoError(t, err)
-
 	// Delete within transaction
-	_, err = tx.ExecContext(ctx, `UPDATE transit_keys SET deleted_at = NOW() WHERE id = ?`, id)
+	_, err = tx.ExecContext(ctx, `UPDATE transit_keys SET deleted_at = NOW() WHERE name = ?`, transitKey.Name)
 	require.NoError(t, err)
 
 	// Rollback transaction
@@ -705,8 +703,8 @@ func TestMySQLTransitKeyRepository_GetByNameAndVersion_IgnoresDeletedKeys(t *tes
 	err = repo.Create(ctx, key2)
 	require.NoError(t, err)
 
-	// Delete version 2
-	err = repo.Delete(ctx, key2.ID)
+	// Delete version 2 (and 1)
+	err = repo.Delete(ctx, "deleted-version-test")
 	require.NoError(t, err)
 
 	// GetByNameAndVersion should not find version 2 (it's deleted)
@@ -715,12 +713,11 @@ func TestMySQLTransitKeyRepository_GetByNameAndVersion_IgnoresDeletedKeys(t *tes
 	assert.Nil(t, retrievedKey)
 	assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
 
-	// GetByNameAndVersion should still find version 1 (not deleted)
+	// GetByNameAndVersion should also not find version 1 (it's also deleted)
 	retrievedKey, err = repo.GetByNameAndVersion(ctx, "deleted-version-test", 1)
-	require.NoError(t, err)
-	require.NotNil(t, retrievedKey)
-	assert.Equal(t, uint(1), retrievedKey.Version)
-	assert.Equal(t, key1.ID, retrievedKey.ID)
+	assert.Error(t, err)
+	assert.Nil(t, retrievedKey)
+	assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
 }
 
 func TestMySQLTransitKeyRepository_GetByNameAndVersion_WithTransaction(t *testing.T) {

@@ -671,11 +671,11 @@ func TestTransitKeyUseCase_Delete(t *testing.T) {
 		kekChain := createTestKekChain(kek.ID, kek)
 		defer kekChain.Close()
 
-		transitKeyID := uuid.Must(uuid.NewV7())
+		name := "test-key"
 
 		// Setup expectations
 		mockTransitRepo.EXPECT().
-			Delete(ctx, transitKeyID).
+			Delete(ctx, name).
 			Return(nil).
 			Once()
 
@@ -683,7 +683,7 @@ func TestTransitKeyUseCase_Delete(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		err := uc.Delete(ctx, transitKeyID)
+		err := uc.Delete(ctx, name)
 
 		// Assert
 		assert.NoError(t, err)
@@ -702,12 +702,12 @@ func TestTransitKeyUseCase_Delete(t *testing.T) {
 		kekChain := createTestKekChain(kek.ID, kek)
 		defer kekChain.Close()
 
-		transitKeyID := uuid.Must(uuid.NewV7())
+		name := "test-key"
 		expectedError := errors.New("database error")
 
 		// Setup expectations
 		mockTransitRepo.EXPECT().
-			Delete(ctx, transitKeyID).
+			Delete(ctx, name).
 			Return(expectedError).
 			Once()
 
@@ -715,7 +715,7 @@ func TestTransitKeyUseCase_Delete(t *testing.T) {
 		uc := NewTransitKeyUseCase(
 			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
 		)
-		err := uc.Delete(ctx, transitKeyID)
+		err := uc.Delete(ctx, name)
 
 		// Assert
 		assert.Error(t, err)

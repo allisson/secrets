@@ -107,7 +107,7 @@ Endpoint capability intent (quick map, condensed from [Capability matrix](../con
 | --- | --- |
 | `GET /v1/clients`, `GET /v1/audit-logs`, `POST /v1/tokenization/validate` | `read` |
 | `POST /v1/clients`, `PUT /v1/clients/:id`, `POST /v1/transit/keys`, `POST /v1/tokenization/keys` | `write` |
-| `DELETE /v1/token`, `DELETE /v1/clients/:id/tokens`, `DELETE /v1/clients/:id`, `DELETE /v1/transit/keys/:id`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/revoke` | `delete` |
+| `DELETE /v1/token`, `DELETE /v1/clients/:id/tokens`, `DELETE /v1/clients/:id`, `DELETE /v1/transit/keys/:name`, `DELETE /v1/tokenization/keys/:id`, `POST /v1/tokenization/revoke` | `delete` |
 | `POST /v1/secrets/*path`, `POST /v1/transit/keys/:name/encrypt`, `POST /v1/tokenization/keys/:name/tokenize` | `encrypt` |
 | `GET /v1/secrets/*path`, `POST /v1/transit/keys/:name/decrypt`, `POST /v1/tokenization/detokenize` | `decrypt` |
 | `POST /v1/transit/keys/:name/rotate`, `POST /v1/tokenization/keys/:name/rotate` | `rotate` |

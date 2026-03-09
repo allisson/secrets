@@ -23,8 +23,8 @@ type TransitKeyRepository interface {
 	// Create stores a new transit key in the repository using transaction support from context.
 	Create(ctx context.Context, transitKey *TransitKey) error
 
-	// Delete soft deletes a transit key by marking it with DeletedAt timestamp.
-	Delete(ctx context.Context, transitKeyID uuid.UUID) error
+	// Delete soft deletes all versions of a transit key by name, marking them with DeletedAt timestamp.
+	Delete(ctx context.Context, name string) error
 
 	// GetByName retrieves the latest version of a transit key by name. Returns ErrTransitKeyNotFound if not found.
 	GetByName(ctx context.Context, name string) (*TransitKey, error)

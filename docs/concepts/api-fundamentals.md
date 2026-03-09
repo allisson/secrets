@@ -63,7 +63,7 @@ First place to look:
 - `GET /v1/transit/keys` requires `read`
 - `POST /v1/transit/keys` requires `write`
 - `POST /v1/transit/keys/:name/rotate` requires `rotate`
-- `DELETE /v1/transit/keys/:id` requires `delete`
+- `DELETE /v1/transit/keys/:name` requires `delete`
 - `POST /v1/transit/keys/:name/encrypt` requires `encrypt`
 - `POST /v1/transit/keys/:name/decrypt` requires `decrypt`
 - `GET /v1/tokenization/keys` requires `read`
@@ -109,7 +109,7 @@ This section is the canonical capability-to-endpoint reference used by API docs 
 | `GET /v1/transit/keys` | `read` |
 | `POST /v1/transit/keys` | `write` |
 | `POST /v1/transit/keys/:name/rotate` | `rotate` |
-| `DELETE /v1/transit/keys/:id` | `delete` |
+| `DELETE /v1/transit/keys/:name` | `delete` |
 | `POST /v1/transit/keys/:name/encrypt` | `encrypt` |
 | `POST /v1/transit/keys/:name/decrypt` | `decrypt` |
 | `GET /v1/tokenization/keys` | `read` |

@@ -251,16 +251,16 @@ func (_c *MockTransitKeyRepository_Create_Call) RunAndReturn(run func(ctx contex
 }
 
 // Delete provides a mock function for the type MockTransitKeyRepository
-func (_mock *MockTransitKeyRepository) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
-	ret := _mock.Called(ctx, transitKeyID)
+func (_mock *MockTransitKeyRepository) Delete(ctx context.Context, name string) error {
+	ret := _mock.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, transitKeyID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, name)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -274,20 +274,20 @@ type MockTransitKeyRepository_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - transitKeyID uuid.UUID
-func (_e *MockTransitKeyRepository_Expecter) Delete(ctx interface{}, transitKeyID interface{}) *MockTransitKeyRepository_Delete_Call {
-	return &MockTransitKeyRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, transitKeyID)}
+//   - name string
+func (_e *MockTransitKeyRepository_Expecter) Delete(ctx interface{}, name interface{}) *MockTransitKeyRepository_Delete_Call {
+	return &MockTransitKeyRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, name)}
 }
 
-func (_c *MockTransitKeyRepository_Delete_Call) Run(run func(ctx context.Context, transitKeyID uuid.UUID)) *MockTransitKeyRepository_Delete_Call {
+func (_c *MockTransitKeyRepository_Delete_Call) Run(run func(ctx context.Context, name string)) *MockTransitKeyRepository_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -302,7 +302,7 @@ func (_c *MockTransitKeyRepository_Delete_Call) Return(err error) *MockTransitKe
 	return _c
 }
 
-func (_c *MockTransitKeyRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, transitKeyID uuid.UUID) error) *MockTransitKeyRepository_Delete_Call {
+func (_c *MockTransitKeyRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, name string) error) *MockTransitKeyRepository_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -857,16 +857,16 @@ func (_c *MockTransitKeyUseCase_Decrypt_Call) RunAndReturn(run func(ctx context.
 }
 
 // Delete provides a mock function for the type MockTransitKeyUseCase
-func (_mock *MockTransitKeyUseCase) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
-	ret := _mock.Called(ctx, transitKeyID)
+func (_mock *MockTransitKeyUseCase) Delete(ctx context.Context, name string) error {
+	ret := _mock.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, transitKeyID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, name)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -880,20 +880,20 @@ type MockTransitKeyUseCase_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - transitKeyID uuid.UUID
-func (_e *MockTransitKeyUseCase_Expecter) Delete(ctx interface{}, transitKeyID interface{}) *MockTransitKeyUseCase_Delete_Call {
-	return &MockTransitKeyUseCase_Delete_Call{Call: _e.mock.On("Delete", ctx, transitKeyID)}
+//   - name string
+func (_e *MockTransitKeyUseCase_Expecter) Delete(ctx interface{}, name interface{}) *MockTransitKeyUseCase_Delete_Call {
+	return &MockTransitKeyUseCase_Delete_Call{Call: _e.mock.On("Delete", ctx, name)}
 }
 
-func (_c *MockTransitKeyUseCase_Delete_Call) Run(run func(ctx context.Context, transitKeyID uuid.UUID)) *MockTransitKeyUseCase_Delete_Call {
+func (_c *MockTransitKeyUseCase_Delete_Call) Run(run func(ctx context.Context, name string)) *MockTransitKeyUseCase_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -908,7 +908,7 @@ func (_c *MockTransitKeyUseCase_Delete_Call) Return(err error) *MockTransitKeyUs
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Delete_Call) RunAndReturn(run func(ctx context.Context, transitKeyID uuid.UUID) error) *MockTransitKeyUseCase_Delete_Call {
+func (_c *MockTransitKeyUseCase_Delete_Call) RunAndReturn(run func(ctx context.Context, name string) error) *MockTransitKeyUseCase_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }

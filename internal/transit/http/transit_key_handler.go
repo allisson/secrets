@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	"github.com/allisson/secrets/internal/httputil"
 	"github.com/allisson/secrets/internal/transit/http/dto"
@@ -119,21 +118,23 @@ func (h *TransitKeyHandler) RotateHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// DeleteHandler soft deletes a transit key by ID.
-// DELETE /v1/transit/keys/:id - Requires DeleteCapability on path /v1/transit/keys/:id.
+// DeleteHandler soft deletes a transit key by name.
+// DELETE /v1/transit/keys/:name - Requires DeleteCapability on path /v1/transit/keys/:name.
 // Returns 204 No Content.
 func (h *TransitKeyHandler) DeleteHandler(c *gin.Context) {
-	// Parse and validate UUID
-	transitKeyID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		httputil.HandleBadRequestGin(c,
-			fmt.Errorf("invalid transit key ID format: must be a valid UUID"),
-			h.logger)
+	// Extract and validate name from URL parameter
+	name := c.Param("name")
+	if name == "" {
+		httputil.HandleBadRequestGin(
+			c,
+			fmt.Errorf("transit key name cannot be empty"),
+			h.logger,
+		)
 		return
 	}
 
 	// Call use case
-	if err := h.transitKeyUseCase.Delete(c.Request.Context(), transitKeyID); err != nil {
+	if err := h.transitKeyUseCase.Delete(c.Request.Context(), name); err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
