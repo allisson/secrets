@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/metrics"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
@@ -86,9 +84,9 @@ func (t *transitKeyUseCaseWithMetrics) Get(
 }
 
 // Delete records metrics for transit key deletion operations.
-func (t *transitKeyUseCaseWithMetrics) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
+func (t *transitKeyUseCaseWithMetrics) Delete(ctx context.Context, name string) error {
 	start := time.Now()
-	err := t.next.Delete(ctx, transitKeyID)
+	err := t.next.Delete(ctx, name)
 
 	status := "success"
 	if err != nil {

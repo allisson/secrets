@@ -160,9 +160,9 @@ func (t *transitKeyUseCase) Get(
 	return t.transitRepo.GetTransitKey(ctx, name, version)
 }
 
-// Delete soft-deletes a transit key by setting its deleted_at timestamp.
-func (t *transitKeyUseCase) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
-	return t.transitRepo.Delete(ctx, transitKeyID)
+// Delete soft-deletes all versions of a transit key by name.
+func (t *transitKeyUseCase) Delete(ctx context.Context, name string) error {
+	return t.transitRepo.Delete(ctx, name)
 }
 
 // Encrypt encrypts plaintext using the latest version of a named transit key.

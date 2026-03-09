@@ -311,18 +311,18 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 }
 
 func TestTransitKeyHandler_DeleteHandler(t *testing.T) {
-	t.Run("Success_ValidUUID", func(t *testing.T) {
+	t.Run("Success_ValidName", func(t *testing.T) {
 		handler, mockUseCase := setupTestTransitKeyHandler(t)
 
-		transitKeyID := uuid.Must(uuid.NewV7())
+		name := "test-key"
 
 		mockUseCase.EXPECT().
-			Delete(mock.Anything, transitKeyID).
+			Delete(mock.Anything, name).
 			Return(nil).
 			Once()
 
-		c, w := createTestContext(http.MethodDelete, fmt.Sprintf("/v1/transit/keys/%s", transitKeyID), nil)
-		c.Params = gin.Params{gin.Param{Key: "id", Value: transitKeyID.String()}}
+		c, w := createTestContext(http.MethodDelete, fmt.Sprintf("/v1/transit/keys/%s", name), nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: name}}
 
 		handler.DeleteHandler(c)
 
@@ -330,34 +330,18 @@ func TestTransitKeyHandler_DeleteHandler(t *testing.T) {
 		assert.Empty(t, w.Body.String())
 	})
 
-	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _ := setupTestTransitKeyHandler(t)
-
-		c, w := createTestContext(http.MethodDelete, "/v1/transit/keys/invalid-uuid", nil)
-		c.Params = gin.Params{gin.Param{Key: "id", Value: "invalid-uuid"}}
-
-		handler.DeleteHandler(c)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "bad_request", response["error"])
-	})
-
 	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
 		handler, mockUseCase := setupTestTransitKeyHandler(t)
 
-		transitKeyID := uuid.Must(uuid.NewV7())
+		name := "nonexistent-key"
 
 		mockUseCase.EXPECT().
-			Delete(mock.Anything, transitKeyID).
+			Delete(mock.Anything, name).
 			Return(transitDomain.ErrTransitKeyNotFound).
 			Once()
 
-		c, w := createTestContext(http.MethodDelete, fmt.Sprintf("/v1/transit/keys/%s", transitKeyID), nil)
-		c.Params = gin.Params{gin.Param{Key: "id", Value: transitKeyID.String()}}
+		c, w := createTestContext(http.MethodDelete, fmt.Sprintf("/v1/transit/keys/%s", name), nil)
+		c.Params = gin.Params{gin.Param{Key: "name", Value: name}}
 
 		handler.DeleteHandler(c)
 

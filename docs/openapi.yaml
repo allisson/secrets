@@ -520,6 +520,28 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [transit]
+      summary: Delete transit key
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Transit key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/transit/keys/{name}/rotate:
     post:
       tags: [transit]
@@ -545,36 +567,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransitKeyResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          description: Transit key not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          $ref: "#/components/responses/ValidationError"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
-  /v1/transit/keys/{id}:
-    delete:
-      tags: [transit]
-      summary: Delete transit key
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: Deleted
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

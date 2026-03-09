@@ -8,8 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -47,13 +45,13 @@ func (p *PostgreSQLTransitKeyRepository) Create(
 	return nil
 }
 
-// Delete soft-deletes a transit key by setting its deleted_at timestamp.
-func (p *PostgreSQLTransitKeyRepository) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
+// Delete soft-deletes all versions of a transit key by name.
+func (p *PostgreSQLTransitKeyRepository) Delete(ctx context.Context, name string) error {
 	querier := database.GetTx(ctx, p.db)
 
-	query := `UPDATE transit_keys SET deleted_at = NOW() WHERE id = $1`
+	query := `UPDATE transit_keys SET deleted_at = NOW() WHERE name = $1 AND deleted_at IS NULL`
 
-	_, err := querier.ExecContext(ctx, query, transitKeyID)
+	_, err := querier.ExecContext(ctx, query, name)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete transit key")
 	}

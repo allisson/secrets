@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,7 +41,6 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 			// Variables to store created resource IDs and encrypted data for later operations
 			var (
 				transitKeyName = "integration-test-transit-key"
-				transitKeyID   uuid.UUID
 				plaintext1     = []byte("transit-test-data-1")
 				plaintext2     = []byte("transit-test-data-2")
 				ciphertext1    string // Encrypted with version 1
@@ -68,11 +66,6 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, uint(1), response.Version)
 				assert.NotEmpty(t, response.DekID)
 				assert.False(t, response.CreatedAt.IsZero())
-
-				// Store transit key ID for later deletion
-				parsedID, err := uuid.Parse(response.ID)
-				require.NoError(t, err)
-				transitKeyID = parsedID
 			})
 
 			// [2/11] Test GET /v1/transit/keys/:name - Get transit key
@@ -322,12 +315,12 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
 			})
 
-			// [11/11] Test DELETE /v1/transit/keys/:id - Delete transit key
+			// [11/11] Test DELETE /v1/transit/keys/:name - Delete transit key
 			t.Run("11_DeleteTransitKey", func(t *testing.T) {
 				resp, body := ctx.makeRequest(
 					t,
 					http.MethodDelete,
-					"/v1/transit/keys/"+transitKeyID.String(),
+					"/v1/transit/keys/"+transitKeyName,
 					nil,
 					true,
 				)

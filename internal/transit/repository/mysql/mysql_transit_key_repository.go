@@ -6,8 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
@@ -52,18 +50,13 @@ func (m *MySQLTransitKeyRepository) Create(ctx context.Context, transitKey *tran
 	return nil
 }
 
-// Delete soft-deletes a transit key by setting its deleted_at timestamp.
-func (m *MySQLTransitKeyRepository) Delete(ctx context.Context, transitKeyID uuid.UUID) error {
+// Delete soft-deletes all versions of a transit key by name.
+func (m *MySQLTransitKeyRepository) Delete(ctx context.Context, name string) error {
 	querier := database.GetTx(ctx, m.db)
 
-	query := `UPDATE transit_keys SET deleted_at = NOW() WHERE id = ?`
+	query := `UPDATE transit_keys SET deleted_at = NOW() WHERE name = ? AND deleted_at IS NULL`
 
-	id, err := transitKeyID.MarshalBinary()
-	if err != nil {
-		return apperrors.Wrap(err, "failed to marshal transit key id")
-	}
-
-	_, err = querier.ExecContext(ctx, query, id)
+	_, err := querier.ExecContext(ctx, query, name)
 	if err != nil {
 		return apperrors.Wrap(err, "failed to delete transit key")
 	}

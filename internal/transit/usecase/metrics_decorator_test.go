@@ -154,18 +154,18 @@ func TestTransitKeyUseCaseWithMetrics_Delete(t *testing.T) {
 	uc := usecase.NewTransitKeyUseCaseWithMetrics(mockNext, mockMetrics)
 
 	ctx := context.Background()
-	transitKeyID := uuid.Must(uuid.NewV7())
+	name := "test-key"
 
 	t.Run("Delete_Success", func(t *testing.T) {
 		// Arrange
-		mockNext.EXPECT().Delete(ctx, transitKeyID).Return(nil).Once()
+		mockNext.EXPECT().Delete(ctx, name).Return(nil).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_key_delete", "success").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_key_delete", mock.AnythingOfType("time.Duration"), "success").
 			Return().
 			Once()
 
 		// Act
-		err := uc.Delete(ctx, transitKeyID)
+		err := uc.Delete(ctx, name)
 
 		// Assert
 		assert.NoError(t, err)
@@ -177,14 +177,14 @@ func TestTransitKeyUseCaseWithMetrics_Delete(t *testing.T) {
 		// Arrange
 		expectedErr := errors.New("deletion failed")
 
-		mockNext.EXPECT().Delete(ctx, transitKeyID).Return(expectedErr).Once()
+		mockNext.EXPECT().Delete(ctx, name).Return(expectedErr).Once()
 		mockMetrics.On("RecordOperation", ctx, "transit", "transit_key_delete", "error").Return().Once()
 		mockMetrics.On("RecordDuration", ctx, "transit", "transit_key_delete", mock.AnythingOfType("time.Duration"), "error").
 			Return().
 			Once()
 
 		// Act
-		err := uc.Delete(ctx, transitKeyID)
+		err := uc.Delete(ctx, name)
 
 		// Assert
 		assert.Error(t, err)
