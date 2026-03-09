@@ -110,6 +110,7 @@ func (p *PostgreSQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*
 // ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
 // and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
 // Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// Accepts clientID as an optional filter (nil means no filter).
 // All timestamps are expected in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
 // returning nil map for those entries. Limit is pre-validated (1-1000).
 func (p *PostgreSQLAuditLogRepository) ListCursor(
@@ -117,6 +118,7 @@ func (p *PostgreSQLAuditLogRepository) ListCursor(
 	afterID *uuid.UUID,
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
+	clientID *uuid.UUID,
 ) ([]*authDomain.AuditLog, error) {
 	querier := database.GetTx(ctx, p.db)
 
@@ -141,6 +143,12 @@ func (p *PostgreSQLAuditLogRepository) ListCursor(
 	if createdAtTo != nil {
 		conditions = append(conditions, fmt.Sprintf("created_at <= $%d", paramIndex))
 		args = append(args, *createdAtTo)
+		paramIndex++
+	}
+
+	if clientID != nil {
+		conditions = append(conditions, fmt.Sprintf("client_id = $%d", paramIndex))
+		args = append(args, *clientID)
 		paramIndex++
 	}
 

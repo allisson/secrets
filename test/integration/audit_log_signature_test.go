@@ -81,7 +81,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create audit log")
 
 				// Retrieve the created log
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 
@@ -114,7 +114,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create audit log")
 
 				// Retrieve the log
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 
@@ -168,7 +168,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err)
 
 				// List audit logs for this client and path
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 10, nil, nil)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 10, nil, nil, nil)
 				require.NoError(t, err)
 
 				var rotationLog *authDomain.AuditLog
@@ -249,7 +249,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 
 				// Get the created logs
 				endTime := time.Now().UTC().Add(1 * time.Second)
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 3, &startTime, &endTime)
+				logs, err := auditLogUseCase.ListCursor(ctx, nil, 3, &startTime, &endTime, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 3, "expected 3 audit logs")
 
@@ -305,7 +305,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				require.NoError(t, err, "failed to create legacy audit log")
 
 				// Retrieve the log
-				logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil)
+				logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
 				require.NoError(t, err, "failed to list audit logs")
 				require.Len(t, logs, 1, "expected exactly one audit log")
 

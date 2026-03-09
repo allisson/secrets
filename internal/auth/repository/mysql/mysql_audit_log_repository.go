@@ -162,6 +162,7 @@ func (m *MySQLAuditLogRepository) Get(ctx context.Context, id uuid.UUID) (*authD
 // ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
 // and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
 // Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+// Accepts clientID as an optional filter (nil means no filter).
 // All timestamps are expected in UTC. Returns empty slice if no audit logs found. Handles NULL metadata gracefully by
 // returning nil map for those entries. UUIDs are stored as BINARY(16) and must be unmarshaled. Limit is pre-validated (1-1000).
 func (m *MySQLAuditLogRepository) ListCursor(
@@ -169,6 +170,7 @@ func (m *MySQLAuditLogRepository) ListCursor(
 	afterID *uuid.UUID,
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
+	clientID *uuid.UUID,
 ) ([]*authDomain.AuditLog, error) {
 	querier := database.GetTx(ctx, m.db)
 
@@ -194,6 +196,15 @@ func (m *MySQLAuditLogRepository) ListCursor(
 	if createdAtTo != nil {
 		conditions = append(conditions, "created_at <= ?")
 		args = append(args, *createdAtTo)
+	}
+
+	if clientID != nil {
+		clientIDBinary, err := clientID.MarshalBinary()
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to marshal clientID to binary")
+		}
+		conditions = append(conditions, "client_id = ?")
+		args = append(args, clientIDBinary)
 	}
 
 	// Build query

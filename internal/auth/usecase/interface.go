@@ -73,12 +73,14 @@ type AuditLogRepository interface {
 	// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
 	// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
 	// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+	// Accepts clientID as an optional filter (nil means no filter).
 	// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
 	ListCursor(
 		ctx context.Context,
 		afterID *uuid.UUID,
 		limit int,
 		createdAtFrom, createdAtTo *time.Time,
+		clientID *uuid.UUID,
 	) ([]*authDomain.AuditLog, error)
 
 	// DeleteOlderThan removes audit logs with created_at before the specified timestamp.
@@ -209,12 +211,14 @@ type AuditLogUseCase interface {
 	// ListCursor retrieves audit logs ordered by created_at descending (newest first) with cursor-based pagination
 	// and optional time-based filtering. If afterID is provided, returns logs with ID greater than afterID (UUIDv7 ordering).
 	// Accepts createdAtFrom and createdAtTo as optional filters (nil means no filter). Both boundaries are inclusive (>= and <=).
+	// Accepts clientID as an optional filter (nil means no filter).
 	// All timestamps are expected in UTC. Returns empty slice if no audit logs found. Limit is pre-validated (1-1000).
 	ListCursor(
 		ctx context.Context,
 		afterID *uuid.UUID,
 		limit int,
 		createdAtFrom, createdAtTo *time.Time,
+		clientID *uuid.UUID,
 	) ([]*authDomain.AuditLog, error)
 
 	// DeleteOlderThan removes audit logs older than the specified number of days.

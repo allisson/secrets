@@ -30,6 +30,7 @@ graph TD
   - `limit` (default 50, max 100)
   - `created_at_from` (RFC3339)
   - `created_at_to` (RFC3339)
+  - `client_id` (UUID filter)
 
 ```bash
 curl "http://localhost:8080/v1/audit-logs?created_at_from=2026-02-27T00:00:00Z&limit=20" 

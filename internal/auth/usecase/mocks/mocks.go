@@ -1048,8 +1048,8 @@ func (_c *MockAuditLogRepository_Get_Call) RunAndReturn(run func(ctx context.Con
 }
 
 // ListCursor provides a mock function for the type MockAuditLogRepository
-func (_mock *MockAuditLogRepository) ListCursor(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error) {
-	ret := _mock.Called(ctx, afterID, limit, createdAtFrom, createdAtTo)
+func (_mock *MockAuditLogRepository) ListCursor(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID) ([]*domain.AuditLog, error) {
+	ret := _mock.Called(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListCursor")
@@ -1057,18 +1057,18 @@ func (_mock *MockAuditLogRepository) ListCursor(ctx context.Context, afterID *uu
 
 	var r0 []*domain.AuditLog
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) ([]*domain.AuditLog, error)); ok {
-		return returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) ([]*domain.AuditLog, error)); ok {
+		return returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) []*domain.AuditLog); ok {
-		r0 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) []*domain.AuditLog); ok {
+		r0 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*domain.AuditLog)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) error); ok {
-		r1 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1086,11 +1086,12 @@ type MockAuditLogRepository_ListCursor_Call struct {
 //   - limit int
 //   - createdAtFrom *time.Time
 //   - createdAtTo *time.Time
-func (_e *MockAuditLogRepository_Expecter) ListCursor(ctx interface{}, afterID interface{}, limit interface{}, createdAtFrom interface{}, createdAtTo interface{}) *MockAuditLogRepository_ListCursor_Call {
-	return &MockAuditLogRepository_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterID, limit, createdAtFrom, createdAtTo)}
+//   - clientID *uuid.UUID
+func (_e *MockAuditLogRepository_Expecter) ListCursor(ctx interface{}, afterID interface{}, limit interface{}, createdAtFrom interface{}, createdAtTo interface{}, clientID interface{}) *MockAuditLogRepository_ListCursor_Call {
+	return &MockAuditLogRepository_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)}
 }
 
-func (_c *MockAuditLogRepository_ListCursor_Call) Run(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time)) *MockAuditLogRepository_ListCursor_Call {
+func (_c *MockAuditLogRepository_ListCursor_Call) Run(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID)) *MockAuditLogRepository_ListCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1112,12 +1113,17 @@ func (_c *MockAuditLogRepository_ListCursor_Call) Run(run func(ctx context.Conte
 		if args[4] != nil {
 			arg4 = args[4].(*time.Time)
 		}
+		var arg5 *uuid.UUID
+		if args[5] != nil {
+			arg5 = args[5].(*uuid.UUID)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
 			arg4,
+			arg5,
 		)
 	})
 	return _c
@@ -1128,7 +1134,7 @@ func (_c *MockAuditLogRepository_ListCursor_Call) Return(auditLogs []*domain.Aud
 	return _c
 }
 
-func (_c *MockAuditLogRepository_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error)) *MockAuditLogRepository_ListCursor_Call {
+func (_c *MockAuditLogRepository_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID) ([]*domain.AuditLog, error)) *MockAuditLogRepository_ListCursor_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2139,8 +2145,8 @@ func (_c *MockAuditLogUseCase_DeleteOlderThan_Call) RunAndReturn(run func(ctx co
 }
 
 // ListCursor provides a mock function for the type MockAuditLogUseCase
-func (_mock *MockAuditLogUseCase) ListCursor(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error) {
-	ret := _mock.Called(ctx, afterID, limit, createdAtFrom, createdAtTo)
+func (_mock *MockAuditLogUseCase) ListCursor(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID) ([]*domain.AuditLog, error) {
+	ret := _mock.Called(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListCursor")
@@ -2148,18 +2154,18 @@ func (_mock *MockAuditLogUseCase) ListCursor(ctx context.Context, afterID *uuid.
 
 	var r0 []*domain.AuditLog
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) ([]*domain.AuditLog, error)); ok {
-		return returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) ([]*domain.AuditLog, error)); ok {
+		return returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) []*domain.AuditLog); ok {
-		r0 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) []*domain.AuditLog); ok {
+		r0 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*domain.AuditLog)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time) error); ok {
-		r1 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *uuid.UUID, int, *time.Time, *time.Time, *uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -2177,11 +2183,12 @@ type MockAuditLogUseCase_ListCursor_Call struct {
 //   - limit int
 //   - createdAtFrom *time.Time
 //   - createdAtTo *time.Time
-func (_e *MockAuditLogUseCase_Expecter) ListCursor(ctx interface{}, afterID interface{}, limit interface{}, createdAtFrom interface{}, createdAtTo interface{}) *MockAuditLogUseCase_ListCursor_Call {
-	return &MockAuditLogUseCase_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterID, limit, createdAtFrom, createdAtTo)}
+//   - clientID *uuid.UUID
+func (_e *MockAuditLogUseCase_Expecter) ListCursor(ctx interface{}, afterID interface{}, limit interface{}, createdAtFrom interface{}, createdAtTo interface{}, clientID interface{}) *MockAuditLogUseCase_ListCursor_Call {
+	return &MockAuditLogUseCase_ListCursor_Call{Call: _e.mock.On("ListCursor", ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)}
 }
 
-func (_c *MockAuditLogUseCase_ListCursor_Call) Run(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time)) *MockAuditLogUseCase_ListCursor_Call {
+func (_c *MockAuditLogUseCase_ListCursor_Call) Run(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID)) *MockAuditLogUseCase_ListCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2203,12 +2210,17 @@ func (_c *MockAuditLogUseCase_ListCursor_Call) Run(run func(ctx context.Context,
 		if args[4] != nil {
 			arg4 = args[4].(*time.Time)
 		}
+		var arg5 *uuid.UUID
+		if args[5] != nil {
+			arg5 = args[5].(*uuid.UUID)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
 			arg4,
+			arg5,
 		)
 	})
 	return _c
@@ -2219,7 +2231,7 @@ func (_c *MockAuditLogUseCase_ListCursor_Call) Return(auditLogs []*domain.AuditL
 	return _c
 }
 
-func (_c *MockAuditLogUseCase_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time) ([]*domain.AuditLog, error)) *MockAuditLogUseCase_ListCursor_Call {
+func (_c *MockAuditLogUseCase_ListCursor_Call) RunAndReturn(run func(ctx context.Context, afterID *uuid.UUID, limit int, createdAtFrom *time.Time, createdAtTo *time.Time, clientID *uuid.UUID) ([]*domain.AuditLog, error)) *MockAuditLogUseCase_ListCursor_Call {
 	_c.Call.Return(run)
 	return _c
 }

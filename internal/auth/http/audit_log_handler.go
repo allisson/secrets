@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/allisson/secrets/internal/auth/http/dto"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
@@ -32,17 +33,35 @@ func NewAuditLogHandler(
 }
 
 // ListHandler retrieves audit logs with cursor pagination and optional time-based filtering.
-// GET /v1/audit-logs?after_id=<uuid>&limit=50&created_at_from=2026-02-01T00:00:00Z&created_at_to=2026-02-14T23:59:59Z
+// GET /v1/audit-logs?after_id=<uuid>&limit=50&created_at_from=2026-02-01T00:00:00Z&created_at_to=2026-02-14T23:59:59Z&client_id=<uuid>
 // Requires ReadCapability on path /v1/audit-logs. Returns 200 OK with paginated audit log list
 // ordered by created_at descending (newest first). Accepts optional created_at_from and
 // created_at_to query parameters in RFC3339 format. Timestamps are converted to UTC. Both
 // boundaries are inclusive (>= and <=). Uses cursor-based pagination with after_id parameter.
+// Accepts optional client_id query parameter (UUID format).
 func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 	// Parse cursor and limit query parameters
 	afterID, limit, err := httputil.ParseUUIDCursorPagination(c, "after_id")
 	if err != nil {
 		httputil.HandleBadRequestGin(c, err, h.logger)
 		return
+	}
+
+	// Parse optional client_id query parameter
+	var clientID *uuid.UUID
+	if clientIDStr := c.Query("client_id"); clientIDStr != "" {
+		parsed, err := uuid.Parse(clientIDStr)
+		if err != nil {
+			httputil.HandleBadRequestGin(
+				c,
+				fmt.Errorf(
+					"invalid client_id format: must be a valid UUID (e.g., 550e8400-e29b-41d4-a716-446655440000)",
+				),
+				h.logger,
+			)
+			return
+		}
+		clientID = &parsed
 	}
 
 	// Parse optional created_at_from query parameter
@@ -88,6 +107,7 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 		limit+1,
 		createdAtFrom,
 		createdAtTo,
+		clientID,
 	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
