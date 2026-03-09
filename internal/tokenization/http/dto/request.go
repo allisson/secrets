@@ -84,6 +84,21 @@ func (r *TokenizeRequest) Validate() error {
 	)
 }
 
+// TokenizeBatchRequest contains the parameters for tokenizing multiple values.
+type TokenizeBatchRequest struct {
+	Items []TokenizeRequest `json:"items"`
+}
+
+// Validate checks if the tokenize batch request is valid.
+func (r *TokenizeBatchRequest) Validate() error {
+	return validation.ValidateStruct(r,
+		validation.Field(&r.Items,
+			validation.Required,
+			validation.Length(1, 100),
+		),
+	)
+}
+
 // DetokenizeRequest contains the parameters for detokenizing a value.
 type DetokenizeRequest struct {
 	Token string `json:"token"`
@@ -95,6 +110,22 @@ func (r *DetokenizeRequest) Validate() error {
 		validation.Field(&r.Token,
 			validation.Required,
 			customValidation.NotBlank,
+		),
+	)
+}
+
+// DetokenizeBatchRequest contains the parameters for detokenizing multiple values.
+type DetokenizeBatchRequest struct {
+	Tokens []string `json:"tokens"`
+}
+
+// Validate checks if the detokenize batch request is valid.
+func (r *DetokenizeBatchRequest) Validate() error {
+	return validation.ValidateStruct(r,
+		validation.Field(&r.Tokens,
+			validation.Required,
+			validation.Length(1, 100),
+			validation.Each(validation.Required, customValidation.NotBlank),
 		),
 	)
 }

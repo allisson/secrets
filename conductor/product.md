@@ -14,7 +14,7 @@ To provide a secure, developer-friendly, and lightweight secrets management plat
 ## Core Features
 - **Secret Management (Storage):** Versioned, envelope-encrypted storage with support for arbitrary key-value pairs and strict path validation.
 - **Transit Engine (EaaS):** On-the-fly encryption/decryption of application data without database storage.
-- **Tokenization Engine:** Format-preserving tokens for sensitive data types like credit card numbers.
+- **Tokenization Engine:** Format-preserving tokens for sensitive data types like credit card numbers, with support for atomic batch processing.
 - **Auth Token Revocation:** Immediate invalidation of authentication tokens (single or client-wide) with full state management.
 - **Client Secret Rotation:** Self-service and administrative rotation of client secrets with automatic auth token revocation.
 - **Audit Logs:** HMAC-signed audit trails capturing every access attempt and policy evaluation, with support for advanced filtering by client and date range.

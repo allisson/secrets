@@ -14,6 +14,7 @@ import (
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository/mysql"
+	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/testutil"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
@@ -762,3 +763,111 @@ func TestMySQLTokenizationKeyRepository_HardDelete(t *testing.T) {
 		assert.True(t, exists)
 	})
 }
+
+func TestMySQLTokenRepository_CreateBatch(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenRepository(db)
+	ctx := context.Background()
+
+	keyID := createTokenizationKeyMySQL(t, db)
+
+	tokens := []*tokenizationDomain.Token{
+		{
+			ID:                uuid.Must(uuid.NewV7()),
+			TokenizationKeyID: keyID,
+			Token:             "tok_batch1",
+			Ciphertext:        []byte("enc1"),
+			Nonce:             []byte("nonce1"),
+			CreatedAt:         time.Now().UTC(),
+		},
+		{
+			ID:                uuid.Must(uuid.NewV7()),
+			TokenizationKeyID: keyID,
+			Token:             "tok_batch2",
+			Ciphertext:        []byte("enc2"),
+			Nonce:             []byte("nonce2"),
+			CreatedAt:         time.Now().UTC(),
+		},
+	}
+
+	err := repo.CreateBatch(ctx, tokens)
+	require.NoError(t, err)
+
+	// Verify
+	for _, tok := range tokens {
+		retrieved, err := repo.GetByToken(ctx, tok.Token)
+		require.NoError(t, err)
+		assert.Equal(t, tok.ID, retrieved.ID)
+	}
+
+	// Test conflict
+	err = repo.CreateBatch(ctx, tokens)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+
+	// Test empty batch
+	err = repo.CreateBatch(ctx, []*tokenizationDomain.Token{})
+	assert.NoError(t, err)
+}
+
+func TestMySQLTokenRepository_GetBatchByTokens(t *testing.T) {
+	db := testutil.SetupMySQLDB(t)
+	defer testutil.TeardownDB(t, db)
+	defer testutil.CleanupMySQLDB(t, db)
+
+	repo := NewMySQLTokenRepository(db)
+	ctx := context.Background()
+
+	keyID := createTokenizationKeyMySQL(t, db)
+
+	tokens := []*tokenizationDomain.Token{
+		{
+			ID:                uuid.Must(uuid.NewV7()),
+			TokenizationKeyID: keyID,
+			Token:             "tok_get_batch1",
+			Ciphertext:        []byte("enc1"),
+			Nonce:             []byte("nonce1"),
+			CreatedAt:         time.Now().UTC(),
+		},
+		{
+			ID:                uuid.Must(uuid.NewV7()),
+			TokenizationKeyID: keyID,
+			Token:             "tok_get_batch2",
+			Ciphertext:        []byte("enc2"),
+			Nonce:             []byte("nonce2"),
+			CreatedAt:         time.Now().UTC(),
+		},
+	}
+
+	for _, tok := range tokens {
+		require.NoError(t, repo.Create(ctx, tok))
+	}
+
+	// Test GetBatchByTokens
+	tokenStrings := []string{"tok_get_batch1", "tok_get_batch2", "non-existent"}
+	retrieved, err := repo.GetBatchByTokens(ctx, tokenStrings)
+	require.NoError(t, err)
+	assert.Len(t, retrieved, 2)
+
+	found1 := false
+	found2 := false
+	for _, r := range retrieved {
+		if r.Token == "tok_get_batch1" {
+			found1 = true
+		}
+		if r.Token == "tok_get_batch2" {
+			found2 = true
+		}
+	}
+	assert.True(t, found1)
+	assert.True(t, found2)
+
+	// Test empty tokens
+	retrieved, err = repo.GetBatchByTokens(ctx, []string{})
+	require.NoError(t, err)
+	assert.Empty(t, retrieved)
+}
+

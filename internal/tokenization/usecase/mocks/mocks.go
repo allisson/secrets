@@ -897,6 +897,63 @@ func (_c *MockTokenRepository_Create_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// CreateBatch provides a mock function for the type MockTokenRepository
+func (_mock *MockTokenRepository) CreateBatch(ctx context.Context, tokens []*domain0.Token) error {
+	ret := _mock.Called(ctx, tokens)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBatch")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []*domain0.Token) error); ok {
+		r0 = returnFunc(ctx, tokens)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTokenRepository_CreateBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBatch'
+type MockTokenRepository_CreateBatch_Call struct {
+	*mock.Call
+}
+
+// CreateBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokens []*domain0.Token
+func (_e *MockTokenRepository_Expecter) CreateBatch(ctx interface{}, tokens interface{}) *MockTokenRepository_CreateBatch_Call {
+	return &MockTokenRepository_CreateBatch_Call{Call: _e.mock.On("CreateBatch", ctx, tokens)}
+}
+
+func (_c *MockTokenRepository_CreateBatch_Call) Run(run func(ctx context.Context, tokens []*domain0.Token)) *MockTokenRepository_CreateBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []*domain0.Token
+		if args[1] != nil {
+			arg1 = args[1].([]*domain0.Token)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_CreateBatch_Call) Return(err error) *MockTokenRepository_CreateBatch_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTokenRepository_CreateBatch_Call) RunAndReturn(run func(ctx context.Context, tokens []*domain0.Token) error) *MockTokenRepository_CreateBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteExpired provides a mock function for the type MockTokenRepository
 func (_mock *MockTokenRepository) DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error) {
 	ret := _mock.Called(ctx, olderThan)
@@ -959,6 +1016,74 @@ func (_c *MockTokenRepository_DeleteExpired_Call) Return(n int64, err error) *Mo
 }
 
 func (_c *MockTokenRepository_DeleteExpired_Call) RunAndReturn(run func(ctx context.Context, olderThan time.Time) (int64, error)) *MockTokenRepository_DeleteExpired_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBatchByTokens provides a mock function for the type MockTokenRepository
+func (_mock *MockTokenRepository) GetBatchByTokens(ctx context.Context, tokens []string) ([]*domain0.Token, error) {
+	ret := _mock.Called(ctx, tokens)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBatchByTokens")
+	}
+
+	var r0 []*domain0.Token
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) ([]*domain0.Token, error)); ok {
+		return returnFunc(ctx, tokens)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) []*domain0.Token); ok {
+		r0 = returnFunc(ctx, tokens)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.Token)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = returnFunc(ctx, tokens)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenRepository_GetBatchByTokens_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBatchByTokens'
+type MockTokenRepository_GetBatchByTokens_Call struct {
+	*mock.Call
+}
+
+// GetBatchByTokens is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokens []string
+func (_e *MockTokenRepository_Expecter) GetBatchByTokens(ctx interface{}, tokens interface{}) *MockTokenRepository_GetBatchByTokens_Call {
+	return &MockTokenRepository_GetBatchByTokens_Call{Call: _e.mock.On("GetBatchByTokens", ctx, tokens)}
+}
+
+func (_c *MockTokenRepository_GetBatchByTokens_Call) Run(run func(ctx context.Context, tokens []string)) *MockTokenRepository_GetBatchByTokens_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenRepository_GetBatchByTokens_Call) Return(tokens1 []*domain0.Token, err error) *MockTokenRepository_GetBatchByTokens_Call {
+	_c.Call.Return(tokens1, err)
+	return _c
+}
+
+func (_c *MockTokenRepository_GetBatchByTokens_Call) RunAndReturn(run func(ctx context.Context, tokens []string) ([]*domain0.Token, error)) *MockTokenRepository_GetBatchByTokens_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1807,6 +1932,82 @@ func (_c *MockTokenizationUseCase_Detokenize_Call) RunAndReturn(run func(ctx con
 	return _c
 }
 
+// DetokenizeBatch provides a mock function for the type MockTokenizationUseCase
+func (_mock *MockTokenizationUseCase) DetokenizeBatch(ctx context.Context, tokens []string) ([][]byte, []map[string]any, error) {
+	ret := _mock.Called(ctx, tokens)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DetokenizeBatch")
+	}
+
+	var r0 [][]byte
+	var r1 []map[string]any
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) ([][]byte, []map[string]any, error)); ok {
+		return returnFunc(ctx, tokens)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) [][]byte); ok {
+		r0 = returnFunc(ctx, tokens)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([][]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []string) []map[string]any); ok {
+		r1 = returnFunc(ctx, tokens)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]map[string]any)
+		}
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, []string) error); ok {
+		r2 = returnFunc(ctx, tokens)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockTokenizationUseCase_DetokenizeBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DetokenizeBatch'
+type MockTokenizationUseCase_DetokenizeBatch_Call struct {
+	*mock.Call
+}
+
+// DetokenizeBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tokens []string
+func (_e *MockTokenizationUseCase_Expecter) DetokenizeBatch(ctx interface{}, tokens interface{}) *MockTokenizationUseCase_DetokenizeBatch_Call {
+	return &MockTokenizationUseCase_DetokenizeBatch_Call{Call: _e.mock.On("DetokenizeBatch", ctx, tokens)}
+}
+
+func (_c *MockTokenizationUseCase_DetokenizeBatch_Call) Run(run func(ctx context.Context, tokens []string)) *MockTokenizationUseCase_DetokenizeBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenizationUseCase_DetokenizeBatch_Call) Return(plaintexts [][]byte, metadatas []map[string]any, err error) *MockTokenizationUseCase_DetokenizeBatch_Call {
+	_c.Call.Return(plaintexts, metadatas, err)
+	return _c
+}
+
+func (_c *MockTokenizationUseCase_DetokenizeBatch_Call) RunAndReturn(run func(ctx context.Context, tokens []string) ([][]byte, []map[string]any, error)) *MockTokenizationUseCase_DetokenizeBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Revoke provides a mock function for the type MockTokenizationUseCase
 func (_mock *MockTokenizationUseCase) Revoke(ctx context.Context, token string) error {
 	ret := _mock.Called(ctx, token)
@@ -1946,6 +2147,92 @@ func (_c *MockTokenizationUseCase_Tokenize_Call) Return(token *domain0.Token, er
 }
 
 func (_c *MockTokenizationUseCase_Tokenize_Call) RunAndReturn(run func(ctx context.Context, keyName string, plaintext []byte, metadata map[string]any, expiresAt *time.Time) (*domain0.Token, error)) *MockTokenizationUseCase_Tokenize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TokenizeBatch provides a mock function for the type MockTokenizationUseCase
+func (_mock *MockTokenizationUseCase) TokenizeBatch(ctx context.Context, keyName string, plaintexts [][]byte, metadatas []map[string]any, expiresAt *time.Time) ([]*domain0.Token, error) {
+	ret := _mock.Called(ctx, keyName, plaintexts, metadatas, expiresAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TokenizeBatch")
+	}
+
+	var r0 []*domain0.Token
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, [][]byte, []map[string]any, *time.Time) ([]*domain0.Token, error)); ok {
+		return returnFunc(ctx, keyName, plaintexts, metadatas, expiresAt)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, [][]byte, []map[string]any, *time.Time) []*domain0.Token); ok {
+		r0 = returnFunc(ctx, keyName, plaintexts, metadatas, expiresAt)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain0.Token)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, [][]byte, []map[string]any, *time.Time) error); ok {
+		r1 = returnFunc(ctx, keyName, plaintexts, metadatas, expiresAt)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockTokenizationUseCase_TokenizeBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TokenizeBatch'
+type MockTokenizationUseCase_TokenizeBatch_Call struct {
+	*mock.Call
+}
+
+// TokenizeBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keyName string
+//   - plaintexts [][]byte
+//   - metadatas []map[string]any
+//   - expiresAt *time.Time
+func (_e *MockTokenizationUseCase_Expecter) TokenizeBatch(ctx interface{}, keyName interface{}, plaintexts interface{}, metadatas interface{}, expiresAt interface{}) *MockTokenizationUseCase_TokenizeBatch_Call {
+	return &MockTokenizationUseCase_TokenizeBatch_Call{Call: _e.mock.On("TokenizeBatch", ctx, keyName, plaintexts, metadatas, expiresAt)}
+}
+
+func (_c *MockTokenizationUseCase_TokenizeBatch_Call) Run(run func(ctx context.Context, keyName string, plaintexts [][]byte, metadatas []map[string]any, expiresAt *time.Time)) *MockTokenizationUseCase_TokenizeBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 [][]byte
+		if args[2] != nil {
+			arg2 = args[2].([][]byte)
+		}
+		var arg3 []map[string]any
+		if args[3] != nil {
+			arg3 = args[3].([]map[string]any)
+		}
+		var arg4 *time.Time
+		if args[4] != nil {
+			arg4 = args[4].(*time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTokenizationUseCase_TokenizeBatch_Call) Return(tokens []*domain0.Token, err error) *MockTokenizationUseCase_TokenizeBatch_Call {
+	_c.Call.Return(tokens, err)
+	return _c
+}
+
+func (_c *MockTokenizationUseCase_TokenizeBatch_Call) RunAndReturn(run func(ctx context.Context, keyName string, plaintexts [][]byte, metadatas []map[string]any, expiresAt *time.Time) ([]*domain0.Token, error)) *MockTokenizationUseCase_TokenizeBatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

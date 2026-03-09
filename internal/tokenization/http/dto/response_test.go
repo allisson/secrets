@@ -258,3 +258,39 @@ func TestValidateTokenResponse(t *testing.T) {
 		assert.False(t, response.Valid)
 	})
 }
+
+func TestMapTokensToTokenizeBatchResponse(t *testing.T) {
+	now := time.Now().UTC()
+	tokens := []*tokenizationDomain.Token{
+		{
+			Token:     "t1",
+			CreatedAt: now,
+		},
+		{
+			Token:     "t2",
+			CreatedAt: now,
+		},
+	}
+
+	response := MapTokensToTokenizeBatchResponse(tokens)
+
+	assert.Len(t, response.Items, 2)
+	assert.Equal(t, "t1", response.Items[0].Token)
+	assert.Equal(t, "t2", response.Items[1].Token)
+}
+
+func TestMapPlaintextsToDetokenizeBatchResponse(t *testing.T) {
+	plaintexts := []string{"p1", "p2"}
+	metadatas := []map[string]any{
+		{"k1": "v1"},
+		{"k2": "v2"},
+	}
+
+	response := MapPlaintextsToDetokenizeBatchResponse(plaintexts, metadatas)
+
+	assert.Len(t, response.Items, 2)
+	assert.Equal(t, "p1", response.Items[0].Plaintext)
+	assert.Equal(t, "v1", response.Items[0].Metadata["k1"])
+	assert.Equal(t, "p2", response.Items[1].Plaintext)
+	assert.Equal(t, "v2", response.Items[1].Metadata["k2"])
+}

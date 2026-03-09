@@ -423,6 +423,23 @@ func (m *MySQLTokenRepository) Create(
 	return nil
 }
 
+// CreateBatch inserts multiple token mappings into the MySQL database.
+func (m *MySQLTokenRepository) CreateBatch(
+	ctx context.Context,
+	tokens []*tokenizationDomain.Token,
+) error {
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	for _, token := range tokens {
+		if err := m.Create(ctx, token); err != nil {
+			return apperrors.Wrap(err, "failed to create token in batch")
+		}
+	}
+	return nil
+}
+
 // GetByToken retrieves a token mapping by its token string.
 func (m *MySQLTokenRepository) GetByToken(
 	ctx context.Context,
@@ -473,6 +490,90 @@ func (m *MySQLTokenRepository) GetByToken(
 	}
 
 	return &token, nil
+}
+
+// GetBatchByTokens retrieves multiple token mappings by their token strings.
+func (m *MySQLTokenRepository) GetBatchByTokens(
+	ctx context.Context,
+	tokenStrings []string,
+) ([]*tokenizationDomain.Token, error) {
+	if len(tokenStrings) == 0 {
+		return []*tokenizationDomain.Token{}, nil
+	}
+
+	querier := database.GetTx(ctx, m.db)
+
+	query := `SELECT id, tokenization_key_id, token, value_hash, ciphertext, nonce, metadata, created_at, expires_at, revoked_at 
+			  FROM tokenization_tokens 
+			  WHERE token IN (`
+
+	args := make([]interface{}, len(tokenStrings))
+	for i, t := range tokenStrings {
+		if i > 0 {
+			query += ", "
+		}
+		query += "?"
+		args[i] = t
+	}
+	query += ")"
+
+	rows, err := querier.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to get tokens by batch")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var tokens []*tokenizationDomain.Token
+	for rows.Next() {
+		var token tokenizationDomain.Token
+		var id, keyID []byte
+		var metadataJSON []byte
+
+		err := rows.Scan(
+			&id,
+			&keyID,
+			&token.Token,
+			&token.ValueHash,
+			&token.Ciphertext,
+			&token.Nonce,
+			&metadataJSON,
+			&token.CreatedAt,
+			&token.ExpiresAt,
+			&token.RevokedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan token")
+		}
+
+		if err := token.ID.UnmarshalBinary(id); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal token id")
+		}
+
+		if err := token.TokenizationKeyID.UnmarshalBinary(keyID); err != nil {
+			return nil, apperrors.Wrap(err, "failed to unmarshal tokenization key id")
+		}
+
+		// Parse metadata if present
+		if len(metadataJSON) > 0 {
+			if err := json.Unmarshal(metadataJSON, &token.Metadata); err != nil {
+				return nil, apperrors.Wrap(err, "failed to unmarshal metadata")
+			}
+		}
+
+		tokens = append(tokens, &token)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating tokens")
+	}
+
+	if tokens == nil {
+		tokens = make([]*tokenizationDomain.Token, 0)
+	}
+
+	return tokens, nil
 }
 
 // GetByValueHash retrieves a token by its value hash (for deterministic mode).

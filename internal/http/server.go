@@ -408,12 +408,24 @@ func (s *Server) registerTokenizationRoutes(
 				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
 				tokenizationHandler.TokenizeHandler,
 			)
+
+			// Tokenize batch of plaintexts with tokenization key
+			keys.POST("/:name/tokenize-batch",
+				authHTTP.AuthorizationMiddleware(authDomain.EncryptCapability, auditLogUseCase, s.logger),
+				tokenizationHandler.TokenizeBatchHandler,
+			)
 		}
 
 		// Detokenize token to retrieve plaintext
 		tokenization.POST("/detokenize",
 			authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
 			tokenizationHandler.DetokenizeHandler,
+		)
+
+		// Detokenize batch of tokens to retrieve plaintexts
+		tokenization.POST("/detokenize-batch",
+			authHTTP.AuthorizationMiddleware(authDomain.DecryptCapability, auditLogUseCase, s.logger),
+			tokenizationHandler.DetokenizeBatchHandler,
 		)
 
 		// Validate token existence and validity

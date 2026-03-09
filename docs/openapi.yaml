@@ -911,6 +911,46 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /v1/tokenization/keys/{name}/tokenize-batch:
+    post:
+      tags: [tokenization]
+      summary: Tokenize multiple plaintexts in batch
+      description: Generates tokens for multiple plaintext values in a single atomic operation.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenizeBatchRequest"
+      responses:
+        "201":
+          description: Tokens created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenizeBatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tokenization key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /v1/tokenization/detokenize:
     post:
       tags: [tokenization]
@@ -936,6 +976,40 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /v1/tokenization/detokenize-batch:
+    post:
+      tags: [tokenization]
+      summary: Detokenize multiple tokens in batch
+      description: Retrieves original plaintext values for multiple tokens in a single atomic operation.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetokenizeBatchRequest"
+      responses:
+        "200":
+          description: Plaintexts resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetokenizeBatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: One or more tokens not found
           content:
             application/json:
               schema:
@@ -1455,6 +1529,16 @@ components:
           type: integer
           minimum: 1
       required: [plaintext]
+    TokenizeBatchRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/TokenizeRequest"
+      required: [items]
     TokenizeResponse:
       type: object
       properties:
@@ -1471,12 +1555,30 @@ components:
           format: date-time
           nullable: true
       required: [token, created_at]
+    TokenizeBatchResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TokenizeResponse"
+      required: [items]
     DetokenizeRequest:
       type: object
       properties:
         token:
           type: string
       required: [token]
+    DetokenizeBatchRequest:
+      type: object
+      properties:
+        tokens:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+      required: [tokens]
     DetokenizeResponse:
       type: object
       properties:
@@ -1487,6 +1589,14 @@ components:
           type: object
           additionalProperties: true
       required: [plaintext]
+    DetokenizeBatchResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DetokenizeResponse"
+      required: [items]
     ValidateTokenRequest:
       type: object
       properties:

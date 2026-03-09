@@ -364,6 +364,23 @@ func (p *PostgreSQLTokenRepository) Create(
 	return nil
 }
 
+// CreateBatch inserts multiple token mappings into the PostgreSQL database.
+func (p *PostgreSQLTokenRepository) CreateBatch(
+	ctx context.Context,
+	tokens []*tokenizationDomain.Token,
+) error {
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	for _, token := range tokens {
+		if err := p.Create(ctx, token); err != nil {
+			return apperrors.Wrap(err, "failed to create token in batch")
+		}
+	}
+	return nil
+}
+
 // GetByToken retrieves a token mapping by its token string.
 func (p *PostgreSQLTokenRepository) GetByToken(
 	ctx context.Context,
@@ -405,6 +422,71 @@ func (p *PostgreSQLTokenRepository) GetByToken(
 	}
 
 	return &token, nil
+}
+
+// GetBatchByTokens retrieves multiple token mappings by their token strings.
+func (p *PostgreSQLTokenRepository) GetBatchByTokens(
+	ctx context.Context,
+	tokenStrings []string,
+) ([]*tokenizationDomain.Token, error) {
+	if len(tokenStrings) == 0 {
+		return []*tokenizationDomain.Token{}, nil
+	}
+
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, tokenization_key_id, token, value_hash, ciphertext, nonce, metadata, created_at, expires_at, revoked_at 
+			  FROM tokenization_tokens 
+			  WHERE token = ANY($1)`
+
+	rows, err := querier.QueryContext(ctx, query, pq.Array(tokenStrings))
+	if err != nil {
+		return nil, apperrors.Wrap(err, "failed to get tokens by batch")
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var tokens []*tokenizationDomain.Token
+	for rows.Next() {
+		var token tokenizationDomain.Token
+		var metadataJSON []byte
+
+		err := rows.Scan(
+			&token.ID,
+			&token.TokenizationKeyID,
+			&token.Token,
+			&token.ValueHash,
+			&token.Ciphertext,
+			&token.Nonce,
+			&metadataJSON,
+			&token.CreatedAt,
+			&token.ExpiresAt,
+			&token.RevokedAt,
+		)
+		if err != nil {
+			return nil, apperrors.Wrap(err, "failed to scan token")
+		}
+
+		// Parse metadata if present
+		if len(metadataJSON) > 0 {
+			if err := json.Unmarshal(metadataJSON, &token.Metadata); err != nil {
+				return nil, apperrors.Wrap(err, "failed to unmarshal metadata")
+			}
+		}
+
+		tokens = append(tokens, &token)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, apperrors.Wrap(err, "error iterating tokens")
+	}
+
+	if tokens == nil {
+		tokens = make([]*tokenizationDomain.Token, 0)
+	}
+
+	return tokens, nil
 }
 
 // GetByValueHash retrieves a token by its value hash (for deterministic mode).

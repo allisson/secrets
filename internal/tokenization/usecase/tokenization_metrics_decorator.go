@@ -47,6 +47,28 @@ func (t *tokenizationUseCaseWithMetrics) Tokenize(
 	return token, err
 }
 
+// TokenizeBatch records metrics for batch token generation operations.
+func (t *tokenizationUseCaseWithMetrics) TokenizeBatch(
+	ctx context.Context,
+	keyName string,
+	plaintexts [][]byte,
+	metadatas []map[string]any,
+	expiresAt *time.Time,
+) ([]*tokenizationDomain.Token, error) {
+	start := time.Now()
+	tokens, err := t.next.TokenizeBatch(ctx, keyName, plaintexts, metadatas, expiresAt)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "tokenization", "tokenize_batch", status)
+	t.metrics.RecordDuration(ctx, "tokenization", "tokenize_batch", time.Since(start), status)
+
+	return tokens, err
+}
+
 // Detokenize records metrics for token detokenization operations.
 func (t *tokenizationUseCaseWithMetrics) Detokenize(
 	ctx context.Context,
@@ -64,6 +86,25 @@ func (t *tokenizationUseCaseWithMetrics) Detokenize(
 	t.metrics.RecordDuration(ctx, "tokenization", "detokenize", time.Since(start), status)
 
 	return plaintext, metadata, err
+}
+
+// DetokenizeBatch records metrics for batch token detokenization operations.
+func (t *tokenizationUseCaseWithMetrics) DetokenizeBatch(
+	ctx context.Context,
+	tokens []string,
+) (plaintexts [][]byte, metadatas []map[string]any, err error) {
+	start := time.Now()
+	plaintexts, metadatas, err = t.next.DetokenizeBatch(ctx, tokens)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+
+	t.metrics.RecordOperation(ctx, "tokenization", "detokenize_batch", status)
+	t.metrics.RecordDuration(ctx, "tokenization", "detokenize_batch", time.Since(start), status)
+
+	return plaintexts, metadatas, err
 }
 
 // Validate records metrics for token validation operations.

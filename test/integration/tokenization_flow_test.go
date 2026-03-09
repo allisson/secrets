@@ -414,7 +414,80 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 				assert.False(t, response.IsDeterministic)
 			})
 
-			t.Logf("All 13 tokenization endpoint tests passed for %s", tc.dbDriver)
+			// [14/15] Test POST /v1/tokenization/keys/:name/tokenize-batch - Batch Tokenize
+			t.Run("14_TokenizeBatch", func(t *testing.T) {
+				p1 := []byte("batch-item-1")
+				p2 := []byte("batch-item-2")
+				p1B64 := base64.StdEncoding.EncodeToString(p1)
+				p2B64 := base64.StdEncoding.EncodeToString(p2)
+
+				requestBody := tokenizationDTO.TokenizeBatchRequest{
+					Items: []tokenizationDTO.TokenizeRequest{
+						{Plaintext: p1B64, Metadata: map[string]any{"index": 1}},
+						{Plaintext: p2B64, Metadata: map[string]any{"index": 2}},
+					},
+				}
+
+				resp, body := ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/tokenization/keys/"+tokenizationKeyName1+"/tokenize-batch",
+					requestBody,
+					true,
+				)
+				assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+				var response tokenizationDTO.TokenizeBatchResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Len(t, response.Items, 2)
+
+				// [15/15] Test POST /v1/tokenization/detokenize-batch - Batch Detokenize
+				t.Run("15_DetokenizeBatch", func(t *testing.T) {
+					tokens := []string{response.Items[0].Token, response.Items[1].Token}
+					detokenizeRequest := tokenizationDTO.DetokenizeBatchRequest{
+						Tokens: tokens,
+					}
+
+					detokenizeResp, detokenizeBody := ctx.makeRequest(
+						t,
+						http.MethodPost,
+						"/v1/tokenization/detokenize-batch",
+						detokenizeRequest,
+						true,
+					)
+					assert.Equal(t, http.StatusOK, detokenizeResp.StatusCode)
+
+					var detokenizeResponse tokenizationDTO.DetokenizeBatchResponse
+					err = json.Unmarshal(detokenizeBody, &detokenizeResponse)
+					require.NoError(t, err)
+					assert.Len(t, detokenizeResponse.Items, 2)
+					assert.Equal(t, p1B64, detokenizeResponse.Items[0].Plaintext)
+					assert.Equal(t, p2B64, detokenizeResponse.Items[1].Plaintext)
+				})
+			})
+
+			// [16/16] Test POST /v1/tokenization/keys/:name/tokenize-batch - Atomicity
+			t.Run("16_TokenizeBatch_Atomicity", func(t *testing.T) {
+				requestBody := tokenizationDTO.TokenizeBatchRequest{
+					Items: []tokenizationDTO.TokenizeRequest{
+						{Plaintext: base64.StdEncoding.EncodeToString([]byte("valid"))},
+						{Plaintext: "invalid-base64-!!!", Metadata: map[string]any{"index": 2}},
+					},
+				}
+
+				resp, _ := ctx.makeRequest(
+					t,
+					http.MethodPost,
+					"/v1/tokenization/keys/"+tokenizationKeyName1+"/tokenize-batch",
+					requestBody,
+					true,
+				)
+				// It should fail with 400 Bad Request because of invalid base64 in one item
+				assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			})
+
+			t.Logf("All 16 tokenization endpoint tests passed for %s", tc.dbDriver)
 		})
 	}
 }

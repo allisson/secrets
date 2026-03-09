@@ -12,6 +12,7 @@ import (
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationService "github.com/allisson/secrets/internal/tokenization/service"
@@ -45,6 +46,7 @@ func validateTokenLength(formatType tokenizationDomain.FormatType, length int) e
 
 // tokenizationUseCase implements TokenizationUseCase for managing tokenization operations.
 type tokenizationUseCase struct {
+	txManager        database.TxManager
 	tokenizationRepo TokenizationKeyRepository
 	tokenRepo        TokenRepository
 	dekRepo          DekRepository
@@ -200,6 +202,36 @@ func (t *tokenizationUseCase) Tokenize(
 	return token, nil
 }
 
+// TokenizeBatch generates tokens for multiple plaintext values using the latest version of the named key.
+// Wrapped in a transaction for atomicity.
+func (t *tokenizationUseCase) TokenizeBatch(
+	ctx context.Context,
+	keyName string,
+	plaintexts [][]byte,
+	metadatas []map[string]any,
+	expiresAt *time.Time,
+) ([]*tokenizationDomain.Token, error) {
+	var tokens []*tokenizationDomain.Token
+	err := t.txManager.WithTx(ctx, func(ctx context.Context) error {
+		for i, plaintext := range plaintexts {
+			var metadata map[string]any
+			if i < len(metadatas) {
+				metadata = metadatas[i]
+			}
+			token, err := t.Tokenize(ctx, keyName, plaintext, metadata, expiresAt)
+			if err != nil {
+				return err
+			}
+			tokens = append(tokens, token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
 // Detokenize retrieves the original plaintext value for a given token.
 // Returns ErrTokenNotFound if token doesn't exist, ErrTokenExpired if expired, ErrTokenRevoked if revoked.
 // Security Note: Callers MUST zero the returned plaintext after use: cryptoDomain.Zero(plaintext).
@@ -266,6 +298,29 @@ func (t *tokenizationUseCase) Detokenize(
 	return plaintext, tokenRecord.Metadata, nil
 }
 
+// DetokenizeBatch retrieves original plaintext values for multiple tokens.
+// Wrapped in a transaction for atomicity.
+func (t *tokenizationUseCase) DetokenizeBatch(
+	ctx context.Context,
+	tokens []string,
+) (plaintexts [][]byte, metadatas []map[string]any, err error) {
+	err = t.txManager.WithTx(ctx, func(ctx context.Context) error {
+		for _, token := range tokens {
+			plaintext, metadata, err := t.Detokenize(ctx, token)
+			if err != nil {
+				return err
+			}
+			plaintexts = append(plaintexts, plaintext)
+			metadatas = append(metadatas, metadata)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return plaintexts, metadatas, nil
+}
+
 // Validate checks if a token exists and is valid (not expired or revoked).
 func (t *tokenizationUseCase) Validate(ctx context.Context, token string) (bool, error) {
 	// Get token record
@@ -318,6 +373,7 @@ func (t *tokenizationUseCase) CleanupExpired(ctx context.Context, days int, dryR
 
 // NewTokenizationUseCase creates a new TokenizationUseCase with injected dependencies.
 func NewTokenizationUseCase(
+	txManager database.TxManager,
 	tokenizationRepo TokenizationKeyRepository,
 	tokenRepo TokenRepository,
 	dekRepo DekRepository,
@@ -327,6 +383,7 @@ func NewTokenizationUseCase(
 	kekChain *cryptoDomain.KekChain,
 ) TokenizationUseCase {
 	return &tokenizationUseCase{
+		txManager:        txManager,
 		tokenizationRepo: tokenizationRepo,
 		tokenRepo:        tokenRepo,
 		dekRepo:          dekRepo,
