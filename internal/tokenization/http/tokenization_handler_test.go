@@ -437,6 +437,105 @@ func TestTokenizationHandler_ValidateHandler(t *testing.T) {
 	})
 }
 
+func TestTokenizationHandler_TokenizeBatchHandler(t *testing.T) {
+	t.Run("Success_TokenizeBatch", func(t *testing.T) {
+		handler, mockUseCase := setupTestTokenizationHandler(t)
+
+		plaintext1 := []byte("p1")
+		plaintext2 := []byte("p2")
+		plaintext1B64 := base64.StdEncoding.EncodeToString(plaintext1)
+		plaintext2B64 := base64.StdEncoding.EncodeToString(plaintext2)
+
+		request := dto.TokenizeBatchRequest{
+			Items: []dto.TokenizeRequest{
+				{Plaintext: plaintext1B64},
+				{Plaintext: plaintext2B64},
+			},
+		}
+
+		expectedTokens := []*tokenizationDomain.Token{
+			{Token: "t1", CreatedAt: time.Now()},
+			{Token: "t2", CreatedAt: time.Now()},
+		}
+
+		mockUseCase.EXPECT().
+			TokenizeBatch(mock.Anything, "test-key", mock.Anything, mock.Anything, mock.Anything).
+			Return(expectedTokens, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/keys/test-key/tokenize-batch", request)
+		c.Params = gin.Params{{Key: "name", Value: "test-key"}}
+
+		handler.TokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		var response dto.TokenizeBatchResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Items, 2)
+		assert.Equal(t, "t1", response.Items[0].Token)
+		assert.Equal(t, "t2", response.Items[1].Token)
+	})
+
+	t.Run("Error_InvalidJSON", func(t *testing.T) {
+		handler, _ := setupTestTokenizationHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/keys/test-key/tokenize-batch", nil)
+		c.Request.Body = io.NopCloser(bytes.NewReader([]byte("invalid json")))
+		c.Params = gin.Params{{Key: "name", Value: "test-key"}}
+
+		handler.TokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestTokenizationHandler_DetokenizeBatchHandler(t *testing.T) {
+	t.Run("Success_DetokenizeBatch", func(t *testing.T) {
+		handler, mockUseCase := setupTestTokenizationHandler(t)
+
+		tokens := []string{"t1", "t2"}
+		plaintexts := [][]byte{[]byte("p1"), []byte("p2")}
+		plaintext1Copy := []byte("p1")
+		plaintext2Copy := []byte("p2")
+		metadatas := []map[string]any{nil, nil}
+
+		request := dto.DetokenizeBatchRequest{
+			Tokens: tokens,
+		}
+
+		mockUseCase.EXPECT().
+			DetokenizeBatch(mock.Anything, tokens).
+			Return(plaintexts, metadatas, nil).
+			Once()
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/detokenize-batch", request)
+
+		handler.DetokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response dto.DetokenizeBatchResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Len(t, response.Items, 2)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(plaintext1Copy), response.Items[0].Plaintext)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(plaintext2Copy), response.Items[1].Plaintext)
+	})
+
+	t.Run("Error_InvalidJSON", func(t *testing.T) {
+		handler, _ := setupTestTokenizationHandler(t)
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/detokenize-batch", nil)
+		c.Request.Body = io.NopCloser(bytes.NewReader([]byte("invalid json")))
+
+		handler.DetokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
 func TestTokenizationHandler_RevokeHandler(t *testing.T) {
 	t.Run("Success_RevokeToken", func(t *testing.T) {
 		handler, mockUseCase := setupTestTokenizationHandler(t)

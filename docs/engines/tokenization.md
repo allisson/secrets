@@ -74,6 +74,27 @@ Example response (`201 Created`):
 }
 ```
 
+### Tokenize Data (Batch)
+
+- **Endpoint**: `POST /v1/tokenization/keys/:name/tokenize-batch`
+- **Capability**: `encrypt`
+- **Body**: `items` (array of objects with `plaintext`, `metadata`, `ttl`).
+- **Limit**: Maximum 100 items per batch.
+
+Generates tokens for multiple plaintext values in a single atomic operation. If any item fails (e.g., invalid format), the entire batch is rejected.
+
+```bash
+curl -X POST http://localhost:8080/v1/tokenization/keys/payment-cards/tokenize-batch \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      { "plaintext": "NDUzMjAxNTExMjgzMDM2Ng==", "metadata": { "index": 1 } },
+      { "plaintext": "NTQ5ODAxNTExMjgzMDM2Nw==", "metadata": { "index": 2 } }
+    ]
+  }'
+```
+
 ### Detokenize Data
 
 - **Endpoint**: `POST /v1/tokenization/detokenize`
@@ -89,6 +110,24 @@ Example response (`200 OK`):
     "last_four": "0366"
   }
 }
+```
+
+### Detokenize Data (Batch)
+
+- **Endpoint**: `POST /v1/tokenization/detokenize-batch`
+- **Capability**: `decrypt`
+- **Body**: `{"tokens": ["string", "string"]}`
+- **Limit**: Maximum 100 tokens per batch.
+
+Retrieves original plaintext values for multiple tokens in a single atomic operation.
+
+```bash
+curl -X POST http://localhost:8080/v1/tokenization/detokenize-batch \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tokens": ["4532015112830366", "5498015112830367"]
+  }'
 ```
 
 ### Validate and Revoke

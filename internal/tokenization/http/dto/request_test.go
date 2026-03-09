@@ -477,3 +477,66 @@ func TestValidateAlgorithm(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestTokenizeBatchRequest_Validate(t *testing.T) {
+	t.Run("Success_ValidRequest", func(t *testing.T) {
+		req := TokenizeBatchRequest{
+			Items: []TokenizeRequest{
+				{Plaintext: "SGVsbG8="},
+				{Plaintext: "V29ybGQ="},
+			},
+		}
+		err := req.Validate()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_EmptyItems", func(t *testing.T) {
+		req := TokenizeBatchRequest{
+			Items: []TokenizeRequest{},
+		}
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_TooManyItems", func(t *testing.T) {
+		req := TokenizeBatchRequest{
+			Items: make([]TokenizeRequest, 101),
+		}
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+}
+
+func TestDetokenizeBatchRequest_Validate(t *testing.T) {
+	t.Run("Success_ValidRequest", func(t *testing.T) {
+		req := DetokenizeBatchRequest{
+			Tokens: []string{"t1", "t2"},
+		}
+		err := req.Validate()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error_EmptyTokens", func(t *testing.T) {
+		req := DetokenizeBatchRequest{
+			Tokens: []string{},
+		}
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_TooManyTokens", func(t *testing.T) {
+		req := DetokenizeBatchRequest{
+			Tokens: make([]string, 101),
+		}
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+
+	t.Run("Error_BlankTokenInBatch", func(t *testing.T) {
+		req := DetokenizeBatchRequest{
+			Tokens: []string{"t1", "  "},
+		}
+		err := req.Validate()
+		assert.Error(t, err)
+	})
+}

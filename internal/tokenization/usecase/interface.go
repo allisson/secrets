@@ -51,7 +51,9 @@ type TokenizationKeyRepository interface {
 // TokenRepository defines the interface for token mapping persistence.
 type TokenRepository interface {
 	Create(ctx context.Context, token *tokenizationDomain.Token) error
+	CreateBatch(ctx context.Context, tokens []*tokenizationDomain.Token) error
 	GetByToken(ctx context.Context, token string) (*tokenizationDomain.Token, error)
+	GetBatchByTokens(ctx context.Context, tokens []string) ([]*tokenizationDomain.Token, error)
 	GetByValueHash(ctx context.Context, keyID uuid.UUID, valueHash string) (*tokenizationDomain.Token, error)
 	Revoke(ctx context.Context, token string) error
 
@@ -125,10 +127,27 @@ type TokenizationUseCase interface {
 		expiresAt *time.Time,
 	) (*tokenizationDomain.Token, error)
 
+	// TokenizeBatch generates tokens for multiple plaintext values using the latest version of the named key.
+	// Wrapped in a transaction for atomicity.
+	TokenizeBatch(
+		ctx context.Context,
+		keyName string,
+		plaintexts [][]byte,
+		metadatas []map[string]any,
+		expiresAt *time.Time,
+	) ([]*tokenizationDomain.Token, error)
+
 	// Detokenize retrieves the original plaintext value for a given token.
 	// Returns ErrTokenNotFound if token doesn't exist, ErrTokenExpired if expired, ErrTokenRevoked if revoked.
 	// Security Note: Callers MUST zero the returned plaintext after use: cryptoDomain.Zero(plaintext).
 	Detokenize(ctx context.Context, token string) (plaintext []byte, metadata map[string]any, err error)
+
+	// DetokenizeBatch retrieves original plaintext values for multiple tokens.
+	// Wrapped in a transaction for atomicity.
+	DetokenizeBatch(
+		ctx context.Context,
+		tokens []string,
+	) (plaintexts [][]byte, metadatas []map[string]any, err error)
 
 	// Validate checks if a token exists and is valid (not expired or revoked).
 	Validate(ctx context.Context, token string) (bool, error)

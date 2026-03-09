@@ -439,3 +439,141 @@ func TestTokenizationUseCaseWithMetrics_CleanupExpired(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenizationUseCaseWithMetrics_TokenizeBatch(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupMocks     func(*tokenizationMocks.MockTokenizationUseCase, *mockBusinessMetrics)
+		keyName        string
+		plaintexts     [][]byte
+		expectedErr    error
+		expectedStatus string
+	}{
+		{
+			name: "Success_RecordsSuccessMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationUseCase, mockMetrics *mockBusinessMetrics) {
+				tokens := []*tokenizationDomain.Token{{ID: uuid.New(), Token: "t1"}}
+				mockUseCase.EXPECT().
+					TokenizeBatch(mock.Anything, "test-key", mock.Anything, mock.Anything, mock.Anything).
+					Return(tokens, nil).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenize_batch", "success").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenize_batch", mock.AnythingOfType("time.Duration"), "success").
+					Once()
+			},
+			keyName:        "test-key",
+			plaintexts:     [][]byte{[]byte("p1")},
+			expectedErr:    nil,
+			expectedStatus: "success",
+		},
+		{
+			name: "Error_RecordsErrorMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationUseCase, mockMetrics *mockBusinessMetrics) {
+				mockUseCase.EXPECT().
+					TokenizeBatch(mock.Anything, "test-key", mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, errors.New("error")).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "tokenize_batch", "error").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "tokenize_batch", mock.AnythingOfType("time.Duration"), "error").
+					Once()
+			},
+			keyName:        "test-key",
+			plaintexts:     [][]byte{[]byte("p1")},
+			expectedErr:    errors.New("error"),
+			expectedStatus: "error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := tokenizationMocks.NewMockTokenizationUseCase(t)
+			mockMetrics := &mockBusinessMetrics{}
+			tt.setupMocks(mockUseCase, mockMetrics)
+
+			decorator := NewTokenizationUseCaseWithMetrics(mockUseCase, mockMetrics)
+
+			_, err := decorator.TokenizeBatch(
+				context.Background(),
+				tt.keyName,
+				tt.plaintexts,
+				nil,
+				nil,
+			)
+
+			if tt.expectedErr != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockMetrics.AssertExpectations(t)
+			mockUseCase.AssertExpectations(t)
+		})
+	}
+}
+
+func TestTokenizationUseCaseWithMetrics_DetokenizeBatch(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupMocks     func(*tokenizationMocks.MockTokenizationUseCase, *mockBusinessMetrics)
+		tokens         []string
+		expectedErr    error
+		expectedStatus string
+	}{
+		{
+			name: "Success_RecordsSuccessMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationUseCase, mockMetrics *mockBusinessMetrics) {
+				mockUseCase.EXPECT().
+					DetokenizeBatch(mock.Anything, []string{"t1"}).
+					Return([][]byte{[]byte("p1")}, []map[string]any{nil}, nil).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "detokenize_batch", "success").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "detokenize_batch", mock.AnythingOfType("time.Duration"), "success").
+					Once()
+			},
+			tokens:         []string{"t1"},
+			expectedErr:    nil,
+			expectedStatus: "success",
+		},
+		{
+			name: "Error_RecordsErrorMetrics",
+			setupMocks: func(mockUseCase *tokenizationMocks.MockTokenizationUseCase, mockMetrics *mockBusinessMetrics) {
+				mockUseCase.EXPECT().
+					DetokenizeBatch(mock.Anything, []string{"t1"}).
+					Return(nil, nil, errors.New("error")).
+					Once()
+				mockMetrics.On("RecordOperation", mock.Anything, "tokenization", "detokenize_batch", "error").
+					Once()
+				mockMetrics.On("RecordDuration", mock.Anything, "tokenization", "detokenize_batch", mock.AnythingOfType("time.Duration"), "error").
+					Once()
+			},
+			tokens:         []string{"t1"},
+			expectedErr:    errors.New("error"),
+			expectedStatus: "error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockUseCase := tokenizationMocks.NewMockTokenizationUseCase(t)
+			mockMetrics := &mockBusinessMetrics{}
+			tt.setupMocks(mockUseCase, mockMetrics)
+
+			decorator := NewTokenizationUseCaseWithMetrics(mockUseCase, mockMetrics)
+
+			_, _, err := decorator.DetokenizeBatch(context.Background(), tt.tokens)
+
+			if tt.expectedErr != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockMetrics.AssertExpectations(t)
+			mockUseCase.AssertExpectations(t)
+		})
+	}
+}
