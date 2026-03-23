@@ -47,6 +47,7 @@ const (
 	DefaultLockoutDuration           = 30 // minutes
 	DefaultMaxRequestBodySize        = 1048576
 	DefaultSecretValueSizeLimit      = 524288
+	DefaultTokenizationBatchLimit    = 100
 )
 
 // Config holds all application configuration.
@@ -128,6 +129,8 @@ type Config struct {
 	MaxRequestBodySize int64
 	// SecretValueSizeLimitBytes is the maximum size of a secret value in bytes.
 	SecretValueSizeLimitBytes int
+	// TokenizationBatchLimit is the maximum number of items in a batch tokenization request.
+	TokenizationBatchLimit int
 }
 
 // Validate checks if the configuration is valid.
@@ -208,6 +211,7 @@ func (c *Config) Validate() error {
 		),
 		validation.Field(&c.MaxRequestBodySize, validation.Required, validation.Min(int64(1))),
 		validation.Field(&c.SecretValueSizeLimitBytes, validation.Required, validation.Min(1)),
+		validation.Field(&c.TokenizationBatchLimit, validation.Required, validation.Min(1)),
 	)
 }
 
@@ -322,6 +326,12 @@ func Load() (*Config, error) {
 		SecretValueSizeLimitBytes: env.GetInt(
 			"SECRET_VALUE_SIZE_LIMIT_BYTES",
 			DefaultSecretValueSizeLimit,
+		),
+
+		// Tokenization Batch Limit
+		TokenizationBatchLimit: env.GetInt(
+			"TOKENIZATION_BATCH_LIMIT",
+			DefaultTokenizationBatchLimit,
 		),
 	}
 

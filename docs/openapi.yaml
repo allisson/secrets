@@ -29,6 +29,44 @@ paths:
                   status:
                     type: string
                     example: healthy
+  /ready:
+    get:
+      tags: [auth]
+      summary: Readiness check
+      description: Comprehensive check that includes database connectivity.
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+                  components:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: not_ready
+                  components:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: error
   /v1/token:
     post:
       tags: [auth]

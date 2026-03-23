@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-03-23
+
+### Added
+- Added configurable batch limit for tokenize and detokenize operations via `BATCH_LIMIT_TOKENIZATION` environment variable.
+- Added individual transit key retrieval API (`GET /v1/transit/keys/{name}`) (#115).
+- Added atomic batch tokenize and detokenize endpoints (`POST /v1/tokenization/tokenize/batch`, `POST /v1/tokenization/detokenize/batch`) (#119).
+- Added individual tokenization key retrieval API by name (`GET /v1/tokenization/keys/{name}`) (#116).
+- Added audit log filtering by `client_id` for `GET /v1/audit/logs` (#118).
+- Added configurable Metrics Server timeouts (`METRICS_SERVER_READ_TIMEOUT`, `METRICS_SERVER_WRITE_TIMEOUT`, `METRICS_SERVER_IDLE_TIMEOUT`) (#114).
+- Added database connection max idle time configuration (`DB_CONN_MAX_IDLE_TIME`) (#113).
+- Added client secret rotation with automatic token revocation.
+- Added strict capability validation for policies (#111).
+
+### Changed
+- Updated Transit Engine to support key deletion by name instead of UUID (#120).
+- Updated Tokenization Engine to support key deletion by name (#117).
+
+### Fixed
+- Fixed rate limiter goroutine lifecycle and resource leaks (#112).
+
 ## [0.27.0] - 2026-03-06
 
 ### Added
@@ -441,6 +461,7 @@ If you are using `sslmode=disable` (PostgreSQL) or `tls=false` (MySQL) in produc
 - Security model documentation
 - Architecture documentation
 
+[0.28.0]: https://github.com/allisson/secrets/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/allisson/secrets/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/allisson/secrets/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/allisson/secrets/compare/v0.24.0...v0.25.0

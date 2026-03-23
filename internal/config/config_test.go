@@ -36,6 +36,7 @@ func TestConfig_Validate(t *testing.T) {
 				RateLimitTokenRequestsPerSec: 5,
 				MaxRequestBodySize:           1048576,
 				SecretValueSizeLimitBytes:    524288,
+				TokenizationBatchLimit:       100,
 			},
 			wantErr: false,
 		},
@@ -55,6 +56,26 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid tokenization batch limit - zero",
+			cfg: &Config{
+				DBDriver:                  "postgres",
+				DBConnectionString:        "postgres://localhost",
+				ServerPort:                8080,
+				MetricsPort:               8081,
+				LogLevel:                  "info",
+				ServerReadTimeout:         15 * time.Second,
+				ServerWriteTimeout:        15 * time.Second,
+				ServerIdleTimeout:         60 * time.Second,
+				MetricsServerReadTimeout:  15 * time.Second,
+				MetricsServerWriteTimeout: 15 * time.Second,
+				MetricsServerIdleTimeout:  60 * time.Second,
+				MaxRequestBodySize:        1048576,
+				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    0,
 			},
 			wantErr: true,
 		},
@@ -206,6 +227,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 				KMSProvider:               "localsecrets",
 				KMSKeyURI:                 "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
 			},
@@ -227,6 +249,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 				KMSProvider:               "gcpkms",
 				KMSKeyURI:                 "gcpkms://projects/my-project/locations/global/keyRings/my-keyring/cryptoKeys/my-key",
 			},
@@ -248,6 +271,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 				KMSProvider:               "awskms",
 				KMSKeyURI:                 "awskms://arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012?region=us-east-1",
 			},
@@ -269,6 +293,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 				KMSProvider:               "azurekeyvault",
 				KMSKeyURI:                 "azurekeyvault://myvault.vault.azure.net/keys/mykey",
 			},
@@ -290,6 +315,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 				KMSProvider:               "hashivault",
 				KMSKeyURI:                 "hashivault://mykey",
 			},
@@ -311,6 +337,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  60 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 			},
 			wantErr: false,
 		},
@@ -330,6 +357,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  1 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 			},
 			wantErr: false,
 		},
@@ -349,6 +377,7 @@ func TestConfig_Validate(t *testing.T) {
 				MetricsServerIdleTimeout:  300 * time.Second,
 				MaxRequestBodySize:        1048576,
 				SecretValueSizeLimitBytes: 524288,
+				TokenizationBatchLimit:    100,
 			},
 			wantErr: false,
 		},
@@ -435,6 +464,15 @@ func TestLoad(t *testing.T) {
 		expectError bool
 	}{
 		{
+			name: "load custom tokenization batch limit",
+			envVars: map[string]string{
+				"TOKENIZATION_BATCH_LIMIT": "50",
+			},
+			validate: func(t *testing.T, cfg *Config) {
+				assert.Equal(t, 50, cfg.TokenizationBatchLimit)
+			},
+		},
+		{
 			name:    "load default configuration",
 			envVars: map[string]string{},
 			validate: func(t *testing.T, cfg *Config) {
@@ -467,6 +505,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, 60*time.Second, cfg.MetricsServerIdleTimeout)
 				assert.Equal(t, int64(1048576), cfg.MaxRequestBodySize)
 				assert.Equal(t, 524288, cfg.SecretValueSizeLimitBytes)
+				assert.Equal(t, 100, cfg.TokenizationBatchLimit)
 			},
 		},
 		{
