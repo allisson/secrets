@@ -334,5 +334,9 @@ func (c *Container) initTokenizationHandler(
 
 	logger := c.Logger()
 
-	return tokenizationHTTP.NewTokenizationHandler(tokenizationUseCase, logger), nil
+	return tokenizationHTTP.NewTokenizationHandler(
+		tokenizationUseCase,
+		c.config.TokenizationBatchLimit,
+		logger,
+	), nil
 }

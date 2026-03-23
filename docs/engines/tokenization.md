@@ -79,7 +79,7 @@ Example response (`201 Created`):
 - **Endpoint**: `POST /v1/tokenization/keys/:name/tokenize-batch`
 - **Capability**: `encrypt`
 - **Body**: `items` (array of objects with `plaintext`, `metadata`, `ttl`).
-- **Limit**: Maximum 100 items per batch.
+- **Limit**: Maximum items per batch is configurable via `TOKENIZATION_BATCH_LIMIT` (default 100).
 
 Generates tokens for multiple plaintext values in a single atomic operation. If any item fails (e.g., invalid format), the entire batch is rejected.
 
@@ -117,7 +117,7 @@ Example response (`200 OK`):
 - **Endpoint**: `POST /v1/tokenization/detokenize-batch`
 - **Capability**: `decrypt`
 - **Body**: `{"tokens": ["string", "string"]}`
-- **Limit**: Maximum 100 tokens per batch.
+- **Limit**: Maximum tokens per batch is configurable via `TOKENIZATION_BATCH_LIMIT` (default 100).
 
 Retrieves original plaintext values for multiple tokens in a single atomic operation.
 

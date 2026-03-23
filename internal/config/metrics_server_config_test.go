@@ -19,6 +19,7 @@ func TestMetricsServerConfig_Validate(t *testing.T) {
 		ServerIdleTimeout:         60 * time.Second,
 		MaxRequestBodySize:        1048576,
 		SecretValueSizeLimitBytes: 524288,
+		TokenizationBatchLimit:    100,
 		MetricsServerReadTimeout:  15 * time.Second,
 		MetricsServerWriteTimeout: 15 * time.Second,
 		MetricsServerIdleTimeout:  60 * time.Second,

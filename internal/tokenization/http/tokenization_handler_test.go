@@ -30,7 +30,7 @@ func setupTestTokenizationHandler(t *testing.T) (*TokenizationHandler, *mocks.Mo
 	mockTokenizationUseCase := mocks.NewMockTokenizationUseCase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	handler := NewTokenizationHandler(mockTokenizationUseCase, logger)
+	handler := NewTokenizationHandler(mockTokenizationUseCase, 100, logger)
 
 	return handler, mockTokenizationUseCase
 }
@@ -489,6 +489,23 @@ func TestTokenizationHandler_TokenizeBatchHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
+
+	t.Run("Error_BatchLimitExceeded", func(t *testing.T) {
+		handler, _ := setupTestTokenizationHandler(t)
+		handler.batchLimit = 5
+
+		request := dto.TokenizeBatchRequest{
+			Items: make([]dto.TokenizeRequest, 6),
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/keys/test-key/tokenize-batch", request)
+		c.Params = gin.Params{{Key: "name", Value: "test-key"}}
+
+		handler.TokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+		assert.Contains(t, w.Body.String(), "batch size exceeds limit of 5")
+	})
 }
 
 func TestTokenizationHandler_DetokenizeBatchHandler(t *testing.T) {
@@ -533,6 +550,22 @@ func TestTokenizationHandler_DetokenizeBatchHandler(t *testing.T) {
 		handler.DetokenizeBatchHandler(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("Error_BatchLimitExceeded", func(t *testing.T) {
+		handler, _ := setupTestTokenizationHandler(t)
+		handler.batchLimit = 5
+
+		request := dto.DetokenizeBatchRequest{
+			Tokens: make([]string, 6),
+		}
+
+		c, w := createTestContext(http.MethodPost, "/v1/tokenization/detokenize-batch", request)
+
+		handler.DetokenizeBatchHandler(c)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+		assert.Contains(t, w.Body.String(), "batch size exceeds limit of 5")
 	})
 }
 

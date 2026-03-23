@@ -90,11 +90,11 @@ type TokenizeBatchRequest struct {
 }
 
 // Validate checks if the tokenize batch request is valid.
-func (r *TokenizeBatchRequest) Validate() error {
+func (r *TokenizeBatchRequest) Validate(limit int) error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Items,
 			validation.Required,
-			validation.Length(1, 100),
+			validation.Length(1, limit).Error(fmt.Sprintf("batch size exceeds limit of %d", limit)),
 		),
 	)
 }
@@ -120,11 +120,11 @@ type DetokenizeBatchRequest struct {
 }
 
 // Validate checks if the detokenize batch request is valid.
-func (r *DetokenizeBatchRequest) Validate() error {
+func (r *DetokenizeBatchRequest) Validate(limit int) error {
 	return validation.ValidateStruct(r,
 		validation.Field(&r.Tokens,
 			validation.Required,
-			validation.Length(1, 100),
+			validation.Length(1, limit).Error(fmt.Sprintf("batch size exceeds limit of %d", limit)),
 			validation.Each(validation.Required, customValidation.NotBlank),
 		),
 	)

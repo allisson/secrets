@@ -21,16 +21,19 @@ import (
 // Coordinates tokenize, detokenize, validate, and revoke operations with TokenizationUseCase.
 type TokenizationHandler struct {
 	tokenizationUseCase tokenizationUseCase.TokenizationUseCase
+	batchLimit          int
 	logger              *slog.Logger
 }
 
 // NewTokenizationHandler creates a new tokenization handler with required dependencies.
 func NewTokenizationHandler(
 	tokenizationUseCase tokenizationUseCase.TokenizationUseCase,
+	batchLimit int,
 	logger *slog.Logger,
 ) *TokenizationHandler {
 	return &TokenizationHandler{
 		tokenizationUseCase: tokenizationUseCase,
+		batchLimit:          batchLimit,
 		logger:              logger,
 	}
 }
@@ -111,7 +114,7 @@ func (h *TokenizationHandler) TokenizeBatchHandler(c *gin.Context) {
 	}
 
 	// Validate request
-	if err := req.Validate(); err != nil {
+	if err := req.Validate(h.batchLimit); err != nil {
 		httputil.HandleValidationErrorGin(c, customValidation.WrapValidationError(err), h.logger)
 		return
 	}
@@ -233,7 +236,7 @@ func (h *TokenizationHandler) DetokenizeBatchHandler(c *gin.Context) {
 	}
 
 	// Validate request
-	if err := req.Validate(); err != nil {
+	if err := req.Validate(h.batchLimit); err != nil {
 		httputil.HandleValidationErrorGin(c, customValidation.WrapValidationError(err), h.logger)
 		return
 	}

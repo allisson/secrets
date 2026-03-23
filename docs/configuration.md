@@ -53,6 +53,9 @@ LOCKOUT_DURATION_MINUTES=30
 
 # Secret value size limit
 SECRET_VALUE_SIZE_LIMIT_BYTES=524288
+
+# Tokenization batch limit
+TOKENIZATION_BATCH_LIMIT=100
 ```
 
 ## Database configuration
@@ -170,7 +173,11 @@ Logging level. Supported values: `debug`, `info`, `warn`, `error`, `fatal`, `pan
 
 Maximum size allowed for a secret value in bytes (default: `524288` - 512 KB).
 
-This limit is enforced before encryption and storage to prevent denial-of-service attacks using large secret payloads. If exceeded, the API returns a `413 Payload Too Large` error.
+### TOKENIZATION_BATCH_LIMIT
+
+Maximum number of items allowed in a single batch tokenization or detokenization request (default: `100`).
+
+This limit is enforced to prevent resource exhaustion from excessively large batch operations. If exceeded, the API returns a `422 Unprocessable Entity` error.
 
 ## Master key configuration
 
