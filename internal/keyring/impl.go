@@ -2,6 +2,7 @@ package keyring
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,6 +10,8 @@ import (
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 )
+
+var errKeyringBadBatchSize = errors.New("keyring: batch size must be positive")
 
 // dekStore is the persistence contract Keyring relies on for DEK rows.
 //
@@ -18,6 +21,7 @@ type dekStore interface {
 	Create(ctx context.Context, dek *cryptoDomain.Dek) error
 	Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error)
 	Update(ctx context.Context, dek *cryptoDomain.Dek) error
+	GetBatchNotKekID(ctx context.Context, kekID uuid.UUID, limit int) ([]*cryptoDomain.Dek, error)
 }
 
 // keyring is the production Keyring. It orchestrates KEK chain lookup, DEK
@@ -185,6 +189,34 @@ func (k *keyring) Rewrap(ctx context.Context, dekID uuid.UUID) error {
 	dek.Nonce = newNonce
 
 	return k.dekStore.Update(ctx, dek)
+}
+
+func (k *keyring) RewrapAll(ctx context.Context, batchSize int) (int, error) {
+	if batchSize <= 0 {
+		return 0, errKeyringBadBatchSize
+	}
+
+	activeKekID := k.kekChain.ActiveKekID()
+	total := 0
+	for {
+		deks, err := k.dekStore.GetBatchNotKekID(ctx, activeKekID, batchSize)
+		if err != nil {
+			return total, err
+		}
+		if len(deks) == 0 {
+			return total, nil
+		}
+		for _, dek := range deks {
+			if err := k.Rewrap(ctx, dek.ID); err != nil {
+				return total, err
+			}
+			total++
+		}
+	}
+}
+
+func (k *keyring) ActiveKekID() uuid.UUID {
+	return k.kekChain.ActiveKekID()
 }
 
 func (k *keyring) activeKek() (*cryptoDomain.Kek, error) {

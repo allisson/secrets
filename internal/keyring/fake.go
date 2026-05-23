@@ -116,6 +116,22 @@ func (f *Fake) Rewrap(_ context.Context, dekID uuid.UUID) error {
 	return nil
 }
 
+// RewrapAll returns 0 by default for the Fake — there is no notion of a
+// stale KEK in-memory. Tests that exercise the rotation worker should
+// stub this behaviour by counting tracked DEKs.
+func (f *Fake) RewrapAll(_ context.Context, _ int) (int, error) {
+	if f.FailRewrap != nil {
+		return 0, f.FailRewrap
+	}
+	return 0, nil
+}
+
+// ActiveKekID returns the zero UUID for the Fake; the value is only used
+// by the rotation worker to verify the operator-provided KEK ID matches.
+func (f *Fake) ActiveKekID() uuid.UUID {
+	return uuid.Nil
+}
+
 func (f *Fake) allocate() uuid.UUID {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -1,43 +1,64 @@
-package commands
+package commands_test
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoMocks "github.com/allisson/secrets/internal/crypto/usecase/mocks"
+	"github.com/allisson/secrets/cmd/app/commands"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
-func TestRunRewrapDeks(t *testing.T) {
-	ctx := context.Background()
-	logger := slog.Default()
-	masterKeyChain := cryptoDomain.NewMasterKeyChain("test-master-key")
-	kekID := uuid.New()
-	kekIDStr := kekID.String()
+func TestRunRewrapDeks_InvalidKekID(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fake := keyring.NewFake()
 
-	t.Run("success", func(t *testing.T) {
-		mockKekUseCase := &cryptoMocks.MockKekUseCase{}
-		mockDekUseCase := &cryptoMocks.MockDekUseCase{}
-		kekChain := cryptoDomain.NewKekChain(nil)
+	err := commands.RunRewrapDeks(context.Background(), fake, logger, "not-a-uuid", 100)
+	assert.ErrorContains(t, err, "invalid kek-id")
+}
 
-		mockKekUseCase.On("Unwrap", ctx, masterKeyChain).Return(kekChain, nil)
-		mockDekUseCase.On("Rewrap", ctx, kekChain, kekID, 100).Return(10, nil).Once()
-		mockDekUseCase.On("Rewrap", ctx, kekChain, kekID, 100).Return(0, nil).Once()
+func TestRunRewrapDeks_InvalidBatchSize(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fake := keyring.NewFake()
 
-		err := RunRewrapDeks(ctx, masterKeyChain, mockKekUseCase, mockDekUseCase, logger, kekIDStr, 100)
-		require.NoError(t, err)
+	err := commands.RunRewrapDeks(
+		context.Background(),
+		fake,
+		logger,
+		uuid.Nil.String(), // Fake's ActiveKekID() returns Nil
+		0,
+	)
+	assert.ErrorContains(t, err, "batch-size must be greater than 0")
+}
 
-		mockKekUseCase.AssertExpectations(t)
-		mockDekUseCase.AssertExpectations(t)
-	})
+func TestRunRewrapDeks_MismatchedActiveKek(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fake := keyring.NewFake()
 
-	t.Run("invalid-kek-id", func(t *testing.T) {
-		err := RunRewrapDeks(ctx, masterKeyChain, nil, nil, logger, "invalid", 100)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid kek-id")
-	})
+	err := commands.RunRewrapDeks(
+		context.Background(),
+		fake,
+		logger,
+		uuid.New().String(), // doesn't match Fake's Nil active id
+		100,
+	)
+	assert.ErrorContains(t, err, "does not match keyring active KEK")
+}
+
+func TestRunRewrapDeks_SuccessNoDEKs(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fake := keyring.NewFake()
+
+	err := commands.RunRewrapDeks(
+		context.Background(),
+		fake,
+		logger,
+		uuid.Nil.String(),
+		100,
+	)
+	assert.NoError(t, err)
 }

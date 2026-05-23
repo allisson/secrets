@@ -86,4 +86,14 @@ type Keyring interface {
 	// Rewrap re-encrypts an existing DEK under the active KEK without
 	// changing the underlying key material. Used by KEK rotation.
 	Rewrap(ctx context.Context, dekID uuid.UUID) error
+
+	// RewrapAll re-encrypts, in batches, every DEK not already under the
+	// active KEK. Returns the total number of DEKs rewrapped across all
+	// batches. Used by the KEK rotation worker.
+	RewrapAll(ctx context.Context, batchSize int) (int, error)
+
+	// ActiveKekID returns the ID of the KEK currently used for new
+	// encryption. Exposed so the rotation worker can confirm it is
+	// targeting the same KEK the application is using.
+	ActiveKekID() uuid.UUID
 }
