@@ -449,3 +449,80 @@ func TestEncryptedBlob_Destroy(t *testing.T) {
 		assert.Nil(t, blob.Plaintext)
 	})
 }
+
+func TestNewFramedBlob(t *testing.T) {
+	t.Run("Success_FramesNonceAndCiphertext", func(t *testing.T) {
+		nonce := make([]byte, domain.AEADNonceSize)
+		for i := range nonce {
+			nonce[i] = byte(i + 1)
+		}
+		ciphertext := []byte("ciphertext payload")
+
+		blob := domain.NewFramedBlob(3, nonce, ciphertext)
+
+		assert.Equal(t, uint(3), blob.Version)
+		assert.Equal(t, append(nonce, ciphertext...), blob.Ciphertext)
+		assert.Nil(t, blob.Plaintext)
+	})
+
+	t.Run("Success_RoundTrip_WithSplitNonce", func(t *testing.T) {
+		nonce := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+		ciphertext := []byte("some encrypted bytes")
+
+		blob := domain.NewFramedBlob(7, nonce, ciphertext)
+		gotNonce, gotCiphertext, err := blob.SplitNonce()
+
+		require.NoError(t, err)
+		assert.Equal(t, nonce, gotNonce)
+		assert.Equal(t, ciphertext, gotCiphertext)
+	})
+}
+
+func TestEncryptedBlob_SplitNonce(t *testing.T) {
+	t.Run("Success_SplitsAtNonceBoundary", func(t *testing.T) {
+		nonce := make([]byte, domain.AEADNonceSize)
+		ct := []byte("body")
+		blob := domain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: append(nonce, ct...),
+		}
+
+		gotNonce, gotCT, err := blob.SplitNonce()
+
+		require.NoError(t, err)
+		assert.Equal(t, nonce, gotNonce)
+		assert.Equal(t, ct, gotCT)
+	})
+
+	t.Run("Success_ExactlyNonceSizePayload", func(t *testing.T) {
+		nonce := make([]byte, domain.AEADNonceSize)
+		blob := domain.EncryptedBlob{Version: 1, Ciphertext: nonce}
+
+		gotNonce, gotCT, err := blob.SplitNonce()
+
+		require.NoError(t, err)
+		assert.Equal(t, nonce, gotNonce)
+		assert.Empty(t, gotCT)
+	})
+
+	t.Run("Error_PayloadTooShort", func(t *testing.T) {
+		blob := domain.EncryptedBlob{
+			Version:    1,
+			Ciphertext: make([]byte, domain.AEADNonceSize-1),
+		}
+
+		_, _, err := blob.SplitNonce()
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidBlobFormat)
+	})
+
+	t.Run("Error_EmptyPayload", func(t *testing.T) {
+		blob := domain.EncryptedBlob{Version: 1, Ciphertext: []byte{}}
+
+		_, _, err := blob.SplitNonce()
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidBlobFormat)
+	})
+}

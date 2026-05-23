@@ -16,12 +16,6 @@ import (
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
 
-// nonceSize is the AEAD nonce length stored alongside ciphertext in the
-// transit wire format. Both supported algorithms (AES-256-GCM,
-// ChaCha20-Poly1305) use 12-byte nonces. If we add an algorithm with a
-// different nonce size, this needs to be derived from the algorithm.
-const nonceSize = 12
-
 // transitKeyUseCase implements TransitKeyUseCase for managing transit keys.
 type transitKeyUseCase struct {
 	txManager   database.TxManager
@@ -140,15 +134,8 @@ func (t *transitKeyUseCase) Encrypt(
 		return nil, apperrors.Wrap(err, "failed to encrypt plaintext")
 	}
 
-	encryptedData := make([]byte, 0, len(nonce)+len(ciphertext))
-	encryptedData = append(encryptedData, nonce...)
-	encryptedData = append(encryptedData, ciphertext...)
-
-	return &transitDomain.EncryptedBlob{
-		Version:    transitKey.Version,
-		Ciphertext: encryptedData,
-		Plaintext:  nil,
-	}, nil
+	blob := transitDomain.NewFramedBlob(transitKey.Version, nonce, ciphertext)
+	return &blob, nil
 }
 
 // Decrypt decrypts ciphertext using the version specified in the encrypted blob.
@@ -168,11 +155,10 @@ func (t *transitKeyUseCase) Decrypt(
 		return nil, err
 	}
 
-	if len(blob.Ciphertext) < nonceSize {
-		return nil, apperrors.Wrap(keyring.ErrDecryptionFailed, "ciphertext too short")
+	nonce, encryptedData, err := blob.SplitNonce()
+	if err != nil {
+		return nil, keyring.ErrDecryptionFailed
 	}
-	nonce := blob.Ciphertext[:nonceSize]
-	encryptedData := blob.Ciphertext[nonceSize:]
 
 	handle := keyring.DekHandle{DekID: transitKey.DekID}
 	plaintext, err := t.keyring.DecryptWith(ctx, handle, encryptedData, nonce, context)
@@ -181,9 +167,8 @@ func (t *transitKeyUseCase) Decrypt(
 	}
 
 	return &transitDomain.EncryptedBlob{
-		Version:    blob.Version,
-		Ciphertext: nil,
-		Plaintext:  plaintext,
+		Version:   blob.Version,
+		Plaintext: plaintext,
 	}, nil
 }
 
