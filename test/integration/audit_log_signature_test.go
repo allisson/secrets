@@ -16,7 +16,6 @@ import (
 
 	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
@@ -36,16 +35,17 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	testCtx := setupAuditLogTestContext(t, dsn)
 	defer cleanupAuditLogTestContext(t, testCtx)
 
-	// Create audit signer and load KEK chain
-	auditSigner := authService.NewAuditSigner()
+	// Get key signer and repositories from container
+	keySigner, err := testCtx.container.KeySigner(ctx)
+	require.NoError(t, err, "failed to get key signer")
+
 	kekChain := testCtx.kekChain
 
-	// Get repositories from container
 	auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
 	require.NoError(t, err, "failed to get audit log repository")
 
 	// Create use case with signing enabled
-	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
+	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner)
 
 	t.Run("CreateSignedAuditLog", func(t *testing.T) {
 		// Create a signed audit log
@@ -246,8 +246,8 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	})
 
 	t.Run("LegacyUnsignedLogs", func(t *testing.T) {
-		// Create an unsigned legacy audit log (using nil signer and chain)
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
+		// Create an unsigned legacy audit log (no signer)
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
 
 		requestID := uuid.Must(uuid.NewV7())
 		clientID := testCtx.rootClient.ID
@@ -285,7 +285,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		clientID := testCtx.rootClient.ID
 
 		// Create 2 signed logs
-		signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
+		signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner)
 		for i := 0; i < 2; i++ {
 			requestID := uuid.Must(uuid.NewV7())
 			err := signedUseCase.Create(
@@ -301,7 +301,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		}
 
 		// Create 2 unsigned legacy logs
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
 		for i := 0; i < 2; i++ {
 			requestID := uuid.Must(uuid.NewV7())
 			err := legacyUseCase.Create(
