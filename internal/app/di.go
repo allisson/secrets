@@ -463,23 +463,21 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 	}
 
 	// Setup router with dependencies
-	server.SetupRouter(
-		ctx,
-		c.config,
-		clientHandler,
-		tokenHandler,
-		auditLogHandler,
-		secretHandler,
-		transitKeyHandler,
-		cryptoHandler,
-		tokenizationKeyHandler,
-		tokenizationHandler,
-		tokenUseCase,
-		tokenService,
-		auditLogUseCase,
-		metricsProvider,
-		c.config.MetricsNamespace,
-	)
+	server.SetupRouter(ctx, c.config, http.RouterDeps{
+		ClientHandler:          clientHandler,
+		TokenHandler:           tokenHandler,
+		AuditLogHandler:        auditLogHandler,
+		SecretHandler:          secretHandler,
+		TransitKeyHandler:      transitKeyHandler,
+		CryptoHandler:          cryptoHandler,
+		TokenizationKeyHandler: tokenizationKeyHandler,
+		TokenizationHandler:    tokenizationHandler,
+		TokenUseCase:           tokenUseCase,
+		TokenService:           tokenService,
+		AuditLogUseCase:        auditLogUseCase,
+		MetricsProvider:        metricsProvider,
+		MetricsNamespace:       c.config.MetricsNamespace,
+	})
 
 	return server, nil
 }

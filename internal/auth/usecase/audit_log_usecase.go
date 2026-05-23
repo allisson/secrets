@@ -22,7 +22,7 @@ type auditLogUseCase struct {
 
 // Create records an audit log entry for an authenticated operation. Generates a unique
 // UUIDv7 identifier and timestamp, then signs the log with HMAC-SHA256 using the active KEK
-// if KekChain and AuditSigner are available. For legacy/testing scenarios without signing,
+// if a keyring.KeySigner is provided. For legacy/testing scenarios without signing,
 // creates unsigned audit logs. The metadata parameter is optional and can be nil.
 func (a *auditLogUseCase) Create(
 	ctx context.Context,

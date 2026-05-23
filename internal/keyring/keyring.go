@@ -1,8 +1,9 @@
-// Package keyring provides envelope encryption as a single deep module.
+// Package keyring provides envelope encryption and audit-log signing as a
+// single deep module.
 //
 // Callers exchange plaintext for an Envelope (DekID + Ciphertext + Nonce) and
-// back. The KEK chain, DEK lifecycle, AEAD cipher selection, and KMS-rooted
-// master key chain all live behind this interface.
+// back. The KEK chain, DEK lifecycle, AEAD cipher selection, KMS-rooted
+// master key chain, and HMAC-SHA256 signing all live behind this interface.
 //
 // Two encryption shapes are supported:
 //
@@ -11,6 +12,9 @@
 //   - Persistent DEK (AllocateDek/EncryptWith/DecryptWith) — one DEK is
 //     allocated once and reused across many encrypt/decrypt calls. Used by
 //     the transit feature where a named key wraps user payloads repeatedly.
+//
+// Signing (SignWithKey/VerifyWithKey) uses HKDF-SHA256 to derive a purpose-
+// specific key from the active KEK, keeping raw key material inside the module.
 //
 // All methods honor an ambient transaction propagated via context; persistence
 // joins the caller's tx when one is present (see ADR-0005).
@@ -85,10 +89,14 @@ type KeySigner interface {
 	VerifyWithKey(kekID uuid.UUID, data, sig []byte) error
 }
 
-// Keyring is the single seam features use to encrypt and decrypt data.
+// Keyring is the single seam features use for encryption and signing.
+// It embeds KeySigner so any Keyring implementation also satisfies signing
+// without a separate interface or runtime type assertion.
 //
 // Implementations must be safe for concurrent use.
 type Keyring interface {
+	KeySigner
+
 	// Encrypt creates a fresh DEK, persists it, and uses it to encrypt
 	// plaintext exactly once. The returned Envelope contains everything a
 	// future Decrypt call needs.

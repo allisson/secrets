@@ -23,7 +23,6 @@ func NewTransitKeyUseCaseWithMetrics(useCase TransitKeyUseCase, m metrics.Busine
 	}
 }
 
-// Create records metrics for transit key creation operations.
 func (t *transitKeyUseCaseWithMetrics) Create(
 	ctx context.Context,
 	name string,
@@ -31,19 +30,10 @@ func (t *transitKeyUseCaseWithMetrics) Create(
 ) (*transitDomain.TransitKey, error) {
 	start := time.Now()
 	key, err := t.next.Create(ctx, name, alg)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_create", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_create", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_create", start, err)
 	return key, err
 }
 
-// Rotate records metrics for transit key rotation operations.
 func (t *transitKeyUseCaseWithMetrics) Rotate(
 	ctx context.Context,
 	name string,
@@ -51,19 +41,10 @@ func (t *transitKeyUseCaseWithMetrics) Rotate(
 ) (*transitDomain.TransitKey, error) {
 	start := time.Now()
 	key, err := t.next.Rotate(ctx, name, alg)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_rotate", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_rotate", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_rotate", start, err)
 	return key, err
 }
 
-// Get records metrics for transit key metadata retrieval operations.
 func (t *transitKeyUseCaseWithMetrics) Get(
 	ctx context.Context,
 	name string,
@@ -71,35 +52,17 @@ func (t *transitKeyUseCaseWithMetrics) Get(
 ) (*transitDomain.TransitKey, keyring.Algorithm, error) {
 	start := time.Now()
 	key, alg, err := t.next.Get(ctx, name, version)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_get", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_get", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_get", start, err)
 	return key, alg, err
 }
 
-// Delete records metrics for transit key deletion operations.
 func (t *transitKeyUseCaseWithMetrics) Delete(ctx context.Context, name string) error {
 	start := time.Now()
 	err := t.next.Delete(ctx, name)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_delete", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_delete", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_delete", start, err)
 	return err
 }
 
-// Encrypt records metrics for transit encryption operations.
 func (t *transitKeyUseCaseWithMetrics) Encrypt(
 	ctx context.Context,
 	name string,
@@ -107,19 +70,10 @@ func (t *transitKeyUseCaseWithMetrics) Encrypt(
 ) (*transitDomain.EncryptedBlob, error) {
 	start := time.Now()
 	blob, err := t.next.Encrypt(ctx, name, plaintext, context)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_encrypt", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_encrypt", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_encrypt", start, err)
 	return blob, err
 }
 
-// Decrypt records metrics for transit decryption operations.
 func (t *transitKeyUseCaseWithMetrics) Decrypt(
 	ctx context.Context,
 	name string,
@@ -128,19 +82,10 @@ func (t *transitKeyUseCaseWithMetrics) Decrypt(
 ) (*transitDomain.EncryptedBlob, error) {
 	start := time.Now()
 	blob, err := t.next.Decrypt(ctx, name, ciphertext, context)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_decrypt", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_decrypt", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_decrypt", start, err)
 	return blob, err
 }
 
-// ListCursor records metrics for transit listing operations with cursor pagination.
 func (t *transitKeyUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
 	afterName *string,
@@ -148,19 +93,10 @@ func (t *transitKeyUseCaseWithMetrics) ListCursor(
 ) ([]*transitDomain.TransitKey, error) {
 	start := time.Now()
 	keys, err := t.next.ListCursor(ctx, afterName, limit)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_list", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_list", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_list", start, err)
 	return keys, err
 }
 
-// PurgeDeleted records metrics for transit key purge operations.
 func (t *transitKeyUseCaseWithMetrics) PurgeDeleted(
 	ctx context.Context,
 	olderThanDays int,
@@ -168,14 +104,6 @@ func (t *transitKeyUseCaseWithMetrics) PurgeDeleted(
 ) (int64, error) {
 	start := time.Now()
 	count, err := t.next.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	t.metrics.RecordOperation(ctx, "transit", "transit_key_purge", status)
-	t.metrics.RecordDuration(ctx, "transit", "transit_key_purge", time.Since(start), status)
-
+	metrics.Record(ctx, t.metrics, "transit", "transit_key_purge", start, err)
 	return count, err
 }
