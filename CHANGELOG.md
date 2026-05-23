@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed MySQL support and standardized database configuration, migrations, repositories, and database-backed tests on PostgreSQL.
 - Collapsed HTTP authorization wiring behind a single `Authorizer` that pre-binds the audit log use case and logger; route registrations now read `authz.Require(<capability>)`. No HTTP contract change.
+- Deepened the `keyring` module: re-exported error sentinels and `Zero` so callers no longer need to import `crypto/domain`; errors are now mapped to `ErrDecryptionFailed` at the keyring boundary. No behavior change.
+- Moved transit nonce framing (`nonce ‖ ciphertext`) from the usecase into `transit/domain` via `NewFramedBlob` / `SplitNonce`. No behavior change.
+- Moved audit-log signing key derivation (HKDF-SHA256 + HMAC-SHA256) inside the keyring via a new `KeySigner` interface; the audit log usecase no longer holds raw KEK bytes. No behavior change.
 
 ## [0.28.0] - 2026-03-23
 
