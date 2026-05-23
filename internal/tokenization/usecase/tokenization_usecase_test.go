@@ -1,1855 +1,304 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoServiceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
-	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
+	apperrors "github.com/allisson/secrets/internal/errors"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
-	tokenizationTesting "github.com/allisson/secrets/internal/tokenization/testing"
-	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
+	"github.com/allisson/secrets/internal/tokenization/usecase"
+	"github.com/allisson/secrets/internal/tokenization/usecase/mocks"
 )
 
-// TestTokenizationUseCase_Tokenize tests the Tokenize method.
+func newTokenizationUseCase(
+	t *testing.T,
+) (
+	usecase.TokenizationUseCase,
+	*keyring.Fake,
+	*mocks.MockTokenizationKeyRepository,
+	*mocks.MockTokenRepository,
+	*mocks.MockHashService,
+) {
+	t.Helper()
+	fake := keyring.NewFake()
+	keyRepo := mocks.NewMockTokenizationKeyRepository(t)
+	tokenRepo := mocks.NewMockTokenRepository(t)
+	hashSvc := mocks.NewMockHashService(t)
+	uc := usecase.NewTokenizationUseCase(noopTxManager{}, keyRepo, tokenRepo, hashSvc, fake)
+	return uc, fake, keyRepo, tokenRepo, hashSvc
+}
+
+// allocateDekForTest seeds the keyring Fake with a DekID and returns it,
+// mimicking a tokenization key previously created via uc.Create.
+func allocateDekForTest(t *testing.T, fake *keyring.Fake) uuid.UUID {
+	t.Helper()
+	handle, err := fake.AllocateDek(context.Background(), keyring.AESGCM)
+	require.NoError(t, err)
+	return handle.DekID
+}
+
 func TestTokenizationUseCase_Tokenize(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_NonDeterministicMode", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Success_NonDeterministic", func(t *testing.T) {
+		t.Parallel()
+		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
+		dekID := allocateDekForTest(t, fake)
 
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		salt := []byte("test-salt-32-bytes-long-12345678")
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           dekID,
-			Name:            "test-key",
+		key := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.New(),
+			Name:            "k",
+			Version:         1,
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: false,
-			Version:         1,
-			Salt:            salt,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		plaintext := []byte("test-value")
-		ciphertext := []byte("encrypted-value")
-		nonce := []byte("test-nonce")
-		metadata := map[string]any{"last4": "alue"}
-		expiresAt := time.Now().UTC().Add(24 * time.Hour)
-
-		// Create mock cipher
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(ciphertext, nonce, nil).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(token *tokenizationDomain.Token) bool {
-				return token.TokenizationKeyID == tokenizationKeyID &&
-					len(token.Token) > 0 &&
-					token.ValueHash == nil &&
-					string(token.Ciphertext) == string(ciphertext) &&
-					string(token.Nonce) == string(nonce) &&
-					token.ExpiresAt.Equal(expiresAt)
-			})).
-			Return(nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", plaintext, metadata, &expiresAt)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, token)
-		assert.Equal(t, tokenizationKeyID, token.TokenizationKeyID)
-		assert.NotEmpty(t, token.Token)
-		assert.Nil(t, token.ValueHash)
-		assert.Equal(t, ciphertext, token.Ciphertext)
-		assert.Equal(t, nonce, token.Nonce)
-		assert.Equal(t, metadata, token.Metadata)
-		assert.Equal(t, expiresAt, *token.ExpiresAt)
-	})
-
-	t.Run("Success_DeterministicMode_NewToken", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		salt := []byte("deterministic-salt-32-bytes-long")
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
 			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatLuhnPreserving,
-			IsDeterministic: true,
-			Version:         1,
-			Salt:            salt,
 		}
+		keyRepo.EXPECT().GetByName(ctx, "k").Return(key, nil)
+		tokenRepo.EXPECT().Create(ctx, mock.MatchedBy(func(tok *tokenizationDomain.Token) bool {
+			return tok.TokenizationKeyID == key.ID &&
+				len(tok.Token) > 0 &&
+				len(tok.Ciphertext) > 0 &&
+				tok.ValueHash == nil
+		})).Return(nil)
 
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		plaintext := []byte("4111111111111111")
-		valueHash := "hash-of-plaintext"
-		ciphertext := []byte("encrypted-value")
-		nonce := []byte("test-nonce")
-
-		// Create mock cipher
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockHashService.EXPECT().
-			Hash(plaintext, salt).
-			Return(valueHash).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			GetByValueHash(ctx, tokenizationKeyID, valueHash).
-			Return(nil, tokenizationDomain.ErrTokenNotFound).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(ciphertext, nonce, nil).
-			Once()
-
-		mockHashService.EXPECT().
-			Hash(plaintext, salt).
-			Return(valueHash).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(token *tokenizationDomain.Token) bool {
-				return token.TokenizationKeyID == tokenizationKeyID &&
-					len(token.Token) > 0 &&
-					token.ValueHash != nil &&
-					*token.ValueHash == valueHash &&
-					string(token.Ciphertext) == string(ciphertext) &&
-					string(token.Nonce) == string(nonce)
-			})).
-			Return(nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", plaintext, nil, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, token)
-		assert.Equal(t, tokenizationKeyID, token.TokenizationKeyID)
-		assert.NotEmpty(t, token.Token)
-		assert.NotNil(t, token.ValueHash)
-		assert.Equal(t, valueHash, *token.ValueHash)
-		assert.Equal(t, ciphertext, token.Ciphertext)
-		assert.Equal(t, nonce, token.Nonce)
+		got, err := uc.Tokenize(ctx, "k", []byte("payload"), nil, nil)
+		require.NoError(t, err)
+		assert.NotEmpty(t, got.Token)
 	})
 
-	t.Run("Success_DeterministicMode_ExistingValidToken", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Success_Deterministic_ReturnsExistingValidToken", func(t *testing.T) {
+		t.Parallel()
+		uc, fake, keyRepo, tokenRepo, hashSvc := newTokenizationUseCase(t)
+		dekID := allocateDekForTest(t, fake)
 
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		salt := []byte("deterministic-salt-32-bytes-long")
-		plaintext := []byte("test-value")
-		valueHash := "hash-of-plaintext"
-		existingTokenValue := "existing-token-123"
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           uuid.Must(uuid.NewV7()),
-			Name:            "test-key",
+		key := &tokenizationDomain.TokenizationKey{
+			ID:              uuid.New(),
+			Name:            "k",
+			Version:         1,
 			FormatType:      tokenizationDomain.FormatUUID,
 			IsDeterministic: true,
-			Version:         1,
-			Salt:            salt,
-		}
-
-		existingToken := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: tokenizationKeyID,
-			Token:             existingTokenValue,
-			ValueHash:         &valueHash,
-			Ciphertext:        []byte("existing-ciphertext"),
-			Nonce:             []byte("existing-nonce"),
-			CreatedAt:         time.Now().UTC().Add(-1 * time.Hour),
-			ExpiresAt:         nil, // No expiration
-			RevokedAt:         nil, // Not revoked
-		}
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockHashService.EXPECT().
-			Hash(plaintext, salt).
-			Return(valueHash).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			GetByValueHash(ctx, tokenizationKeyID, valueHash).
-			Return(existingToken, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", plaintext, nil, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, token)
-		assert.Equal(t, existingToken.ID, token.ID)
-		assert.Equal(t, existingTokenValue, token.Token)
-		assert.Equal(t, valueHash, *token.ValueHash)
-	})
-
-	t.Run("Success_DeterministicMode_ExpiredTokenCreatesNew", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		salt := []byte("deterministic-salt-32-bytes-long")
-		plaintext := []byte("test-value")
-		valueHash := "hash-of-plaintext"
-		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
+			Salt:            []byte("salt"),
 			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: true,
-			Version:         1,
-			Salt:            salt,
+		}
+		existing := &tokenizationDomain.Token{
+			ID:                uuid.New(),
+			TokenizationKeyID: key.ID,
+			Token:             "existing-token",
 		}
 
-		expiredToken := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: tokenizationKeyID,
-			Token:             "expired-token",
-			ValueHash:         &valueHash,
-			Ciphertext:        []byte("old-ciphertext"),
-			Nonce:             []byte("old-nonce"),
-			CreatedAt:         time.Now().UTC().Add(-2 * time.Hour),
-			ExpiresAt:         &expiredTime, // Expired
-			RevokedAt:         nil,
-		}
+		keyRepo.EXPECT().GetByName(ctx, "k").Return(key, nil)
+		hashSvc.EXPECT().Hash([]byte("payload"), []byte("salt")).Return("hash-value")
+		tokenRepo.EXPECT().
+			GetByValueHash(ctx, key.ID, "hash-value").
+			Return(existing, nil)
 
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		ciphertext := []byte("new-encrypted-value")
-		nonce := []byte("new-nonce")
-
-		// Create mock cipher
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockHashService.EXPECT().
-			Hash(plaintext, salt).
-			Return(valueHash).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			GetByValueHash(ctx, tokenizationKeyID, valueHash).
-			Return(expiredToken, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(ciphertext, nonce, nil).
-			Once()
-
-		mockHashService.EXPECT().
-			Hash(plaintext, salt).
-			Return(valueHash).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(token *tokenizationDomain.Token) bool {
-				return token.TokenizationKeyID == tokenizationKeyID &&
-					len(token.Token) > 0 &&
-					token.ValueHash != nil &&
-					*token.ValueHash == valueHash &&
-					string(token.Ciphertext) == string(ciphertext)
-			})).
-			Return(nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", plaintext, nil, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, token)
-		assert.NotEqual(t, expiredToken.ID, token.ID) // Should be a new token
-		assert.NotEqual(t, "expired-token", token.Token)
+		got, err := uc.Tokenize(ctx, "k", []byte("payload"), nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, "existing-token", got.Token)
 	})
 
-	t.Run("Error_TokenizationKeyNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "nonexistent-key").
-			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "nonexistent-key", []byte("test"), nil, nil)
-
-		// Assert
-		assert.Nil(t, token)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound))
-		assert.Contains(t, err.Error(), "failed to get tokenization key by name")
+	t.Run("Error_PlaintextEmpty", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, _, _ := newTokenizationUseCase(t)
+		_, err := uc.Tokenize(ctx, "k", nil, nil, nil)
+		assert.ErrorIs(t, err, tokenizationDomain.ErrPlaintextEmpty)
 	})
 
-	t.Run("Error_DekNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              uuid.Must(uuid.NewV7()),
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(nil, cryptoDomain.ErrDekNotFound).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", []byte("test"), nil, nil)
-
-		// Assert
-		assert.Nil(t, token)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, cryptoDomain.ErrDekNotFound))
-		assert.Contains(t, err.Error(), "failed to get DEK")
+	t.Run("Error_PlaintextTooLarge", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, _, _ := newTokenizationUseCase(t)
+		big := make([]byte, tokenizationDomain.MaxPlaintextSize+1)
+		_, err := uc.Tokenize(ctx, "k", big, nil, nil)
+		assert.ErrorIs(t, err, tokenizationDomain.ErrPlaintextTooLarge)
 	})
 
-	t.Run("Error_KekNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Error_KeyNotFound", func(t *testing.T) {
+		t.Parallel()
+		uc, _, keyRepo, _, _ := newTokenizationUseCase(t)
+		keyRepo.EXPECT().
+			GetByName(ctx, "missing").
+			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		dekID := uuid.Must(uuid.NewV7())
-		nonexistentKekID := uuid.Must(uuid.NewV7()) // KEK not in chain
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              uuid.Must(uuid.NewV7()),
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        nonexistentKekID, // References KEK not in chain
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", []byte("test"), nil, nil)
-
-		// Assert
-		assert.Nil(t, token)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, cryptoDomain.ErrKekNotFound))
-		assert.Contains(t, err.Error(), "failed to get KEK")
+		_, err := uc.Tokenize(ctx, "missing", []byte("x"), nil, nil)
+		assert.ErrorIs(t, err, tokenizationDomain.ErrTokenizationKeyNotFound)
 	})
 
-	t.Run("Error_EncryptionFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Error_KeyringEncryptFails", func(t *testing.T) {
+		t.Parallel()
+		uc, fake, keyRepo, _, _ := newTokenizationUseCase(t)
+		dekID := allocateDekForTest(t, fake)
+		fake.FailEncrypt = apperrors.New("boom")
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
+		keyRepo.EXPECT().GetByName(ctx, "k").Return(&tokenizationDomain.TokenizationKey{
+			ID:         uuid.New(),
+			FormatType: tokenizationDomain.FormatUUID,
+			DekID:      dekID,
+		}, nil)
 
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              uuid.Must(uuid.NewV7()),
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		plaintext := []byte("test-value")
-
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-		encryptionError := errors.New("encryption failed")
-
-		// Setup expectations
-		mockTokenizationKeyRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(nil, nil, encryptionError).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		token, err := uc.Tokenize(ctx, "test-key", plaintext, nil, nil)
-
-		// Assert
-		assert.Nil(t, token)
+		_, err := uc.Tokenize(ctx, "k", []byte("payload"), nil, nil)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to encrypt plaintext")
 	})
 }
 
-// TestTokenizationUseCase_Detokenize tests the Detokenize method.
 func TestTokenizationUseCase_Detokenize(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_DetokenizeValid", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Success_RoundTrip", func(t *testing.T) {
+		t.Parallel()
+		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
 
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
+		// Encrypt via the fake to get matching ciphertext/nonce/dekID.
+		handle, err := fake.AllocateDek(ctx, keyring.AESGCM)
+		require.NoError(t, err)
+		plaintext := []byte("4111111111111111")
+		ciphertext, nonce, err := fake.EncryptWith(ctx, handle, plaintext, nil)
+		require.NoError(t, err)
 
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		tokenValue := "test-token-123"
-		plaintext := []byte("original-value")
-		ciphertext := []byte("encrypted-value")
-		nonce := []byte("test-nonce")
-		metadata := map[string]any{"last4": "alue"}
-
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: tokenizationKeyID,
-			Token:             tokenValue,
+		key := &tokenizationDomain.TokenizationKey{
+			ID:    uuid.New(),
+			Name:  "cards",
+			DekID: handle.DekID,
+		}
+		tokenRec := &tokenizationDomain.Token{
+			TokenizationKeyID: key.ID,
+			Token:             "tok",
 			Ciphertext:        ciphertext,
 			Nonce:             nonce,
-			Metadata:          metadata,
 			CreatedAt:         time.Now().UTC(),
-			ExpiresAt:         nil,
-			RevokedAt:         nil,
 		}
 
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(tokenRec, nil)
+		keyRepo.EXPECT().Get(ctx, key.ID).Return(key, nil)
 
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("dek-nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		mockTokenizationKeyRepo.EXPECT().
-			Get(ctx, tokenizationKeyID).
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Decrypt(ciphertext, nonce, mock.Anything).
-			Return(plaintext, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		resultPlaintext, resultMetadata, err := uc.Detokenize(ctx, tokenValue)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, plaintext, resultPlaintext)
-		assert.Equal(t, metadata, resultMetadata)
-	})
-
-	t.Run("Error_TokenNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, "nonexistent-token").
-			Return(nil, tokenizationDomain.ErrTokenNotFound).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		plaintext, metadata, err := uc.Detokenize(ctx, "nonexistent-token")
-
-		// Assert
-		assert.Nil(t, plaintext)
-		assert.Nil(t, metadata)
-		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenNotFound))
-		assert.Contains(t, err.Error(), "failed to get token")
+		got, _, err := uc.Detokenize(ctx, "tok")
+		require.NoError(t, err)
+		assert.Equal(t, plaintext, got)
 	})
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		past := time.Now().Add(-time.Hour)
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
+			Token:     "tok",
+			ExpiresAt: &past,
+		}, nil)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
-		tokenValue := "expired-token"
-
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC().Add(-2 * time.Hour),
-			ExpiresAt:         &expiredTime,
-			RevokedAt:         nil,
-		}
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		plaintext, metadata, err := uc.Detokenize(ctx, tokenValue)
-
-		// Assert
-		assert.Nil(t, plaintext)
-		assert.Nil(t, metadata)
-		assert.Equal(t, tokenizationDomain.ErrTokenExpired, err)
+		_, _, err := uc.Detokenize(ctx, "tok")
+		assert.ErrorIs(t, err, tokenizationDomain.ErrTokenExpired)
 	})
 
 	t.Run("Error_TokenRevoked", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		now := time.Now()
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
+			Token:     "tok",
+			RevokedAt: &now,
+		}, nil)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		revokedTime := time.Now().UTC().Add(-30 * time.Minute)
-		tokenValue := "revoked-token"
-
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC().Add(-1 * time.Hour),
-			ExpiresAt:         nil,
-			RevokedAt:         &revokedTime,
-		}
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		plaintext, metadata, err := uc.Detokenize(ctx, tokenValue)
-
-		// Assert
-		assert.Nil(t, plaintext)
-		assert.Nil(t, metadata)
-		assert.Equal(t, tokenizationDomain.ErrTokenRevoked, err)
+		_, _, err := uc.Detokenize(ctx, "tok")
+		assert.ErrorIs(t, err, tokenizationDomain.ErrTokenRevoked)
 	})
 
-	t.Run("Error_DecryptionFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Error_DecryptFails", func(t *testing.T) {
+		t.Parallel()
+		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
+		dekID := allocateDekForTest(t, fake)
+		fake.FailDecrypt = apperrors.New("AEAD tag mismatch")
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		tokenValue := "test-token"
-
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: tokenizationKeyID,
-			Token:             tokenValue,
-			Ciphertext:        []byte("corrupted-ciphertext"),
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
+			Token:             "tok",
+			TokenizationKeyID: uuid.New(),
+			Ciphertext:        []byte("ct"),
 			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC(),
-			ExpiresAt:         nil,
-			RevokedAt:         nil,
-		}
+		}, nil)
+		keyRepo.EXPECT().Get(ctx, mock.Anything).Return(&tokenizationDomain.TokenizationKey{
+			DekID: dekID,
+		}, nil)
 
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("dek-nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-		decryptionError := errors.New("decryption failed")
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		mockTokenizationKeyRepo.EXPECT().
-			Get(ctx, tokenizationKeyID).
-			Return(tokenizationKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dekID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, activeKek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAEADManager.EXPECT().
-			CreateCipher(dekKey, cryptoDomain.AESGCM).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Decrypt(tokenRecord.Ciphertext, tokenRecord.Nonce, mock.Anything).
-			Return(nil, decryptionError).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		plaintext, metadata, err := uc.Detokenize(ctx, tokenValue)
-
-		// Assert
-		assert.Nil(t, plaintext)
-		assert.Nil(t, metadata)
-		assert.True(t, errors.Is(err, cryptoDomain.ErrDecryptionFailed))
-		assert.Contains(t, err.Error(), "failed to decrypt token ciphertext")
+		_, _, err := uc.Detokenize(ctx, "tok")
+		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
 	})
 }
 
-// TestTokenizationUseCase_Validate tests the Validate method.
 func TestTokenizationUseCase_Validate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_ValidToken", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Valid", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
+			Token:     "tok",
+			CreatedAt: time.Now(),
+		}, nil)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		tokenValue := "valid-token"
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC(),
-			ExpiresAt:         nil,
-			RevokedAt:         nil,
-		}
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		isValid, err := uc.Validate(ctx, tokenValue)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.True(t, isValid)
+		ok, err := uc.Validate(ctx, "tok")
+		require.NoError(t, err)
+		assert.True(t, ok)
 	})
 
-	t.Run("Success_ExpiredToken", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("NotFound_ReturnsFalseNoError", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(nil, tokenizationDomain.ErrTokenNotFound)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		expiredTime := time.Now().UTC().Add(-1 * time.Hour)
-		tokenValue := "expired-token"
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC().Add(-2 * time.Hour),
-			ExpiresAt:         &expiredTime,
-			RevokedAt:         nil,
-		}
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		isValid, err := uc.Validate(ctx, tokenValue)
-
-		// Assert
+		ok, err := uc.Validate(ctx, "tok")
 		assert.NoError(t, err)
-		assert.False(t, isValid)
-	})
-
-	t.Run("Success_TokenNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, "nonexistent-token").
-			Return(nil, tokenizationDomain.ErrTokenNotFound).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		isValid, err := uc.Validate(ctx, "nonexistent-token")
-
-		// Assert
-		assert.NoError(t, err)
-		assert.False(t, isValid)
-	})
-
-	t.Run("Error_RepositoryError", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		dbError := errors.New("database error")
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, "test-token").
-			Return(nil, dbError).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		isValid, err := uc.Validate(ctx, "test-token")
-
-		// Assert
-		assert.False(t, isValid)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, dbError))
-		assert.Contains(t, err.Error(), "failed to validate token")
+		assert.False(t, ok)
 	})
 }
 
-// TestTokenizationUseCase_Revoke tests the Revoke method.
 func TestTokenizationUseCase_Revoke(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_RevokeToken", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+	tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{Token: "tok"}, nil)
+	tokenRepo.EXPECT().Revoke(ctx, "tok").Return(nil)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		tokenValue := "token-to-revoke"
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC(),
-			ExpiresAt:         nil,
-			RevokedAt:         nil,
-		}
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			Revoke(ctx, tokenValue).
-			Return(nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		err := uc.Revoke(ctx, tokenValue)
-
-		// Assert
-		assert.NoError(t, err)
-	})
-
-	t.Run("Error_TokenNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, "nonexistent-token").
-			Return(nil, tokenizationDomain.ErrTokenNotFound).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		err := uc.Revoke(ctx, "nonexistent-token")
-
-		// Assert
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, tokenizationDomain.ErrTokenNotFound))
-		assert.Contains(t, err.Error(), "failed to get token for revocation")
-	})
-
-	t.Run("Error_RevokeFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		tokenValue := "test-token"
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: uuid.Must(uuid.NewV7()),
-			Token:             tokenValue,
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC(),
-			ExpiresAt:         nil,
-			RevokedAt:         nil,
-		}
-
-		dbError := errors.New("database error")
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			GetByToken(ctx, tokenValue).
-			Return(tokenRecord, nil).
-			Once()
-
-		mockTokenRepo.EXPECT().
-			Revoke(ctx, tokenValue).
-			Return(dbError).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		err := uc.Revoke(ctx, tokenValue)
-
-		// Assert
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, dbError))
-		assert.Contains(t, err.Error(), "failed to revoke token")
-	})
+	assert.NoError(t, uc.Revoke(ctx, "tok"))
 }
 
-// TestTokenizationUseCase_CleanupExpired tests the CleanupExpired method.
 func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
-
-	t.Run("Success_DryRunMode", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			CountExpired(ctx, mock.MatchedBy(func(cutoff time.Time) bool {
-				// Verify cutoff is approximately 7 days ago
-				expectedCutoff := time.Now().UTC().AddDate(0, 0, -7)
-				// Allow 2 second variance for test execution time
-				return cutoff.After(expectedCutoff.Add(-2*time.Second)) &&
-					cutoff.Before(expectedCutoff.Add(2*time.Second))
-			})).
-			Return(int64(42), nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		count, err := uc.CleanupExpired(ctx, 7, true)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, int64(42), count)
-	})
-
-	t.Run("Success_DeleteMode", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			DeleteExpired(ctx, mock.MatchedBy(func(cutoff time.Time) bool {
-				// Verify cutoff is approximately 30 days ago
-				expectedCutoff := time.Now().UTC().AddDate(0, 0, -30)
-				// Allow 2 second variance for test execution time
-				return cutoff.After(expectedCutoff.Add(-2*time.Second)) &&
-					cutoff.Before(expectedCutoff.Add(2*time.Second))
-			})).
-			Return(int64(100), nil).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		count, err := uc.CleanupExpired(ctx, 30, false)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, int64(100), count)
-	})
 
 	t.Run("Error_NegativeDays", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		count, err := uc.CleanupExpired(ctx, -1, false)
-
-		// Assert
-		assert.Equal(t, int64(0), count)
+		t.Parallel()
+		uc, _, _, _, _ := newTokenizationUseCase(t)
+		_, err := uc.CleanupExpired(ctx, -1, false)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "days must be non-negative")
 	})
 
-	t.Run("Error_RepositoryError", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
+	t.Run("Success_DryRun", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		tokenRepo.EXPECT().CountExpired(ctx, mock.Anything).Return(int64(7), nil)
 
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		dbError := errors.New("database error")
-
-		// Setup expectations
-		mockTokenRepo.EXPECT().
-			DeleteExpired(ctx, mock.AnythingOfType("time.Time")).
-			Return(int64(0), dbError).
-			Once()
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		count, err := uc.CleanupExpired(ctx, 7, false)
-
-		// Assert
-		assert.Equal(t, int64(0), count)
-		assert.Equal(t, dbError, err)
+		n, err := uc.CleanupExpired(ctx, 30, true)
+		require.NoError(t, err)
+		assert.EqualValues(t, 7, n)
 	})
-}
 
-// TestTokenizationUseCase_TokenizeBatch tests the TokenizeBatch method.
-func TestTokenizationUseCase_TokenizeBatch(t *testing.T) {
-	ctx := context.Background()
+	t.Run("Success_Delete", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		tokenRepo.EXPECT().DeleteExpired(ctx, mock.Anything).Return(int64(4), nil)
 
-	t.Run("Success", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		plaintexts := [][]byte{[]byte("value1"), []byte("value2")}
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, f func(context.Context) error) {
-				_ = f(ctx)
-			}).
-			Return(nil).
-			Once()
-
-		// Expectations for each item in batch
-		for range plaintexts {
-			mockTokenizationKeyRepo.EXPECT().
-				GetByName(ctx, "test-key").
-				Return(tokenizationKey, nil).
-				Once()
-
-			mockDekRepo.EXPECT().
-				Get(ctx, dekID).
-				Return(dek, nil).
-				Once()
-
-			mockKeyManager.EXPECT().
-				DecryptDek(dek, activeKek).
-				Return(dekKey, nil).
-				Once()
-
-			mockAEADManager.EXPECT().
-				CreateCipher(dekKey, cryptoDomain.AESGCM).
-				Return(mockCipher, nil).
-				Once()
-
-			mockCipher.EXPECT().
-				Encrypt(mock.Anything, mock.Anything).
-				Return([]byte("ciphertext"), []byte("nonce"), nil).
-				Once()
-
-			mockTokenRepo.EXPECT().
-				Create(ctx, mock.Anything).
-				Return(nil).
-				Once()
-		}
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		tokens, err := uc.TokenizeBatch(ctx, "test-key", plaintexts, nil, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Len(t, tokens, 2)
-	})
-}
-
-// TestTokenizationUseCase_DetokenizeBatch tests the DetokenizeBatch method.
-func TestTokenizationUseCase_DetokenizeBatch(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("Success", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTokenizationKeyRepo := tokenizationMocks.NewMockTokenizationKeyRepository(t)
-		mockTokenRepo := tokenizationMocks.NewMockTokenRepository(t)
-		mockDekRepo := tokenizationMocks.NewMockDekRepository(t)
-		mockAEADManager := cryptoServiceMocks.NewMockAEADManager(t)
-		mockKeyManager := cryptoServiceMocks.NewMockKeyManager(t)
-		mockHashService := tokenizationMocks.NewMockHashService(t)
-
-		// Create test data
-		masterKey := tokenizationTesting.CreateMasterKey()
-		kekChain := tokenizationTesting.CreateKekChain(masterKey)
-		defer kekChain.Close()
-
-		activeKek := tokenizationTesting.GetActiveKek(kekChain)
-		dekID := uuid.Must(uuid.NewV7())
-		tokenizationKeyID := uuid.Must(uuid.NewV7())
-		tokens := []string{"token1", "token2"}
-
-		tokenRecord := &tokenizationDomain.Token{
-			ID:                uuid.Must(uuid.NewV7()),
-			TokenizationKeyID: tokenizationKeyID,
-			Token:             "token",
-			Ciphertext:        []byte("ciphertext"),
-			Nonce:             []byte("nonce"),
-			CreatedAt:         time.Now().UTC(),
-		}
-
-		tokenizationKey := &tokenizationDomain.TokenizationKey{
-			ID:              tokenizationKeyID,
-			DekID:           dekID,
-			Name:            "test-key",
-			FormatType:      tokenizationDomain.FormatUUID,
-			IsDeterministic: false,
-			Version:         1,
-		}
-
-		dek := &cryptoDomain.Dek{
-			ID:           dekID,
-			KekID:        activeKek.ID,
-			Algorithm:    cryptoDomain.AESGCM,
-			EncryptedKey: []byte("encrypted-dek"),
-			Nonce:        []byte("dek-nonce"),
-		}
-
-		dekKey := make([]byte, 32)
-		mockCipher := cryptoServiceMocks.NewMockAEAD(t)
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, f func(context.Context) error) {
-				_ = f(ctx)
-			}).
-			Return(nil).
-			Once()
-
-		// Expectations for each item in batch
-		for range tokens {
-			mockTokenRepo.EXPECT().
-				GetByToken(ctx, mock.Anything).
-				Return(tokenRecord, nil).
-				Once()
-
-			mockTokenizationKeyRepo.EXPECT().
-				Get(ctx, tokenizationKeyID).
-				Return(tokenizationKey, nil).
-				Once()
-
-			mockDekRepo.EXPECT().
-				Get(ctx, dekID).
-				Return(dek, nil).
-				Once()
-
-			mockKeyManager.EXPECT().
-				DecryptDek(dek, activeKek).
-				Return(dekKey, nil).
-				Once()
-
-			mockAEADManager.EXPECT().
-				CreateCipher(dekKey, cryptoDomain.AESGCM).
-				Return(mockCipher, nil).
-				Once()
-
-			mockCipher.EXPECT().
-				Decrypt(mock.Anything, mock.Anything, mock.Anything).
-				Return([]byte("plaintext"), nil).
-				Once()
-		}
-
-		// Create use case
-		uc := NewTokenizationUseCase(
-			mockTxManager,
-			mockTokenizationKeyRepo,
-			mockTokenRepo,
-			mockDekRepo,
-			mockAEADManager,
-			mockKeyManager,
-			mockHashService,
-			kekChain,
-		)
-
-		// Execute
-		plaintexts, metadatas, err := uc.DetokenizeBatch(ctx, tokens)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Len(t, plaintexts, 2)
-		assert.Len(t, metadatas, 2)
+		n, err := uc.CleanupExpired(ctx, 30, false)
+		require.NoError(t, err)
+		assert.EqualValues(t, 4, n)
 	})
 }

@@ -12,12 +12,6 @@ import (
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
-// DekRepository defines the interface for DEK persistence operations.
-type DekRepository interface {
-	Create(ctx context.Context, dek *cryptoDomain.Dek) error
-	Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error)
-}
-
 // TokenizationKeyRepository defines the interface for tokenization key persistence.
 type TokenizationKeyRepository interface {
 	Create(ctx context.Context, key *tokenizationDomain.TokenizationKey) error

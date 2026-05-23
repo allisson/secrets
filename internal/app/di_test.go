@@ -823,11 +823,6 @@ func TestContainerTokenizationComponents(t *testing.T) {
 		t.Error("expected error for tokenization token repository with invalid db config")
 	}
 
-	_, err = container.TokenizationDekRepository(ctx)
-	if err == nil {
-		t.Error("expected error for tokenization dek repository with invalid db config")
-	}
-
 	_, err = container.TokenizationKeyUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for tokenization key use case with invalid db config")

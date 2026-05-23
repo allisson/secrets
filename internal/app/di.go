@@ -66,7 +66,6 @@ type Container struct {
 	transitDekRepository        transitUseCase.DekRepository
 	tokenizationKeyRepository   tokenizationUseCase.TokenizationKeyRepository
 	tokenizationTokenRepository tokenizationUseCase.TokenRepository
-	tokenizationDekRepository   tokenizationUseCase.DekRepository
 
 	// Use Cases
 	kekUseCase             cryptoUseCase.KekUseCase
@@ -116,7 +115,6 @@ type Container struct {
 	transitDekRepositoryInit        sync.Once
 	tokenizationKeyRepositoryInit   sync.Once
 	tokenizationTokenRepositoryInit sync.Once
-	tokenizationDekRepositoryInit   sync.Once
 	kekUseCaseInit                  sync.Once
 	cryptoDekUseCaseInit            sync.Once
 	secretUseCaseInit               sync.Once
