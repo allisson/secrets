@@ -18,7 +18,7 @@ Each feature module (`secrets`, `transit`, `tokenization`) imported
 four of these and reimplemented the same six-step envelope dance per
 operation:
 
-```
+```text
 get active KEK → CreateDek under KEK → persist DEK → DecryptDek →
 CreateCipher with DEK key → Encrypt plaintext under cipher
 ```
