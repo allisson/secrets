@@ -29,18 +29,9 @@ func TestIntegration_Auth_TokenExpiry(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	testCases := []struct {
-		name     string
-		dbDriver string
-	}{
-		{"PostgreSQL", "postgres"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup with 2-second token expiration for fast testing
-			ctx := setupIntegrationTestWithTokenExpiration(t, tc.dbDriver, 2*time.Second)
-			defer teardownIntegrationTest(t, ctx)
+	// Setup with 2-second token expiration for fast testing
+	ctx := setupIntegrationTestWithTokenExpiration(t, 2*time.Second)
+	defer teardownIntegrationTest(t, ctx)
 
 			var (
 				testClientID     string
@@ -155,9 +146,7 @@ func TestIntegration_Auth_TokenExpiry(t *testing.T) {
 				assert.Equal(t, http.StatusOK, resp2.StatusCode, "new token should work")
 			})
 
-			t.Logf("Token expiry test passed for %s", tc.dbDriver)
-		})
-	}
+	t.Logf("Token expiry test passed")
 }
 
 // TestIntegration_Transit_DecryptAfterRotation tests that ciphertexts encrypted
@@ -168,17 +157,8 @@ func TestIntegration_Transit_DecryptAfterRotation(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	testCases := []struct {
-		name     string
-		dbDriver string
-	}{
-		{"PostgreSQL", "postgres"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := setupIntegrationTest(t, tc.dbDriver)
-			defer teardownIntegrationTest(t, ctx)
+	ctx := setupIntegrationTest(t)
+	defer teardownIntegrationTest(t, ctx)
 
 			keyName := "test-rotation-key"
 			plaintext := []byte("sensitive-data-before-rotation")
@@ -284,9 +264,7 @@ func TestIntegration_Transit_DecryptAfterRotation(t *testing.T) {
 				assert.Equal(t, uint(2), response.Version, "should indicate decrypted with version 2")
 			})
 
-			t.Logf("Transit rotation test passed for %s: old and new versions both decrypt successfully", tc.dbDriver)
-		})
-	}
+	t.Logf("Transit rotation test passed: old and new versions both decrypt successfully")
 }
 
 // TestIntegration_Transit_DeleteKey tests deleting a transit key and verifying
@@ -297,17 +275,8 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	testCases := []struct {
-		name     string
-		dbDriver string
-	}{
-		{"PostgreSQL", "postgres"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := setupIntegrationTest(t, tc.dbDriver)
-			defer teardownIntegrationTest(t, ctx)
+	ctx := setupIntegrationTest(t)
+	defer teardownIntegrationTest(t, ctx)
 
 			keyName := "test-delete-key"
 			plaintext := []byte("test-data")
@@ -361,9 +330,7 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 				assert.Equal(t, http.StatusNotFound, resp.StatusCode, "key should not be found after deletion")
 			})
 
-			t.Logf("Transit delete key test passed for %s", tc.dbDriver)
-		})
-	}
+	t.Logf("Transit delete key test passed")
 }
 
 // TestIntegration_Auth_UnlockAccount tests the account unlock functionality.
@@ -374,18 +341,9 @@ func TestIntegration_Auth_UnlockAccount(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	testCases := []struct {
-		name     string
-		dbDriver string
-	}{
-		{"PostgreSQL", "postgres"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup with lockout: 3 max attempts, 5 minute lockout duration
-			ctx := setupIntegrationTestWithLockout(t, tc.dbDriver, 3, 5*time.Minute)
-			defer teardownIntegrationTest(t, ctx)
+	// Setup with lockout: 3 max attempts, 5 minute lockout duration
+	ctx := setupIntegrationTestWithLockout(t, 3, 5*time.Minute)
+	defer teardownIntegrationTest(t, ctx)
 
 			var (
 				testClientID     string
@@ -490,7 +448,5 @@ func TestIntegration_Auth_UnlockAccount(t *testing.T) {
 				assert.Equal(t, http.StatusOK, resp.StatusCode)
 			})
 
-			t.Logf("Account unlock test passed for %s", tc.dbDriver)
-		})
-	}
+	t.Logf("Account unlock test passed")
 }

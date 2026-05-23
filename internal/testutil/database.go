@@ -150,15 +150,10 @@ func getMigrationsPath() (string, error) {
 	}
 }
 
-// uuidToDriverValue converts a UUID to the PostgreSQL driver value.
-func uuidToDriverValue(id uuid.UUID, driver string) (interface{}, error) {
-	return id, nil
-}
-
 // CreateTestClient creates a minimal active test client for repository tests.
 // Returns the client ID for use in foreign key relationships. The client is
 // created with a wildcard policy allowing all capabilities on all paths.
-func CreateTestClient(t *testing.T, db *sql.DB, driver, name string) uuid.UUID {
+func CreateTestClient(t *testing.T, db *sql.DB, name string) uuid.UUID {
 	t.Helper()
 
 	clientID := uuid.Must(uuid.NewV7())
@@ -184,7 +179,7 @@ func CreateTestClient(t *testing.T, db *sql.DB, driver, name string) uuid.UUID {
 // CreateTestKek creates a minimal test KEK for repository tests that need
 // to reference a KEK (e.g., signed audit logs). Returns the KEK ID.
 // The KEK is created with algorithm 'aes-gcm' and random encrypted key data.
-func CreateTestKek(t *testing.T, db *sql.DB, driver, name string) uuid.UUID {
+func CreateTestKek(t *testing.T, db *sql.DB, name string) uuid.UUID {
 	t.Helper()
 
 	kekID := uuid.Must(uuid.NewV7())
@@ -217,10 +212,10 @@ func CreateTestKek(t *testing.T, db *sql.DB, driver, name string) uuid.UUID {
 
 // CreateTestClientAndKek creates both a test client and KEK, returning both IDs.
 // Convenience wrapper for tests that need both fixtures.
-func CreateTestClientAndKek(t *testing.T, db *sql.DB, driver, baseName string) (clientID, kekID uuid.UUID) {
+func CreateTestClientAndKek(t *testing.T, db *sql.DB, baseName string) (clientID, kekID uuid.UUID) {
 	t.Helper()
-	clientID = CreateTestClient(t, db, driver, baseName+"-client")
-	kekID = CreateTestKek(t, db, driver, baseName+"-kek")
+	clientID = CreateTestClient(t, db, baseName+"-client")
+	kekID = CreateTestKek(t, db, baseName+"-kek")
 	return clientID, kekID
 }
 
@@ -243,7 +238,7 @@ func SkipIfNoPostgres(t *testing.T) {
 
 // CreateTestDek creates a minimal test DEK (Data Encryption Key) for repository tests.
 // Returns the DEK ID. The DEK is associated with the provided KEK ID.
-func CreateTestDek(t *testing.T, db *sql.DB, driver, name string, kekID uuid.UUID) uuid.UUID {
+func CreateTestDek(t *testing.T, db *sql.DB, name string, kekID uuid.UUID) uuid.UUID {
 	t.Helper()
 
 	dekID := uuid.Must(uuid.NewV7())
@@ -275,7 +270,7 @@ func CreateTestDek(t *testing.T, db *sql.DB, driver, name string, kekID uuid.UUI
 // ValidateTestClient verifies that a test client was created with expected values.
 // Returns true if the client exists and is active, false if it does not exist.
 // Fails the test if a database error occurs.
-func ValidateTestClient(t *testing.T, db *sql.DB, driver string, clientID uuid.UUID) bool {
+func ValidateTestClient(t *testing.T, db *sql.DB, clientID uuid.UUID) bool {
 	t.Helper()
 
 	ctx := context.Background()
@@ -295,7 +290,7 @@ func ValidateTestClient(t *testing.T, db *sql.DB, driver string, clientID uuid.U
 // ValidateTestKek verifies that a test KEK was created with expected values.
 // Returns true if the KEK exists, false if it does not exist.
 // Fails the test if a database error occurs.
-func ValidateTestKek(t *testing.T, db *sql.DB, driver string, kekID uuid.UUID) bool {
+func ValidateTestKek(t *testing.T, db *sql.DB, kekID uuid.UUID) bool {
 	t.Helper()
 
 	ctx := context.Background()
@@ -315,7 +310,7 @@ func ValidateTestKek(t *testing.T, db *sql.DB, driver string, kekID uuid.UUID) b
 // ValidateTestDek verifies that a test DEK was created with expected values.
 // Returns true if the DEK exists, false if it does not exist.
 // Fails the test if a database error occurs.
-func ValidateTestDek(t *testing.T, db *sql.DB, driver string, dekID uuid.UUID) bool {
+func ValidateTestDek(t *testing.T, db *sql.DB, dekID uuid.UUID) bool {
 	t.Helper()
 
 	ctx := context.Background()

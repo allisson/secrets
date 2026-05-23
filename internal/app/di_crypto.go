@@ -88,7 +88,7 @@ func (c *Container) KekUseCase(ctx context.Context) (cryptoUseCase.KekUseCase, e
 	return c.kekUseCase, nil
 }
 
-// CryptoDekRepository returns the DEK repository for the crypto use case based on database driver.
+// CryptoDekRepository returns the DEK repository for the crypto use case.
 func (c *Container) CryptoDekRepository(ctx context.Context) (cryptoUseCase.DekRepository, error) {
 	var err error
 	c.cryptoDekRepositoryInit.Do(func() {
@@ -159,7 +159,7 @@ func (c *Container) initKMSService() cryptoDomain.KMSService {
 	return cryptoService.NewKMSService()
 }
 
-// initKekRepository creates the KEK repository based on the database driver.
+// initKekRepository creates the KEK repository.
 func (c *Container) initKekRepository(ctx context.Context) (cryptoUseCase.KekRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
@@ -186,7 +186,7 @@ func (c *Container) initKekUseCase(ctx context.Context) (cryptoUseCase.KekUseCas
 	return cryptoUseCase.NewKekUseCase(txManager, kekRepository, keyManager), nil
 }
 
-// initCryptoDekRepository creates the DEK repository for crypto use case based on the database driver.
+// initCryptoDekRepository creates the DEK repository for crypto use case.
 func (c *Container) initCryptoDekRepository(ctx context.Context) (cryptoUseCase.DekRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {

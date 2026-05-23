@@ -100,7 +100,7 @@ func (c *Container) CryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandl
 	return c.cryptoHandler, nil
 }
 
-// initTransitKeyRepository creates the transit key repository based on the database driver.
+// initTransitKeyRepository creates the transit key repository.
 func (c *Container) initTransitKeyRepository(
 	ctx context.Context,
 ) (transitUseCase.TransitKeyRepository, error) {

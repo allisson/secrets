@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,17 +71,6 @@ func TestGetMigrationsPathFromDifferentWorkingDir(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, path)
 	assert.Equal(t, "migrations", filepath.Base(path))
-}
-
-func TestUuidToDriverValue(t *testing.T) {
-	testID := uuid.Must(uuid.NewV7())
-
-	value, err := uuidToDriverValue(testID, "postgres")
-	require.NoError(t, err)
-
-	gotUUID, ok := value.(uuid.UUID)
-	require.True(t, ok, "value should be uuid.UUID")
-	assert.Equal(t, testID, gotUUID)
 }
 
 func TestSetupPostgresDB(t *testing.T) {

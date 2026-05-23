@@ -44,7 +44,6 @@ type integrationTestContext struct {
 	rootToken      string
 	rootSecret     string
 	masterKeyChain *cryptoDomain.MasterKeyChain
-	dbDriver       string
 	kmsKeyURI      string
 }
 
@@ -230,7 +229,7 @@ func createMasterKeyChainWithKMS(
 }
 
 // setupIntegrationTestWithKMS initializes all components for integration testing with KMS-encrypted master keys.
-func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTestContext {
+func setupIntegrationTestWithKMS(t *testing.T) *integrationTestContext {
 	t.Helper()
 
 	// Set Gin to test mode
@@ -320,7 +319,7 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s with KMS (client_id=%s)", dbDriver, rootClient.ID)
+	t.Logf("Integration test setup complete with KMS (client_id=%s)", rootClient.ID)
 
 	return &integrationTestContext{
 		container:      container,
@@ -330,13 +329,12 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 		rootToken:      tokenOutput.PlainToken,
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
-		dbDriver:       dbDriver,
 		kmsKeyURI:      kmsKeyURI,
 	}
 }
 
 // setupIntegrationTest initializes all components for integration testing.
-func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext {
+func setupIntegrationTest(t *testing.T) *integrationTestContext {
 	t.Helper()
 
 	// Set Gin to test mode
@@ -430,7 +428,7 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	// Create test server with the handler
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s with KMS (client_id=%s)", dbDriver, rootClient.ID)
+	t.Logf("Integration test setup complete with KMS (client_id=%s)", rootClient.ID)
 
 	return &integrationTestContext{
 		container:      container,
@@ -440,7 +438,6 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 		rootToken:      tokenOutput.PlainToken,
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
-		dbDriver:       dbDriver,
 		kmsKeyURI:      kmsKeyURI,
 	}
 }
@@ -449,7 +446,6 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 // Useful for testing token expiry behavior without long wait times.
 func setupIntegrationTestWithTokenExpiration(
 	t *testing.T,
-	dbDriver string,
 	tokenExpiration time.Duration,
 ) *integrationTestContext {
 	t.Helper()
@@ -544,8 +540,8 @@ func setupIntegrationTestWithTokenExpiration(
 	// Create test server with the handler
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s with custom token expiration %v (client_id=%s)",
-		dbDriver, tokenExpiration, rootClient.ID)
+	t.Logf("Integration test setup complete with custom token expiration %v (client_id=%s)",
+		tokenExpiration, rootClient.ID)
 
 	return &integrationTestContext{
 		container:      container,
@@ -555,7 +551,6 @@ func setupIntegrationTestWithTokenExpiration(
 		rootToken:      tokenOutput.PlainToken,
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
-		dbDriver:       dbDriver,
 		kmsKeyURI:      kmsKeyURI,
 	}
 }
@@ -563,7 +558,6 @@ func setupIntegrationTestWithTokenExpiration(
 // setupIntegrationTestWithLockout initializes all components for integration testing with account lockout enabled.
 func setupIntegrationTestWithLockout(
 	t *testing.T,
-	dbDriver string,
 	maxAttempts int,
 	lockoutDuration time.Duration,
 ) *integrationTestContext {
@@ -658,8 +652,8 @@ func setupIntegrationTestWithLockout(
 
 	testServer := httptest.NewServer(handler)
 
-	t.Logf("Integration test setup complete for %s with lockout and KMS (max_attempts=%d, client_id=%s)",
-		dbDriver, maxAttempts, rootClient.ID)
+	t.Logf("Integration test setup complete with lockout and KMS (max_attempts=%d, client_id=%s)",
+		maxAttempts, rootClient.ID)
 
 	return &integrationTestContext{
 		container:      container,
@@ -669,7 +663,6 @@ func setupIntegrationTestWithLockout(
 		rootToken:      tokenOutput.PlainToken,
 		rootSecret:     rootClientOutput.PlainSecret,
 		masterKeyChain: masterKeyChain,
-		dbDriver:       dbDriver,
 		kmsKeyURI:      kmsKeyURI,
 	}
 }
@@ -711,5 +704,5 @@ func teardownIntegrationTest(t *testing.T, ctx *integrationTestContext) {
 		t.Logf("Warning: failed to unset KMS_KEY_URI: %v", err)
 	}
 
-	t.Logf("Integration test teardown complete for %s", ctx.dbDriver)
+	t.Logf("Integration test teardown complete")
 }
