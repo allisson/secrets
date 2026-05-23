@@ -320,16 +320,12 @@ func (c *Container) initAuditLogUseCase(ctx context.Context) (authUseCase.AuditL
 		return nil, fmt.Errorf("failed to get audit log repository for audit log use case: %w", err)
 	}
 
-	// Create audit signer service
-	auditSigner := authService.NewAuditSigner()
-
-	// Load KEK chain for signature verification
-	kekChain, err := c.loadKekChain(ctx)
+	keySigner, err := c.KeySigner(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load kek chain for audit log use case: %w", err)
+		return nil, fmt.Errorf("failed to get key signer for audit log use case: %w", err)
 	}
 
-	baseUseCase := authUseCase.NewAuditLogUseCase(auditLogRepository, auditSigner, kekChain)
+	baseUseCase := authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner)
 
 	// Wrap with metrics if enabled
 	if c.config.MetricsEnabled {

@@ -3,22 +3,21 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	authService "github.com/allisson/secrets/internal/auth/service"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // auditLogUseCase implements AuditLogUseCase interface for recording and verifying audit logs.
 // Provides cryptographic signing with HMAC-SHA256 for tamper detection.
 type auditLogUseCase struct {
 	auditLogRepo AuditLogRepository
-	auditSigner  authService.AuditSigner
-	kekChain     *cryptoDomain.KekChain
+	keySigner    keyring.KeySigner
 }
 
 // Create records an audit log entry for an authenticated operation. Generates a unique
@@ -48,26 +47,20 @@ func (a *auditLogUseCase) Create(
 		IsSigned:   false, // Default to unsigned
 	}
 
-	// Sign the audit log if KekChain and AuditSigner are available
-	if a.kekChain != nil && a.auditSigner != nil {
-		// Get active KEK ID from chain
-		activeKekID := a.kekChain.ActiveKekID()
-
-		// Retrieve active KEK for signing
-		kek, ok := a.kekChain.Get(activeKekID)
-		if !ok {
-			return apperrors.Wrap(cryptoDomain.ErrKekNotFound, "active kek not found in chain")
+	// Sign the audit log if a KeySigner is available
+	if a.keySigner != nil {
+		canonical, err := auditLog.Canonical()
+		if err != nil {
+			return apperrors.Wrap(err, "failed to canonicalize audit log for signing")
 		}
 
-		// Sign the audit log with HMAC-SHA256
-		signature, err := a.auditSigner.Sign(kek.Key, auditLog)
+		signature, kekID, err := a.keySigner.SignWithKey(canonical)
 		if err != nil {
 			return apperrors.Wrap(err, "failed to sign audit log")
 		}
 
-		// Populate signature fields
 		auditLog.Signature = signature
-		auditLog.KekID = &activeKekID
+		auditLog.KekID = &kekID
 		auditLog.IsSigned = true
 	}
 
@@ -131,15 +124,16 @@ func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) err
 		return authDomain.ErrSignatureMissing
 	}
 
-	// Get KEK by ID (historical KEK used for signing)
-	kek, ok := a.kekChain.Get(*auditLog.KekID)
-	if !ok {
-		return authDomain.ErrKekNotFoundForLog
+	canonical, err := auditLog.Canonical()
+	if err != nil {
+		return apperrors.Wrap(err, "failed to canonicalize audit log")
 	}
 
-	// Verify signature using KEK
-	if err := a.auditSigner.Verify(kek.Key, auditLog); err != nil {
-		return apperrors.Wrap(err, "audit log signature verification failed")
+	if err := a.keySigner.VerifyWithKey(*auditLog.KekID, canonical, auditLog.Signature); err != nil {
+		if errors.Is(err, keyring.ErrKekNotFound) {
+			return authDomain.ErrKekNotFoundForLog
+		}
+		return apperrors.Wrap(authDomain.ErrSignatureInvalid, "audit log signature verification failed")
 	}
 
 	return nil
@@ -183,16 +177,14 @@ func (a *auditLogUseCase) VerifyBatch(
 
 			report.SignedCount++
 
-			// Get KEK for verification
-			kek, ok := a.kekChain.Get(*log.KekID)
-			if !ok {
+			canonical, err := log.Canonical()
+			if err != nil {
 				report.InvalidCount++
 				report.InvalidLogs = append(report.InvalidLogs, log.ID)
 				continue
 			}
 
-			// Verify signature
-			if err := a.auditSigner.Verify(kek.Key, log); err != nil {
+			if err := a.keySigner.VerifyWithKey(*log.KekID, canonical, log.Signature); err != nil {
 				report.InvalidCount++
 				report.InvalidLogs = append(report.InvalidLogs, log.ID)
 				continue
@@ -216,16 +208,13 @@ func (a *auditLogUseCase) VerifyBatch(
 }
 
 // NewAuditLogUseCase creates a new AuditLogUseCase with the provided dependencies.
-// Requires audit log repository, audit signer for HMAC operations, and KEK chain
-// for signature verification across KEK rotations.
+// Pass nil for keySigner to create unsigned audit logs (legacy / testing mode).
 func NewAuditLogUseCase(
 	auditLogRepo AuditLogRepository,
-	auditSigner authService.AuditSigner,
-	kekChain *cryptoDomain.KekChain,
+	keySigner keyring.KeySigner,
 ) AuditLogUseCase {
 	return &auditLogUseCase{
 		auditLogRepo: auditLogRepo,
-		auditSigner:  auditSigner,
-		kekChain:     kekChain,
+		keySigner:    keySigner,
 	}
 }

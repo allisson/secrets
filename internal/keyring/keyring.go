@@ -18,6 +18,7 @@ package keyring
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 
@@ -45,6 +46,15 @@ var (
 	// Zero overwrites b with zeros, clearing sensitive material from memory.
 	// Re-exported from crypto/domain so callers do not need that import.
 	Zero = cryptoDomain.Zero
+
+	// ErrSignatureInvalid is returned by VerifyWithKey when the HMAC signature
+	// does not match the payload.
+	ErrSignatureInvalid = errors.New("keyring: signature invalid")
+
+	// ErrKekNotFound is returned by VerifyWithKey when the referenced KEK is
+	// not present in the chain.
+	// Re-exported so callers do not need to import crypto/domain.
+	ErrKekNotFound = cryptoDomain.ErrKekNotFound
 )
 
 // Envelope is the result of Keyring.Encrypt and the input to Keyring.Decrypt.
@@ -60,6 +70,19 @@ type Envelope struct {
 // AllocateDek. Callers store only the DekID and reload the handle on demand.
 type DekHandle struct {
 	DekID uuid.UUID
+}
+
+// KeySigner signs and verifies arbitrary byte payloads using KEK-derived HMAC-SHA256
+// keys. Key material never leaves the keyring.
+type KeySigner interface {
+	// SignWithKey signs data using a key derived from the active KEK via HKDF-SHA256.
+	// Returns the 32-byte HMAC-SHA256 signature and the ID of the KEK used.
+	SignWithKey(data []byte) (sig []byte, kekID uuid.UUID, err error)
+
+	// VerifyWithKey verifies data against sig using the KEK identified by kekID.
+	// Returns ErrSignatureInvalid if the signature does not match.
+	// Returns ErrKekNotFound if the KEK is not present in the chain.
+	VerifyWithKey(kekID uuid.UUID, data, sig []byte) error
 }
 
 // Keyring is the single seam features use to encrypt and decrypt data.

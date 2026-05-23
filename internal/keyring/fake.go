@@ -2,6 +2,8 @@ package keyring
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"sync"
@@ -23,13 +25,14 @@ type Fake struct {
 	deks    map[uuid.UUID]struct{}
 	nextDek uint64
 
-	// FailEncrypt, FailDecrypt, FailAllocate, FailRewrap, when non-nil, make
-	// the matching method return the stored error. Useful for failure-path
-	// tests in callers.
+	// FailEncrypt, FailDecrypt, FailAllocate, FailRewrap, FailSign, when
+	// non-nil, make the matching method return the stored error. Useful for
+	// failure-path tests in callers.
 	FailEncrypt  error
 	FailDecrypt  error
 	FailAllocate error
 	FailRewrap   error
+	FailSign     error
 }
 
 // NewFake constructs an empty Fake.
@@ -130,6 +133,29 @@ func (f *Fake) RewrapAll(_ context.Context, _ int) (int, error) {
 // by the rotation worker to verify the operator-provided KEK ID matches.
 func (f *Fake) ActiveKekID() uuid.UUID {
 	return uuid.Nil
+}
+
+// SignWithKey computes HMAC-SHA256 of data using a fixed zero key and returns
+// uuid.Nil as the KEK ID. Intended for tests; does not use real key material.
+func (f *Fake) SignWithKey(data []byte) ([]byte, uuid.UUID, error) {
+	if f.FailSign != nil {
+		return nil, uuid.Nil, f.FailSign
+	}
+	mac := hmac.New(sha256.New, make([]byte, 32))
+	mac.Write(data)
+	return mac.Sum(nil), uuid.Nil, nil
+}
+
+// VerifyWithKey verifies sig against data. The kekID is ignored by the Fake.
+func (f *Fake) VerifyWithKey(_ uuid.UUID, data, sig []byte) error {
+	if f.FailSign != nil {
+		return f.FailSign
+	}
+	expected, _, _ := f.SignWithKey(data)
+	if !hmac.Equal(sig, expected) {
+		return ErrSignatureInvalid
+	}
+	return nil
 }
 
 func (f *Fake) allocate() uuid.UUID {

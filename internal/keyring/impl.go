@@ -2,10 +2,14 @@ package keyring
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/hkdf"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
@@ -220,6 +224,54 @@ func (k *keyring) RewrapAll(ctx context.Context, batchSize int) (int, error) {
 
 func (k *keyring) ActiveKekID() uuid.UUID {
 	return k.kekChain.ActiveKekID()
+}
+
+func (k *keyring) SignWithKey(data []byte) ([]byte, uuid.UUID, error) {
+	kek, err := k.activeKek()
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+
+	signingKey, err := deriveAuditSigningKey(kek.Key)
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	defer cryptoDomain.Zero(signingKey)
+
+	mac := hmac.New(sha256.New, signingKey)
+	mac.Write(data)
+	return mac.Sum(nil), kek.ID, nil
+}
+
+func (k *keyring) VerifyWithKey(kekID uuid.UUID, data, sig []byte) error {
+	kek, ok := k.kekChain.Get(kekID)
+	if !ok {
+		return ErrKekNotFound
+	}
+
+	signingKey, err := deriveAuditSigningKey(kek.Key)
+	if err != nil {
+		return err
+	}
+	defer cryptoDomain.Zero(signingKey)
+
+	mac := hmac.New(sha256.New, signingKey)
+	mac.Write(data)
+	if !hmac.Equal(mac.Sum(nil), sig) {
+		return ErrSignatureInvalid
+	}
+	return nil
+}
+
+// deriveAuditSigningKey derives a 32-byte HMAC signing key from a KEK via HKDF-SHA256.
+// The "audit-log-signing-v1" info parameter separates signing key usage from encryption.
+func deriveAuditSigningKey(kekKey []byte) ([]byte, error) {
+	reader := hkdf.New(sha256.New, kekKey, nil, []byte("audit-log-signing-v1"))
+	signingKey := make([]byte, 32)
+	if _, err := io.ReadFull(reader, signingKey); err != nil {
+		return nil, err
+	}
+	return signingKey, nil
 }
 
 func (k *keyring) activeKek() (*cryptoDomain.Kek, error) {

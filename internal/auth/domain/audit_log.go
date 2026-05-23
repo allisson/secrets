@@ -1,6 +1,9 @@
 package domain
 
 import (
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,4 +42,42 @@ func (a *AuditLog) HasValidSignature() bool {
 // and are marked as unsigned.
 func (a *AuditLog) IsLegacy() bool {
 	return !a.IsSigned && a.KekID == nil && len(a.Signature) == 0
+}
+
+// Canonical returns the deterministic byte representation of this audit log used
+// for HMAC signing. Format: RequestID || ClientID || capability (length-prefixed) ||
+// path (length-prefixed) || metadata JSON (length-prefixed) ||
+// created_at as Unix nanoseconds (8 bytes, big-endian).
+func (a *AuditLog) Canonical() ([]byte, error) {
+	buf := make([]byte, 0, 1024)
+	buf = append(buf, a.RequestID[:]...)
+	buf = append(buf, a.ClientID[:]...)
+	buf = appendLengthPrefixed(buf, []byte(string(a.Capability)))
+	buf = appendLengthPrefixed(buf, []byte(a.Path))
+	if a.Metadata != nil {
+		metadataBytes, err := json.Marshal(a.Metadata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		buf = appendLengthPrefixed(buf, metadataBytes)
+	} else {
+		buf = appendLengthPrefixed(buf, nil)
+	}
+	timeBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(timeBytes, uint64(a.CreatedAt.UnixNano()))
+	buf = append(buf, timeBytes...)
+	return buf, nil
+}
+
+// appendLengthPrefixed adds a 4-byte big-endian length prefix followed by data.
+func appendLengthPrefixed(buf, data []byte) []byte {
+	dataLen := len(data)
+	if dataLen > 0xFFFFFFFF {
+		panic("data length exceeds uint32 max (4GB)")
+	}
+	length := make([]byte, 4)
+	binary.BigEndian.PutUint32(length, uint32(dataLen))
+	buf = append(buf, length...)
+	buf = append(buf, data...)
+	return buf
 }
