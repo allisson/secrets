@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	cryptoMySQL "github.com/allisson/secrets/internal/crypto/repository/mysql"
-	cryptoPostgreSQL "github.com/allisson/secrets/internal/crypto/repository/postgresql"
+	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
-	tokenizationMySQL "github.com/allisson/secrets/internal/tokenization/repository/mysql"
-	tokenizationPostgreSQL "github.com/allisson/secrets/internal/tokenization/repository/postgresql"
+	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
@@ -159,14 +157,7 @@ func (c *Container) initTokenizationKeyRepository(
 		return nil, fmt.Errorf("failed to get database for tokenization key repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return tokenizationPostgreSQL.NewPostgreSQLTokenizationKeyRepository(db), nil
-	case "mysql":
-		return tokenizationMySQL.NewMySQLTokenizationKeyRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return tokenizationRepository.NewTokenizationKeyRepository(db), nil
 }
 
 // initTokenizationTokenRepository creates the tokenization token repository.
@@ -178,14 +169,7 @@ func (c *Container) initTokenizationTokenRepository(
 		return nil, fmt.Errorf("failed to get database for tokenization token repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return tokenizationPostgreSQL.NewPostgreSQLTokenRepository(db), nil
-	case "mysql":
-		return tokenizationMySQL.NewMySQLTokenRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return tokenizationRepository.NewTokenRepository(db), nil
 }
 
 // initTokenizationDekRepository creates the DEK repository for tokenization use case.
@@ -197,14 +181,7 @@ func (c *Container) initTokenizationDekRepository(
 		return nil, fmt.Errorf("failed to get database for tokenization dek repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
-	case "mysql":
-		return cryptoMySQL.NewMySQLDekRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return cryptoRepository.NewDekRepository(db), nil
 }
 
 // initTokenizationKeyUseCase creates the tokenization key use case.

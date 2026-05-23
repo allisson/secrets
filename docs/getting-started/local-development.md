@@ -73,7 +73,6 @@ make dev-postgres
 Default connection in `.env` can be:
 
 ```dotenv
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disable
 ```
 

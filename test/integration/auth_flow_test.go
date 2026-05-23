@@ -29,7 +29,6 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {
@@ -277,11 +276,11 @@ func TestIntegration_Auth_CompleteFlow(t *testing.T) {
 					ClientID:     clientResponse.ID,
 					ClientSecret: clientResponse.Secret,
 				}
-				
+
 				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
 				var t1 authDTO.IssueTokenResponse
 				json.Unmarshal(body, &t1)
-				
+
 				resp, body = ctx.makeRequest(t, http.MethodPost, "/v1/token", issueRequest, false)
 				var t2 authDTO.IssueTokenResponse
 				json.Unmarshal(body, &t2)

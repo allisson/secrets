@@ -658,10 +658,6 @@ ERROR: database connection failed: dial tcp 127.0.0.1:5432: connect: connection 
 docker ps | grep postgres
 systemctl status postgresql
 
-# MySQL
-docker ps | grep mysql
-systemctl status mysql
-
 # Cloud databases
 # AWS RDS: Check RDS console
 # Google Cloud SQL: Check Cloud SQL console
@@ -675,14 +671,11 @@ systemctl status mysql
 # PostgreSQL
 psql -h localhost -U secrets -d secrets -c "SELECT version();"
 
-# MySQL
-mysql -h localhost -u secrets -p -D secrets -e "SELECT VERSION();"
-
 # If connection fails, check:
 # - Host/port correct in DB_CONNECTION_STRING
 # - Database credentials correct
 # - Database allows remote connections
-# - Firewall rules allow traffic on port 5432 (PostgreSQL) or 3306 (MySQL)
+# - Firewall rules allow traffic on port 5432
 ```
 
 **Fix connection string:**
@@ -709,14 +702,6 @@ docker restart secrets-api
 ```text
 
 ERROR: role "secrets" does not exist
-
-```
-
-**Error** (MySQL):
-
-```text
-
-ERROR 1045 (28000): Access denied for user 'secrets'@'localhost'
 
 ```
 
@@ -763,20 +748,15 @@ ERROR: database "secrets" does not exist
 -- PostgreSQL
 CREATE DATABASE secrets;
 
--- MySQL
-CREATE DATABASE secrets;
-
 ```
 
 ```bash
 
 # Verify database exists
-psql -l | grep secrets     # PostgreSQL
-mysql -e "SHOW DATABASES;" # MySQL
+psql -l | grep secrets
 
 # Run migrations to create schema
 docker run --rm \
-  -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="postgresql://secrets:password@postgres:5432/secrets?sslmode=disable" \
   allisson/secrets:<VERSION> migrate
 
@@ -794,14 +774,6 @@ ERROR: relation "clients" does not exist
 
 ```
 
-**Error** (MySQL):
-
-```text
-
-ERROR 1146 (42S02): Table 'secrets.clients' doesn't exist
-
-```
-
 **Causes:**
 
 1. Database migrations not run
@@ -815,7 +787,6 @@ ERROR 1146 (42S02): Table 'secrets.clients' doesn't exist
 
 # Docker
 docker run --rm \
-  -e DB_DRIVER=postgres \
   -e DB_CONNECTION_STRING="$DB_CONNECTION_STRING" \
   allisson/secrets:<VERSION> migrate
 
@@ -838,9 +809,6 @@ docker compose run --rm secrets-api migrate
 psql -d secrets -c "\dt"
 
 # Expected tables: clients, policies, secrets, transit_keys, audit_logs, schema_migrations
-
-# MySQL - list tables
-mysql -D secrets -e "SHOW TABLES;"
 
 ```
 

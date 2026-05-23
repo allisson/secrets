@@ -221,14 +221,14 @@ Use specialized database (e.g., Amazon QLDB, Azure Immutable Storage) with built
 - **External dependency**: Requires additional managed service or specialized database
 - **Vendor lock-in**: Tied to cloud provider's proprietary solution
 - **Operational complexity**: Separate database for audit logs, replication/backup overhead
-- **Migration burden**: Must export logs from PostgreSQL/MySQL to specialized store
+- **Migration burden**: Must export logs from PostgreSQL to specialized store
 - **Cost**: Additional service fees for managed append-only storage
 - **Redundant**: Application-level signing provides same guarantees without external dependency
 
 **Deployment complexity:**
 
-- Current: Single PostgreSQL/MySQL database
-- Alternative: PostgreSQL/MySQL + QLDB/Immutable Storage (2 systems to manage)
+- Current: Single PostgreSQL database
+- Alternative: PostgreSQL + QLDB/Immutable Storage (2 systems to manage)
 
 ### 6. External Audit Log Service
 
@@ -372,8 +372,7 @@ if kekChain != nil && auditSigner != nil {
 - [AuditSigner Service Implementation](../../internal/auth/service/audit_signer.go) - HKDF + HMAC-SHA256 implementation
 - [AuditLogUseCase Implementation](../../internal/auth/usecase/audit_log_usecase.go) - Automatic signing logic
 - [verify-audit-logs CLI Command](../../cmd/app/commands/verify_audit_logs.go) - CLI verification implementation
-- [Migration 000003 (PostgreSQL)](../../migrations/postgresql/000003_add_audit_log_signature.up.sql) - Schema changes
-- [Migration 000003 (MySQL)](../../migrations/mysql/000003_add_audit_log_signature.up.sql) - Schema changes
+- [Migration 000003](../../migrations/000003_add_audit_log_signature.up.sql) - Schema changes
 - [ADR 0009: UUIDv7 for Identifiers](0009-uuidv7-for-identifiers.md) - Request ID embedded timestamps
 - [NIST SP 800-107](https://csrc.nist.gov/pubs/sp/800/107/r1/final) - Recommendation for HMAC
 - [RFC 5869 (HKDF)](https://www.rfc-editor.org/rfc/rfc5869.html) - HKDF specification

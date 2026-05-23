@@ -30,7 +30,6 @@ func TestIntegration_Tokenization_CompleteFlow(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {

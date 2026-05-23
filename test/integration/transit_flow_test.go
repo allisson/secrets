@@ -29,7 +29,6 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {

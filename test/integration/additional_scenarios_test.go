@@ -34,7 +34,6 @@ func TestIntegration_Auth_TokenExpiry(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {
@@ -174,7 +173,6 @@ func TestIntegration_Transit_DecryptAfterRotation(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {
@@ -304,7 +302,6 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {
@@ -382,7 +379,6 @@ func TestIntegration_Auth_UnlockAccount(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {

@@ -6,24 +6,16 @@ import (
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// RunMigrations executes database migrations based on the configured driver.
-// Determines migration path from DBDriver (postgresql or mysql) and applies all pending
-// migrations. Returns nil if no migrations to apply. Logs migration progress and success.
-func RunMigrations(logger *slog.Logger, dbDriver, dbConnectionString string) error {
-	logger.Info("running database migrations",
-		slog.String("driver", dbDriver),
-	)
+const migrationsPath = "file://migrations"
 
-	// Determine migration path based on driver
-	migrationsPath := "file://migrations/postgresql"
-	if dbDriver == "mysql" {
-		migrationsPath = "file://migrations/mysql"
-	}
+// RunMigrations executes all pending PostgreSQL database migrations.
+// Returns nil if no migrations apply. Logs migration progress and success.
+func RunMigrations(logger *slog.Logger, dbConnectionString string) error {
+	logger.Info("running database migrations")
 
 	m, err := migrate.New(migrationsPath, dbConnectionString)
 	if err != nil {
@@ -39,20 +31,12 @@ func RunMigrations(logger *slog.Logger, dbDriver, dbConnectionString string) err
 	return nil
 }
 
-// RunMigrationsDown rolls back database migrations based on the configured driver.
-// Determines migration path from DBDriver (postgresql or mysql) and rolls back the specified
-// number of migrations. Returns nil if no migrations to rollback. Logs migration progress and success.
-func RunMigrationsDown(logger *slog.Logger, dbDriver, dbConnectionString string, steps int) error {
+// RunMigrationsDown rolls back PostgreSQL database migrations.
+// Returns nil if no migrations rollback. Logs migration progress and success.
+func RunMigrationsDown(logger *slog.Logger, dbConnectionString string, steps int) error {
 	logger.Info("rolling back database migrations",
-		slog.String("driver", dbDriver),
 		slog.Int("steps", steps),
 	)
-
-	// Determine migration path based on driver
-	migrationsPath := "file://migrations/postgresql"
-	if dbDriver == "mysql" {
-		migrationsPath = "file://migrations/mysql"
-	}
 
 	m, err := migrate.New(migrationsPath, dbConnectionString)
 	if err != nil {

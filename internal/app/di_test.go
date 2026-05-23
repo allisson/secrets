@@ -20,7 +20,6 @@ func TestNewContainer(t *testing.T) {
 	//nolint:gosec // test fixture data
 	cfg := &config.Config{
 		LogLevel:             "info",
-		DBDriver:             "postgres",
 		DBConnectionString:   "postgres://test:test@localhost:5432/test?sslmode=disable",
 		DBMaxOpenConnections: 10,
 		DBMaxIdleConnections: 5,
@@ -103,7 +102,6 @@ func TestContainerLoggerMapping(t *testing.T) {
 func TestContainerInitializationErrors(t *testing.T) {
 	// Create a container with invalid database configuration
 	cfg := &config.Config{
-		DBDriver:           "invalid_driver",
 		DBConnectionString: "",
 	}
 
@@ -210,9 +208,7 @@ func TestContainerKeyManager(t *testing.T) {
 
 // TestContainerTxManager verifies that the transaction manager can be retrieved.
 func TestContainerTxManager(t *testing.T) {
-	cfg := &config.Config{
-		DBDriver: "invalid",
-	}
+	cfg := &config.Config{}
 	container := NewContainer(cfg)
 	_, err := container.TxManager(context.Background())
 	if err == nil {
@@ -250,7 +246,6 @@ func TestContainerMetricsComponents(t *testing.T) {
 // TestContainerServerComponents verifies that server components can be retrieved.
 func TestContainerServerComponents(t *testing.T) {
 	cfg := &config.Config{
-		DBDriver:       "invalid",
 		MetricsEnabled: true,
 	}
 	container := NewContainer(cfg)
@@ -313,7 +308,6 @@ func TestContainerMetricsServer_CustomTimeouts(t *testing.T) {
 func TestContainerKekRepositoryErrors(t *testing.T) {
 	// Create a container with invalid database configuration
 	cfg := &config.Config{
-		DBDriver:           "invalid_driver",
 		DBConnectionString: "",
 	}
 
@@ -336,7 +330,6 @@ func TestContainerKekRepositoryErrors(t *testing.T) {
 func TestContainerKekUseCaseErrors(t *testing.T) {
 	// Create a container with invalid database configuration
 	cfg := &config.Config{
-		DBDriver:           "invalid_driver",
 		DBConnectionString: "",
 	}
 
@@ -359,7 +352,6 @@ func TestContainerKekUseCaseErrors(t *testing.T) {
 func TestContainerCryptoDekRepositoryErrors(t *testing.T) {
 	// Create a container with invalid database configuration
 	cfg := &config.Config{
-		DBDriver:           "invalid_driver",
 		DBConnectionString: "",
 	}
 
@@ -382,7 +374,6 @@ func TestContainerCryptoDekRepositoryErrors(t *testing.T) {
 func TestContainerCryptoDekUseCaseErrors(t *testing.T) {
 	// Create a container with invalid database configuration
 	cfg := &config.Config{
-		DBDriver:           "invalid_driver",
 		DBConnectionString: "",
 	}
 
@@ -696,7 +687,6 @@ func TestContainerAuthComponents(t *testing.T) {
 func TestContainerAuthModule(t *testing.T) {
 	cfg := &config.Config{
 		LogLevel: "info",
-		DBDriver: "invalid",
 	}
 	container := NewContainer(cfg)
 	ctx := context.Background()
@@ -757,7 +747,6 @@ func TestContainerSecretsComponents(t *testing.T) {
 	ctx := context.Background()
 
 	// Since repositories need a DB, we expect errors if DB is not and cannot be connected
-	cfg.DBDriver = "invalid"
 
 	_, err := container.DekRepository(ctx)
 	if err == nil {
@@ -784,7 +773,6 @@ func TestContainerSecretsComponents(t *testing.T) {
 func TestContainerTransitComponents(t *testing.T) {
 	cfg := &config.Config{
 		LogLevel: "info",
-		DBDriver: "invalid",
 	}
 
 	container := NewContainer(cfg)
@@ -820,7 +808,6 @@ func TestContainerTransitComponents(t *testing.T) {
 func TestContainerTokenizationComponents(t *testing.T) {
 	cfg := &config.Config{
 		LogLevel: "info",
-		DBDriver: "invalid",
 	}
 
 	container := NewContainer(cfg)
@@ -864,9 +851,7 @@ func TestContainerTokenizationComponents(t *testing.T) {
 
 // TestContainerSyncMapConcurrency verifies that concurrent access to errors is thread-safe.
 func TestContainerSyncMapConcurrency(t *testing.T) {
-	cfg := &config.Config{
-		DBDriver: "invalid",
-	}
+	cfg := &config.Config{}
 	container := NewContainer(cfg)
 	ctx := context.Background()
 

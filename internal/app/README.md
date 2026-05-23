@@ -160,7 +160,6 @@ For integration tests, you can create a container with test configuration:
 ```go
 func setupTestContainer(t *testing.T) *app.Container {
     cfg := &config.Config{
-        DBDriver:           "postgres",
         DBConnectionString: "postgres://test:test@localhost:5432/test_db",
         LogLevel:          "debug",
     }
@@ -220,15 +219,7 @@ func (c *Container) initProductRepository() (productUsecase.ProductRepository, e
         return nil, fmt.Errorf("failed to get database: %w", err)
     }
     
-    // Select the appropriate repository based on the database driver
-    switch c.config.DBDriver {
-    case "mysql":
-        return productRepository.NewMySQLProductRepository(db), nil
-    case "postgres":
-        return productRepository.NewPostgreSQLProductRepository(db), nil
-    default:
-        return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-    }
+    return productRepository.NewProductRepository(db), nil
 }
 ```
 
@@ -246,22 +237,8 @@ The `main.go` file is significantly simpler and focused on application flow rath
 db, err := database.Connect(...)
 txManager := database.NewTxManager(db)
 
-// Determine which repository to use
-var userRepo userUsecase.UserRepository
-switch cfg.DBDriver {
-case "mysql":
-    userRepo = userRepository.NewMySQLUserRepository(db)
-case "postgres":
-    userRepo = userRepository.NewPostgreSQLUserRepository(db)
-}
-
-var outboxRepo userUsecase.OutboxEventRepository
-switch cfg.DBDriver {
-case "mysql":
-    outboxRepo = outboxRepository.NewMySQLOutboxEventRepository(db)
-case "postgres":
-    outboxRepo = outboxRepository.NewPostgreSQLOutboxEventRepository(db)
-}
+userRepo := userRepository.NewUserRepository(db)
+outboxRepo := outboxRepository.NewOutboxEventRepository(db)
 
 userUseCase, err := userUsecase.NewUserUseCase(txManager, userRepo, outboxRepo)
 server := http.NewServer(db, cfg.ServerHost, cfg.ServerPort, cfg.ServerReadTimeout, cfg.ServerWriteTimeout, cfg.ServerIdleTimeout, logger)

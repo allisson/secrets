@@ -131,9 +131,6 @@ A disaster is any event that causes **complete service unavailability** or **unr
    ```bash
    # PostgreSQL
    createdb secrets
-   
-   # MySQL
-   mysql -e "CREATE DATABASE secrets;"
    ```
 
 3. **Restore backup**:
@@ -148,9 +145,6 @@ A disaster is any event that causes **complete service unavailability** or **unr
      --if-exists \
      --verbose \
      secrets-backup-20260221-120000.dump
-   
-   # MySQL
-   mysql --host=localhost --user=secrets --password secrets < secrets-backup.sql
    ```
 
 4. **Verify restoration**:
@@ -223,7 +217,6 @@ export ACTIVE_MASTER_KEY_ID=default
 ```bash
 # 1. Create/update .env file with database connection
 cat > .env <<EOF
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:pass@postgres:5432/secrets?sslmode=require
 KMS_PROVIDER=awskms
 KMS_KEY_URI=awskms:///alias/secrets-master-key

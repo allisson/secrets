@@ -52,7 +52,6 @@ It's recommended to verify the checksum of the downloaded archive:
    Edit the `.env` file to include your database connection string:
 
    ```bash
-   echo "DB_DRIVER=postgres" >> .env
    echo "DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disable" >> .env
    ```
 

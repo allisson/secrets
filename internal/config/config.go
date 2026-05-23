@@ -16,11 +16,10 @@ import (
 const (
 	DefaultServerHost            = "0.0.0.0"
 	DefaultServerPort            = 8080
-	DefaultServerShutdownTimeout = 10 // seconds
-	DefaultServerReadTimeout     = 15 // seconds
-	DefaultServerWriteTimeout    = 15 // seconds
-	DefaultServerIdleTimeout     = 60 // seconds
-	DefaultDBDriver              = "postgres"
+	DefaultServerShutdownTimeout = 10                                                             // seconds
+	DefaultServerReadTimeout     = 15                                                             // seconds
+	DefaultServerWriteTimeout    = 15                                                             // seconds
+	DefaultServerIdleTimeout     = 60                                                             // seconds
 	DefaultDBConnectionString    = "postgres://user:password@localhost:5432/mydb?sslmode=disable" //nolint:gosec
 	DefaultDBMaxOpenConnections  = 25
 
@@ -65,8 +64,6 @@ type Config struct {
 	// ServerIdleTimeout is the maximum time to wait for the next request when keep-alives are enabled.
 	ServerIdleTimeout time.Duration
 
-	// DBDriver is the database driver to use (e.g., "postgres", "mysql").
-	DBDriver string
 	// DBConnectionString is the connection string for the database.
 	DBConnectionString string
 	// DBMaxOpenConnections is the maximum number of open connections to the database.
@@ -137,7 +134,6 @@ type Config struct {
 func (c *Config) Validate() error {
 	return validation.ValidateStruct(
 		c,
-		validation.Field(&c.DBDriver, validation.Required, validation.In("postgres", "mysql")),
 		validation.Field(&c.DBConnectionString, validation.Required),
 		validation.Field(&c.DBMaxOpenConnections, validation.Min(0)),
 		validation.Field(&c.DBMaxIdleConnections, validation.Min(0)),
@@ -246,7 +242,6 @@ func Load() (*Config, error) {
 		),
 
 		// Database configuration
-		DBDriver: env.GetString("DB_DRIVER", DefaultDBDriver),
 		DBConnectionString: env.GetString(
 			"DB_CONNECTION_STRING",
 			DefaultDBConnectionString,

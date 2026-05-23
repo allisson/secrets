@@ -1,6 +1,6 @@
 # ADR 0004: Dual Database Support
 
-> Status: accepted
+> Status: superseded by [ADR 0012: PostgreSQL-Only Database](0012-postgresql-only-database.md)
 > Date: 2026-01-31
 
 ## Context
@@ -125,7 +125,7 @@ Constrain all SQL to features common to both databases.
 
 ## See also
 
-- [Configuration](../configuration.md#db_driver)
+- [Configuration](../configuration.md)
 - [Local development](../getting-started/local-development.md)
 - [Production deployment](../operations/deployment/docker-hardened.md)
 - [ADR 0001: Envelope Encryption Model](0001-envelope-encryption-model.md)

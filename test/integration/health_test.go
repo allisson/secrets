@@ -12,7 +12,7 @@ import (
 )
 
 // TestIntegration_Health_BasicChecks validates infrastructure health and readiness endpoints.
-// Tests health check and database connectivity verification against both PostgreSQL and MySQL.
+// Tests health check and database connectivity verification against both PostgreSQL.
 func TestIntegration_Health_BasicChecks(t *testing.T) {
 	// Skip if short mode (integration tests can be slow)
 	if testing.Short() {
@@ -24,7 +24,6 @@ func TestIntegration_Health_BasicChecks(t *testing.T) {
 		dbDriver string
 	}{
 		{"PostgreSQL", "postgres"},
-		{"MySQL", "mysql"},
 	}
 
 	for _, tc := range testCases {

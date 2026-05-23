@@ -114,7 +114,6 @@ docker run -d --name secrets-postgres --network secrets-net \
 KMS_KEY=$(openssl rand -base64 32)
 # Create .env file
 cat > .env <<EOF
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@secrets-postgres:5432/mydb?sslmode=disable
 KMS_PROVIDER=localsecrets
 KMS_KEY_URI=base64key://$KMS_KEY
@@ -175,7 +174,6 @@ Copy the generated values into a local `.env` file.
 
 ```bash
 cat > .env <<'EOF'
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@secrets-postgres:5432/mydb?sslmode=disable
 DB_MAX_OPEN_CONNECTIONS=25
 DB_MAX_IDLE_CONNECTIONS=5

@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	cryptoMySQL "github.com/allisson/secrets/internal/crypto/repository/mysql"
-	cryptoPostgreSQL "github.com/allisson/secrets/internal/crypto/repository/postgresql"
+	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
-	transitMySQL "github.com/allisson/secrets/internal/transit/repository/mysql"
-	transitPostgreSQL "github.com/allisson/secrets/internal/transit/repository/postgresql"
+	transitRepository "github.com/allisson/secrets/internal/transit/repository"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
@@ -111,14 +109,7 @@ func (c *Container) initTransitKeyRepository(
 		return nil, fmt.Errorf("failed to get database for transit key repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return transitPostgreSQL.NewPostgreSQLTransitKeyRepository(db), nil
-	case "mysql":
-		return transitMySQL.NewMySQLTransitKeyRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return transitRepository.NewTransitKeyRepository(db), nil
 }
 
 // initTransitDekRepository creates the DEK repository for transit use case.
@@ -128,14 +119,7 @@ func (c *Container) initTransitDekRepository(ctx context.Context) (transitUseCas
 		return nil, fmt.Errorf("failed to get database for transit dek repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
-	case "mysql":
-		return cryptoMySQL.NewMySQLDekRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return cryptoRepository.NewDekRepository(db), nil
 }
 
 // initTransitKeyUseCase creates the transit key use case with all its dependencies.

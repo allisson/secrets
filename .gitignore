@@ -37,3 +37,5 @@ bin/mockery
 
 # goreleaser
 dist/
+
+.DS_Store

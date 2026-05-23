@@ -103,16 +103,6 @@ ALTER SYSTEM SET max_connections = 200;
 SELECT pg_reload_conf();
 ```
 
-**MySQL**:
-
-```sql
--- Check current max_connections
-SHOW VARIABLES LIKE 'max_connections';
-
--- Increase max_connections
-SET GLOBAL max_connections = 200;
-```
-
 ### External Connection Pooler (PgBouncer)
 
 For PostgreSQL, use PgBouncer for connection pooling:
@@ -171,14 +161,6 @@ gcloud sql instances create secrets-db-replica-1 \
   --zone=us-central1-b
 ```
 
-**MySQL (AWS RDS)**:
-
-```bash
-aws rds create-db-instance-read-replica \
-  --db-instance-identifier secrets-db-replica-1 \
-  --source-db-instance-identifier secrets-db-primary
-```
-
 ### Read Replica Usage Patterns
 
 **Pattern 1: Separate read-only endpoints** (manual routing):
@@ -193,7 +175,7 @@ export DB_READ_CONNECTION_STRING=postgres://replica-db:5432/secrets
 
 **Pattern 2: Database proxy** (automatic routing):
 
-Use ProxySQL (MySQL) or PgPool-II (PostgreSQL) to route reads to replicas.
+Use PgPool-II to route reads to replicas.
 
 **Pattern 3: Dedicated analytics database**:
 
@@ -296,19 +278,6 @@ ORDER BY total_time DESC
 LIMIT 10;
 ```
 
-**MySQL**:
-
-```sql
--- Enable slow query log
-SET GLOBAL slow_query_log = 'ON';
-SET GLOBAL long_query_time = 1; -- 1 second
-
--- View slow queries
-SELECT * FROM mysql.slow_log
-ORDER BY query_time DESC
-LIMIT 10;
-```
-
 ### Common Optimization Patterns
 
 **Pattern 1: Add indexes on foreign keys**:
@@ -325,8 +294,6 @@ CREATE INDEX idx_transit_keys_dek_id ON transit_keys(dek_id);
 -- PostgreSQL
 EXPLAIN ANALYZE SELECT * FROM secrets WHERE dek_id = 'uuid';
 
--- MySQL
-EXPLAIN SELECT * FROM secrets WHERE dek_id = 'uuid';
 ```
 
 **Pattern 3: Use LIMIT on large result sets**:

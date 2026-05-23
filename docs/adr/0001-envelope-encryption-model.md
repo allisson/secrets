@@ -28,4 +28,4 @@ Use envelope encryption hierarchy:
 - [Architecture](../concepts/architecture.md)
 - [Security model](../concepts/security-model.md)
 - [Key management operations](../operations/kms/key-management.md)
-- [ADR 0004: Dual Database Support](0004-dual-database-support.md) - Database storage for encrypted key material
+- [ADR 0012: PostgreSQL-Only Database](0012-postgresql-only-database.md) - Database storage for encrypted key material

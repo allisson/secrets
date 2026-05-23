@@ -27,7 +27,6 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_DRIVER: postgres
       DB_CONNECTION_STRING: postgresql://secrets:secrets@postgres:5432/secrets?sslmode=disable
       KMS_PROVIDER: localsecrets
       KMS_KEY_URI: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=

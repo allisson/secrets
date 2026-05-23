@@ -39,11 +39,6 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 			driver: "postgres",
 			dsn:    testutil.GetPostgresTestDSN(),
 		},
-		{
-			name:   "MySQL",
-			driver: "mysql",
-			dsn:    testutil.GetMySQLTestDSN(),
-		},
 	}
 
 	for _, dbConfig := range dbConfigs {
@@ -121,22 +116,10 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				log := logs[0]
 
 				// Tamper with the log by modifying the path directly in the database
-				var execErr error
-				var result sql.Result
-				if driver == "postgres" {
-					result, execErr = testCtx.db.Exec(
-						"UPDATE audit_logs SET path = '/api/v1/secrets/tampered' WHERE id = $1",
-						log.ID,
-					)
-				} else {
-					// MySQL stores UUID as BINARY(16), need binary representation
-					idBinary, marshalErr := log.ID.MarshalBinary()
-					require.NoError(t, marshalErr, "failed to marshal UUID")
-					result, execErr = testCtx.db.Exec(
-						"UPDATE audit_logs SET path = '/api/v1/secrets/tampered' WHERE id = ?",
-						idBinary,
-					)
-				}
+				result, execErr := testCtx.db.Exec(
+					"UPDATE audit_logs SET path = '/api/v1/secrets/tampered' WHERE id = $1",
+					log.ID,
+				)
 				require.NoError(t, execErr, "failed to tamper with audit log")
 
 				// Verify the UPDATE actually modified a row
@@ -258,21 +241,10 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 				}
 
 				// Tamper with the middle log
-				var execErr error
-				if driver == "postgres" {
-					_, execErr = testCtx.db.Exec(
-						"UPDATE audit_logs SET capability = 'delete' WHERE id = $1",
-						logIDs[1],
-					)
-				} else {
-					// MySQL stores UUID as BINARY(16), need binary representation
-					idBinary, marshalErr := logIDs[1].MarshalBinary()
-					require.NoError(t, marshalErr, "failed to marshal UUID")
-					_, execErr = testCtx.db.Exec(
-						"UPDATE audit_logs SET capability = 'delete' WHERE id = ?",
-						idBinary,
-					)
-				}
+				_, execErr := testCtx.db.Exec(
+					"UPDATE audit_logs SET capability = 'delete' WHERE id = $1",
+					logIDs[1],
+				)
 				require.NoError(t, execErr, "failed to tamper with audit log")
 
 				// Verify batch
@@ -387,12 +359,7 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 	t.Helper()
 
 	// Initialize test database with migrations
-	var db *sql.DB
-	if driver == "postgres" {
-		db = testutil.SetupPostgresDB(t)
-	} else {
-		db = testutil.SetupMySQLDB(t)
-	}
+	db := testutil.SetupPostgresDB(t)
 
 	// Generate ephemeral master key and create chain
 	masterKey := generateMasterKey()
@@ -400,7 +367,6 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 
 	// Create config with database settings
 	cfg := &config.Config{
-		DBDriver:             driver,
 		DBConnectionString:   dsn,
 		DBMaxOpenConnections: 10,
 		DBMaxIdleConnections: 5,

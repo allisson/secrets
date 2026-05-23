@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 )
 
 // Config holds database configuration settings.
 type Config struct {
-	Driver             string        // Database driver name (e.g., "postgres", "mysql").
 	ConnectionString   string        // Connection string for the database.
 	MaxOpenConnections int           // Maximum number of open connections to the database.
 	MaxIdleConnections int           // Maximum number of idle connections in the pool.
@@ -24,7 +22,7 @@ type Config struct {
 // It sets connection pool settings and verifies the connection with a ping.
 // If ping fails, the database connection is closed to prevent leaks.
 func Connect(cfg Config) (*sql.DB, error) {
-	db, err := sql.Open(cfg.Driver, cfg.ConnectionString)
+	db, err := sql.Open("postgres", cfg.ConnectionString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
