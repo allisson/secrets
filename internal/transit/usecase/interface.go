@@ -5,7 +5,7 @@ package usecase
 import (
 	"context"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
 
@@ -17,11 +17,11 @@ type TransitKeyRepository = transitDomain.TransitKeyRepository
 type TransitKeyUseCase interface {
 	// Create generates a new transit key with version 1 and an associated DEK for encryption.
 	// The transit key name must be unique. Returns the created transit key.
-	Create(ctx context.Context, name string, alg cryptoDomain.Algorithm) (*transitDomain.TransitKey, error)
+	Create(ctx context.Context, name string, alg keyring.Algorithm) (*transitDomain.TransitKey, error)
 
 	// Rotate creates a new version of an existing transit key by incrementing the version number.
 	// Generates a new DEK for the new version while preserving old versions for decryption.
-	Rotate(ctx context.Context, name string, alg cryptoDomain.Algorithm) (*transitDomain.TransitKey, error)
+	Rotate(ctx context.Context, name string, alg keyring.Algorithm) (*transitDomain.TransitKey, error)
 
 	// Get retrieves transit key metadata (including its algorithm) by name and optional version.
 	// If version is 0, the latest version is retrieved.
@@ -29,7 +29,7 @@ type TransitKeyUseCase interface {
 		ctx context.Context,
 		name string,
 		version uint,
-	) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error)
+	) (*transitDomain.TransitKey, keyring.Algorithm, error)
 
 	// Delete soft deletes a transit key and all its versions by name.
 	Delete(ctx context.Context, name string) error
@@ -44,7 +44,7 @@ type TransitKeyUseCase interface {
 	// The ciphertext parameter should be in format "version:base64-ciphertext".
 	//
 	// Security Note: The returned EncryptedBlob contains plaintext data in the Plaintext field.
-	// Callers MUST zero this data after use by calling cryptoDomain.Zero(blob.Plaintext).
+	// Callers MUST zero this data after use by calling keyring.Zero(blob.Plaintext).
 	Decrypt(
 		ctx context.Context,
 		name string,

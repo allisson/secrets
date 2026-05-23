@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/metrics"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
@@ -27,7 +27,7 @@ func NewTransitKeyUseCaseWithMetrics(useCase TransitKeyUseCase, m metrics.Busine
 func (t *transitKeyUseCaseWithMetrics) Create(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	start := time.Now()
 	key, err := t.next.Create(ctx, name, alg)
@@ -47,7 +47,7 @@ func (t *transitKeyUseCaseWithMetrics) Create(
 func (t *transitKeyUseCaseWithMetrics) Rotate(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	start := time.Now()
 	key, err := t.next.Rotate(ctx, name, alg)
@@ -68,7 +68,7 @@ func (t *transitKeyUseCaseWithMetrics) Get(
 	ctx context.Context,
 	name string,
 	version uint,
-) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+) (*transitDomain.TransitKey, keyring.Algorithm, error) {
 	start := time.Now()
 	key, alg, err := t.next.Get(ctx, name, version)
 

@@ -94,7 +94,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute
 		err := useCase.Create(ctx, requestID, clientID, capability, path, metadata)
@@ -133,7 +133,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute with nil metadata
 		err := useCase.Create(ctx, requestID, clientID, capability, path, nil)
@@ -169,7 +169,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Times(3)
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute multiple times
 		for i := 0; i < 3; i++ {
@@ -223,7 +223,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Times(len(capabilities))
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute for each capability
 		for _, cap := range capabilities {
@@ -256,7 +256,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute
 		err := useCase.Create(ctx, requestID, clientID, capability, path, metadata)
@@ -288,7 +288,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			Once()
 
 		// Create use case
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		// Execute
 		beforeCreate := time.Now().UTC()
@@ -349,7 +349,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -369,7 +369,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -390,7 +390,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(expectedCount, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -420,7 +420,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 					Return(tc.expectedCount, nil).
 					Once()
 
-				useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+				useCase := NewAuditLogUseCase(mockRepo, nil)
 
 				count, err := useCase.DeleteOlderThan(ctx, tc.days, tc.dryRun)
 
@@ -442,7 +442,7 @@ func TestAuditLogUseCase_DeleteOlderThan(t *testing.T) {
 			Return(int64(0), repositoryErr).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		count, err := useCase.DeleteOlderThan(ctx, days, dryRun)
 
@@ -472,7 +472,7 @@ func TestAuditLogUseCase_ListCursor(t *testing.T) {
 			Return(expectedLogs, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		logs, err := useCase.ListCursor(ctx, &afterID, limit, &from, &to, &clientID)
 
@@ -488,7 +488,7 @@ func TestAuditLogUseCase_ListCursor(t *testing.T) {
 			Return([]*authDomain.AuditLog{}, nil).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		logs, err := useCase.ListCursor(ctx, nil, 10, nil, nil, nil)
 
@@ -504,7 +504,7 @@ func TestAuditLogUseCase_ListCursor(t *testing.T) {
 			Return(nil, errors.New("db error")).
 			Once()
 
-		useCase := NewAuditLogUseCase(mockRepo, nil, nil)
+		useCase := NewAuditLogUseCase(mockRepo, nil)
 
 		logs, err := useCase.ListCursor(ctx, nil, 10, nil, nil, nil)
 

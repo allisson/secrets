@@ -32,7 +32,7 @@ func MapSecretToCreateResponse(secret *secretsDomain.Secret) SecretResponse {
 
 // MapSecretToGetResponse converts a domain secret to an API response for GET operations.
 // The plaintext value is base64-encoded before inclusion. SECURITY: Caller must zero plaintext
-// from the domain object after mapping using cryptoDomain.Zero(secret.Plaintext).
+// from the domain object after mapping using keyring.Zero(secret.Plaintext).
 func MapSecretToGetResponse(secret *secretsDomain.Secret) SecretResponse {
 	return SecretResponse{
 		ID:        secret.ID.String(),

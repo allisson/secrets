@@ -3,8 +3,6 @@ package service
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -37,59 +35,6 @@ func (a *auditSigner) deriveSigningKey(kekKey []byte) ([]byte, error) {
 	return signingKey, nil
 }
 
-// canonicalizeLog converts audit log to canonical byte representation for signing.
-// Format: request_id || client_id || capability || path || metadata || created_at
-// Uses length-prefixed encoding for variable-length fields to prevent ambiguity.
-func (a *auditSigner) canonicalizeLog(log *authDomain.AuditLog) ([]byte, error) {
-	// Estimate capacity to reduce allocations (typical log ~1KB)
-	buf := make([]byte, 0, 1024)
-
-	// Append UUIDs (16 bytes each)
-	buf = append(buf, log.RequestID[:]...)
-	buf = append(buf, log.ClientID[:]...)
-
-	// Append capability string (length-prefixed for safety)
-	buf = appendLengthPrefixed(buf, []byte(string(log.Capability)))
-
-	// Append path string (length-prefixed)
-	buf = appendLengthPrefixed(buf, []byte(log.Path))
-
-	// Append metadata JSON (length-prefixed, deterministic serialization)
-	if log.Metadata != nil {
-		// Serialize metadata to JSON for deterministic representation
-		metadataBytes, err := json.Marshal(log.Metadata)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal metadata: %w", err)
-		}
-		buf = appendLengthPrefixed(buf, metadataBytes)
-	} else {
-		// Empty metadata = 0 length prefix
-		buf = appendLengthPrefixed(buf, nil)
-	}
-
-	// Append timestamp (Unix nano for precision)
-	timeBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(timeBytes, uint64(log.CreatedAt.UnixNano()))
-	buf = append(buf, timeBytes...)
-
-	return buf, nil
-}
-
-// appendLengthPrefixed adds a 4-byte big-endian length prefix followed by data.
-// Format: [length (4 bytes)] + [data (length bytes)]
-// Panics if data length exceeds uint32 max (4GB) to prevent integer overflow.
-func appendLengthPrefixed(buf []byte, data []byte) []byte {
-	dataLen := len(data)
-	if dataLen > 0xFFFFFFFF {
-		panic("data length exceeds uint32 max (4GB)")
-	}
-	length := make([]byte, 4)
-	binary.BigEndian.PutUint32(length, uint32(dataLen))
-	buf = append(buf, length...)
-	buf = append(buf, data...)
-	return buf
-}
-
 // Sign generates HMAC-SHA256 signature for the audit log.
 // Returns 32-byte signature or error if signing fails.
 func (a *auditSigner) Sign(kekKey []byte, log *authDomain.AuditLog) ([]byte, error) {
@@ -99,7 +44,7 @@ func (a *auditSigner) Sign(kekKey []byte, log *authDomain.AuditLog) ([]byte, err
 	}
 	defer zero(signingKey) // Clear derived key from memory
 
-	canonical, err := a.canonicalizeLog(log)
+	canonical, err := log.Canonical()
 	if err != nil {
 		return nil, fmt.Errorf("failed to canonicalize log: %w", err)
 	}

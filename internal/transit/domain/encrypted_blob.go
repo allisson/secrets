@@ -54,6 +54,25 @@ func NewEncryptedBlob(content string) (EncryptedBlob, error) {
 	}, nil
 }
 
+// NewFramedBlob constructs an EncryptedBlob whose Ciphertext field holds the
+// AEAD wire format: nonce ‖ ciphertext. Use SplitNonce to recover the parts.
+func NewFramedBlob(version uint, nonce, ciphertext []byte) EncryptedBlob {
+	framed := make([]byte, 0, len(nonce)+len(ciphertext))
+	framed = append(framed, nonce...)
+	framed = append(framed, ciphertext...)
+	return EncryptedBlob{Version: version, Ciphertext: framed}
+}
+
+// SplitNonce splits Ciphertext into (nonce, ciphertext) at the AEADNonceSize
+// boundary. Returns a wrapped ErrInvalidBlobFormat if the payload is shorter
+// than AEADNonceSize bytes.
+func (eb EncryptedBlob) SplitNonce() (nonce, ciphertext []byte, err error) {
+	if len(eb.Ciphertext) < AEADNonceSize {
+		return nil, nil, fmt.Errorf("%w: payload too short to contain nonce", ErrInvalidBlobFormat)
+	}
+	return eb.Ciphertext[:AEADNonceSize], eb.Ciphertext[AEADNonceSize:], nil
+}
+
 // String serializes the EncryptedBlob to format "version:ciphertext-base64".
 func (eb EncryptedBlob) String() string {
 	encodedCiphertext := base64.StdEncoding.EncodeToString(eb.Ciphertext)

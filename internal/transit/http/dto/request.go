@@ -6,7 +6,7 @@ import (
 
 	validation "github.com/jellydator/validation"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	customValidation "github.com/allisson/secrets/internal/validation"
 )
@@ -99,14 +99,14 @@ func validateAlgorithm(value interface{}) error {
 	return err
 }
 
-// ParseAlgorithm converts a string to a cryptoDomain.Algorithm.
+// ParseAlgorithm converts a string to a keyring.Algorithm.
 // Returns an error if the algorithm is not supported.
-func ParseAlgorithm(alg string) (cryptoDomain.Algorithm, error) {
+func ParseAlgorithm(alg string) (keyring.Algorithm, error) {
 	switch alg {
 	case "aes-gcm":
-		return cryptoDomain.AESGCM, nil
+		return keyring.AESGCM, nil
 	case "chacha20-poly1305":
-		return cryptoDomain.ChaCha20, nil
+		return keyring.ChaCha20, nil
 	default:
 		return "", fmt.Errorf("invalid algorithm: must be 'aes-gcm' or 'chacha20-poly1305'")
 	}

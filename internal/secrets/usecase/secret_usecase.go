@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/keyring"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
@@ -103,13 +102,7 @@ func (s *secretUseCase) decryptSecret(
 		Nonce:      secret.Nonce,
 	})
 	if err != nil {
-		// Preserve the existing error contract: decryption failures surface as
-		// ErrDecryptionFailed; lookup failures (DEK/KEK missing) pass through.
-		if errors.Is(err, cryptoDomain.ErrDekNotFound) ||
-			errors.Is(err, cryptoDomain.ErrKekNotFound) {
-			return nil, err
-		}
-		return nil, cryptoDomain.ErrDecryptionFailed
+		return nil, keyring.ErrDecryptionFailed
 	}
 
 	secret.Plaintext = plaintext

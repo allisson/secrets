@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/tokenization/http/dto"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 	customValidation "github.com/allisson/secrets/internal/validation"
@@ -159,7 +159,7 @@ func (h *TokenizationHandler) TokenizeBatchHandler(c *gin.Context) {
 	// SECURITY: Ensure plaintexts are zeroed after use
 	defer func() {
 		for _, p := range plaintexts {
-			cryptoDomain.Zero(p)
+			keyring.Zero(p)
 		}
 	}()
 
@@ -209,7 +209,7 @@ func (h *TokenizationHandler) DetokenizeHandler(c *gin.Context) {
 		return
 	}
 	// SECURITY: Zero plaintext from memory after encoding
-	defer cryptoDomain.Zero(plaintext)
+	defer keyring.Zero(plaintext)
 
 	// Encode plaintext as base64 for JSON response
 	plaintextB64 := base64.StdEncoding.EncodeToString(plaintext)
@@ -254,7 +254,7 @@ func (h *TokenizationHandler) DetokenizeBatchHandler(c *gin.Context) {
 	// SECURITY: Ensure plaintexts are zeroed after encoding
 	defer func() {
 		for _, p := range plaintexts {
-			cryptoDomain.Zero(p)
+			keyring.Zero(p)
 		}
 	}()
 

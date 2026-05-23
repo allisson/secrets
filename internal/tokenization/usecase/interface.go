@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
@@ -71,7 +71,7 @@ type TokenizationKeyUseCase interface {
 		name string,
 		formatType tokenizationDomain.FormatType,
 		isDeterministic bool,
-		alg cryptoDomain.Algorithm,
+		alg keyring.Algorithm,
 	) (*tokenizationDomain.TokenizationKey, error)
 
 	// Rotate creates a new version of an existing tokenization key by incrementing the version number.
@@ -81,7 +81,7 @@ type TokenizationKeyUseCase interface {
 		name string,
 		formatType tokenizationDomain.FormatType,
 		isDeterministic bool,
-		alg cryptoDomain.Algorithm,
+		alg keyring.Algorithm,
 	) (*tokenizationDomain.TokenizationKey, error)
 
 	// Delete soft deletes a tokenization key and all its versions by name.
@@ -133,7 +133,7 @@ type TokenizationUseCase interface {
 
 	// Detokenize retrieves the original plaintext value for a given token.
 	// Returns ErrTokenNotFound if token doesn't exist, ErrTokenExpired if expired, ErrTokenRevoked if revoked.
-	// Security Note: Callers MUST zero the returned plaintext after use: cryptoDomain.Zero(plaintext).
+	// Security Note: Callers MUST zero the returned plaintext after use: keyring.Zero(plaintext).
 	Detokenize(ctx context.Context, token string) (plaintext []byte, metadata map[string]any, err error)
 
 	// DetokenizeBatch retrieves original plaintext values for multiple tokens.

@@ -78,6 +78,20 @@ func (c *Container) AEADManager() cryptoService.AEADManager {
 	return c.aeadManager
 }
 
+// KeySigner returns the keyring as a KeySigner for audit log signing operations.
+// The production keyring implements KeySigner via its HKDF+HMAC-SHA256 methods.
+func (c *Container) KeySigner(ctx context.Context) (keyring.KeySigner, error) {
+	kr, err := c.Keyring(ctx)
+	if err != nil {
+		return nil, err
+	}
+	signer, ok := kr.(keyring.KeySigner)
+	if !ok {
+		return nil, fmt.Errorf("keyring does not implement KeySigner")
+	}
+	return signer, nil
+}
+
 // KeyManager returns the key manager service.
 func (c *Container) KeyManager() cryptoService.KeyManager {
 	c.keyManagerInit.Do(func() {

@@ -10,18 +10,11 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
-
-// nonceSize is the AEAD nonce length stored alongside ciphertext in the
-// transit wire format. Both supported algorithms (AES-256-GCM,
-// ChaCha20-Poly1305) use 12-byte nonces. If we add an algorithm with a
-// different nonce size, this needs to be derived from the algorithm.
-const nonceSize = 12
 
 // transitKeyUseCase implements TransitKeyUseCase for managing transit keys.
 type transitKeyUseCase struct {
@@ -34,7 +27,7 @@ type transitKeyUseCase struct {
 func (t *transitKeyUseCase) Create(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	var transitKey *transitDomain.TransitKey
 
@@ -72,7 +65,7 @@ func (t *transitKeyUseCase) Create(
 func (t *transitKeyUseCase) Rotate(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	var newTransitKey *transitDomain.TransitKey
 
@@ -112,7 +105,7 @@ func (t *transitKeyUseCase) Get(
 	ctx context.Context,
 	name string,
 	version uint,
-) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+) (*transitDomain.TransitKey, keyring.Algorithm, error) {
 	return t.transitRepo.GetTransitKey(ctx, name, version)
 }
 
@@ -141,15 +134,8 @@ func (t *transitKeyUseCase) Encrypt(
 		return nil, apperrors.Wrap(err, "failed to encrypt plaintext")
 	}
 
-	encryptedData := make([]byte, 0, len(nonce)+len(ciphertext))
-	encryptedData = append(encryptedData, nonce...)
-	encryptedData = append(encryptedData, ciphertext...)
-
-	return &transitDomain.EncryptedBlob{
-		Version:    transitKey.Version,
-		Ciphertext: encryptedData,
-		Plaintext:  nil,
-	}, nil
+	blob := transitDomain.NewFramedBlob(transitKey.Version, nonce, ciphertext)
+	return &blob, nil
 }
 
 // Decrypt decrypts ciphertext using the version specified in the encrypted blob.
@@ -169,22 +155,20 @@ func (t *transitKeyUseCase) Decrypt(
 		return nil, err
 	}
 
-	if len(blob.Ciphertext) < nonceSize {
-		return nil, apperrors.Wrap(cryptoDomain.ErrDecryptionFailed, "ciphertext too short")
+	nonce, encryptedData, err := blob.SplitNonce()
+	if err != nil {
+		return nil, keyring.ErrDecryptionFailed
 	}
-	nonce := blob.Ciphertext[:nonceSize]
-	encryptedData := blob.Ciphertext[nonceSize:]
 
 	handle := keyring.DekHandle{DekID: transitKey.DekID}
 	plaintext, err := t.keyring.DecryptWith(ctx, handle, encryptedData, nonce, context)
 	if err != nil {
-		return nil, cryptoDomain.ErrDecryptionFailed
+		return nil, keyring.ErrDecryptionFailed
 	}
 
 	return &transitDomain.EncryptedBlob{
-		Version:    blob.Version,
-		Ciphertext: nil,
-		Plaintext:  plaintext,
+		Version:   blob.Version,
+		Plaintext: plaintext,
 	}, nil
 }
 
