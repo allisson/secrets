@@ -24,18 +24,9 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	testCases := []struct {
-		name     string
-		dbDriver string
-	}{
-		{"PostgreSQL", "postgres"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			ctx := setupIntegrationTest(t, tc.dbDriver)
-			defer teardownIntegrationTest(t, ctx)
+	// Setup
+	ctx := setupIntegrationTest(t)
+	defer teardownIntegrationTest(t, ctx)
 
 			// Variables to store created resource IDs and encrypted data for later operations
 			var (
@@ -327,8 +318,5 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 				assert.Empty(t, body)
 			})
 
-			t.Logf("All 11 transit endpoint tests passed for %s", tc.dbDriver)
-
-		})
-	}
+	t.Logf("All 11 transit endpoint tests passed")
 }

@@ -1248,8 +1248,8 @@ func TestSecretRepository_ListCursor_FirstPage(t *testing.T) {
 	ctx := context.Background()
 
 	// Create KEK and DEK for FK constraint
-	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek")
-	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek", kekID)
+	kekID := testutil.CreateTestKek(t, db, "test-kek")
+	dekID := testutil.CreateTestDek(t, db, "test-dek", kekID)
 
 	// Create 5 secrets with different paths (alphabetically ordered)
 	paths := []string{"a-secret", "b-secret", "c-secret", "d-secret", "e-secret"}
@@ -1286,8 +1286,8 @@ func TestSecretRepository_ListCursor_SubsequentPages(t *testing.T) {
 	ctx := context.Background()
 
 	// Create KEK and DEK for FK constraint
-	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek-2")
-	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek-2", kekID)
+	kekID := testutil.CreateTestKek(t, db, "test-kek-2")
+	dekID := testutil.CreateTestDek(t, db, "test-dek-2", kekID)
 
 	// Create 10 secrets with alphabetically ordered paths
 	paths := []string{"a-secret", "b-secret", "c-secret", "d-secret", "e-secret",

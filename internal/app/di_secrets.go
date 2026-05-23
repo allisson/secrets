@@ -11,7 +11,7 @@ import (
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
 
-// DekRepository returns the DEK repository based on database driver.
+// DekRepository returns the DEK repository.
 func (c *Container) DekRepository(ctx context.Context) (secretsUseCase.DekRepository, error) {
 	var err error
 	c.dekRepositoryInit.Do(func() {
@@ -29,7 +29,7 @@ func (c *Container) DekRepository(ctx context.Context) (secretsUseCase.DekReposi
 	return c.dekRepository, nil
 }
 
-// SecretRepository returns the secret repository based on database driver.
+// SecretRepository returns the secret repository.
 func (c *Container) SecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
 	var err error
 	c.secretRepositoryInit.Do(func() {
@@ -83,7 +83,7 @@ func (c *Container) SecretHandler(ctx context.Context) (*secretsHTTP.SecretHandl
 	return c.secretHandler, nil
 }
 
-// initDekRepository creates the DEK repository based on the database driver.
+// initDekRepository creates the DEK repository.
 func (c *Container) initDekRepository(ctx context.Context) (secretsUseCase.DekRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
@@ -93,7 +93,7 @@ func (c *Container) initDekRepository(ctx context.Context) (secretsUseCase.DekRe
 	return cryptoRepository.NewDekRepository(db), nil
 }
 
-// initSecretRepository creates the secret repository based on the database driver.
+// initSecretRepository creates the secret repository.
 func (c *Container) initSecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {

@@ -29,321 +29,305 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	dbConfigs := []struct {
-		name   string
-		driver string
-		dsn    string
-	}{
-		{
-			name:   "PostgreSQL",
-			driver: "postgres",
-			dsn:    testutil.GetPostgresTestDSN(),
-		},
-	}
+	ctx := context.Background()
+	dsn := testutil.GetPostgresTestDSN()
 
-	for _, dbConfig := range dbConfigs {
-		t.Run(dbConfig.name, func(t *testing.T) {
-			ctx := context.Background()
-			driver := dbConfig.driver // Capture driver for inner test functions
+	// Setup test database and dependencies
+	testCtx := setupAuditLogTestContext(t, dsn)
+	defer cleanupAuditLogTestContext(t, testCtx)
 
-			// Setup test database and dependencies
-			testCtx := setupAuditLogTestContext(t, driver, dbConfig.dsn)
-			defer cleanupAuditLogTestContext(t, testCtx)
+	// Create audit signer and load KEK chain
+	auditSigner := authService.NewAuditSigner()
+	kekChain := testCtx.kekChain
 
-			// Create audit signer and load KEK chain
-			auditSigner := authService.NewAuditSigner()
-			kekChain := testCtx.kekChain
+	// Get repositories from container
+	auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
+	require.NoError(t, err, "failed to get audit log repository")
 
-			// Get repositories from container
-			auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
-			require.NoError(t, err, "failed to get audit log repository")
+	// Create use case with signing enabled
+	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
 
-			// Create use case with signing enabled
-			auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
+	t.Run("CreateSignedAuditLog", func(t *testing.T) {
+		// Create a signed audit log
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := testCtx.rootClient.ID
+		capability := authDomain.ReadCapability
+		path := "/api/v1/secrets/test-key"
+		metadata := map[string]any{
+			"user_agent": "integration-test",
+			"ip_address": "127.0.0.1",
+		}
 
-			t.Run("CreateSignedAuditLog", func(t *testing.T) {
-				// Create a signed audit log
-				requestID := uuid.Must(uuid.NewV7())
-				clientID := testCtx.rootClient.ID
-				capability := authDomain.ReadCapability
-				path := "/api/v1/secrets/test-key"
-				metadata := map[string]any{
-					"user_agent": "integration-test",
-					"ip_address": "127.0.0.1",
-				}
+		err := auditLogUseCase.Create(ctx, requestID, clientID, capability, path, metadata)
+		require.NoError(t, err, "failed to create audit log")
 
-				err := auditLogUseCase.Create(ctx, requestID, clientID, capability, path, metadata)
-				require.NoError(t, err, "failed to create audit log")
+		// Retrieve the created log
+		logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
+		require.NoError(t, err, "failed to list audit logs")
+		require.Len(t, logs, 1, "expected exactly one audit log")
 
-				// Retrieve the created log
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
-				require.NoError(t, err, "failed to list audit logs")
-				require.Len(t, logs, 1, "expected exactly one audit log")
+		log := logs[0]
 
-				log := logs[0]
+		// Verify signature fields are populated
+		assert.True(t, log.IsSigned, "audit log should be signed")
+		assert.NotNil(t, log.KekID, "kek_id should not be nil")
+		assert.NotEmpty(t, log.Signature, "signature should not be empty")
+		assert.Equal(t, kekChain.ActiveKekID(), *log.KekID, "kek_id should match active KEK")
 
-				// Verify signature fields are populated
-				assert.True(t, log.IsSigned, "audit log should be signed")
-				assert.NotNil(t, log.KekID, "kek_id should not be nil")
-				assert.NotEmpty(t, log.Signature, "signature should not be empty")
-				assert.Equal(t, kekChain.ActiveKekID(), *log.KekID, "kek_id should match active KEK")
+		// Verify the signature is valid
+		err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
+		assert.NoError(t, err, "signature verification should succeed")
+	})
 
-				// Verify the signature is valid
-				err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
-				assert.NoError(t, err, "signature verification should succeed")
-			})
+	t.Run("TamperDetection", func(t *testing.T) {
+		// Create a signed audit log
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := testCtx.rootClient.ID
 
-			t.Run("TamperDetection", func(t *testing.T) {
-				// Create a signed audit log
-				requestID := uuid.Must(uuid.NewV7())
-				clientID := testCtx.rootClient.ID
+		err := auditLogUseCase.Create(
+			ctx,
+			requestID,
+			clientID,
+			authDomain.WriteCapability,
+			"/api/v1/secrets/tamper-test",
+			nil,
+		)
+		require.NoError(t, err, "failed to create audit log")
 
-				err := auditLogUseCase.Create(
-					ctx,
-					requestID,
-					clientID,
-					authDomain.WriteCapability,
-					"/api/v1/secrets/tamper-test",
-					nil,
-				)
-				require.NoError(t, err, "failed to create audit log")
+		// Retrieve the log
+		logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
+		require.NoError(t, err, "failed to list audit logs")
+		require.Len(t, logs, 1, "expected exactly one audit log")
 
-				// Retrieve the log
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
-				require.NoError(t, err, "failed to list audit logs")
-				require.Len(t, logs, 1, "expected exactly one audit log")
+		log := logs[0]
 
-				log := logs[0]
+		// Tamper with the log by modifying the path directly in the database
+		result, execErr := testCtx.db.Exec(
+			"UPDATE audit_logs SET path = '/api/v1/secrets/tampered' WHERE id = $1",
+			log.ID,
+		)
+		require.NoError(t, execErr, "failed to tamper with audit log")
 
-				// Tamper with the log by modifying the path directly in the database
-				result, execErr := testCtx.db.Exec(
-					"UPDATE audit_logs SET path = '/api/v1/secrets/tampered' WHERE id = $1",
-					log.ID,
-				)
-				require.NoError(t, execErr, "failed to tamper with audit log")
+		// Verify the UPDATE actually modified a row
+		rowsAffected, _ := result.RowsAffected()
+		require.Equal(t, int64(1), rowsAffected, "UPDATE should affect exactly 1 row")
 
-				// Verify the UPDATE actually modified a row
-				rowsAffected, _ := result.RowsAffected()
-				require.Equal(t, int64(1), rowsAffected, "UPDATE should affect exactly 1 row")
+		// Verification should now fail
+		err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
+		assert.Error(t, err, "signature verification should fail for tampered log")
+		assert.ErrorIs(t, err, authDomain.ErrSignatureInvalid, "error should be ErrSignatureInvalid")
+	})
 
-				// Verification should now fail
-				err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
-				assert.Error(t, err, "signature verification should fail for tampered log")
-				assert.ErrorIs(t, err, authDomain.ErrSignatureInvalid, "error should be ErrSignatureInvalid")
-			})
+	t.Run("VerifyRotationAuditLog", func(t *testing.T) {
+		// Setup UseCases
+		clientUseCase, _ := testCtx.container.ClientUseCase(ctx)
+		auditLogUseCase, _ := testCtx.container.AuditLogUseCase(ctx)
 
-			t.Run("VerifyRotationAuditLog", func(t *testing.T) {
-				// Setup UseCases
-				clientUseCase, _ := testCtx.container.ClientUseCase(ctx)
-				auditLogUseCase, _ := testCtx.container.AuditLogUseCase(ctx)
+		// Create a client to rotate
+		clientRequest := &authDomain.CreateClientInput{
+			Name:     "Rotation Audit Test",
+			IsActive: true,
+			Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
+		}
+		createOutput, err := clientUseCase.Create(ctx, clientRequest)
+		require.NoError(t, err)
 
-				// Create a client to rotate
-				clientRequest := &authDomain.CreateClientInput{
-					Name:     "Rotation Audit Test",
-					IsActive: true,
-					Policies: []authDomain.PolicyDocument{{Path: "*", Capabilities: []authDomain.Capability{authDomain.ReadCapability}}},
-				}
-				createOutput, err := clientUseCase.Create(ctx, clientRequest)
-				require.NoError(t, err)
+		// Perform rotation
+		_, err = clientUseCase.RotateSecret(ctx, createOutput.ID)
+		require.NoError(t, err)
 
-				// Perform rotation
-				_, err = clientUseCase.RotateSecret(ctx, createOutput.ID)
-				require.NoError(t, err)
+		// List audit logs for this client and path
+		logs, err := auditLogUseCase.ListCursor(ctx, nil, 10, nil, nil, nil)
+		require.NoError(t, err)
 
-				// List audit logs for this client and path
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 10, nil, nil, nil)
-				require.NoError(t, err)
+		var rotationLog *authDomain.AuditLog
+		expectedPath := "/v1/clients/" + createOutput.ID.String() + "/rotate-secret"
+		for _, log := range logs {
+			if log.ClientID == createOutput.ID && log.Path == expectedPath {
+				rotationLog = log
+				break
+			}
+		}
 
-				var rotationLog *authDomain.AuditLog
-				expectedPath := "/v1/clients/" + createOutput.ID.String() + "/rotate-secret"
-				for _, log := range logs {
-					if log.ClientID == createOutput.ID && log.Path == expectedPath {
-						rotationLog = log
-						break
-					}
-				}
+		require.NotNil(t, rotationLog, "rotation audit log not found")
+		assert.True(t, rotationLog.IsSigned, "rotation audit log should be signed")
+		assert.Equal(t, authDomain.RotateCapability, rotationLog.Capability)
 
-				require.NotNil(t, rotationLog, "rotation audit log not found")
-				assert.True(t, rotationLog.IsSigned, "rotation audit log should be signed")
-				assert.Equal(t, authDomain.RotateCapability, rotationLog.Capability)
+		// Verify integrity
+		err = auditLogUseCase.VerifyIntegrity(ctx, rotationLog.ID)
+		assert.NoError(t, err, "rotation audit log signature should be valid")
+	})
 
-				// Verify integrity
-				err = auditLogUseCase.VerifyIntegrity(ctx, rotationLog.ID)
-				assert.NoError(t, err, "rotation audit log signature should be valid")
-			})
+	t.Run("VerifyBatch_AllValid", func(t *testing.T) {
+		// Create multiple signed audit logs
+		startTime := time.Now().UTC()
+		clientID := testCtx.rootClient.ID
 
-			t.Run("VerifyBatch_AllValid", func(t *testing.T) {
-				// Create multiple signed audit logs
-				startTime := time.Now().UTC()
-				clientID := testCtx.rootClient.ID
+		for i := 0; i < 5; i++ {
+			requestID := uuid.Must(uuid.NewV7())
+			path := "/api/v1/secrets/batch-test-" + string(rune('a'+i))
 
-				for i := 0; i < 5; i++ {
-					requestID := uuid.Must(uuid.NewV7())
-					path := "/api/v1/secrets/batch-test-" + string(rune('a'+i))
+			err := auditLogUseCase.Create(
+				ctx,
+				requestID,
+				clientID,
+				authDomain.ReadCapability,
+				path,
+				nil,
+			)
+			require.NoError(t, err, "failed to create audit log")
 
-					err := auditLogUseCase.Create(
-						ctx,
-						requestID,
-						clientID,
-						authDomain.ReadCapability,
-						path,
-						nil,
-					)
-					require.NoError(t, err, "failed to create audit log")
+			time.Sleep(10 * time.Millisecond) // Ensure distinct timestamps
+		}
 
-					time.Sleep(10 * time.Millisecond) // Ensure distinct timestamps
-				}
+		endTime := time.Now().UTC().Add(1 * time.Second)
 
-				endTime := time.Now().UTC().Add(1 * time.Second)
+		// Verify batch
+		report, err := auditLogUseCase.VerifyBatch(ctx, startTime, endTime)
+		require.NoError(t, err, "batch verification should succeed")
 
-				// Verify batch
-				report, err := auditLogUseCase.VerifyBatch(ctx, startTime, endTime)
-				require.NoError(t, err, "batch verification should succeed")
+		assert.Equal(t, int64(5), report.TotalChecked, "should check 5 logs")
+		assert.Equal(t, int64(5), report.SignedCount, "all 5 should be signed")
+		assert.Equal(t, int64(5), report.ValidCount, "all 5 should be valid")
+		assert.Equal(t, int64(0), report.InvalidCount, "no invalid logs")
+		assert.Empty(t, report.InvalidLogs, "no invalid log IDs")
+	})
 
-				assert.Equal(t, int64(5), report.TotalChecked, "should check 5 logs")
-				assert.Equal(t, int64(5), report.SignedCount, "all 5 should be signed")
-				assert.Equal(t, int64(5), report.ValidCount, "all 5 should be valid")
-				assert.Equal(t, int64(0), report.InvalidCount, "no invalid logs")
-				assert.Empty(t, report.InvalidLogs, "no invalid log IDs")
-			})
+	t.Run("VerifyBatch_WithInvalid", func(t *testing.T) {
+		// Create signed audit logs
+		startTime := time.Now().UTC()
+		clientID := testCtx.rootClient.ID
 
-			t.Run("VerifyBatch_WithInvalid", func(t *testing.T) {
-				// Create signed audit logs
-				startTime := time.Now().UTC()
-				clientID := testCtx.rootClient.ID
+		var logIDs []uuid.UUID
+		for i := 0; i < 3; i++ {
+			requestID := uuid.Must(uuid.NewV7())
+			path := "/api/v1/secrets/invalid-test-" + string(rune('a'+i))
 
-				var logIDs []uuid.UUID
-				for i := 0; i < 3; i++ {
-					requestID := uuid.Must(uuid.NewV7())
-					path := "/api/v1/secrets/invalid-test-" + string(rune('a'+i))
+			err := auditLogUseCase.Create(
+				ctx,
+				requestID,
+				clientID,
+				authDomain.WriteCapability,
+				path,
+				nil,
+			)
+			require.NoError(t, err, "failed to create audit log")
 
-					err := auditLogUseCase.Create(
-						ctx,
-						requestID,
-						clientID,
-						authDomain.WriteCapability,
-						path,
-						nil,
-					)
-					require.NoError(t, err, "failed to create audit log")
+			time.Sleep(10 * time.Millisecond)
+		}
 
-					time.Sleep(10 * time.Millisecond)
-				}
+		// Get the created logs
+		endTime := time.Now().UTC().Add(1 * time.Second)
+		logs, err := auditLogUseCase.ListCursor(ctx, nil, 3, &startTime, &endTime, nil)
+		require.NoError(t, err, "failed to list audit logs")
+		require.Len(t, logs, 3, "expected 3 audit logs")
 
-				// Get the created logs
-				endTime := time.Now().UTC().Add(1 * time.Second)
-				logs, err := auditLogUseCase.ListCursor(ctx, nil, 3, &startTime, &endTime, nil)
-				require.NoError(t, err, "failed to list audit logs")
-				require.Len(t, logs, 3, "expected 3 audit logs")
+		for _, log := range logs {
+			logIDs = append(logIDs, log.ID)
+		}
 
-				for _, log := range logs {
-					logIDs = append(logIDs, log.ID)
-				}
+		// Tamper with the middle log
+		_, execErr := testCtx.db.Exec(
+			"UPDATE audit_logs SET capability = 'delete' WHERE id = $1",
+			logIDs[1],
+		)
+		require.NoError(t, execErr, "failed to tamper with audit log")
 
-				// Tamper with the middle log
-				_, execErr := testCtx.db.Exec(
-					"UPDATE audit_logs SET capability = 'delete' WHERE id = $1",
-					logIDs[1],
-				)
-				require.NoError(t, execErr, "failed to tamper with audit log")
+		// Verify batch
+		report, err := auditLogUseCase.VerifyBatch(ctx, startTime, endTime)
+		require.NoError(t, err, "batch verification should not error")
 
-				// Verify batch
-				report, err := auditLogUseCase.VerifyBatch(ctx, startTime, endTime)
-				require.NoError(t, err, "batch verification should not error")
+		assert.Equal(t, int64(3), report.TotalChecked, "should check 3 logs")
+		assert.Equal(t, int64(3), report.SignedCount, "all 3 should be signed")
+		assert.Equal(t, int64(2), report.ValidCount, "2 should be valid")
+		assert.Equal(t, int64(1), report.InvalidCount, "1 should be invalid")
+		assert.Len(t, report.InvalidLogs, 1, "should have 1 invalid log ID")
+		assert.Equal(t, logIDs[1], report.InvalidLogs[0], "invalid log ID should match tampered log")
+	})
 
-				assert.Equal(t, int64(3), report.TotalChecked, "should check 3 logs")
-				assert.Equal(t, int64(3), report.SignedCount, "all 3 should be signed")
-				assert.Equal(t, int64(2), report.ValidCount, "2 should be valid")
-				assert.Equal(t, int64(1), report.InvalidCount, "1 should be invalid")
-				assert.Len(t, report.InvalidLogs, 1, "should have 1 invalid log ID")
-				assert.Equal(t, logIDs[1], report.InvalidLogs[0], "invalid log ID should match tampered log")
-			})
+	t.Run("LegacyUnsignedLogs", func(t *testing.T) {
+		// Create an unsigned legacy audit log (using nil signer and chain)
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
 
-			t.Run("LegacyUnsignedLogs", func(t *testing.T) {
-				// Create an unsigned legacy audit log (using nil signer and chain)
-				legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
+		requestID := uuid.Must(uuid.NewV7())
+		clientID := testCtx.rootClient.ID
 
-				requestID := uuid.Must(uuid.NewV7())
-				clientID := testCtx.rootClient.ID
+		err := legacyUseCase.Create(
+			ctx,
+			requestID,
+			clientID,
+			authDomain.ReadCapability,
+			"/api/v1/secrets/legacy",
+			nil,
+		)
+		require.NoError(t, err, "failed to create legacy audit log")
 
-				err := legacyUseCase.Create(
-					ctx,
-					requestID,
-					clientID,
-					authDomain.ReadCapability,
-					"/api/v1/secrets/legacy",
-					nil,
-				)
-				require.NoError(t, err, "failed to create legacy audit log")
+		// Retrieve the log
+		logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
+		require.NoError(t, err, "failed to list audit logs")
+		require.Len(t, logs, 1, "expected exactly one audit log")
 
-				// Retrieve the log
-				logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
-				require.NoError(t, err, "failed to list audit logs")
-				require.Len(t, logs, 1, "expected exactly one audit log")
+		log := logs[0]
 
-				log := logs[0]
+		// Verify it's unsigned
+		assert.False(t, log.IsSigned, "audit log should not be signed")
+		assert.Nil(t, log.KekID, "kek_id should be nil")
+		assert.Empty(t, log.Signature, "signature should be empty")
 
-				// Verify it's unsigned
-				assert.False(t, log.IsSigned, "audit log should not be signed")
-				assert.Nil(t, log.KekID, "kek_id should be nil")
-				assert.Empty(t, log.Signature, "signature should be empty")
+		// Verification should return ErrSignatureMissing
+		err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
+		assert.Error(t, err, "verification should fail for unsigned log")
+		assert.ErrorIs(t, err, authDomain.ErrSignatureMissing, "error should be ErrSignatureMissing")
+	})
 
-				// Verification should return ErrSignatureMissing
-				err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
-				assert.Error(t, err, "verification should fail for unsigned log")
-				assert.ErrorIs(t, err, authDomain.ErrSignatureMissing, "error should be ErrSignatureMissing")
-			})
+	t.Run("VerifyBatch_MixedSignedAndLegacy", func(t *testing.T) {
+		startTime := time.Now().UTC()
+		clientID := testCtx.rootClient.ID
 
-			t.Run("VerifyBatch_MixedSignedAndLegacy", func(t *testing.T) {
-				startTime := time.Now().UTC()
-				clientID := testCtx.rootClient.ID
+		// Create 2 signed logs
+		signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
+		for i := 0; i < 2; i++ {
+			requestID := uuid.Must(uuid.NewV7())
+			err := signedUseCase.Create(
+				ctx,
+				requestID,
+				clientID,
+				authDomain.ReadCapability,
+				"/signed",
+				nil,
+			)
+			require.NoError(t, err)
+			time.Sleep(10 * time.Millisecond)
+		}
 
-				// Create 2 signed logs
-				signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, auditSigner, kekChain)
-				for i := 0; i < 2; i++ {
-					requestID := uuid.Must(uuid.NewV7())
-					err := signedUseCase.Create(
-						ctx,
-						requestID,
-						clientID,
-						authDomain.ReadCapability,
-						"/signed",
-						nil,
-					)
-					require.NoError(t, err)
-					time.Sleep(10 * time.Millisecond)
-				}
+		// Create 2 unsigned legacy logs
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
+		for i := 0; i < 2; i++ {
+			requestID := uuid.Must(uuid.NewV7())
+			err := legacyUseCase.Create(
+				ctx,
+				requestID,
+				clientID,
+				authDomain.WriteCapability,
+				"/legacy",
+				nil,
+			)
+			require.NoError(t, err)
+			time.Sleep(10 * time.Millisecond)
+		}
 
-				// Create 2 unsigned legacy logs
-				legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
-				for i := 0; i < 2; i++ {
-					requestID := uuid.Must(uuid.NewV7())
-					err := legacyUseCase.Create(
-						ctx,
-						requestID,
-						clientID,
-						authDomain.WriteCapability,
-						"/legacy",
-						nil,
-					)
-					require.NoError(t, err)
-					time.Sleep(10 * time.Millisecond)
-				}
+		endTime := time.Now().UTC().Add(1 * time.Second)
 
-				endTime := time.Now().UTC().Add(1 * time.Second)
+		// Verify batch
+		report, err := signedUseCase.VerifyBatch(ctx, startTime, endTime)
+		require.NoError(t, err, "batch verification should succeed")
 
-				// Verify batch
-				report, err := signedUseCase.VerifyBatch(ctx, startTime, endTime)
-				require.NoError(t, err, "batch verification should succeed")
-
-				assert.Equal(t, int64(4), report.TotalChecked, "should check 4 logs")
-				assert.Equal(t, int64(2), report.SignedCount, "2 should be signed")
-				assert.Equal(t, int64(2), report.UnsignedCount, "2 should be unsigned")
-				assert.Equal(t, int64(2), report.ValidCount, "2 signed should be valid")
-				assert.Equal(t, int64(0), report.InvalidCount, "no invalid logs")
-			})
-		})
-	}
+		assert.Equal(t, int64(4), report.TotalChecked, "should check 4 logs")
+		assert.Equal(t, int64(2), report.SignedCount, "2 should be signed")
+		assert.Equal(t, int64(2), report.UnsignedCount, "2 should be unsigned")
+		assert.Equal(t, int64(2), report.ValidCount, "2 signed should be valid")
+		assert.Equal(t, int64(0), report.InvalidCount, "no invalid logs")
+	})
 }
 
 // auditLogTestContext holds test dependencies for audit log signature tests.
@@ -355,7 +339,7 @@ type auditLogTestContext struct {
 }
 
 // setupAuditLogTestContext creates a test environment with database, KEK chain, and root client.
-func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestContext {
+func setupAuditLogTestContext(t *testing.T, dsn string) *auditLogTestContext {
 	t.Helper()
 
 	// Initialize test database with migrations
@@ -429,6 +413,7 @@ func setupAuditLogTestContext(t *testing.T, driver, dsn string) *auditLogTestCon
 		rootClient: rootClient,
 	}
 }
+
 
 // cleanupAuditLogTestContext closes database and container resources.
 func cleanupAuditLogTestContext(t *testing.T, testCtx *auditLogTestContext) {

@@ -33,7 +33,7 @@ func TestAuditLogRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-create")
+	clientID := testutil.CreateTestClient(t, db, "test-create")
 
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -67,7 +67,7 @@ func TestAuditLogRepository_Create_WithNilMetadata(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-nil-metadata")
+	clientID := testutil.CreateTestClient(t, db, "test-nil-metadata")
 
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -102,7 +102,7 @@ func TestAuditLogRepository_Create_WithEmptyMetadata(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-empty-metadata")
+	clientID := testutil.CreateTestClient(t, db, "test-empty-metadata")
 
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -137,8 +137,8 @@ func TestAuditLogRepository_Create_MultipleAuditLogs(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test clients to satisfy FK constraint
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "test-multiple-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "test-multiple-2")
+	clientID1 := testutil.CreateTestClient(t, db, "test-multiple-1")
+	clientID2 := testutil.CreateTestClient(t, db, "test-multiple-2")
 
 	// Create first audit log
 	auditLog1 := &authDomain.AuditLog{
@@ -186,7 +186,7 @@ func TestAuditLogRepository_Create_AllCapabilities(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-capabilities")
+	clientID := testutil.CreateTestClient(t, db, "test-capabilities")
 
 	capabilities := []authDomain.Capability{
 		authDomain.ReadCapability,
@@ -231,7 +231,7 @@ func TestAuditLogRepository_Create_WithTransaction(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-tx")
+	clientID := testutil.CreateTestClient(t, db, "test-tx")
 
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -281,7 +281,7 @@ func TestAuditLogRepository_Create_TransactionRollback(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client to satisfy FK constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-rollback")
+	clientID := testutil.CreateTestClient(t, db, "test-rollback")
 
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
@@ -332,7 +332,7 @@ func TestAuditLogRepository_ListCursor_FirstPage(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client for foreign key constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-first")
+	clientID := testutil.CreateTestClient(t, db, "test-cursor-first")
 
 	// Create 5 audit logs
 	now := time.Now().UTC()
@@ -372,7 +372,7 @@ func TestAuditLogRepository_ListCursor_SubsequentPages(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client for foreign key constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-pages")
+	clientID := testutil.CreateTestClient(t, db, "test-cursor-pages")
 
 	// Create 10 audit logs
 	now := time.Now().UTC()
@@ -442,7 +442,7 @@ func TestAuditLogRepository_ListCursor_WithFilters(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test client for foreign key constraint
-	clientID := testutil.CreateTestClient(t, db, "postgres", "test-cursor-filters")
+	clientID := testutil.CreateTestClient(t, db, "test-cursor-filters")
 
 	// Create audit logs with different timestamps
 	now := time.Now().UTC().Truncate(time.Microsecond)
@@ -481,8 +481,8 @@ func TestAuditLogRepository_ListCursor_ByClientID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test clients
-	clientID1 := testutil.CreateTestClient(t, db, "postgres", "client-1")
-	clientID2 := testutil.CreateTestClient(t, db, "postgres", "client-2")
+	clientID1 := testutil.CreateTestClient(t, db, "client-1")
+	clientID2 := testutil.CreateTestClient(t, db, "client-2")
 
 	// Create logs for client 1
 	for i := 0; i < 3; i++ {

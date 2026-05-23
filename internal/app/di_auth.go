@@ -18,7 +18,7 @@ func (c *Container) SecretService() authService.SecretService {
 	return c.secretService
 }
 
-// ClientRepository returns the client repository based on database driver.
+// ClientRepository returns the client repository.
 func (c *Container) ClientRepository(ctx context.Context) (authUseCase.ClientRepository, error) {
 	var err error
 	c.clientRepositoryInit.Do(func() {
@@ -62,7 +62,7 @@ func (c *Container) TokenService() authService.TokenService {
 	return c.tokenService
 }
 
-// TokenRepository returns the token repository based on database driver.
+// TokenRepository returns the token repository.
 func (c *Container) TokenRepository(ctx context.Context) (authUseCase.TokenRepository, error) {
 	var err error
 	c.tokenRepositoryInit.Do(func() {
@@ -80,7 +80,7 @@ func (c *Container) TokenRepository(ctx context.Context) (authUseCase.TokenRepos
 	return c.tokenRepository, nil
 }
 
-// AuditLogRepository returns the audit log repository based on database driver.
+// AuditLogRepository returns the audit log repository.
 func (c *Container) AuditLogRepository(ctx context.Context) (authUseCase.AuditLogRepository, error) {
 	var err error
 	c.auditLogRepositoryInit.Do(func() {
@@ -193,7 +193,7 @@ func (c *Container) initSecretService() authService.SecretService {
 	return authService.NewSecretService()
 }
 
-// initClientRepository creates the client repository based on the database driver.
+// initClientRepository creates the client repository.
 func (c *Container) initClientRepository(ctx context.Context) (authUseCase.ClientRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
@@ -252,7 +252,7 @@ func (c *Container) initTokenService() authService.TokenService {
 	return authService.NewTokenService()
 }
 
-// initTokenRepository creates the token repository based on the database driver.
+// initTokenRepository creates the token repository.
 func (c *Container) initTokenRepository(ctx context.Context) (authUseCase.TokenRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
@@ -262,7 +262,7 @@ func (c *Container) initTokenRepository(ctx context.Context) (authUseCase.TokenR
 	return authRepository.NewTokenRepository(db), nil
 }
 
-// initAuditLogRepository creates the audit log repository based on the database driver.
+// initAuditLogRepository creates the audit log repository.
 func (c *Container) initAuditLogRepository(ctx context.Context) (authUseCase.AuditLogRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {

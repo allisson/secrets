@@ -888,8 +888,8 @@ func TestTransitKeyRepository_ListCursor_FirstPage(t *testing.T) {
 	ctx := context.Background()
 
 	// Create KEK and DEK for FK constraint
-	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek")
-	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek", kekID)
+	kekID := testutil.CreateTestKek(t, db, "test-kek")
+	dekID := testutil.CreateTestDek(t, db, "test-dek", kekID)
 
 	// Create 5 transit keys with different names (alphabetically ordered)
 	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key"}
@@ -924,8 +924,8 @@ func TestTransitKeyRepository_ListCursor_SubsequentPages(t *testing.T) {
 	ctx := context.Background()
 
 	// Create KEK and DEK for FK constraint
-	kekID := testutil.CreateTestKek(t, db, "postgres", "test-kek-2")
-	dekID := testutil.CreateTestDek(t, db, "postgres", "test-dek-2", kekID)
+	kekID := testutil.CreateTestKek(t, db, "test-kek-2")
+	dekID := testutil.CreateTestDek(t, db, "test-dek-2", kekID)
 
 	// Create 10 transit keys with alphabetically ordered names
 	names := []string{"a-key", "b-key", "c-key", "d-key", "e-key",
