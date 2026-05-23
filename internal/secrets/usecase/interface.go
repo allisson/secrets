@@ -1,26 +1,14 @@
 // Package usecase defines the interfaces and implementations for secret management use cases.
-// Use cases orchestrate operations between repositories and services to implement business
-// logic for managing encrypted secrets with automatic versioning.
+// Use cases orchestrate operations between the keyring and the secret repository to
+// implement business logic for managing encrypted secrets with automatic versioning.
 package usecase
 
 import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
-
-// DekRepository defines the interface for Data Encryption Key persistence operations.
-type DekRepository interface {
-	// Create stores a new DEK in the repository using transaction support from context.
-	Create(ctx context.Context, dek *cryptoDomain.Dek) error
-
-	// Get retrieves a DEK by its ID. Returns ErrDekNotFound if not found.
-	Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error)
-}
 
 // SecretRepository defines the interface for Secret persistence operations.
 type SecretRepository interface {
@@ -52,7 +40,7 @@ type SecretRepository interface {
 // SecretUseCase defines the interface for secret management business logic.
 type SecretUseCase interface {
 	// CreateOrUpdate creates a new secret or increments the version if path exists.
-	// Encrypts the value with a new DEK for each version. Returns the created/updated secret.
+	// Encrypts the value with a fresh DEK via the keyring on each call.
 	CreateOrUpdate(ctx context.Context, path string, value []byte) (*secretsDomain.Secret, error)
 
 	// Get retrieves and decrypts a secret by its path (latest version).

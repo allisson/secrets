@@ -1,7 +1,7 @@
 // Package usecase implements transit encryption business logic.
 //
-// Coordinates between cryptographic services and repositories to manage transit keys
-// with versioning and envelope encryption. Uses TxManager for transactional consistency.
+// Coordinates between the keyring and the transit repository to manage transit keys
+// with versioning and envelope encryption.
 package usecase
 
 import (
@@ -11,33 +11,26 @@ import (
 	"github.com/google/uuid"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
+
+// nonceSize is the AEAD nonce length stored alongside ciphertext in the
+// transit wire format. Both supported algorithms (AES-256-GCM,
+// ChaCha20-Poly1305) use 12-byte nonces. If we add an algorithm with a
+// different nonce size, this needs to be derived from the algorithm.
+const nonceSize = 12
 
 // transitKeyUseCase implements TransitKeyUseCase for managing transit keys.
 type transitKeyUseCase struct {
 	txManager   database.TxManager
 	transitRepo TransitKeyRepository
-	dekRepo     DekRepository
-	keyManager  cryptoService.KeyManager
-	aeadManager cryptoService.AEADManager
-	kekChain    *cryptoDomain.KekChain
-}
-
-// getKek retrieves a KEK from the chain by its ID.
-func (t *transitKeyUseCase) getKek(kekID uuid.UUID) (*cryptoDomain.Kek, error) {
-	kek, ok := t.kekChain.Get(kekID)
-	if !ok {
-		return nil, cryptoDomain.ErrKekNotFound
-	}
-	return kek, nil
+	keyring     keyring.Keyring
 }
 
 // Create generates and persists a new transit key with version 1.
-// Returns ErrTransitKeyAlreadyExists if a transit key with the same name already exists.
 func (t *transitKeyUseCase) Create(
 	ctx context.Context,
 	name string,
@@ -46,47 +39,28 @@ func (t *transitKeyUseCase) Create(
 	var transitKey *transitDomain.TransitKey
 
 	err := t.txManager.WithTx(ctx, func(txCtx context.Context) error {
-		// Check if transit key with version 1 already exists
 		existingKey, err := t.transitRepo.GetByNameAndVersion(txCtx, name, 1)
 		if err != nil && !apperrors.Is(err, transitDomain.ErrTransitKeyNotFound) {
-			// Return unexpected database errors
 			return err
 		}
 		if existingKey != nil {
-			// Transit key already exists with version 1
 			return transitDomain.ErrTransitKeyAlreadyExists
 		}
 
-		// Get active KEK from chain
-		activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+		handle, err := t.keyring.AllocateDek(txCtx, alg)
 		if err != nil {
 			return err
 		}
 
-		// Create DEK encrypted with active KEK
-		dek, err := t.keyManager.CreateDek(activeKek, alg)
-		if err != nil {
-			return err
-		}
-
-		// Persist DEK to database
-		if err := t.dekRepo.Create(txCtx, &dek); err != nil {
-			return err
-		}
-
-		// Create transit key with version 1
 		transitKey = &transitDomain.TransitKey{
 			ID:        uuid.Must(uuid.NewV7()),
 			Name:      name,
 			Version:   1,
-			DekID:     dek.ID,
+			DekID:     handle.DekID,
 			CreatedAt: time.Now().UTC(),
 		}
-
-		// Persist transit key
 		return t.transitRepo.Create(txCtx, transitKey)
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -103,10 +77,8 @@ func (t *transitKeyUseCase) Rotate(
 	var newTransitKey *transitDomain.TransitKey
 
 	err := t.txManager.WithTx(ctx, func(txCtx context.Context) error {
-		// Get latest transit key version
 		currentKey, err := t.transitRepo.GetByName(txCtx, name)
 		if err != nil {
-			// If key doesn't exist, create first version
 			if apperrors.Is(err, transitDomain.ErrTransitKeyNotFound) {
 				newTransitKey, err = t.Create(txCtx, name, alg)
 				return err
@@ -114,36 +86,20 @@ func (t *transitKeyUseCase) Rotate(
 			return err
 		}
 
-		// Get active KEK from chain
-		activeKek, err := t.getKek(t.kekChain.ActiveKekID())
+		handle, err := t.keyring.AllocateDek(txCtx, alg)
 		if err != nil {
 			return err
 		}
 
-		// Create new DEK encrypted with active KEK
-		dek, err := t.keyManager.CreateDek(activeKek, alg)
-		if err != nil {
-			return err
-		}
-
-		// Persist new DEK
-		if err := t.dekRepo.Create(txCtx, &dek); err != nil {
-			return err
-		}
-
-		// Create new transit key with incremented version
 		newTransitKey = &transitDomain.TransitKey{
 			ID:        uuid.Must(uuid.NewV7()),
 			Name:      name,
 			Version:   currentKey.Version + 1,
-			DekID:     dek.ID,
+			DekID:     handle.DekID,
 			CreatedAt: time.Now().UTC(),
 		}
-
-		// Persist new transit key
 		return t.transitRepo.Create(txCtx, newTransitKey)
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -166,50 +122,25 @@ func (t *transitKeyUseCase) Delete(ctx context.Context, name string) error {
 }
 
 // Encrypt encrypts plaintext using the latest version of a named transit key.
+//
+// The returned EncryptedBlob.Ciphertext is `nonce || ciphertext`, base64-encoded
+// in the wire format `version:base64(...)`. See ADR-0002.
 func (t *transitKeyUseCase) Encrypt(
 	ctx context.Context,
 	name string,
 	plaintext, context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
-	// Get latest transit key version
 	transitKey, err := t.transitRepo.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get DEK by transit key's DekID
-	dek, err := t.dekRepo.Get(ctx, transitKey.DekID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get KEK for decrypting DEK
-	kek, err := t.getKek(dek.KekID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Decrypt DEK with KEK
-	dekKey, err := t.keyManager.DecryptDek(dek, kek)
-	if err != nil {
-		return nil, err
-	}
-	defer cryptoDomain.Zero(dekKey)
-
-	// Create AEAD cipher with decrypted DEK
-	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
-	if err != nil {
-		return nil, err
-	}
-
-	// Encrypt plaintext with optional context
-	ciphertext, nonce, err := cipher.Encrypt(plaintext, context)
+	handle := keyring.DekHandle{DekID: transitKey.DekID}
+	ciphertext, nonce, err := t.keyring.EncryptWith(ctx, handle, plaintext, context)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to encrypt plaintext")
 	}
 
-	// Combine ciphertext and nonce (nonce is prepended to ciphertext by AEAD)
-	// The AEAD Encrypt returns ciphertext with authentication tag, we need to store nonce separately
 	encryptedData := make([]byte, 0, len(nonce)+len(ciphertext))
 	encryptedData = append(encryptedData, nonce...)
 	encryptedData = append(encryptedData, ciphertext...)
@@ -228,55 +159,24 @@ func (t *transitKeyUseCase) Decrypt(
 	ciphertext string,
 	context []byte,
 ) (*transitDomain.EncryptedBlob, error) {
-	// Parse encrypted blob from ciphertext string format "version:base64..."
 	blob, err := transitDomain.NewEncryptedBlob(ciphertext)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get transit key by name and version from blob
 	transitKey, err := t.transitRepo.GetByNameAndVersion(ctx, name, blob.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get DEK by transit key's DekID
-	dek, err := t.dekRepo.Get(ctx, transitKey.DekID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get KEK for decrypting DEK
-	kek, err := t.getKek(dek.KekID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Decrypt DEK with KEK
-	dekKey, err := t.keyManager.DecryptDek(dek, kek)
-	if err != nil {
-		return nil, err
-	}
-	defer cryptoDomain.Zero(dekKey)
-
-	// Create AEAD cipher with decrypted DEK
-	cipher, err := t.aeadManager.CreateCipher(dekKey, dek.Algorithm)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract nonce and ciphertext from encrypted data
-	// The nonce is prepended to the ciphertext
-	nonceSize := cipher.NonceSize()
 	if len(blob.Ciphertext) < nonceSize {
 		return nil, apperrors.Wrap(cryptoDomain.ErrDecryptionFailed, "ciphertext too short")
 	}
-
 	nonce := blob.Ciphertext[:nonceSize]
 	encryptedData := blob.Ciphertext[nonceSize:]
 
-	// Decrypt ciphertext with optional context
-	plaintext, err := cipher.Decrypt(encryptedData, nonce, context)
+	handle := keyring.DekHandle{DekID: transitKey.DekID}
+	plaintext, err := t.keyring.DecryptWith(ctx, handle, encryptedData, nonce, context)
 	if err != nil {
 		return nil, cryptoDomain.ErrDecryptionFailed
 	}
@@ -307,21 +207,15 @@ func (t *transitKeyUseCase) PurgeDeleted(ctx context.Context, olderThanDays int,
 	return t.transitRepo.HardDelete(ctx, olderThan, dryRun)
 }
 
-// NewTransitKeyUseCase creates a new TransitKeyUseCase with injected dependencies.
+// NewTransitKeyUseCase creates a new TransitKeyUseCase backed by a Keyring.
 func NewTransitKeyUseCase(
 	txManager database.TxManager,
 	transitRepo TransitKeyRepository,
-	dekRepo DekRepository,
-	keyManager cryptoService.KeyManager,
-	aeadManager cryptoService.AEADManager,
-	kekChain *cryptoDomain.KekChain,
+	kr keyring.Keyring,
 ) TransitKeyUseCase {
 	return &transitKeyUseCase{
 		txManager:   txManager,
 		transitRepo: transitRepo,
-		dekRepo:     dekRepo,
-		keyManager:  keyManager,
-		aeadManager: aeadManager,
-		kekChain:    kekChain,
+		keyring:     kr,
 	}
 }

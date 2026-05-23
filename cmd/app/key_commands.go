@@ -190,26 +190,14 @@ func getKeyCommands() []*cli.Command {
 				return commands.ExecuteWithContainer(
 					ctx,
 					func(ctx context.Context, container *app.Container) error {
-						masterKeyChain, err := container.MasterKeyChain(ctx)
-						if err != nil {
-							return err
-						}
-
-						kekUseCase, err := container.KekUseCase(ctx)
-						if err != nil {
-							return err
-						}
-
-						dekUseCase, err := container.CryptoDekUseCase(ctx)
+						kr, err := container.Keyring(ctx)
 						if err != nil {
 							return err
 						}
 
 						return commands.RunRewrapDeks(
 							ctx,
-							masterKeyChain,
-							kekUseCase,
-							dekUseCase,
+							kr,
 							container.Logger(),
 							cmd.String("kek-id"),
 							int(cmd.Int("batch-size")),

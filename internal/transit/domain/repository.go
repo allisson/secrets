@@ -4,19 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
-
-// DekRepository defines the interface for DEK persistence operations within the transit module.
-type DekRepository interface {
-	// Create stores a new DEK in the repository using transaction support from context.
-	Create(ctx context.Context, dek *cryptoDomain.Dek) error
-
-	// Get retrieves a DEK by its ID. Returns ErrDekNotFound if not found.
-	Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error)
-}
 
 // TransitKeyRepository defines the interface for transit key persistence.
 type TransitKeyRepository interface {

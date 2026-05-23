@@ -348,50 +348,6 @@ func TestContainerKekUseCaseErrors(t *testing.T) {
 	}
 }
 
-// TestContainerCryptoDekRepositoryErrors verifies that Crypto DEK repository initialization errors are properly handled.
-func TestContainerCryptoDekRepositoryErrors(t *testing.T) {
-	// Create a container with invalid database configuration
-	cfg := &config.Config{
-		DBConnectionString: "",
-	}
-
-	container := NewContainer(cfg)
-
-	// Attempting to get Crypto DEK repository should return an error
-	_, err := container.CryptoDekRepository(context.Background())
-	if err == nil {
-		t.Error("expected error when connecting with invalid config")
-	}
-
-	// Attempting to get Crypto DEK repository again should return the same error
-	_, err2 := container.CryptoDekRepository(context.Background())
-	if err2 == nil {
-		t.Error("expected error on second call to CryptoDekRepository()")
-	}
-}
-
-// TestContainerCryptoDekUseCaseErrors verifies that Crypto DEK use case initialization errors are properly handled.
-func TestContainerCryptoDekUseCaseErrors(t *testing.T) {
-	// Create a container with invalid database configuration
-	cfg := &config.Config{
-		DBConnectionString: "",
-	}
-
-	container := NewContainer(cfg)
-
-	// Attempting to get Crypto DEK use case should return an error (due to DB error)
-	_, err := container.CryptoDekUseCase(context.Background())
-	if err == nil {
-		t.Error("expected error when connecting with invalid config")
-	}
-
-	// Attempting to get Crypto DEK use case again should return the same error
-	_, err2 := container.CryptoDekUseCase(context.Background())
-	if err2 == nil {
-		t.Error("expected error on second call to CryptoDekUseCase()")
-	}
-}
-
 // TestContainerMasterKeyChain verifies that the master key chain can be retrieved from the container.
 func TestContainerMasterKeyChain(t *testing.T) {
 	ctx := context.Background()
@@ -748,9 +704,9 @@ func TestContainerSecretsComponents(t *testing.T) {
 
 	// Since repositories need a DB, we expect errors if DB is not and cannot be connected
 
-	_, err := container.DekRepository(ctx)
+	_, err := container.Keyring(ctx)
 	if err == nil {
-		t.Error("expected error for dek repository with invalid db config")
+		t.Error("expected error for keyring with invalid db config")
 	}
 
 	_, err = container.SecretRepository(ctx)
@@ -781,11 +737,6 @@ func TestContainerTransitComponents(t *testing.T) {
 	_, err := container.TransitKeyRepository(ctx)
 	if err == nil {
 		t.Error("expected error for transit key repository with invalid db config")
-	}
-
-	_, err = container.TransitDekRepository(ctx)
-	if err == nil {
-		t.Error("expected error for transit dek repository with invalid db config")
 	}
 
 	_, err = container.TransitKeyUseCase(ctx)
@@ -821,11 +772,6 @@ func TestContainerTokenizationComponents(t *testing.T) {
 	_, err = container.TokenizationTokenRepository(ctx)
 	if err == nil {
 		t.Error("expected error for tokenization token repository with invalid db config")
-	}
-
-	_, err = container.TokenizationDekRepository(ctx)
-	if err == nil {
-		t.Error("expected error for tokenization dek repository with invalid db config")
 	}
 
 	_, err = container.TokenizationKeyUseCase(ctx)

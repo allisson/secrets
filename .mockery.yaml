@@ -28,24 +28,19 @@ packages:
     interfaces:
       KekRepository: {}
       KekUseCase: {}
-      DekRepository: {}
-      DekUseCase: {}
   github.com/allisson/secrets/internal/database:
     interfaces:
       TxManager: {}
   github.com/allisson/secrets/internal/secrets/usecase:
     interfaces:
-      DekRepository: {}
       SecretRepository: {}
       SecretUseCase: {}
   github.com/allisson/secrets/internal/transit/usecase:
     interfaces:
-      DekRepository: {}
       TransitKeyRepository: {}
       TransitKeyUseCase: {}
   github.com/allisson/secrets/internal/tokenization/usecase:
     interfaces:
-      DekRepository: {}
       TokenizationKeyRepository: {}
       TokenizationKeyUseCase: {}
       TokenRepository: {}

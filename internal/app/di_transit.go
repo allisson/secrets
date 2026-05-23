@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitRepository "github.com/allisson/secrets/internal/transit/repository"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
-// TransitKeyRepository returns the transit key repository instance.
 func (c *Container) TransitKeyRepository(ctx context.Context) (transitUseCase.TransitKeyRepository, error) {
 	var err error
 	c.transitKeyRepositoryInit.Do(func() {
@@ -28,25 +26,6 @@ func (c *Container) TransitKeyRepository(ctx context.Context) (transitUseCase.Tr
 	return c.transitKeyRepository, nil
 }
 
-// TransitDekRepository returns the DEK repository for transit use case.
-func (c *Container) TransitDekRepository(ctx context.Context) (transitUseCase.DekRepository, error) {
-	var err error
-	c.transitDekRepositoryInit.Do(func() {
-		c.transitDekRepository, err = c.initTransitDekRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("transitDekRepository", err)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("transitDekRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.transitDekRepository, nil
-}
-
-// TransitKeyUseCase returns the transit key use case instance.
 func (c *Container) TransitKeyUseCase(ctx context.Context) (transitUseCase.TransitKeyUseCase, error) {
 	var err error
 	c.transitKeyUseCaseInit.Do(func() {
@@ -64,7 +43,6 @@ func (c *Container) TransitKeyUseCase(ctx context.Context) (transitUseCase.Trans
 	return c.transitKeyUseCase, nil
 }
 
-// TransitKeyHandler returns the transit key HTTP handler instance.
 func (c *Container) TransitKeyHandler(ctx context.Context) (*transitHTTP.TransitKeyHandler, error) {
 	var err error
 	c.transitKeyHandlerInit.Do(func() {
@@ -82,7 +60,6 @@ func (c *Container) TransitKeyHandler(ctx context.Context) (*transitHTTP.Transit
 	return c.transitKeyHandler, nil
 }
 
-// CryptoHandler returns the crypto HTTP handler instance.
 func (c *Container) CryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandler, error) {
 	var err error
 	c.cryptoHandlerInit.Do(func() {
@@ -100,7 +77,6 @@ func (c *Container) CryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandl
 	return c.cryptoHandler, nil
 }
 
-// initTransitKeyRepository creates the transit key repository.
 func (c *Container) initTransitKeyRepository(
 	ctx context.Context,
 ) (transitUseCase.TransitKeyRepository, error) {
@@ -112,17 +88,6 @@ func (c *Container) initTransitKeyRepository(
 	return transitRepository.NewTransitKeyRepository(db), nil
 }
 
-// initTransitDekRepository creates the DEK repository for transit use case.
-func (c *Container) initTransitDekRepository(ctx context.Context) (transitUseCase.DekRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for transit dek repository: %w", err)
-	}
-
-	return cryptoRepository.NewDekRepository(db), nil
-}
-
-// initTransitKeyUseCase creates the transit key use case with all its dependencies.
 func (c *Container) initTransitKeyUseCase(ctx context.Context) (transitUseCase.TransitKeyUseCase, error) {
 	txManager, err := c.TxManager(ctx)
 	if err != nil {
@@ -134,29 +99,13 @@ func (c *Container) initTransitKeyUseCase(ctx context.Context) (transitUseCase.T
 		return nil, fmt.Errorf("failed to get transit key repository for transit key use case: %w", err)
 	}
 
-	dekRepository, err := c.TransitDekRepository(ctx)
+	kr, err := c.Keyring(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dek repository for transit key use case: %w", err)
+		return nil, fmt.Errorf("failed to get keyring for transit key use case: %w", err)
 	}
 
-	kekChain, err := c.loadKekChain(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load kek chain for transit key use case: %w", err)
-	}
+	baseUseCase := transitUseCase.NewTransitKeyUseCase(txManager, transitKeyRepository, kr)
 
-	keyManager := c.KeyManager()
-	aeadManager := c.AEADManager()
-
-	baseUseCase := transitUseCase.NewTransitKeyUseCase(
-		txManager,
-		transitKeyRepository,
-		dekRepository,
-		keyManager,
-		aeadManager,
-		kekChain,
-	)
-
-	// Wrap with metrics if enabled
 	if c.config.MetricsEnabled {
 		businessMetrics, err := c.BusinessMetrics(ctx)
 		if err != nil {
@@ -168,26 +117,20 @@ func (c *Container) initTransitKeyUseCase(ctx context.Context) (transitUseCase.T
 	return baseUseCase, nil
 }
 
-// initTransitKeyHandler creates the transit key HTTP handler with all its dependencies.
 func (c *Container) initTransitKeyHandler(ctx context.Context) (*transitHTTP.TransitKeyHandler, error) {
 	transitKeyUseCase, err := c.TransitKeyUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transit key use case for transit key handler: %w", err)
 	}
 
-	logger := c.Logger()
-
-	return transitHTTP.NewTransitKeyHandler(transitKeyUseCase, logger), nil
+	return transitHTTP.NewTransitKeyHandler(transitKeyUseCase, c.Logger()), nil
 }
 
-// initCryptoHandler creates the crypto HTTP handler with all its dependencies.
 func (c *Container) initCryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandler, error) {
 	transitKeyUseCase, err := c.TransitKeyUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transit key use case for crypto handler: %w", err)
 	}
 
-	logger := c.Logger()
-
-	return transitHTTP.NewCryptoHandler(transitKeyUseCase, logger), nil
+	return transitHTTP.NewCryptoHandler(transitKeyUseCase, c.Logger()), nil
 }

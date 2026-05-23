@@ -1,0 +1,109 @@
+# CONTEXT
+
+Domain vocabulary for the `secrets` service. Use these terms exactly in code,
+docs, commit messages, and conversations. Drift weakens the seams.
+
+## Cryptography
+
+### Envelope encryption
+The pattern in which a user payload is encrypted under a **Data Encryption Key
+(DEK)**, and the DEK itself is encrypted under a **Key Encryption Key (KEK)**,
+which is in turn protected by a **Master Key** held by an external **KMS**.
+See [ADR-0001](docs/adr/0001-envelope-encryption-model.md).
+
+### Master Key
+A symmetric key held outside this service in a KMS (AWS, GCP, Azure, or
+`localsecrets://` for development). Never stored in the database. Loaded at
+boot via `KMSKeeper.Decrypt` and held in a `MasterKeyChain` for the process
+lifetime.
+
+### KEK — Key Encryption Key
+A symmetric key that exists only to encrypt DEKs. Persisted in the `keks`
+table as ciphertext (wrapped by a Master Key). Rotates on demand via the
+KEK rotation worker. The set of all loaded KEKs is the `KekChain`; the
+newest is the *active* KEK.
+
+### DEK — Data Encryption Key
+A symmetric key that encrypts exactly one piece of user data:
+- in `secrets` and `tokenization`: one DEK per stored row (fresh each call);
+- in `transit`: one DEK per Transit Key, reused across user requests.
+
+Persisted in the `deks` table as ciphertext (wrapped by a KEK). Identified
+by a UUIDv7 (`DekID`).
+
+### AEAD
+Authenticated Encryption with Associated Data. The service supports
+`aes-256-gcm` and `chacha20-poly1305`. Algorithm is chosen at DEK creation
+and recorded on the envelope; ciphertext from one algorithm cannot be
+decrypted by another.
+
+### Rewrap
+Re-encrypting an existing DEK under a newer KEK without changing the
+underlying DEK key material. Used by the KEK rotation worker so old
+ciphertexts remain decryptable without bulk re-encryption.
+
+## Modules
+
+### Keyring
+**The single module that owns envelope encryption.** Exposes a small interface
+to feature modules; hides KEK chain, DEK lifecycle, AEAD selection, and KMS
+calls behind it. Call sites do not know KEK from DEK.
+
+- `Encrypt(ctx, plaintext) → Envelope` — fresh-DEK envelope encryption.
+  Used by `secrets` and `tokenization`.
+- `Decrypt(ctx, envelope) → plaintext` — inverse of `Encrypt`.
+- `AllocateDek(ctx, alg) → DekHandle` — persists a DEK and returns an
+  opaque handle. Used by `transit` once per Transit Key.
+- `EncryptWith(ctx, handle, plaintext, aad) → (ciphertext, nonce)` — encrypt
+  under a previously-allocated DEK. Used by `transit` per request.
+- `DecryptWith(ctx, handle, ciphertext, nonce, aad) → plaintext` — inverse.
+- `Rewrap(ctx, dekID)` — rewrap a DEK under the active KEK. Used by the
+  rotation worker.
+
+### Envelope
+The value returned by `Keyring.Encrypt`. Contains `DekID`, `Ciphertext`,
+`Nonce`, and `Algorithm`. Features persist all four fields; nothing else
+about the DEK or KEK is leaked to callers.
+
+### DekHandle
+An opaque reference to a persistent DEK held by Keyring. Returned by
+`AllocateDek`, accepted by `EncryptWith` / `DecryptWith`. Features store
+only the handle's `DekID` and reload it on demand. Used to model the
+`transit` flow where many user requests share one DEK.
+
+### Transit Key
+A named, long-lived encryption key managed via the transit HTTP API.
+Backed internally by a single DEK (a DekHandle). Users call `encrypt` and
+`decrypt` against the name; the DEK never leaves Keyring.
+
+### Tokenization Key
+A named encryption key associated with a token format (UUID, numeric,
+alphanumeric, Luhn) and a determinism flag. Each tokenize call still uses
+a fresh DEK via `Keyring.Encrypt` — the Tokenization Key itself is
+metadata + format rules, not a long-lived crypto key.
+
+### Secret
+A path-addressed, versioned encrypted payload. Each version has its own
+DEK (fresh per write). The path is the lookup key; the latest version is
+the default read.
+
+### KEK rotation worker
+A background job that calls `Keyring.Rewrap` for every DEK not yet
+encrypted under the active KEK. Runs after `Keyring.RotateKek`. Idempotent.
+
+## Storage
+
+### `keks` table
+Wrapped KEK material, ordered by `version`. The highest-version, non-revoked
+row is the active KEK.
+
+### `deks` table
+Wrapped DEK material, joined to the `keks` row that wrapped them. Indexed
+by `kek_id` to support the rotation worker's batch query.
+
+### Transactions
+All multi-row writes (creating a DEK + the row that references it) happen
+inside a `database.TxManager` transaction propagated via `context.Context`
+(per [ADR-0005](docs/adr/0005-context-based-transaction-management.md)).
+`Keyring.Encrypt` and `Keyring.AllocateDek` join the caller's transaction
+when one is present.

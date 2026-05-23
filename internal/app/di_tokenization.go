@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
-// TokenizationKeyRepository returns the tokenization key repository.
 func (c *Container) TokenizationKeyRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyRepository, error) {
@@ -30,7 +28,6 @@ func (c *Container) TokenizationKeyRepository(
 	return c.tokenizationKeyRepository, nil
 }
 
-// TokenizationTokenRepository returns the tokenization token repository.
 func (c *Container) TokenizationTokenRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenRepository, error) {
@@ -50,27 +47,6 @@ func (c *Container) TokenizationTokenRepository(
 	return c.tokenizationTokenRepository, nil
 }
 
-// TokenizationDekRepository returns the DEK repository for tokenization use case.
-func (c *Container) TokenizationDekRepository(
-	ctx context.Context,
-) (tokenizationUseCase.DekRepository, error) {
-	var err error
-	c.tokenizationDekRepositoryInit.Do(func() {
-		c.tokenizationDekRepository, err = c.initTokenizationDekRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationDekRepository", err)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationDekRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationDekRepository, nil
-}
-
-// TokenizationKeyUseCase returns the tokenization key use case.
 func (c *Container) TokenizationKeyUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyUseCase, error) {
@@ -90,7 +66,6 @@ func (c *Container) TokenizationKeyUseCase(
 	return c.tokenizationKeyUseCase, nil
 }
 
-// TokenizationUseCase returns the tokenization use case.
 func (c *Container) TokenizationUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationUseCase, error) {
@@ -110,7 +85,6 @@ func (c *Container) TokenizationUseCase(
 	return c.tokenizationUseCase, nil
 }
 
-// TokenizationKeyHandler returns the tokenization key HTTP handler.
 func (c *Container) TokenizationKeyHandler(
 	ctx context.Context,
 ) (*tokenizationHTTP.TokenizationKeyHandler, error) {
@@ -130,7 +104,6 @@ func (c *Container) TokenizationKeyHandler(
 	return c.tokenizationKeyHandler, nil
 }
 
-// TokenizationHandler returns the tokenization HTTP handler.
 func (c *Container) TokenizationHandler(ctx context.Context) (*tokenizationHTTP.TokenizationHandler, error) {
 	var err error
 	c.tokenizationHandlerInit.Do(func() {
@@ -148,7 +121,6 @@ func (c *Container) TokenizationHandler(ctx context.Context) (*tokenizationHTTP.
 	return c.tokenizationHandler, nil
 }
 
-// initTokenizationKeyRepository creates the tokenization key repository.
 func (c *Container) initTokenizationKeyRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyRepository, error) {
@@ -160,7 +132,6 @@ func (c *Container) initTokenizationKeyRepository(
 	return tokenizationRepository.NewTokenizationKeyRepository(db), nil
 }
 
-// initTokenizationTokenRepository creates the tokenization token repository.
 func (c *Container) initTokenizationTokenRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenRepository, error) {
@@ -172,19 +143,6 @@ func (c *Container) initTokenizationTokenRepository(
 	return tokenizationRepository.NewTokenRepository(db), nil
 }
 
-// initTokenizationDekRepository creates the DEK repository for tokenization use case.
-func (c *Container) initTokenizationDekRepository(
-	ctx context.Context,
-) (tokenizationUseCase.DekRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for tokenization dek repository: %w", err)
-	}
-
-	return cryptoRepository.NewDekRepository(db), nil
-}
-
-// initTokenizationKeyUseCase creates the tokenization key use case.
 func (c *Container) initTokenizationKeyUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyUseCase, error) {
@@ -201,28 +159,18 @@ func (c *Container) initTokenizationKeyUseCase(
 		)
 	}
 
-	dekRepository, err := c.TokenizationDekRepository(ctx)
+	kr, err := c.Keyring(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dek repository for tokenization key use case: %w", err)
+		return nil, fmt.Errorf("failed to get keyring for tokenization key use case: %w", err)
 	}
-
-	kekChain, err := c.loadKekChain(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load kek chain for tokenization key use case: %w", err)
-	}
-
-	keyManager := c.KeyManager()
 
 	return tokenizationUseCase.NewTokenizationKeyUseCase(
 		txManager,
 		tokenizationKeyRepository,
-		dekRepository,
-		keyManager,
-		kekChain,
+		kr,
 	), nil
 }
 
-// initTokenizationUseCase creates the tokenization use case.
 func (c *Container) initTokenizationUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationUseCase, error) {
@@ -244,34 +192,21 @@ func (c *Container) initTokenizationUseCase(
 		return nil, fmt.Errorf("failed to get token repository for tokenization use case: %w", err)
 	}
 
-	dekRepository, err := c.TokenizationDekRepository(ctx)
+	kr, err := c.Keyring(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dek repository for tokenization use case: %w", err)
+		return nil, fmt.Errorf("failed to get keyring for tokenization use case: %w", err)
 	}
-
-	aeadManager := c.AEADManager()
-
-	keyManager := c.KeyManager()
 
 	hashService := tokenizationUseCase.NewSHA256HashService()
-
-	kekChain, err := c.loadKekChain(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load kek chain for tokenization use case: %w", err)
-	}
 
 	baseUseCase := tokenizationUseCase.NewTokenizationUseCase(
 		txManager,
 		tokenizationKeyRepository,
 		tokenRepository,
-		dekRepository,
-		aeadManager,
-		keyManager,
 		hashService,
-		kekChain,
+		kr,
 	)
 
-	// Wrap with metrics if enabled
 	if c.config.MetricsEnabled {
 		businessMetrics, err := c.BusinessMetrics(ctx)
 		if err != nil {
@@ -283,7 +218,6 @@ func (c *Container) initTokenizationUseCase(
 	return baseUseCase, nil
 }
 
-// initTokenizationKeyHandler creates the tokenization key HTTP handler.
 func (c *Container) initTokenizationKeyHandler(
 	ctx context.Context,
 ) (*tokenizationHTTP.TokenizationKeyHandler, error) {
@@ -295,25 +229,20 @@ func (c *Container) initTokenizationKeyHandler(
 		)
 	}
 
-	logger := c.Logger()
-
-	return tokenizationHTTP.NewTokenizationKeyHandler(tokenizationKeyUseCase, logger), nil
+	return tokenizationHTTP.NewTokenizationKeyHandler(tokenizationKeyUseCase, c.Logger()), nil
 }
 
-// initTokenizationHandler creates the tokenization HTTP handler.
 func (c *Container) initTokenizationHandler(
 	ctx context.Context,
 ) (*tokenizationHTTP.TokenizationHandler, error) {
-	tokenizationUseCase, err := c.TokenizationUseCase(ctx)
+	tokenizationUC, err := c.TokenizationUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tokenization use case for tokenization handler: %w", err)
 	}
 
-	logger := c.Logger()
-
 	return tokenizationHTTP.NewTokenizationHandler(
-		tokenizationUseCase,
+		tokenizationUC,
 		c.config.TokenizationBatchLimit,
-		logger,
+		c.Logger(),
 	), nil
 }
