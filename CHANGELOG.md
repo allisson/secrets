@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Removed MySQL support and standardized database configuration, migrations, repositories, and database-backed tests on PostgreSQL.
+- Collapsed HTTP authorization wiring behind a single `Authorizer` that pre-binds the audit log use case and logger; route registrations now read `authz.Require(<capability>)`. No HTTP contract change.
 
 ## [0.28.0] - 2026-03-23
 
