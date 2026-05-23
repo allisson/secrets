@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/metrics"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
@@ -32,7 +32,7 @@ func (t *tokenizationKeyUseCaseWithMetrics) Create(
 	name string,
 	formatType tokenizationDomain.FormatType,
 	isDeterministic bool,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*tokenizationDomain.TokenizationKey, error) {
 	start := time.Now()
 	key, err := t.next.Create(ctx, name, formatType, isDeterministic, alg)
@@ -54,7 +54,7 @@ func (t *tokenizationKeyUseCaseWithMetrics) Rotate(
 	name string,
 	formatType tokenizationDomain.FormatType,
 	isDeterministic bool,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*tokenizationDomain.TokenizationKey, error) {
 	start := time.Now()
 	key, err := t.next.Rotate(ctx, name, formatType, isDeterministic, alg)

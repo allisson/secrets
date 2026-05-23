@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
@@ -34,7 +33,7 @@ type transitKeyUseCase struct {
 func (t *transitKeyUseCase) Create(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	var transitKey *transitDomain.TransitKey
 
@@ -72,7 +71,7 @@ func (t *transitKeyUseCase) Create(
 func (t *transitKeyUseCase) Rotate(
 	ctx context.Context,
 	name string,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*transitDomain.TransitKey, error) {
 	var newTransitKey *transitDomain.TransitKey
 
@@ -112,7 +111,7 @@ func (t *transitKeyUseCase) Get(
 	ctx context.Context,
 	name string,
 	version uint,
-) (*transitDomain.TransitKey, cryptoDomain.Algorithm, error) {
+) (*transitDomain.TransitKey, keyring.Algorithm, error) {
 	return t.transitRepo.GetTransitKey(ctx, name, version)
 }
 
@@ -170,7 +169,7 @@ func (t *transitKeyUseCase) Decrypt(
 	}
 
 	if len(blob.Ciphertext) < nonceSize {
-		return nil, apperrors.Wrap(cryptoDomain.ErrDecryptionFailed, "ciphertext too short")
+		return nil, apperrors.Wrap(keyring.ErrDecryptionFailed, "ciphertext too short")
 	}
 	nonce := blob.Ciphertext[:nonceSize]
 	encryptedData := blob.Ciphertext[nonceSize:]
@@ -178,7 +177,7 @@ func (t *transitKeyUseCase) Decrypt(
 	handle := keyring.DekHandle{DekID: transitKey.DekID}
 	plaintext, err := t.keyring.DecryptWith(ctx, handle, encryptedData, nonce, context)
 	if err != nil {
-		return nil, cryptoDomain.ErrDecryptionFailed
+		return nil, keyring.ErrDecryptionFailed
 	}
 
 	return &transitDomain.EncryptedBlob{

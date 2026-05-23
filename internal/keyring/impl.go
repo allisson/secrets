@@ -89,12 +89,15 @@ func (k *keyring) Encrypt(ctx context.Context, plaintext []byte) (Envelope, erro
 func (k *keyring) Decrypt(ctx context.Context, env Envelope) ([]byte, error) {
 	dek, err := k.dekStore.Get(ctx, env.DekID)
 	if err != nil {
+		if errors.Is(err, cryptoDomain.ErrDekNotFound) {
+			return nil, ErrDecryptionFailed
+		}
 		return nil, err
 	}
 
 	kek, ok := k.kekChain.Get(dek.KekID)
 	if !ok {
-		return nil, cryptoDomain.ErrKekNotFound
+		return nil, ErrDecryptionFailed
 	}
 
 	dekKey, err := k.keyManager.DecryptDek(dek, kek)
@@ -256,12 +259,15 @@ func (k *keyring) openCipher(
 ) (cryptoService.AEAD, func(), error) {
 	dek, err := k.dekStore.Get(ctx, handle.DekID)
 	if err != nil {
+		if errors.Is(err, cryptoDomain.ErrDekNotFound) {
+			return nil, func() {}, ErrDecryptionFailed
+		}
 		return nil, func() {}, err
 	}
 
 	kek, ok := k.kekChain.Get(dek.KekID)
 	if !ok {
-		return nil, func() {}, cryptoDomain.ErrKekNotFound
+		return nil, func() {}, ErrDecryptionFailed
 	}
 
 	dekKey, err := k.keyManager.DecryptDek(dek, kek)

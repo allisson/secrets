@@ -36,6 +36,17 @@ const (
 	ChaCha20 = cryptoDomain.ChaCha20
 )
 
+var (
+	// ErrDecryptionFailed is returned when Decrypt or DecryptWith cannot recover
+	// plaintext due to missing key material or cipher failure.
+	// Re-exported so callers do not need to import crypto/domain.
+	ErrDecryptionFailed = cryptoDomain.ErrDecryptionFailed
+
+	// Zero overwrites b with zeros, clearing sensitive material from memory.
+	// Re-exported from crypto/domain so callers do not need that import.
+	Zero = cryptoDomain.Zero
+)
+
 // Envelope is the result of Keyring.Encrypt and the input to Keyring.Decrypt.
 // Callers persist the three fields exactly as they would today; nothing about
 // the KEK or DEK material is exposed.

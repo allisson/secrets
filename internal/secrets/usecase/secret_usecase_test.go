@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
@@ -190,30 +189,30 @@ func TestSecretUseCase_Get(t *testing.T) {
 		assert.ErrorIs(t, err, secretsDomain.ErrSecretNotFound)
 	})
 
-	t.Run("Error_DekNotFound_Propagates", func(t *testing.T) {
+	t.Run("Error_DekNotFound_MapsToDecryptionFailed", func(t *testing.T) {
 		t.Parallel()
 		uc, fake, repo := newSecretUseCase(t, 1024)
-		fake.FailDecrypt = cryptoDomain.ErrDekNotFound
+		fake.FailDecrypt = keyring.ErrDecryptionFailed
 
 		repo.EXPECT().GetByPath(ctx, "p").Return(&secretsDomain.Secret{
 			DekID: uuid.New(),
 		}, nil)
 
 		_, err := uc.Get(ctx, "p")
-		assert.ErrorIs(t, err, cryptoDomain.ErrDekNotFound)
+		assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 	})
 
-	t.Run("Error_KekNotFound_Propagates", func(t *testing.T) {
+	t.Run("Error_KekNotFound_MapsToDecryptionFailed", func(t *testing.T) {
 		t.Parallel()
 		uc, fake, repo := newSecretUseCase(t, 1024)
-		fake.FailDecrypt = cryptoDomain.ErrKekNotFound
+		fake.FailDecrypt = keyring.ErrDecryptionFailed
 
 		repo.EXPECT().GetByPath(ctx, "p").Return(&secretsDomain.Secret{
 			DekID: uuid.New(),
 		}, nil)
 
 		_, err := uc.Get(ctx, "p")
-		assert.ErrorIs(t, err, cryptoDomain.ErrKekNotFound)
+		assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 	})
 
 	t.Run("Error_DecryptionFailed_GenericErrorWraps", func(t *testing.T) {
@@ -226,7 +225,7 @@ func TestSecretUseCase_Get(t *testing.T) {
 		}, nil)
 
 		_, err := uc.Get(ctx, "p")
-		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+		assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 	})
 }
 
@@ -276,7 +275,7 @@ func TestSecretUseCase_GetByVersion(t *testing.T) {
 			Return(&secretsDomain.Secret{DekID: uuid.New()}, nil)
 
 		_, err := uc.GetByVersion(ctx, "p", 1)
-		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+		assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 	})
 }
 

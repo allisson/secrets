@@ -13,8 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
+	"github.com/allisson/secrets/internal/keyring"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 	"github.com/allisson/secrets/internal/secrets/http/dto"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
@@ -89,7 +89,7 @@ func (h *SecretHandler) CreateOrUpdateHandler(c *gin.Context) {
 		)
 		return
 	}
-	defer cryptoDomain.Zero(value)
+	defer keyring.Zero(value)
 
 	// Call use case with decoded bytes
 	secret, err := h.secretUseCase.CreateOrUpdate(c.Request.Context(), path, value)
@@ -147,7 +147,7 @@ func (h *SecretHandler) GetHandler(c *gin.Context) {
 	}
 
 	// SECURITY: Zero plaintext after mapping to response
-	defer cryptoDomain.Zero(secret.Plaintext)
+	defer keyring.Zero(secret.Plaintext)
 
 	// Map to response (includes plaintext value)
 	response := dto.MapSecretToGetResponse(secret)

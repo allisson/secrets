@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
@@ -29,7 +28,7 @@ func (t *tokenizationKeyUseCase) createTokenizationKey(
 	version uint,
 	formatType tokenizationDomain.FormatType,
 	isDeterministic bool,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*tokenizationDomain.TokenizationKey, error) {
 	handle, err := t.keyring.AllocateDek(ctx, alg)
 	if err != nil {
@@ -74,7 +73,7 @@ func (t *tokenizationKeyUseCase) Create(
 	name string,
 	formatType tokenizationDomain.FormatType,
 	isDeterministic bool,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*tokenizationDomain.TokenizationKey, error) {
 	if err := formatType.Validate(); err != nil {
 		return nil, tokenizationDomain.ErrInvalidFormatType
@@ -107,7 +106,7 @@ func (t *tokenizationKeyUseCase) Rotate(
 	name string,
 	formatType tokenizationDomain.FormatType,
 	isDeterministic bool,
-	alg cryptoDomain.Algorithm,
+	alg keyring.Algorithm,
 ) (*tokenizationDomain.TokenizationKey, error) {
 	if err := formatType.Validate(); err != nil {
 		return nil, tokenizationDomain.ErrInvalidFormatType

@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
@@ -198,7 +197,7 @@ func (t *tokenizationUseCase) Detokenize(
 	plaintext, err = t.keyring.DecryptWith(ctx, handle, tokenRecord.Ciphertext, tokenRecord.Nonce, nil)
 	if err != nil {
 		return nil, nil, apperrors.Wrap(
-			cryptoDomain.ErrDecryptionFailed,
+			keyring.ErrDecryptionFailed,
 			"failed to decrypt token ciphertext",
 		)
 	}
