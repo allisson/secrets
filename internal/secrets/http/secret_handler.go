@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/httputil"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
@@ -23,23 +22,21 @@ import (
 )
 
 // SecretHandler handles HTTP requests for secret management operations.
-// It coordinates authentication, authorization, and audit logging with the SecretUseCase.
+// Authentication, authorization, and audit logging are enforced by HTTP
+// middleware before the handler runs.
 type SecretHandler struct {
-	secretUseCase   secretsUseCase.SecretUseCase
-	auditLogUseCase authUseCase.AuditLogUseCase
-	logger          *slog.Logger
+	secretUseCase secretsUseCase.SecretUseCase
+	logger        *slog.Logger
 }
 
 // NewSecretHandler creates a new secret handler with required dependencies.
 func NewSecretHandler(
 	secretUseCase secretsUseCase.SecretUseCase,
-	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 ) *SecretHandler {
 	return &SecretHandler{
-		secretUseCase:   secretUseCase,
-		auditLogUseCase: auditLogUseCase,
-		logger:          logger,
+		secretUseCase: secretUseCase,
+		logger:        logger,
 	}
 }
 

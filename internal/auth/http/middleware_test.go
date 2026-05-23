@@ -204,7 +204,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 	})
 }
 
-func TestAuthorizationMiddleware(t *testing.T) {
+func TestAuthorizer_Require(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -232,7 +232,8 @@ func TestAuthorizationMiddleware(t *testing.T) {
 			c.Request = c.Request.WithContext(WithClient(c.Request.Context(), client))
 			c.Next()
 		})
-		r.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditUC, logger))
+		authz := NewAuthorizer(mockAuditUC, logger)
+		r.Use(authz.Require(authDomain.ReadCapability))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -267,7 +268,8 @@ func TestAuthorizationMiddleware(t *testing.T) {
 			c.Request = c.Request.WithContext(WithClient(c.Request.Context(), client))
 			c.Next()
 		})
-		r.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditUC, logger))
+		authz := NewAuthorizer(mockAuditUC, logger)
+		r.Use(authz.Require(authDomain.ReadCapability))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -288,7 +290,8 @@ func TestAuthorizationMiddleware(t *testing.T) {
 		mockAuditUC := usecaseMocks.NewMockAuditLogUseCase(t)
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthorizationMiddleware(authDomain.ReadCapability, mockAuditUC, logger))
+		authz := NewAuthorizer(mockAuditUC, logger)
+		r.Use(authz.Require(authDomain.ReadCapability))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
