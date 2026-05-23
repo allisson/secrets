@@ -57,7 +57,6 @@ type Container struct {
 
 	// Repositories
 	kekRepository               cryptoUseCase.KekRepository
-	cryptoDekRepository         cryptoUseCase.DekRepository
 	secretRepository            secretsUseCase.SecretRepository
 	clientRepository            authUseCase.ClientRepository
 	tokenRepository             authUseCase.TokenRepository
@@ -68,7 +67,6 @@ type Container struct {
 
 	// Use Cases
 	kekUseCase             cryptoUseCase.KekUseCase
-	cryptoDekUseCase       cryptoUseCase.DekUseCase
 	secretUseCase          secretsUseCase.SecretUseCase
 	clientUseCase          authUseCase.ClientUseCase
 	tokenUseCase           authUseCase.TokenUseCase
@@ -105,7 +103,6 @@ type Container struct {
 	tokenServiceInit                sync.Once
 	keyringInit                     sync.Once
 	kekRepositoryInit               sync.Once
-	cryptoDekRepositoryInit         sync.Once
 	secretRepositoryInit            sync.Once
 	clientRepositoryInit            sync.Once
 	tokenRepositoryInit             sync.Once
@@ -114,7 +111,6 @@ type Container struct {
 	tokenizationKeyRepositoryInit   sync.Once
 	tokenizationTokenRepositoryInit sync.Once
 	kekUseCaseInit                  sync.Once
-	cryptoDekUseCaseInit            sync.Once
 	secretUseCaseInit               sync.Once
 	clientUseCaseInit               sync.Once
 	tokenUseCaseInit                sync.Once

@@ -130,42 +130,6 @@ func (c *Container) KekUseCase(ctx context.Context) (cryptoUseCase.KekUseCase, e
 	return c.kekUseCase, nil
 }
 
-// CryptoDekRepository returns the DEK repository for the crypto use case.
-func (c *Container) CryptoDekRepository(ctx context.Context) (cryptoUseCase.DekRepository, error) {
-	var err error
-	c.cryptoDekRepositoryInit.Do(func() {
-		c.cryptoDekRepository, err = c.initCryptoDekRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("cryptoDekRepository", err)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("cryptoDekRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.cryptoDekRepository, nil
-}
-
-// CryptoDekUseCase returns the DEK use case for the crypto module.
-func (c *Container) CryptoDekUseCase(ctx context.Context) (cryptoUseCase.DekUseCase, error) {
-	var err error
-	c.cryptoDekUseCaseInit.Do(func() {
-		c.cryptoDekUseCase, err = c.initCryptoDekUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("cryptoDekUseCase", err)
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("cryptoDekUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.cryptoDekUseCase, nil
-}
-
 // initMasterKeyChain loads the master key chain from environment variables.
 func (c *Container) initMasterKeyChain(ctx context.Context) (*cryptoDomain.MasterKeyChain, error) {
 	// Get KMS service and logger
@@ -226,33 +190,6 @@ func (c *Container) initKekUseCase(ctx context.Context) (cryptoUseCase.KekUseCas
 	keyManager := c.KeyManager()
 
 	return cryptoUseCase.NewKekUseCase(txManager, kekRepository, keyManager), nil
-}
-
-// initCryptoDekRepository creates the DEK repository for crypto use case.
-func (c *Container) initCryptoDekRepository(ctx context.Context) (cryptoUseCase.DekRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database: %w", err)
-	}
-
-	return cryptoRepository.NewDekRepository(db), nil
-}
-
-// initCryptoDekUseCase creates the DEK use case for the crypto module.
-func (c *Container) initCryptoDekUseCase(ctx context.Context) (cryptoUseCase.DekUseCase, error) {
-	txManager, err := c.TxManager(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tx manager: %w", err)
-	}
-
-	dekRepo, err := c.CryptoDekRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get crypto dek repository: %w", err)
-	}
-
-	keyManager := c.KeyManager()
-
-	return cryptoUseCase.NewDekUseCase(txManager, dekRepo, keyManager), nil
 }
 
 // loadKekChain loads all KEKs from the database and creates a KEK chain.
