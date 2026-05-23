@@ -35,7 +35,7 @@ func (a *auditLogUseCase) Create(
 ) error {
 	// Create the audit log entity
 	// Truncate timestamp to microsecond precision to match database storage (PostgreSQL TIMESTAMPTZ
-	// and MySQL DATETIME(6) both store microseconds). This ensures the signature matches the value
+	// ). This ensures the signature matches the value
 	// retrieved from the database during verification.
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),

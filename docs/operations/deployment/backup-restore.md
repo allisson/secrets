@@ -38,7 +38,7 @@ Secrets stores two critical types of data:
 
 | Component | Backup Method | Frequency | Retention |
 |-----------|---------------|-----------|-----------|
-| Database | `pg_dump` / `mysqldump` | Hourly | 30 days |
+| Database | `pg_dump` | Hourly | 30 days |
 | Master Key | KMS snapshot / encrypted file | On rotation | Forever |
 | Application Config | Git repository | On change | Forever |
 
@@ -83,15 +83,6 @@ WHERE table_schema='public';
 
 ```
 
-**MySQL tables**:
-
-```sql
--- Same table list
-
-SHOW TABLES;
-
-```
-
 ### 2. Master Key (REQUIRED)
 
 **KMS-based deployments (REQUIRED in v0.19.0+)**:
@@ -110,7 +101,6 @@ SHOW TABLES;
 
 ```bash
 # Critical config
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://...
 KMS_PROVIDER=awskms
 KMS_KEY_URI=awskms:///alias/secrets-master-key
@@ -196,49 +186,6 @@ aws s3 cp $BACKUP_FILE s3://my-backups/secrets/ \
 
 # Verify upload
 aws s3 ls s3://my-backups/secrets/$BACKUP_FILE
-
-```
-
-### MySQL Backup
-
-**Full database dump**:
-
-```bash
-# Backup to file
-mysqldump \
-  --host=localhost \
-  --port=3306 \
-  --user=secrets \
-  --password \
-  --databases secrets \
-  --single-transaction \
-  --quick \
-  --compress \
-  --result-file=secrets-backup-$(date +%Y%m%d-%H%M%S).sql
-
-# Compressed backup
-mysqldump \
-  --host=localhost \
-  --user=secrets \
-  --password \
-  --databases secrets \
-  --single-transaction \
-  | gzip > secrets-backup-$(date +%Y%m%d-%H%M%S).sql.gz
-
-```
-
-**Encrypted backup**:
-
-```bash
-# Dump and encrypt
-mysqldump \
-  --host=localhost \
-  --user=secrets \
-  --password \
-  --databases secrets \
-  --single-transaction \
-  | gpg --encrypt --recipient ops@example.com \
-  > secrets-backup-$(date +%Y%m%d-%H%M%S).sql.gpg
 
 ```
 
@@ -416,17 +363,6 @@ pg_restore --list secrets-backup-20260221-120000.dump | grep TABLE | wc -l
 
 ```
 
-**MySQL**:
-
-```bash
-# Verify SQL file is valid
-head -50 secrets-backup-20260221-120000.sql
-
-# Count tables in backup
-grep -c "CREATE TABLE" secrets-backup-20260221-120000.sql
-
-```
-
 ### Verify Master Key Access
 
 **KMS-based**:
@@ -492,10 +428,6 @@ find $BACKUP_DIR -name "secrets-backup-*.dump" -mtime +7 -delete
 
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO secrets;
 
--- MySQL: Grant permissions
-
-GRANT SELECT ON secrets.* TO 'secrets'@'%';
-
 ```
 
 ### Restore fails with "database already exists"
@@ -507,12 +439,6 @@ GRANT SELECT ON secrets.* TO 'secrets'@'%';
 ```bash
 # PostgreSQL: Use --clean flag
 pg_restore --clean --if-exists secrets-backup.dump
-
-# MySQL: Drop database first
-mysql -e "DROP DATABASE IF EXISTS secrets;"
-mysql -e "CREATE DATABASE secrets;"
-mysql secrets < secrets-backup.sql
-
 ```
 
 ### Restored data is encrypted garbage

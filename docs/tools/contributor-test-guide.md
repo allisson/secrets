@@ -31,10 +31,10 @@ go test -v -race -run "TestKekUseCase_Create/Success" ./internal/crypto/usecase
 
 ## Test Databases
 
-Secrets supports both PostgreSQL and MySQL. Use these commands to manage test containers:
+Secrets uses PostgreSQL for database-backed tests. Use these commands to manage the test container:
 
 ```bash
-make test-db-up     # Start PostgreSQL and MySQL containers
+make test-db-up     # Start PostgreSQL container
 make test-with-db   # Run integration tests against real databases
 make test-db-down   # Stop and remove containers
 ```

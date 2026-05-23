@@ -5,7 +5,7 @@
 	lint \
 	migrate-up migrate-down \
 	docker-build docker-build-multiarch docker-inspect docker-scan docker-run-server docker-run-migrate \
-	dev-postgres dev-mysql dev-stop \
+	dev-postgres dev-stop \
 	docs-lint docs-check-examples \
 	release-snapshot release-check
 
@@ -18,6 +18,7 @@ DOCKER_TAG := latest
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 COMMIT_SHA ?= $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
+GOVULNCHECK ?= $(shell gobin=$$(go env GOBIN); if [ -n "$$gobin" ]; then echo "$$gobin/govulncheck"; else echo "$$(go env GOPATH)/bin/govulncheck"; fi)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -90,8 +91,8 @@ lint: ## Run linter and security checks
 	@echo "Running linter..."
 	@golangci-lint run -v --fix
 	@echo "Running govulncheck..."
-	@which govulncheck > /dev/null || (echo "Installing govulncheck..." && go install golang.org/x/vuln/cmd/govulncheck@latest)
-	@govulncheck ./...
+	@if ! command -v govulncheck > /dev/null && [ ! -x "$(GOVULNCHECK)" ]; then echo "Installing govulncheck..." && go install golang.org/x/vuln/cmd/govulncheck@latest; fi
+	@if command -v govulncheck > /dev/null; then govulncheck ./...; else "$(GOVULNCHECK)" ./...; fi
 
 clean: ## Remove build artifacts
 	@echo "Cleaning..."
@@ -195,14 +196,12 @@ docker-scan: ## Scan Docker image for vulnerabilities
 docker-run-server: docker-build ## Build and run Docker container (server)
 	@echo "Running Docker container (server)..."
 	@docker run --rm -p 8080:8080 \
-		-e DB_DRIVER=postgres \
 		-e DB_CONNECTION_STRING="postgres://user:password@host.docker.internal:5432/mydb?sslmode=disable" \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) server
 
 docker-run-migrate: docker-build ## Build and run Docker container (migrate)
 	@echo "Running Docker container (migrate)..."
 	@docker run --rm \
-		-e DB_DRIVER=postgres \
 		-e DB_CONNECTION_STRING="postgres://user:password@host.docker.internal:5432/mydb?sslmode=disable" \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) migrate
 
@@ -215,18 +214,9 @@ dev-postgres: ## Start PostgreSQL in Docker for development
 		-p 5432:5432 \
 		postgres:16-alpine
 
-dev-mysql: ## Start MySQL in Docker for development
-	@docker run --name dev-mysql -d \
-		-e MYSQL_ROOT_PASSWORD=rootpassword \
-		-e MYSQL_DATABASE=mydb \
-		-e MYSQL_USER=user \
-		-e MYSQL_PASSWORD=password \
-		-p 3306:3306 \
-		mysql:8.0
-
-dev-stop: ## Stop development databases
-	@docker stop dev-postgres dev-mysql || true
-	@docker rm dev-postgres dev-mysql || true
+dev-stop: ## Stop development database
+	@docker stop dev-postgres || true
+	@docker rm dev-postgres || true
 
 # Release
 release-snapshot: ## Build snapshot release binaries with GoReleaser

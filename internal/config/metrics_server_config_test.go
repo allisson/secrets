@@ -9,7 +9,6 @@ import (
 
 func TestMetricsServerConfig_Validate(t *testing.T) {
 	baseCfg := Config{
-		DBDriver:                  "postgres",
 		DBConnectionString:        "postgres://localhost",
 		ServerPort:                8080,
 		MetricsPort:               8081,

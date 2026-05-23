@@ -81,7 +81,7 @@ flowchart TD
 
 - `domain/`: business entities and invariants (`Client`, `Token`, `Secret`, `TransitKey`, `TokenizationKey`, `Kek`, `Dek`) - uses [UUIDv7 for all IDs](../adr/0009-uuidv7-for-identifiers.md)
 - `usecase/`: orchestration, transactional boundaries, and policy decisions (see [ADR 0005: Context-Based Transaction Management](../adr/0005-context-based-transaction-management.md))
-- `repository/`: PostgreSQL/MySQL persistence and query logic (see [ADR 0004: Dual Database Support](../adr/0004-dual-database-support.md))
+- `repository/`: PostgreSQL persistence and query logic (see [ADR 0012: PostgreSQL-Only Database](../adr/0012-postgresql-only-database.md))
 - `service/`: reusable technical services (crypto, token hashing with [Argon2id](../adr/0010-argon2id-for-client-secret-hashing.md), helpers)
 - `http/`: Gin handlers, DTO validation, middleware, and error mapping (see [ADR 0008: Gin Web Framework](../adr/0008-gin-web-framework-with-custom-middleware.md))
 

@@ -10,7 +10,7 @@ The module follows Clean Architecture principles:
   - domain: Core entities (TokenizationKey, Token) and business rules
   - usecase: Business logic orchestration
   - service: Token generation algorithms (UUID, Numeric, Luhn, Alphanumeric)
-  - repository: Data persistence (MySQL, PostgreSQL)
+  - repository: Data persistence (PostgreSQL)
   - http: HTTP handlers and DTOs
 
 # Security Model

@@ -13,7 +13,6 @@ func TestConnect_Success(t *testing.T) {
 	testutil.SkipIfNoPostgres(t)
 
 	cfg := Config{
-		Driver:             "postgres",
 		ConnectionString:   testutil.GetPostgresTestDSN(),
 		MaxOpenConnections: 10,
 		MaxIdleConnections: 5,
@@ -33,7 +32,6 @@ func TestConnect_Success(t *testing.T) {
 
 func TestConnect_Error(t *testing.T) {
 	cfg := Config{
-		Driver:             "invalid",
 		ConnectionString:   "invalid",
 		MaxOpenConnections: 10,
 		MaxIdleConnections: 5,
@@ -43,5 +41,5 @@ func TestConnect_Error(t *testing.T) {
 	db, err := Connect(cfg)
 	assert.Error(t, err)
 	assert.Nil(t, db)
-	assert.Contains(t, err.Error(), "sql: unknown driver")
+	assert.Contains(t, err.Error(), "failed to ping database")
 }

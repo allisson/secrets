@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_metrics_server_hardcoded_timeouts_20260307",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-03-07T12:00:00Z",
-  "updated_at": "2026-03-07T12:00:00Z",
-  "description": "Fix Metrics Server Hardcoded Timeouts"
-}

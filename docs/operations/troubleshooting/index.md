@@ -284,7 +284,7 @@ If CORS is disabled or origin is not allowed, browser requests can fail even if 
 
 - Fix:
 
-  - check `DB_DRIVER` and `DB_CONNECTION_STRING`
+  - check `DB_CONNECTION_STRING`
 
   - ensure DB container/service is running and reachable
 

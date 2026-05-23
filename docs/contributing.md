@@ -229,7 +229,7 @@ The project uses a two-tier testing strategy to balance speed and coverage:
 
 ##### Integration Tests
 
-- Tests that require real databases (PostgreSQL or MySQL)
+- Tests that require a real PostgreSQL database
 - Tagged with `//go:build integration` build constraint
 - Run serially to avoid database conflicts
 - Coverage report: `coverage-integration.out`
@@ -292,39 +292,34 @@ All repository-layer tests that interact with real databases must be tagged as i
    ```go
    //go:build integration
    
-   package postgresql_test
+   package repository_test
    ```
 
 2. Use `internal/testutil/database.go` utilities for database setup:
 
    ```go
    func TestMyRepository(t *testing.T) {
-       db := testutil.SetupTestDB(t, "postgresql") // or "mysql"
+       db := testutil.SetupPostgresDB(t)
        defer db.Close()
        // ... test code
    }
    ```
 
-3. Test against **both** PostgreSQL and MySQL when applicable:
+3. Test against PostgreSQL:
 
    ```go
    func TestMyFeature(t *testing.T) {
-       for _, dbType := range []string{"postgresql", "mysql"} {
-           t.Run(dbType, func(t *testing.T) {
-               db := testutil.SetupTestDB(t, dbType)
-               defer db.Close()
-               // ... test code
-           })
-       }
+       db := testutil.SetupPostgresDB(t)
+       defer db.Close()
+       // ... test code
    }
    ```
 
 #### Files That Require Integration Tag
 
-- All `*_test.go` files in `internal/*/repository/postgresql/`
-- All `*_test.go` files in `internal/*/repository/mysql/`
+- All `*_test.go` files in `internal/*/repository/`
 - E2E API tests in `test/integration/`
-- Any tests requiring `TEST_POSTGRES_DSN` or `TEST_MYSQL_DSN`
+- Any tests requiring `TEST_POSTGRES_DSN`
 
 #### CI Test Execution
 
@@ -345,7 +340,6 @@ Integration tests use these environment variables:
 
 ```bash
 TEST_POSTGRES_DSN="postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable"
-TEST_MYSQL_DSN="testuser:testpass@tcp(localhost:3306)/testdb?parseTime=true"
 ```
 
 The `make test-with-db` target automatically configures these variables.

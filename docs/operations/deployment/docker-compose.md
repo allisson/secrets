@@ -19,13 +19,13 @@
 
 ## Overview
 
-This guide provides production-ready Docker Compose configurations for deploying Secrets with PostgreSQL or MySQL, including security best practices, health checks, and monitoring.
+This guide provides production-ready Docker Compose configurations for deploying Secrets with PostgreSQL, including security best practices, health checks, and monitoring.
 
 **⚠️ IMPORTANT**: These Docker Compose files are **UNTESTED** in production environments. They are provided as reference examples based on Docker Compose best practices and the Secrets application architecture. **Test thoroughly in a non-production environment** before deploying to production.
 
 **What's included:**
 
-- Complete development stack (Secrets + PostgreSQL/MySQL)
+- Complete development stack (Secrets + PostgreSQL)
 - Production-ready configuration with security hardening
 - Health check monitoring with sidecar pattern
 - TLS termination with nginx reverse proxy
@@ -56,20 +56,6 @@ docker compose ps
 curl http://localhost:8080/health
 ```
 
-### MySQL Stack
-
-See [`examples/deployment/docker-compose.mysql.yml`](../../examples/deployment/docker-compose.mysql.yml) for the full configuration.
-
-```bash
-# 1. Download the example
-curl -O https://raw.githubusercontent.com/allisson/secrets/main/docs/examples/deployment/docker-compose.mysql.yml
-
-# 2. Start MySQL stack
-docker compose -f docker-compose.mysql.yml up -d
-```
-
----
-
 ## Production Configuration
 
 ### PostgreSQL Production Stack
@@ -92,7 +78,6 @@ POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=en_US.UTF-8
 
 ```bash
 # Database configuration
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgresql://secrets:<CHANGE_ME>@postgres:5432/secrets?sslmode=require
 
 # Master key configuration (KMS mode required as of v0.19.0)
@@ -335,7 +320,6 @@ POSTGRES_DB=secrets
 EOF
 
 cat > .env.secrets <<EOF
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgresql://secrets:\$(grep POSTGRES_PASSWORD .env.postgres | cut -d= -f2)@postgres:5432/secrets?sslmode=disable
 KMS_PROVIDER=localsecrets
 KMS_KEY_URI=base64key://\$(openssl rand -base64 32)

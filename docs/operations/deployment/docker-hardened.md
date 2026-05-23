@@ -40,8 +40,7 @@ services:
 ## 3. Database Security
 
 - **Encrypted Connections**: Always connect to the database using TLS.
-  - PostgreSQL: `sslmode=require` or `sslmode=verify-full`.
-  - MySQL: `tls=true` or `tls=custom`.
+  - Use `sslmode=require` or `sslmode=verify-full`.
 - **Least Privilege**: The runtime database user must only have DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) privileges. Use a separate user for schema migrations.
 
 ## 4. Abuse Prevention (Rate Limiting & Lockout)

@@ -335,7 +335,6 @@ func (c *Container) initLogger() *slog.Logger {
 // initDB creates and configures the database connection.
 func (c *Container) initDB(ctx context.Context) (*sql.DB, error) {
 	db, err := database.Connect(database.Config{
-		Driver:             c.config.DBDriver,
 		ConnectionString:   c.config.DBConnectionString,
 		MaxOpenConnections: c.config.DBMaxOpenConnections,
 		MaxIdleConnections: c.config.DBMaxIdleConnections,

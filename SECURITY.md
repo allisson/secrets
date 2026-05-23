@@ -103,7 +103,7 @@ See [Authentication API](docs/api/auth/authentication.md) and [Policy Cookbook](
 
 ### Database Security
 
-- ✅ **Connection encryption**: Use `sslmode=require` (PostgreSQL) or TLS (MySQL)
+- ✅ **Connection encryption**: Use `sslmode=require` or `sslmode=verify-full`
 - ✅ **Least privilege**: Use dedicated database user with minimal permissions
 - ✅ **Network isolation**: Use private networks or VPC peering
 - ✅ **Backup encryption**: Encrypt database backups at rest

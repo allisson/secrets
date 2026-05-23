@@ -237,15 +237,8 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 	gin.SetMode(gin.TestMode)
 
 	// Setup database
-	var db *sql.DB
-	var dsn string
-	if dbDriver == "postgres" {
-		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.GetPostgresTestDSN()
-	} else {
-		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.GetMySQLTestDSN()
-	}
+	db := testutil.SetupPostgresDB(t)
+	dsn := testutil.GetPostgresTestDSN()
 
 	// Generate KMS key URI and ephemeral master key
 	kmsKeyURI := generateLocalSecretsKMSKey(t)
@@ -254,19 +247,18 @@ func setupIntegrationTestWithKMS(t *testing.T, dbDriver string) *integrationTest
 
 	// Create configuration with KMS settings
 	cfg := &config.Config{
-		DBDriver:             dbDriver,
-		DBConnectionString:   dsn,
-		DBMaxOpenConnections: 10,
-		DBMaxIdleConnections: 5,
-		DBConnMaxLifetime:    time.Hour,
-		ServerHost:           "localhost",
-		ServerPort:           8080,
-		LogLevel:             "error",
-		AuthTokenExpiration:  time.Hour,
-		MaxRequestBodySize:   1024 * 1024,
+		DBConnectionString:        dsn,
+		DBMaxOpenConnections:      10,
+		DBMaxIdleConnections:      5,
+		DBConnMaxLifetime:         time.Hour,
+		ServerHost:                "localhost",
+		ServerPort:                8080,
+		LogLevel:                  "error",
+		AuthTokenExpiration:       time.Hour,
+		MaxRequestBodySize:        1024 * 1024,
 		SecretValueSizeLimitBytes: 1024 * 1024,
-		KMSProvider:          "localsecrets",
-		KMSKeyURI:            kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
 	}
 
 	// Create DI container
@@ -351,15 +343,8 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 	gin.SetMode(gin.TestMode)
 
 	// Setup database
-	var db *sql.DB
-	var dsn string
-	if dbDriver == "postgres" {
-		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.GetPostgresTestDSN()
-	} else {
-		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.GetMySQLTestDSN()
-	}
+	db := testutil.SetupPostgresDB(t)
+	dsn := testutil.GetPostgresTestDSN()
 
 	// Generate KMS key URI and ephemeral master key for testing
 	kmsKeyURI := generateLocalSecretsKMSKey(t)
@@ -368,19 +353,18 @@ func setupIntegrationTest(t *testing.T, dbDriver string) *integrationTestContext
 
 	// Create configuration with KMS settings
 	cfg := &config.Config{
-		DBDriver:             dbDriver,
-		DBConnectionString:   dsn,
-		DBMaxOpenConnections: 10,
-		DBMaxIdleConnections: 5,
-		DBConnMaxLifetime:    time.Hour,
-		ServerHost:           "localhost",
-		ServerPort:           8080,
-		LogLevel:             "error",
-		AuthTokenExpiration:  time.Hour,
-		MaxRequestBodySize:   1024 * 1024,
+		DBConnectionString:        dsn,
+		DBMaxOpenConnections:      10,
+		DBMaxIdleConnections:      5,
+		DBConnMaxLifetime:         time.Hour,
+		ServerHost:                "localhost",
+		ServerPort:                8080,
+		LogLevel:                  "error",
+		AuthTokenExpiration:       time.Hour,
+		MaxRequestBodySize:        1024 * 1024,
 		SecretValueSizeLimitBytes: 1024 * 1024,
-		KMSProvider:          "localsecrets",
-		KMSKeyURI:            kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
 	}
 
 	// Create DI container
@@ -474,15 +458,8 @@ func setupIntegrationTestWithTokenExpiration(
 	gin.SetMode(gin.TestMode)
 
 	// Setup database
-	var db *sql.DB
-	var dsn string
-	if dbDriver == "postgres" {
-		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.GetPostgresTestDSN()
-	} else {
-		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.GetMySQLTestDSN()
-	}
+	db := testutil.SetupPostgresDB(t)
+	dsn := testutil.GetPostgresTestDSN()
 
 	// Generate KMS key URI and ephemeral master key for testing
 	kmsKeyURI := generateLocalSecretsKMSKey(t)
@@ -491,19 +468,18 @@ func setupIntegrationTestWithTokenExpiration(
 
 	// Create configuration with KMS settings and CUSTOM token expiration
 	cfg := &config.Config{
-		DBDriver:             dbDriver,
-		DBConnectionString:   dsn,
-		DBMaxOpenConnections: 10,
-		DBMaxIdleConnections: 5,
-		DBConnMaxLifetime:    time.Hour,
-		ServerHost:           "localhost",
-		ServerPort:           8080,
-		LogLevel:             "error",
-		AuthTokenExpiration:  tokenExpiration, // Custom expiration
-		MaxRequestBodySize:   1024 * 1024,
+		DBConnectionString:        dsn,
+		DBMaxOpenConnections:      10,
+		DBMaxIdleConnections:      5,
+		DBConnMaxLifetime:         time.Hour,
+		ServerHost:                "localhost",
+		ServerPort:                8080,
+		LogLevel:                  "error",
+		AuthTokenExpiration:       tokenExpiration, // Custom expiration
+		MaxRequestBodySize:        1024 * 1024,
 		SecretValueSizeLimitBytes: 1024 * 1024,
-		KMSProvider:          "localsecrets",
-		KMSKeyURI:            kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
 	}
 
 	// Create DI container
@@ -597,15 +573,8 @@ func setupIntegrationTestWithLockout(
 	gin.SetMode(gin.TestMode)
 
 	// Setup database
-	var db *sql.DB
-	var dsn string
-	if dbDriver == "postgres" {
-		db = testutil.SetupPostgresDB(t)
-		dsn = testutil.GetPostgresTestDSN()
-	} else {
-		db = testutil.SetupMySQLDB(t)
-		dsn = testutil.GetMySQLTestDSN()
-	}
+	db := testutil.SetupPostgresDB(t)
+	dsn := testutil.GetPostgresTestDSN()
 
 	// Generate KMS key URI and ephemeral master key for testing
 	kmsKeyURI := generateLocalSecretsKMSKey(t)
@@ -614,21 +583,20 @@ func setupIntegrationTestWithLockout(
 
 	// Create configuration with lockout settings and KMS
 	cfg := &config.Config{
-		DBDriver:             dbDriver,
-		DBConnectionString:   dsn,
-		DBMaxOpenConnections: 10,
-		DBMaxIdleConnections: 5,
-		DBConnMaxLifetime:    time.Hour,
-		ServerHost:           "localhost",
-		ServerPort:           8080,
-		LogLevel:             "error",
-		AuthTokenExpiration:  time.Hour,
-		LockoutMaxAttempts:   maxAttempts,
-		LockoutDuration:      lockoutDuration,
-		MaxRequestBodySize:   1024 * 1024,
+		DBConnectionString:        dsn,
+		DBMaxOpenConnections:      10,
+		DBMaxIdleConnections:      5,
+		DBConnMaxLifetime:         time.Hour,
+		ServerHost:                "localhost",
+		ServerPort:                8080,
+		LogLevel:                  "error",
+		AuthTokenExpiration:       time.Hour,
+		LockoutMaxAttempts:        maxAttempts,
+		LockoutDuration:           lockoutDuration,
+		MaxRequestBodySize:        1024 * 1024,
 		SecretValueSizeLimitBytes: 1024 * 1024,
-		KMSProvider:          "localsecrets",
-		KMSKeyURI:            kmsKeyURI,
+		KMSProvider:               "localsecrets",
+		KMSKeyURI:                 kmsKeyURI,
 	}
 
 	// Create DI container

@@ -308,7 +308,7 @@ func TestAuditLogUseCase_Create(t *testing.T) {
 			"created_at should be before or equal to afterCreate")
 
 		// Verify timestamp is truncated to microsecond precision (no nanoseconds beyond microseconds)
-		// PostgreSQL TIMESTAMPTZ and MySQL DATETIME(6) both store microsecond precision
+		// PostgreSQL TIMESTAMPTZ stores microsecond precision
 		nanos := capturedAuditLog.CreatedAt.Nanosecond()
 		assert.Equal(
 			t,

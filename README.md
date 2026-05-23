@@ -15,7 +15,7 @@ Secrets is inspired by **HashiCorp Vault** ❤️, but it is intentionally **muc
 
 - **Authentication & Authorization:** Token-based auth with Argon2id password hashing and capability-based path-matching policies.
 - **KMS Integration:** Native support for Google Cloud KMS, AWS KMS, Azure Key Vault, and HashiCorp Vault.
-- **Dual Database Support:** Compatible with PostgreSQL 12+ and MySQL 8.0+ out of the box.
+- **PostgreSQL Support:** Uses PostgreSQL as the service database.
 - **Observability:** OpenTelemetry metrics with Prometheus-compatible endpoints.
 
 ## 📦 Main Engines

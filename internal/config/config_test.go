@@ -19,7 +19,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid config",
 			cfg: &Config{
-				DBDriver:                     "postgres",
 				DBConnectionString:           "postgres://localhost",
 				ServerPort:                   8080,
 				MetricsPort:                  8081,
@@ -43,7 +42,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid secret value size limit - zero",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -62,7 +60,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid tokenization batch limit - zero",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -80,20 +77,8 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "invalid db driver",
-			cfg: &Config{
-				DBDriver:           "sqlite",
-				DBConnectionString: "postgres://localhost",
-				ServerPort:         8080,
-				MetricsPort:        8081,
-				LogLevel:           "info",
-			},
-			wantErr: true,
-		},
-		{
 			name: "missing db connection string",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "",
 				ServerPort:         8080,
 				MetricsPort:        8081,
@@ -104,7 +89,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid server port",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "postgres://localhost",
 				ServerPort:         70000,
 				MetricsPort:        8081,
@@ -115,7 +99,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "conflicting ports",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "postgres://localhost",
 				ServerPort:         8080,
 				MetricsPort:        8080,
@@ -126,7 +109,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid log level",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "postgres://localhost",
 				ServerPort:         8080,
 				MetricsPort:        8081,
@@ -137,7 +119,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "missing KMS provider when key URI is present",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -157,7 +138,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "missing KMS key URI when provider is present",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -177,7 +157,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid rate limit requests",
 			cfg: &Config{
-				DBDriver:                "postgres",
 				DBConnectionString:      "postgres://localhost",
 				ServerPort:              8080,
 				MetricsPort:             8081,
@@ -193,7 +172,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid KMS provider name",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -214,7 +192,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid KMS provider - localsecrets",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -236,7 +213,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid KMS provider - gcpkms",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -258,7 +234,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid KMS provider - awskms",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -280,7 +255,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid KMS provider - azurekeyvault",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -302,7 +276,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid KMS provider - hashivault",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -324,7 +297,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid server timeouts - default values",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -344,7 +316,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid server timeouts - minimum values",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -364,7 +335,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid server timeouts - maximum values",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -384,7 +354,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid server read timeout - below minimum",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -400,7 +369,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid server write timeout - above maximum",
 			cfg: &Config{
-				DBDriver:                  "postgres",
 				DBConnectionString:        "postgres://localhost",
 				ServerPort:                8080,
 				MetricsPort:               8081,
@@ -416,7 +384,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid server idle timeout - negative value",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "postgres://localhost",
 				ServerPort:         8080,
 				MetricsPort:        8081,
@@ -430,7 +397,6 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid max request body size - zero",
 			cfg: &Config{
-				DBDriver:           "postgres",
 				DBConnectionString: "postgres://localhost",
 				ServerPort:         8080,
 				MetricsPort:        8081,
@@ -478,7 +444,6 @@ func TestLoad(t *testing.T) {
 			validate: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, "0.0.0.0", cfg.ServerHost)
 				assert.Equal(t, 8080, cfg.ServerPort)
-				assert.Equal(t, "postgres", cfg.DBDriver)
 				assert.Equal(
 					t,
 					"postgres://user:password@localhost:5432/mydb?sslmode=disable",
@@ -568,7 +533,6 @@ func TestLoad(t *testing.T) {
 		{
 			name: "load custom database configuration",
 			envVars: map[string]string{
-				"DB_DRIVER":                     "mysql",
 				"DB_CONNECTION_STRING":          "user:password@tcp(localhost:3306)/testdb",
 				"DB_MAX_OPEN_CONNECTIONS":       "50",
 				"DB_MAX_IDLE_CONNECTIONS":       "10",
@@ -576,7 +540,6 @@ func TestLoad(t *testing.T) {
 				"DB_CONN_MAX_IDLE_TIME_MINUTES": "10",
 			},
 			validate: func(t *testing.T, cfg *Config) {
-				assert.Equal(t, "mysql", cfg.DBDriver)
 				assert.Equal(t, "user:password@tcp(localhost:3306)/testdb", cfg.DBConnectionString)
 				assert.Equal(t, 50, cfg.DBMaxOpenConnections)
 				assert.Equal(t, 10, cfg.DBMaxIdleConnections)
@@ -680,20 +643,8 @@ func TestLoad(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "invalid db driver fails to load",
-			envVars: map[string]string{
-				"DB_DRIVER":            "invalid_driver",
-				"DB_CONNECTION_STRING": "postgres://localhost",
-				"SERVER_PORT":          "8080",
-				"METRICS_PORT":         "8081",
-				"LOG_LEVEL":            "info",
-			},
-			expectError: true,
-		},
-		{
 			name: "invalid server port fails to load",
 			envVars: map[string]string{
-				"DB_DRIVER":            "postgres",
 				"DB_CONNECTION_STRING": "postgres://localhost",
 				"SERVER_PORT":          "99999",
 				"METRICS_PORT":         "8081",
@@ -704,7 +655,6 @@ func TestLoad(t *testing.T) {
 		{
 			name: "conflicting server and metrics ports fails to load",
 			envVars: map[string]string{
-				"DB_DRIVER":            "postgres",
 				"DB_CONNECTION_STRING": "postgres://localhost",
 				"SERVER_PORT":          "8080",
 				"METRICS_PORT":         "8080",
@@ -779,7 +729,7 @@ func TestLoadDotEnv(t *testing.T) {
 	err = os.WriteFile(
 		filepath.Join(tmpDir, ".env"),
 		[]byte(
-			"TEST_ENV_VAR=found\nDB_DRIVER=postgres\nDB_CONNECTION_STRING=postgres://localhost\nSERVER_PORT=8080\nMETRICS_PORT=8081\nLOG_LEVEL=info",
+			"TEST_ENV_VAR=found\nDB_CONNECTION_STRING=postgres://localhost\nSERVER_PORT=8080\nMETRICS_PORT=8081\nLOG_LEVEL=info",
 		),
 		0600,
 	)

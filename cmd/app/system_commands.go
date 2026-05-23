@@ -30,7 +30,6 @@ func getSystemCommands(version string) []*cli.Command {
 						cfg := container.Config()
 						return commands.RunMigrations(
 							container.Logger(),
-							cfg.DBDriver,
 							cfg.DBConnectionString,
 						)
 					},
@@ -55,7 +54,6 @@ func getSystemCommands(version string) []*cli.Command {
 						cfg := container.Config()
 						return commands.RunMigrationsDown(
 							container.Logger(),
-							cfg.DBDriver,
 							cfg.DBConnectionString,
 							int(cmd.Int("steps")),
 						)

@@ -11,7 +11,7 @@ The application requires unique identifiers for database entities with the follo
 - Database-friendly for indexing and query performance
 - Sortable for chronological ordering (audit logs, version history)
 - Secure against enumeration attacks (unpredictable)
-- Compatible with PostgreSQL `UUID` type and MySQL `BINARY(16)` storage
+- Compatible with PostgreSQL `UUID` storage
 - Usable in HTTP APIs (URL-safe string representation)
 
 Identifier strategies include:
@@ -58,7 +58,6 @@ id := uuid.Must(uuid.NewV7())  // All database entities
 **Storage:**
 
 - PostgreSQL: `UUID` type (16 bytes, native support)
-- MySQL: `BINARY(16)` (requires manual conversion in repositories)
 
 ## Alternatives Considered
 
@@ -80,7 +79,7 @@ Standard random UUID with 122 bits of randomness.
 
 ### 2. Auto-Increment Sequential IDs
 
-Database-generated `SERIAL` (PostgreSQL) or `AUTO_INCREMENT` (MySQL).
+Database-generated `SERIAL`.
 
 **Rejected because:**
 
@@ -132,7 +131,7 @@ Time-ordered UUID with MAC address component.
 - **Chronological sorting**: IDs naturally sort by creation time (no separate `created_at` column needed for ordering)
 - **Global uniqueness**: No coordination required across instances/regions
 - **Enumeration resistance**: 62 bits of randomness prevent ID guessing attacks
-- **Database compatibility**: Native `UUID` type support in PostgreSQL, `BINARY(16)` in MySQL
+- **Database compatibility**: Native `UUID` type support in PostgreSQL
 - **Standard compliance**: RFC 9562 specification (future-proof)
 - **Pagination efficiency**: Can use `WHERE id > $cursor` for keyset pagination (more efficient than offset)
 - **Audit log ordering**: Audit events naturally ordered by ID without timestamp sorting

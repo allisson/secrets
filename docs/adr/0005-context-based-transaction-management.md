@@ -10,7 +10,7 @@ The system requires atomic multi-step database operations to maintain consistenc
 - **Atomic operations needed**: KEK rotation (update old KEK + create new KEK), client updates (update client + update policies)
 - **Clean Architecture principle**: Repository layer should not control transaction boundaries (use cases orchestrate business logic)
 - **Transparency requirement**: Repositories should work identically whether called within or outside a transaction
-- **Database abstraction**: Transaction pattern must work with both PostgreSQL and MySQL
+- **Database abstraction**: Transaction pattern must keep repository transaction handling consistent across PostgreSQL repositories
 - **Error handling**: Automatic rollback on errors, commit on success
 
 ## Decision
@@ -113,7 +113,7 @@ Rely on idempotency and retries instead of database transactions.
 - **Clean Architecture compliance**: Use cases control transaction boundaries, repositories participate
 - **Easy testing**: Repositories can be tested without transaction complexity
 - **Automatic rollback**: Error handling simplified (any error triggers rollback)
-- **Database agnostic**: Works identically with PostgreSQL and MySQL
+- **Consistent repository behavior**: Works identically across PostgreSQL repository methods
 
 **Trade-offs:**
 

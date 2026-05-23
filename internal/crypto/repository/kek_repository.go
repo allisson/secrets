@@ -1,0 +1,120 @@
+// Package repository implements data persistence for KEKs and DEKs.
+// Provides PostgreSQL UUID/BYTEA persistence with transaction support.
+package repository
+
+import (
+	"context"
+	"database/sql"
+
+	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/database"
+	apperrors "github.com/allisson/secrets/internal/errors"
+)
+
+// KekRepository implements KEK persistence for PostgreSQL using native UUID and BYTEA types.
+type KekRepository struct {
+	db *sql.DB
+}
+
+// Create inserts a new KEK into the PostgreSQL database.
+func (p *KekRepository) Create(ctx context.Context, kek *cryptoDomain.Kek) error {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+	_, err := querier.ExecContext(
+		ctx,
+		query,
+		kek.ID,
+		kek.MasterKeyID,
+		kek.Algorithm,
+		kek.EncryptedKey,
+		kek.Nonce,
+		kek.Version,
+		kek.CreatedAt,
+	)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to create kek")
+	}
+	return nil
+}
+
+// Update modifies an existing KEK in the PostgreSQL database.
+func (p *KekRepository) Update(ctx context.Context, kek *cryptoDomain.Kek) error {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `UPDATE keks 
+			  SET master_key_id = $1, 
+			  	  algorithm = $2,
+				  encrypted_key = $3,
+				  nonce = $4,
+				  version = $5, 
+				  created_at = $6
+			  WHERE id = $7`
+
+	_, err := querier.ExecContext(
+		ctx,
+		query,
+		kek.MasterKeyID,
+		kek.Algorithm,
+		kek.EncryptedKey,
+		kek.Nonce,
+		kek.Version,
+		kek.CreatedAt,
+		kek.ID,
+	)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to update kek")
+	}
+
+	return nil
+}
+
+// List retrieves all KEKs ordered by version descending (newest first).
+func (p *KekRepository) List(ctx context.Context) ([]*cryptoDomain.Kek, error) {
+	querier := database.GetTx(ctx, p.db)
+
+	query := `SELECT id, master_key_id, algorithm, encrypted_key, nonce, version, created_at 
+			  FROM keks 
+			  ORDER BY version DESC`
+
+	rows, err := querier.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var keks []*cryptoDomain.Kek
+	for rows.Next() {
+		var kek cryptoDomain.Kek
+
+		err := rows.Scan(
+			&kek.ID,
+			&kek.MasterKeyID,
+			&kek.Algorithm,
+			&kek.EncryptedKey,
+			&kek.Nonce,
+			&kek.Version,
+			&kek.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		keks = append(keks, &kek)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return keks, nil
+}
+
+// NewKekRepository creates a new PostgreSQL KEK repository.
+func NewKekRepository(db *sql.DB) *KekRepository {
+	return &KekRepository{db: db}
+}

@@ -6,7 +6,6 @@ Secrets is configured through environment variables.
 
 ```dotenv
 # Database configuration
-DB_DRIVER=postgres
 DB_CONNECTION_STRING=postgres://user:password@localhost:5432/mydb?sslmode=disable
 DB_MAX_OPEN_CONNECTIONS=25
 DB_MAX_IDLE_CONNECTIONS=5
@@ -60,19 +59,13 @@ TOKENIZATION_BATCH_LIMIT=100
 
 ## Database configuration
 
-### DB_DRIVER
-
-Database driver to use. Supported values: `postgres`, `mysql`.
-
-See [ADR 0004: Dual Database Support](adr/0004-dual-database-support.md) for the architectural rationale behind dual database support.
-
 ### DB_CONNECTION_STRING
 
-Database connection string.
+PostgreSQL connection string.
 
-**⚠️ Security Warning:** `sslmode=disable` (PostgreSQL) and `tls=false` (MySQL) are for **development only**. Production deployments **must** use encrypted connections:
+**⚠️ Security Warning:** `sslmode=disable` is for **development only**. Production deployments **must** use encrypted connections:
 
-**PostgreSQL production:**
+**Production:**
 
 ```dotenv
 # Minimum: encrypted connection
@@ -80,17 +73,6 @@ DB_CONNECTION_STRING=postgres://user:password@db.example.com:5432/secrets?sslmod
 
 # Recommended: encrypted connection with certificate verification
 DB_CONNECTION_STRING=postgres://user:password@db.example.com:5432/secrets?sslmode=verify-full&sslrootcert=/path/to/ca.crt
-
-```
-
-**MySQL production:**
-
-```dotenv
-# Minimum: encrypted connection
-DB_CONNECTION_STRING=user:password@tcp(db.example.com:3306)/secrets?tls=true
-
-# Recommended: encrypted connection with certificate verification
-DB_CONNECTION_STRING=user:password@tcp(db.example.com:3306)/secrets?tls=custom
 
 ```
 

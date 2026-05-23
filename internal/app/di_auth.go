@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
-	authMySQL "github.com/allisson/secrets/internal/auth/repository/mysql"
-	authPostgreSQL "github.com/allisson/secrets/internal/auth/repository/postgresql"
+	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 )
@@ -201,14 +200,7 @@ func (c *Container) initClientRepository(ctx context.Context) (authUseCase.Clien
 		return nil, fmt.Errorf("failed to get database for client repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return authPostgreSQL.NewPostgreSQLClientRepository(db), nil
-	case "mysql":
-		return authMySQL.NewMySQLClientRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return authRepository.NewClientRepository(db), nil
 }
 
 // initClientUseCase creates the client use case with all its dependencies.
@@ -267,14 +259,7 @@ func (c *Container) initTokenRepository(ctx context.Context) (authUseCase.TokenR
 		return nil, fmt.Errorf("failed to get database for token repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return authPostgreSQL.NewPostgreSQLTokenRepository(db), nil
-	case "mysql":
-		return authMySQL.NewMySQLTokenRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return authRepository.NewTokenRepository(db), nil
 }
 
 // initAuditLogRepository creates the audit log repository based on the database driver.
@@ -284,14 +269,7 @@ func (c *Container) initAuditLogRepository(ctx context.Context) (authUseCase.Aud
 		return nil, fmt.Errorf("failed to get database for audit log repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return authPostgreSQL.NewPostgreSQLAuditLogRepository(db), nil
-	case "mysql":
-		return authMySQL.NewMySQLAuditLogRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return authRepository.NewAuditLogRepository(db), nil
 }
 
 // initTokenUseCase creates the token use case with all its dependencies.

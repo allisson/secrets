@@ -5,11 +5,9 @@ import (
 	"fmt"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoMySQL "github.com/allisson/secrets/internal/crypto/repository/mysql"
-	cryptoPostgreSQL "github.com/allisson/secrets/internal/crypto/repository/postgresql"
+	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
-	secretsMySQL "github.com/allisson/secrets/internal/secrets/repository/mysql"
-	secretsPostgreSQL "github.com/allisson/secrets/internal/secrets/repository/postgresql"
+	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
 
@@ -92,14 +90,7 @@ func (c *Container) initDekRepository(ctx context.Context) (secretsUseCase.DekRe
 		return nil, fmt.Errorf("failed to get database for dek repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
-	case "mysql":
-		return cryptoMySQL.NewMySQLDekRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return cryptoRepository.NewDekRepository(db), nil
 }
 
 // initSecretRepository creates the secret repository based on the database driver.
@@ -109,14 +100,7 @@ func (c *Container) initSecretRepository(ctx context.Context) (secretsUseCase.Se
 		return nil, fmt.Errorf("failed to get database for secret repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return secretsPostgreSQL.NewPostgreSQLSecretRepository(db), nil
-	case "mysql":
-		return secretsMySQL.NewMySQLSecretRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return secretsRepository.NewSecretRepository(db), nil
 }
 
 // initSecretUseCase creates the secret use case with all its dependencies.

@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoMySQL "github.com/allisson/secrets/internal/crypto/repository/mysql"
-	cryptoPostgreSQL "github.com/allisson/secrets/internal/crypto/repository/postgresql"
+	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 )
@@ -167,14 +166,7 @@ func (c *Container) initKekRepository(ctx context.Context) (cryptoUseCase.KekRep
 		return nil, fmt.Errorf("failed to get database for kek repository: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return cryptoPostgreSQL.NewPostgreSQLKekRepository(db), nil
-	case "mysql":
-		return cryptoMySQL.NewMySQLKekRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return cryptoRepository.NewKekRepository(db), nil
 }
 
 // initKekUseCase creates the KEK use case with all its dependencies.
@@ -201,14 +193,7 @@ func (c *Container) initCryptoDekRepository(ctx context.Context) (cryptoUseCase.
 		return nil, fmt.Errorf("failed to get database: %w", err)
 	}
 
-	switch c.config.DBDriver {
-	case "postgres":
-		return cryptoPostgreSQL.NewPostgreSQLDekRepository(db), nil
-	case "mysql":
-		return cryptoMySQL.NewMySQLDekRepository(db), nil
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", c.config.DBDriver)
-	}
+	return cryptoRepository.NewDekRepository(db), nil
 }
 
 // initCryptoDekUseCase creates the DEK use case for the crypto module.

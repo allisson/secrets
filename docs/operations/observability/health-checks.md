@@ -259,7 +259,6 @@ services:
       - "8080:8080"
 
     environment:
-      DB_DRIVER: postgres
       DB_CONNECTION_STRING: postgres://user:pass@db:5432/secrets?sslmode=disable
       MASTER_KEYS: default:bEu+O/9NOFAsWf1dhVB9aprmumKhhBcE6o7UPVmI43Y=
       ACTIVE_MASTER_KEY_ID: default
@@ -425,7 +424,6 @@ services:
         - "traefik.http.services.secrets.loadbalancer.healthcheck.interval=10s"
 
     environment:
-      DB_DRIVER: postgres
       DB_CONNECTION_STRING: postgres://user:pass@db:5432/secrets
     networks:
       - secrets-net
@@ -468,10 +466,6 @@ networks:
         "startPeriod": 60
       },
       "environment": [
-        {
-          "name": "DB_DRIVER",
-          "value": "postgres"
-        }
       ],
       "secrets": [
         {
@@ -537,9 +531,6 @@ spec:
             - containerPort: 8080
 
           env:
-            - name: DB_DRIVER
-
-              value: postgres
             - name: DB_CONNECTION_STRING
 
               valueFrom:

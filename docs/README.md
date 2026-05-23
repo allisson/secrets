@@ -117,7 +117,7 @@ This section documents key architectural decisions with their context, rationale
 - 🧾 [ADR 0001: Envelope Encryption Model](adr/0001-envelope-encryption-model.md) - Master Key → KEK → DEK → Secret Data hierarchy
 - 🧾 [ADR 0002: Transit Versioned Ciphertext Contract](adr/0002-transit-versioned-ciphertext-contract.md) - `<version>:<base64-ciphertext>` format
 - 🧾 [ADR 0003: Capability-Based Authorization Model](adr/0003-capability-based-authorization-model.md) - Fine-grained access control with path matching
-- 🧾 [ADR 0004: Dual Database Support](adr/0004-dual-database-support.md) - PostgreSQL and MySQL compatibility
+- 🧾 [ADR 0012: PostgreSQL-Only Database](adr/0012-postgresql-only-database.md) - PostgreSQL as the only supported database
 - 🧾 [ADR 0005: Context-Based Transaction Management](adr/0005-context-based-transaction-management.md) - Go context for transaction propagation
 - 🧾 [ADR 0006: Dual-Scope Rate Limiting Strategy](adr/0006-dual-scope-rate-limiting-strategy.md) - Per-client and per-IP rate limiting
 - 🧾 [ADR 0007: Path-Based API Versioning](adr/0007-path-based-api-versioning.md) - `/v1/*` API versioning strategy
@@ -130,8 +130,8 @@ This section documents key architectural decisions with their context, rationale
 
 - ✅ Linux and macOS environments for local development and operations
 - ✅ Docker-based runtime recommended for all environments
-- ✅ CI validates with Go `1.26.1`, PostgreSQL `16-alpine`, and MySQL `8.0`
-- ℹ️ Project compatibility targets include PostgreSQL `12+` and MySQL `8.0+`
+- ✅ CI validates with Go `1.26.3` and PostgreSQL `16-alpine`
+- ℹ️ Project compatibility targets include PostgreSQL `12+`
 
 ## 💡 Practical Examples
 
