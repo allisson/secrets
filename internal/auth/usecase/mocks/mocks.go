@@ -1706,8 +1706,8 @@ func (_m *MockTokenUseCase) EXPECT() *MockTokenUseCase_Expecter {
 }
 
 // Authenticate provides a mock function for the type MockTokenUseCase
-func (_mock *MockTokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*domain.Client, error) {
-	ret := _mock.Called(ctx, tokenHash)
+func (_mock *MockTokenUseCase) Authenticate(ctx context.Context, rawToken string) (*domain.Client, error) {
+	ret := _mock.Called(ctx, rawToken)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Authenticate")
@@ -1716,17 +1716,17 @@ func (_mock *MockTokenUseCase) Authenticate(ctx context.Context, tokenHash strin
 	var r0 *domain.Client
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*domain.Client, error)); ok {
-		return returnFunc(ctx, tokenHash)
+		return returnFunc(ctx, rawToken)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *domain.Client); ok {
-		r0 = returnFunc(ctx, tokenHash)
+		r0 = returnFunc(ctx, rawToken)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.Client)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, tokenHash)
+		r1 = returnFunc(ctx, rawToken)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1740,12 +1740,12 @@ type MockTokenUseCase_Authenticate_Call struct {
 
 // Authenticate is a helper method to define mock.On call
 //   - ctx context.Context
-//   - tokenHash string
-func (_e *MockTokenUseCase_Expecter) Authenticate(ctx interface{}, tokenHash interface{}) *MockTokenUseCase_Authenticate_Call {
-	return &MockTokenUseCase_Authenticate_Call{Call: _e.mock.On("Authenticate", ctx, tokenHash)}
+//   - rawToken string
+func (_e *MockTokenUseCase_Expecter) Authenticate(ctx interface{}, rawToken interface{}) *MockTokenUseCase_Authenticate_Call {
+	return &MockTokenUseCase_Authenticate_Call{Call: _e.mock.On("Authenticate", ctx, rawToken)}
 }
 
-func (_c *MockTokenUseCase_Authenticate_Call) Run(run func(ctx context.Context, tokenHash string)) *MockTokenUseCase_Authenticate_Call {
+func (_c *MockTokenUseCase_Authenticate_Call) Run(run func(ctx context.Context, rawToken string)) *MockTokenUseCase_Authenticate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1768,7 +1768,7 @@ func (_c *MockTokenUseCase_Authenticate_Call) Return(client *domain.Client, err 
 	return _c
 }
 
-func (_c *MockTokenUseCase_Authenticate_Call) RunAndReturn(run func(ctx context.Context, tokenHash string) (*domain.Client, error)) *MockTokenUseCase_Authenticate_Call {
+func (_c *MockTokenUseCase_Authenticate_Call) RunAndReturn(run func(ctx context.Context, rawToken string) (*domain.Client, error)) *MockTokenUseCase_Authenticate_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1908,8 +1908,8 @@ func (_c *MockTokenUseCase_PurgeExpiredAndRevoked_Call) RunAndReturn(run func(ct
 }
 
 // Revoke provides a mock function for the type MockTokenUseCase
-func (_mock *MockTokenUseCase) Revoke(ctx context.Context, tokenHash string) error {
-	ret := _mock.Called(ctx, tokenHash)
+func (_mock *MockTokenUseCase) Revoke(ctx context.Context, rawToken string) error {
+	ret := _mock.Called(ctx, rawToken)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Revoke")
@@ -1917,7 +1917,7 @@ func (_mock *MockTokenUseCase) Revoke(ctx context.Context, tokenHash string) err
 
 	var r0 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = returnFunc(ctx, tokenHash)
+		r0 = returnFunc(ctx, rawToken)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1931,12 +1931,12 @@ type MockTokenUseCase_Revoke_Call struct {
 
 // Revoke is a helper method to define mock.On call
 //   - ctx context.Context
-//   - tokenHash string
-func (_e *MockTokenUseCase_Expecter) Revoke(ctx interface{}, tokenHash interface{}) *MockTokenUseCase_Revoke_Call {
-	return &MockTokenUseCase_Revoke_Call{Call: _e.mock.On("Revoke", ctx, tokenHash)}
+//   - rawToken string
+func (_e *MockTokenUseCase_Expecter) Revoke(ctx interface{}, rawToken interface{}) *MockTokenUseCase_Revoke_Call {
+	return &MockTokenUseCase_Revoke_Call{Call: _e.mock.On("Revoke", ctx, rawToken)}
 }
 
-func (_c *MockTokenUseCase_Revoke_Call) Run(run func(ctx context.Context, tokenHash string)) *MockTokenUseCase_Revoke_Call {
+func (_c *MockTokenUseCase_Revoke_Call) Run(run func(ctx context.Context, rawToken string)) *MockTokenUseCase_Revoke_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1959,7 +1959,7 @@ func (_c *MockTokenUseCase_Revoke_Call) Return(err error) *MockTokenUseCase_Revo
 	return _c
 }
 
-func (_c *MockTokenUseCase_Revoke_Call) RunAndReturn(run func(ctx context.Context, tokenHash string) error) *MockTokenUseCase_Revoke_Call {
+func (_c *MockTokenUseCase_Revoke_Call) RunAndReturn(run func(ctx context.Context, rawToken string) error) *MockTokenUseCase_Revoke_Call {
 	_c.Call.Return(run)
 	return _c
 }

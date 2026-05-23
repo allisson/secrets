@@ -29,7 +29,7 @@ func newTokenizationKeyUseCase(
 	t.Helper()
 	fake := keyring.NewFake()
 	repo := mocks.NewMockTokenizationKeyRepository(t)
-	uc := usecase.NewTokenizationKeyUseCase(noopTxManager{}, repo, fake)
+	uc := usecase.NewTokenizationKeyUseCase(noopTxManager{}, repo, fake, nil)
 	return uc, fake, repo
 }
 

@@ -26,9 +26,8 @@ type SecretService interface {
 	CompareSecret(plainSecret string, hashedSecret string) bool
 }
 
-// TokenService defines operations for authentication token generation and hashing.
-// Implementations must use cryptographically secure random generation and
-// fast hashing algorithms suitable for short-lived tokens (e.g., SHA-256).
+// TokenService defines operations for authentication token generation.
+// Implementations must use cryptographically secure random generation.
 type TokenService interface {
 	// GenerateToken creates a new cryptographically secure random token.
 	// Returns both the plain text token (to be shared with the client) and
@@ -37,8 +36,4 @@ type TokenService interface {
 	// The plain token should be treated as sensitive data and only displayed
 	// once to the client during token issuance.
 	GenerateToken() (plainToken string, tokenHash string, error error)
-
-	// HashToken hashes a plain text token using SHA-256.
-	// Used for token validation by comparing hashes.
-	HashToken(plainToken string) string
 }

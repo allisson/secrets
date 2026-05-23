@@ -11,6 +11,7 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
+	metricsLib "github.com/allisson/secrets/internal/metrics"
 )
 
 // auditLogUseCase implements AuditLogUseCase interface for recording and verifying audit logs.
@@ -18,6 +19,7 @@ import (
 type auditLogUseCase struct {
 	auditLogRepo AuditLogRepository
 	keySigner    keyring.KeySigner
+	metrics      metricsLib.BusinessMetrics
 }
 
 // Create records an audit log entry for an authenticated operation. Generates a unique
@@ -31,7 +33,10 @@ func (a *auditLogUseCase) Create(
 	capability authDomain.Capability,
 	path string,
 	metadata map[string]any,
-) error {
+) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_create", start, err) }()
+
 	// Create the audit log entity
 	// Truncate timestamp to microsecond precision to match database storage (PostgreSQL TIMESTAMPTZ
 	// ). This ensures the signature matches the value
@@ -65,7 +70,7 @@ func (a *auditLogUseCase) Create(
 	}
 
 	// Persist the audit log (signed or unsigned)
-	if err := a.auditLogRepo.Create(ctx, auditLog); err != nil {
+	if err = a.auditLogRepo.Create(ctx, auditLog); err != nil {
 		return apperrors.Wrap(err, "failed to create audit log")
 	}
 
@@ -83,7 +88,10 @@ func (a *auditLogUseCase) ListCursor(
 	limit int,
 	createdAtFrom, createdAtTo *time.Time,
 	clientID *uuid.UUID,
-) ([]*authDomain.AuditLog, error) {
+) (result []*authDomain.AuditLog, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_list", start, err) }()
+
 	auditLogs, err := a.auditLogRepo.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list audit logs with cursor")
@@ -96,12 +104,19 @@ func (a *auditLogUseCase) ListCursor(
 // When dryRun is true, returns count without deletion. When false, executes DELETE
 // and returns affected rows. Calculates the cutoff timestamp as current UTC time
 // minus the given days. All time calculations use UTC.
-func (a *auditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun bool) (int64, error) {
+func (a *auditLogUseCase) DeleteOlderThan(
+	ctx context.Context,
+	days int,
+	dryRun bool,
+) (count int64, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_delete", start, err) }()
+
 	// Calculate cutoff date in UTC
 	cutoffDate := time.Now().UTC().AddDate(0, 0, -days)
 
 	// Delete audit logs older than cutoff date (or count if dry-run)
-	count, err := a.auditLogRepo.DeleteOlderThan(ctx, cutoffDate, dryRun)
+	count, err = a.auditLogRepo.DeleteOlderThan(ctx, cutoffDate, dryRun)
 	if err != nil {
 		return 0, apperrors.Wrap(err, "failed to delete old audit logs")
 	}
@@ -112,7 +127,10 @@ func (a *auditLogUseCase) DeleteOlderThan(ctx context.Context, days int, dryRun 
 // VerifyIntegrity verifies the cryptographic signature of a specific audit log.
 // Retrieves the log from the repository and validates its HMAC-SHA256 signature
 // using the KEK referenced by log.KekID. Returns nil if valid, error otherwise.
-func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) error {
+func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_verify", start, err) }()
+
 	// Retrieve audit log from repository
 	auditLog, err := a.auditLogRepo.Get(ctx, id)
 	if err != nil {
@@ -129,7 +147,7 @@ func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) err
 		return apperrors.Wrap(err, "failed to canonicalize audit log")
 	}
 
-	if err := a.keySigner.VerifyWithKey(*auditLog.KekID, canonical, auditLog.Signature); err != nil {
+	if err = a.keySigner.VerifyWithKey(*auditLog.KekID, canonical, auditLog.Signature); err != nil {
 		if errors.Is(err, keyring.ErrKekNotFound) {
 			return authDomain.ErrKekNotFoundForLog
 		}
@@ -145,7 +163,10 @@ func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) err
 func (a *auditLogUseCase) VerifyBatch(
 	ctx context.Context,
 	startTime, endTime time.Time,
-) (*VerificationReport, error) {
+) (result *VerificationReport, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_verify_batch", start, err) }()
+
 	report := &VerificationReport{
 		InvalidLogs: []uuid.UUID{},
 	}
@@ -212,9 +233,11 @@ func (a *auditLogUseCase) VerifyBatch(
 func NewAuditLogUseCase(
 	auditLogRepo AuditLogRepository,
 	keySigner keyring.KeySigner,
+	bm metricsLib.BusinessMetrics,
 ) AuditLogUseCase {
 	return &auditLogUseCase{
 		auditLogRepo: auditLogRepo,
 		keySigner:    keySigner,
+		metrics:      bm,
 	}
 }

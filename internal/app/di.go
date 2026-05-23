@@ -449,8 +449,6 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
 	}
 
-	tokenService := c.TokenService()
-
 	auditLogUseCase, err := c.AuditLogUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
@@ -473,7 +471,6 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		TokenizationKeyHandler: tokenizationKeyHandler,
 		TokenizationHandler:    tokenizationHandler,
 		TokenUseCase:           tokenUseCase,
-		TokenService:           tokenService,
 		AuditLogUseCase:        auditLogUseCase,
 		MetricsProvider:        metricsProvider,
 		MetricsNamespace:       c.config.MetricsNamespace,

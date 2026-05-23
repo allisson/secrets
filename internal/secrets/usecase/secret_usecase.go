@@ -10,6 +10,7 @@ import (
 
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/keyring"
+	metricsLib "github.com/allisson/secrets/internal/metrics"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
 
@@ -19,6 +20,7 @@ type secretUseCase struct {
 	keyring              keyring.Keyring
 	secretRepo           SecretRepository
 	secretValueSizeLimit int
+	metrics              metricsLib.BusinessMetrics
 }
 
 // CreateOrUpdate creates a new secret or creates a new version of an existing secret.
@@ -26,8 +28,11 @@ func (s *secretUseCase) CreateOrUpdate(
 	ctx context.Context,
 	path string,
 	value []byte,
-) (*secretsDomain.Secret, error) {
-	if err := validateSecretPath(path); err != nil {
+) (result *secretsDomain.Secret, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_create_or_update", start, err) }()
+
+	if err = validateSecretPath(path); err != nil {
 		return nil, err
 	}
 
@@ -36,7 +41,7 @@ func (s *secretUseCase) CreateOrUpdate(
 	}
 
 	var newSecret *secretsDomain.Secret
-	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
+	err = s.txManager.WithTx(ctx, func(txCtx context.Context) error {
 		// Version lookup happens inside the transaction to avoid races.
 		var version uint = 1
 		existingSecret, err := s.secretRepo.GetByPath(txCtx, path)
@@ -71,12 +76,17 @@ func (s *secretUseCase) CreateOrUpdate(
 }
 
 // Get retrieves and decrypts a secret by its path (latest version).
-func (s *secretUseCase) Get(ctx context.Context, path string) (*secretsDomain.Secret, error) {
-	secret, err := s.secretRepo.GetByPath(ctx, path)
+func (s *secretUseCase) Get(ctx context.Context, path string) (result *secretsDomain.Secret, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_get", start, err) }()
+
+	var secret *secretsDomain.Secret
+	secret, err = s.secretRepo.GetByPath(ctx, path)
 	if err != nil {
-		return nil, err
+		return
 	}
-	return s.decryptSecret(ctx, secret)
+	result, err = s.decryptSecret(ctx, secret)
+	return
 }
 
 // GetByVersion retrieves and decrypts a secret by its path and specific version.
@@ -84,12 +94,17 @@ func (s *secretUseCase) GetByVersion(
 	ctx context.Context,
 	path string,
 	version uint,
-) (*secretsDomain.Secret, error) {
-	secret, err := s.secretRepo.GetByPathAndVersion(ctx, path, version)
+) (result *secretsDomain.Secret, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_get_by_version", start, err) }()
+
+	var secret *secretsDomain.Secret
+	secret, err = s.secretRepo.GetByPathAndVersion(ctx, path, version)
 	if err != nil {
-		return nil, err
+		return
 	}
-	return s.decryptSecret(ctx, secret)
+	result, err = s.decryptSecret(ctx, secret)
+	return
 }
 
 func (s *secretUseCase) decryptSecret(
@@ -110,8 +125,11 @@ func (s *secretUseCase) decryptSecret(
 }
 
 // Delete performs a soft delete on all versions of a secret by its path.
-func (s *secretUseCase) Delete(ctx context.Context, path string) error {
-	return s.secretRepo.Delete(ctx, path)
+func (s *secretUseCase) Delete(ctx context.Context, path string) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_delete", start, err) }()
+	err = s.secretRepo.Delete(ctx, path)
+	return
 }
 
 // ListCursor retrieves secrets without their values, ordered by path with cursor pagination.
@@ -119,18 +137,29 @@ func (s *secretUseCase) ListCursor(
 	ctx context.Context,
 	afterPath *string,
 	limit int,
-) ([]*secretsDomain.Secret, error) {
-	return s.secretRepo.ListCursor(ctx, afterPath, limit)
+) (result []*secretsDomain.Secret, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_list", start, err) }()
+	result, err = s.secretRepo.ListCursor(ctx, afterPath, limit)
+	return
 }
 
 // PurgeDeleted permanently removes soft-deleted secrets older than specified days.
-func (s *secretUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error) {
+func (s *secretUseCase) PurgeDeleted(
+	ctx context.Context,
+	olderThanDays int,
+	dryRun bool,
+) (count int64, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_purge_deleted", start, err) }()
+
 	if olderThanDays < 0 {
 		return 0, errors.New("olderThanDays must be non-negative")
 	}
 
 	olderThan := time.Now().UTC().AddDate(0, 0, -olderThanDays)
-	return s.secretRepo.HardDelete(ctx, olderThan, dryRun)
+	count, err = s.secretRepo.HardDelete(ctx, olderThan, dryRun)
+	return
 }
 
 // NewSecretUseCase creates a new secret use case backed by a Keyring.
@@ -139,11 +168,13 @@ func NewSecretUseCase(
 	kr keyring.Keyring,
 	secretRepo SecretRepository,
 	secretValueSizeLimit int,
+	bm metricsLib.BusinessMetrics,
 ) SecretUseCase {
 	return &secretUseCase{
 		txManager:            txManager,
 		keyring:              kr,
 		secretRepo:           secretRepo,
 		secretValueSizeLimit: secretValueSizeLimit,
+		metrics:              bm,
 	}
 }

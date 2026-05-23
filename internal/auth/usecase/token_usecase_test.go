@@ -2,6 +2,8 @@ package usecase_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"testing"
 	"time"
@@ -16,6 +18,11 @@ import (
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	"github.com/allisson/secrets/internal/config"
 )
+
+func tokenHashOf(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
 
 func TestTokenUseCase_Issue(t *testing.T) {
 	ctx := context.Background()
@@ -67,6 +74,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -99,6 +107,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -138,6 +147,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -187,6 +197,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -225,6 +236,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -272,6 +284,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -317,6 +330,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -361,6 +375,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -400,6 +415,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -440,6 +456,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -489,6 +506,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -536,6 +554,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -584,6 +603,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -613,6 +633,7 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		output, err := uc.Issue(ctx, issueInput)
 
@@ -651,7 +672,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			Policies: []authDomain.PolicyDocument{},
 		}
 
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
 		uc := usecase.NewTokenUseCase(
@@ -661,6 +682,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
@@ -671,10 +693,13 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "not-found"
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, authDomain.ErrTokenNotFound).Once()
+		mockTokenRepo.EXPECT().
+			GetByTokenHash(ctx, tokenHashOf(tokenHash)).
+			Return(nil, authDomain.ErrTokenNotFound).
+			Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
 
@@ -684,13 +709,13 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "expired"
 		token := &authDomain.Token{
 			ExpiresAt: time.Now().UTC().Add(-1 * time.Minute),
 		}
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
 
@@ -715,7 +740,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			RevokedAt: &revokedAt,
 		}
 
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 
 		uc := usecase.NewTokenUseCase(
 			mockConfig,
@@ -724,6 +749,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			mockAuditLogUseCase,
 			mockSecretService,
 			mockTokenService,
+			nil,
 		)
 		result, err := uc.Authenticate(ctx, tokenHash)
 
@@ -735,7 +761,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
@@ -743,7 +769,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			ClientID:  clientID,
 			ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
 		}
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, authDomain.ErrClientNotFound).Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
@@ -755,7 +781,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	t.Run("Error_ClientInactive", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
@@ -767,7 +793,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			ID:       clientID,
 			IsActive: false,
 		}
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 		mockClientRepo.EXPECT().Get(ctx, clientID).Return(client, nil).Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
@@ -778,10 +804,13 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 
 	t.Run("Error_RepositoryGetTokenFails", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "hash"
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, errors.New("db error")).Once()
+		mockTokenRepo.EXPECT().
+			GetByTokenHash(ctx, tokenHashOf(tokenHash)).
+			Return(nil, errors.New("db error")).
+			Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
 
@@ -793,7 +822,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	t.Run("Error_RepositoryGetClientFails", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil, nil)
 
 		tokenHash := "hash"
 		clientID := uuid.Must(uuid.NewV7())
@@ -801,7 +830,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 			ClientID:  clientID,
 			ExpiresAt: time.Now().UTC().Add(1 * time.Hour),
 		}
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 		mockClientRepo.EXPECT().Get(ctx, clientID).Return(nil, errors.New("db error")).Once()
 
 		result, err := uc.Authenticate(ctx, tokenHash)
@@ -818,12 +847,12 @@ func TestTokenUseCase_Revoke(t *testing.T) {
 	t.Run("Success_RevokeToken", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil, nil)
 
 		tokenHash := "test-token-hash"
 		token := &authDomain.Token{ID: uuid.New(), ClientID: uuid.New()}
 
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(token, nil).Once()
+		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHashOf(tokenHash)).Return(token, nil).Once()
 		mockTokenRepo.EXPECT().RevokeByTokenID(ctx, token.ID).Return(nil).Once()
 		mockAuditLogUseCase.EXPECT().
 			Create(ctx, mock.Anything, token.ClientID, authDomain.DeleteCapability, "/v1/token", mock.Anything).
@@ -837,11 +866,14 @@ func TestTokenUseCase_Revoke(t *testing.T) {
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil, nil)
 
 		tokenHash := "test-token-hash"
 
-		mockTokenRepo.EXPECT().GetByTokenHash(ctx, tokenHash).Return(nil, authDomain.ErrTokenNotFound).Once()
+		mockTokenRepo.EXPECT().
+			GetByTokenHash(ctx, tokenHashOf(tokenHash)).
+			Return(nil, authDomain.ErrTokenNotFound).
+			Once()
 
 		err := uc.Revoke(ctx, tokenHash)
 		assert.ErrorIs(t, err, authDomain.ErrTokenNotFound)
@@ -853,7 +885,7 @@ func TestTokenUseCase_PurgeExpiredAndRevoked(t *testing.T) {
 
 	t.Run("Success_PurgeTokens", func(t *testing.T) {
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil, nil)
 
 		days := 30
 		mockTokenRepo.EXPECT().
@@ -867,7 +899,7 @@ func TestTokenUseCase_PurgeExpiredAndRevoked(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidDays", func(t *testing.T) {
-		uc := usecase.NewTokenUseCase(nil, nil, nil, nil, nil, nil)
+		uc := usecase.NewTokenUseCase(nil, nil, nil, nil, nil, nil, nil)
 
 		count, err := uc.PurgeExpiredAndRevoked(ctx, -1)
 		assert.Error(t, err)

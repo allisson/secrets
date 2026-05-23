@@ -17,25 +17,23 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
-	serviceMocks "github.com/allisson/secrets/internal/auth/service/mocks"
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 )
 
 func setupTokenTestHandler(
 	t *testing.T,
-) (*TokenHandler, *usecaseMocks.MockTokenUseCase, *serviceMocks.MockTokenService) {
+) (*TokenHandler, *usecaseMocks.MockTokenUseCase) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	mockTokenUseCase := usecaseMocks.NewMockTokenUseCase(t)
-	mockTokenService := serviceMocks.NewMockTokenService(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler := NewTokenHandler(mockTokenUseCase, mockTokenService, logger)
-	return handler, mockTokenUseCase, mockTokenService
+	handler := NewTokenHandler(mockTokenUseCase, logger)
+	return handler, mockTokenUseCase
 }
 
 func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 	t.Run("Success_ValidCredentials", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTokenTestHandler(t)
+		handler, mockUseCase := setupTokenTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		plainToken := "tok_12345"
@@ -72,13 +70,11 @@ func TestTokenHandler_IssueTokenHandler(t *testing.T) {
 
 func TestTokenHandler_RevokeTokenHandler(t *testing.T) {
 	t.Run("Success_RevokeCurrentToken", func(t *testing.T) {
-		handler, mockUseCase, mockTokenService := setupTokenTestHandler(t)
+		handler, mockUseCase := setupTokenTestHandler(t)
 
 		token := "valid-token"
-		tokenHash := "hashed-token"
 
-		mockTokenService.EXPECT().HashToken(token).Return(tokenHash).Once()
-		mockUseCase.EXPECT().Revoke(mock.Anything, tokenHash).Return(nil).Once()
+		mockUseCase.EXPECT().Revoke(mock.Anything, token).Return(nil).Once()
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -91,7 +87,7 @@ func TestTokenHandler_RevokeTokenHandler(t *testing.T) {
 	})
 
 	t.Run("Error_MissingToken", func(t *testing.T) {
-		handler, _, _ := setupTokenTestHandler(t)
+		handler, _ := setupTokenTestHandler(t)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

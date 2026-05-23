@@ -115,7 +115,11 @@ func (n *NoOpBusinessMetrics) RecordDuration(
 // Record calls RecordOperation and RecordDuration for a completed operation.
 // status is "success" when err is nil, "error" otherwise.
 // Callers capture time.Now() before the operation and pass it as start.
+// If m is nil, Record is a no-op.
 func Record(ctx context.Context, m BusinessMetrics, domain, op string, start time.Time, err error) {
+	if m == nil {
+		return
+	}
 	status := "success"
 	if err != nil {
 		status = "error"

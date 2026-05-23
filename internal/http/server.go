@@ -23,7 +23,6 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/metrics"
@@ -76,7 +75,6 @@ type RouterDeps struct {
 	TokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler
 	TokenizationHandler    *tokenizationHTTP.TokenizationHandler
 	TokenUseCase           authUseCase.TokenUseCase
-	TokenService           authService.TokenService
 	AuditLogUseCase        authUseCase.AuditLogUseCase
 	MetricsProvider        *metrics.Provider
 	MetricsNamespace       string
@@ -121,7 +119,6 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 		// Create authentication middleware
 		authMiddleware := authHTTP.AuthenticationMiddleware(
 			deps.TokenUseCase,
-			deps.TokenService,
 			s.logger,
 		)
 
@@ -147,8 +144,6 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 			deps.ClientHandler,
 			deps.TokenHandler,
 			deps.AuditLogHandler,
-			deps.TokenUseCase,
-			deps.TokenService,
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
@@ -183,8 +178,6 @@ func (s *Server) registerAuthRoutes(
 	clientHandler *authHTTP.ClientHandler,
 	tokenHandler *authHTTP.TokenHandler,
 	auditLogHandler *authHTTP.AuditLogHandler,
-	tokenUseCase authUseCase.TokenUseCase,
-	tokenService authService.TokenService,
 	authMiddleware gin.HandlerFunc,
 	rateLimitMiddleware gin.HandlerFunc,
 	authz *authHTTP.Authorizer,

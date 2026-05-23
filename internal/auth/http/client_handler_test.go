@@ -22,23 +22,22 @@ import (
 )
 
 // setupTestHandler creates a test handler with mocked dependencies.
-func setupTestHandler(t *testing.T) (*ClientHandler, *mocks.MockClientUseCase, *mocks.MockAuditLogUseCase) {
+func setupTestHandler(t *testing.T) (*ClientHandler, *mocks.MockClientUseCase) {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
 
 	mockClientUseCase := mocks.NewMockClientUseCase(t)
-	mockAuditLogUseCase := mocks.NewMockAuditLogUseCase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	handler := NewClientHandler(mockClientUseCase, mockAuditLogUseCase, logger)
+	handler := NewClientHandler(mockClientUseCase, logger)
 
-	return handler, mockClientUseCase, mockAuditLogUseCase
+	return handler, mockClientUseCase
 }
 
 func TestClientHandler_CreateHandler(t *testing.T) {
 	t.Run("Success_ValidRequest", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		plainSecret := "sec_1234567890abcdef"
@@ -87,7 +86,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodPost, "/v1/clients", nil)
 		c.Request.Body = io.NopCloser(bytes.NewReader([]byte("invalid json")))
@@ -103,7 +102,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ValidationFailed_MissingName", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateClientRequest{
 			Name:     "",
@@ -129,7 +128,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ValidationFailed_EmptyPolicies", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		request := dto.CreateClientRequest{
 			Name:     "Test Client",
@@ -150,7 +149,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		request := dto.CreateClientRequest{
 			Name:     "Test Client",
@@ -183,7 +182,7 @@ func TestClientHandler_CreateHandler(t *testing.T) {
 
 func TestClientHandler_GetHandler(t *testing.T) {
 	t.Run("Success_ValidUUID", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		expectedClient := &authDomain.Client{
@@ -221,7 +220,7 @@ func TestClientHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodGet, "/v1/clients/invalid-uuid", nil)
 		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
@@ -237,7 +236,7 @@ func TestClientHandler_GetHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -262,7 +261,7 @@ func TestClientHandler_GetHandler(t *testing.T) {
 
 func TestClientHandler_UpdateHandler(t *testing.T) {
 	t.Run("Success_ValidRequest", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		request := dto.UpdateClientRequest{
@@ -316,7 +315,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		request := dto.UpdateClientRequest{
 			Name:     "Updated Client",
@@ -343,7 +342,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidJSON", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -362,7 +361,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ValidationFailed", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		request := dto.UpdateClientRequest{
@@ -390,7 +389,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		request := dto.UpdateClientRequest{
@@ -425,7 +424,7 @@ func TestClientHandler_UpdateHandler(t *testing.T) {
 
 func TestClientHandler_DeleteHandler(t *testing.T) {
 	t.Run("Success_ValidUUID", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -444,7 +443,7 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodDelete, "/v1/clients/invalid-uuid", nil)
 		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
@@ -460,7 +459,7 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -485,7 +484,7 @@ func TestClientHandler_DeleteHandler(t *testing.T) {
 
 func TestClientHandler_UnlockHandler(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		unlockedClient := &authDomain.Client{
@@ -519,7 +518,7 @@ func TestClientHandler_UnlockHandler(t *testing.T) {
 	})
 
 	t.Run("InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodPost, "/v1/clients/invalid-uuid/unlock", nil)
 		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
@@ -535,7 +534,7 @@ func TestClientHandler_UnlockHandler(t *testing.T) {
 	})
 
 	t.Run("ClientNotFound", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -560,7 +559,7 @@ func TestClientHandler_UnlockHandler(t *testing.T) {
 
 func TestClientHandler_ListHandler(t *testing.T) {
 	t.Run("Success_DefaultPagination", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		client1ID := uuid.Must(uuid.NewV7())
 		client2ID := uuid.Must(uuid.NewV7())
@@ -614,7 +613,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Success_CustomPagination", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		expectedClients := []*authDomain.Client{}
 
@@ -637,7 +636,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Success_EmptyList", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		mockUseCase.EXPECT().
 			ListCursor(mock.Anything, (*uuid.UUID)(nil), 51).
@@ -657,7 +656,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidLimit_Zero", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=0", nil)
 
@@ -672,7 +671,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Success_LimitClampedToMax", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		// Mock usecase to expect clamped limit of 1000
 		mockUseCase.EXPECT().
@@ -688,7 +687,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidLimit_NonNumeric", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodGet, "/v1/clients?limit=xyz", nil)
 
@@ -703,7 +702,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		expectedErr := errors.New("database error")
 
@@ -727,7 +726,7 @@ func TestClientHandler_ListHandler(t *testing.T) {
 
 func TestClientHandler_RevokeTokensHandler(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -744,7 +743,7 @@ func TestClientHandler_RevokeTokensHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -757,7 +756,7 @@ func TestClientHandler_RevokeTokensHandler(t *testing.T) {
 	})
 
 	t.Run("Error_UseCaseError", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -776,7 +775,7 @@ func TestClientHandler_RevokeTokensHandler(t *testing.T) {
 
 func TestClientHandler_RotateSecretHandler(t *testing.T) {
 	t.Run("Success_Administrative", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		expectedOutput := &authDomain.CreateClientOutput{
@@ -809,7 +808,7 @@ func TestClientHandler_RotateSecretHandler(t *testing.T) {
 	})
 
 	t.Run("Success_SelfService", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		authenticatedClient := &authDomain.Client{
@@ -848,7 +847,7 @@ func TestClientHandler_RotateSecretHandler(t *testing.T) {
 	})
 
 	t.Run("Error_SelfService_NoClientInContext", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodPost, "/v1/clients/self/rotate-secret", nil)
 		c.Params = gin.Params{{Key: "id", Value: "self"}}
@@ -859,7 +858,7 @@ func TestClientHandler_RotateSecretHandler(t *testing.T) {
 	})
 
 	t.Run("Error_InvalidUUID", func(t *testing.T) {
-		handler, _, _ := setupTestHandler(t)
+		handler, _ := setupTestHandler(t)
 
 		c, w := createTestContext(http.MethodPost, "/v1/clients/invalid-uuid/rotate-secret", nil)
 		c.Params = gin.Params{{Key: "id", Value: "invalid-uuid"}}
@@ -870,7 +869,7 @@ func TestClientHandler_RotateSecretHandler(t *testing.T) {
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		handler, mockUseCase, _ := setupTestHandler(t)
+		handler, mockUseCase := setupTestHandler(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 

@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	serviceMocks "github.com/allisson/secrets/internal/auth/service/mocks"
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	"github.com/allisson/secrets/internal/httputil"
 )
@@ -28,7 +27,6 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Success_ValidToken", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		clientID := uuid.Must(uuid.NewV7())
 		client := &authDomain.Client{
@@ -38,14 +36,12 @@ func TestAuthenticationMiddleware(t *testing.T) {
 		}
 
 		token := "test-token"
-		tokenHash := "hashed-token"
 
-		mockTokenService.EXPECT().HashToken(token).Return(tokenHash).Once()
-		mockTokenUC.EXPECT().Authenticate(mock.Anything, tokenHash).Return(client, nil).Once()
+		mockTokenUC.EXPECT().Authenticate(mock.Anything, token).Return(client, nil).Once()
 
 		w := httptest.NewRecorder()
 		c, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			val, _ := GetClient(c.Request.Context())
 			assert.Equal(t, client, val)
@@ -62,11 +58,10 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Error_MissingAuthorizationHeader", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -85,11 +80,10 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Error_InvalidAuthorizationFormat", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -109,21 +103,17 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Error_InvalidToken", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		token := "invalid-token"
-		tokenHash := "hashed-invalid-token" //nolint:gosec
-
-		mockTokenService.EXPECT().HashToken(token).Return(tokenHash).Once()
 
 		mockTokenUC.EXPECT().
-			Authenticate(mock.Anything, tokenHash).
+			Authenticate(mock.Anything, token).
 			Return(nil, authDomain.ErrInvalidCredentials).
 			Once()
 
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -143,20 +133,17 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Error_ClientInactive", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		token := "token"
-		tokenHash := "hashed-token"
 
-		mockTokenService.EXPECT().HashToken(token).Return(tokenHash).Once()
 		mockTokenUC.EXPECT().
-			Authenticate(mock.Anything, tokenHash).
+			Authenticate(mock.Anything, token).
 			Return(nil, authDomain.ErrClientInactive).
 			Once()
 
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})
@@ -176,17 +163,14 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 	t.Run("Error_UnexpectedUseCaseError", func(t *testing.T) {
 		mockTokenUC := usecaseMocks.NewMockTokenUseCase(t)
-		mockTokenService := serviceMocks.NewMockTokenService(t)
 
 		token := "token"
-		tokenHash := "hashed-token"
 
-		mockTokenService.EXPECT().HashToken(token).Return(tokenHash).Once()
-		mockTokenUC.EXPECT().Authenticate(mock.Anything, tokenHash).Return(nil, os.ErrNotExist).Once()
+		mockTokenUC.EXPECT().Authenticate(mock.Anything, token).Return(nil, os.ErrNotExist).Once()
 
 		w := httptest.NewRecorder()
 		_, r := gin.CreateTestContext(w)
-		r.Use(AuthenticationMiddleware(mockTokenUC, mockTokenService, logger))
+		r.Use(AuthenticationMiddleware(mockTokenUC, logger))
 		r.GET("/test", func(c *gin.Context) {
 			c.Status(http.StatusOK)
 		})

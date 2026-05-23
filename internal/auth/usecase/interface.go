@@ -175,17 +175,17 @@ type TokenUseCase interface {
 		issueTokenInput *authDomain.IssueTokenInput,
 	) (*authDomain.IssueTokenOutput, error)
 
-	// Authenticate validates a token hash and returns the associated client. Validates token
-	// is not expired/revoked and client is active. Returns ErrInvalidCredentials for
-	// invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
-	// Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
-	Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error)
+	// Authenticate validates a raw bearer token and returns the associated client. Derives
+	// the token hash internally. Validates token is not expired/revoked and client is active.
+	// Returns ErrInvalidCredentials for invalid/expired/revoked tokens or missing clients
+	// to prevent enumeration attacks. Returns ErrClientInactive if client is not active.
+	Authenticate(ctx context.Context, rawToken string) (*authDomain.Client, error)
 
-	// Revoke marks a specific token as revoked using its hash value.
-	// This is typically used by a client to logout and invalidate their current token.
+	// Revoke marks a specific token as revoked using the raw bearer token value.
+	// Derives the token hash internally. This is typically used by a client to logout.
 	//
-	// Returns ErrTokenNotFound if no token matches the hash.
-	Revoke(ctx context.Context, tokenHash string) error
+	// Returns ErrTokenNotFound if no token matches.
+	Revoke(ctx context.Context, rawToken string) error
 
 	// PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
 	// and were created before the specified number of days ago.

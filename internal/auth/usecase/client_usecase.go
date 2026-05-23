@@ -10,6 +10,7 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	"github.com/allisson/secrets/internal/database"
+	metricsLib "github.com/allisson/secrets/internal/metrics"
 )
 
 // clientUseCase implements ClientUseCase interface for managing client authentication.
@@ -19,6 +20,7 @@ type clientUseCase struct {
 	tokenRepo       TokenRepository
 	auditLogUseCase AuditLogUseCase
 	secretService   authService.SecretService
+	metrics         metricsLib.BusinessMetrics
 }
 
 // Create generates and persists a new Client with a random secret.
@@ -27,7 +29,10 @@ type clientUseCase struct {
 func (c *clientUseCase) Create(
 	ctx context.Context,
 	createClientInput *authDomain.CreateClientInput,
-) (*authDomain.CreateClientOutput, error) {
+) (result *authDomain.CreateClientOutput, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_create", start, err) }()
+
 	// Generate a secure random secret
 	plainSecret, hashedSecret, err := c.secretService.GenerateSecret()
 	if err != nil {
@@ -45,7 +50,7 @@ func (c *clientUseCase) Create(
 	}
 
 	// Persist the client
-	if err := c.clientRepo.Create(ctx, client); err != nil {
+	if err = c.clientRepo.Create(ctx, client); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +71,10 @@ func (c *clientUseCase) Update(
 	ctx context.Context,
 	clientID uuid.UUID,
 	updateClientInput *authDomain.UpdateClientInput,
-) error {
+) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_update", start, err) }()
+
 	// Get the existing client
 	client, err := c.clientRepo.Get(ctx, clientID)
 	if err != nil {
@@ -84,13 +92,19 @@ func (c *clientUseCase) Update(
 
 // Get retrieves a client by ID.
 // Returns ErrClientNotFound if the client doesn't exist.
-func (c *clientUseCase) Get(ctx context.Context, clientID uuid.UUID) (*authDomain.Client, error) {
-	return c.clientRepo.Get(ctx, clientID)
+func (c *clientUseCase) Get(ctx context.Context, clientID uuid.UUID) (result *authDomain.Client, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_get", start, err) }()
+	result, err = c.clientRepo.Get(ctx, clientID)
+	return
 }
 
 // Delete performs a soft delete on a client by setting IsActive to false.
 // This prevents the client from authenticating while preserving audit history.
-func (c *clientUseCase) Delete(ctx context.Context, clientID uuid.UUID) error {
+func (c *clientUseCase) Delete(ctx context.Context, clientID uuid.UUID) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_delete", start, err) }()
+
 	// Get the existing client
 	client, err := c.clientRepo.Get(ctx, clientID)
 	if err != nil {
@@ -111,28 +125,37 @@ func (c *clientUseCase) ListCursor(
 	ctx context.Context,
 	afterID *uuid.UUID,
 	limit int,
-) ([]*authDomain.Client, error) {
-	return c.clientRepo.ListCursor(ctx, afterID, limit)
+) (result []*authDomain.Client, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_list", start, err) }()
+	result, err = c.clientRepo.ListCursor(ctx, afterID, limit)
+	return
 }
 
 // Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.
 // Returns ErrClientNotFound if the client doesn't exist.
-func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) error {
-	if _, err := c.clientRepo.Get(ctx, clientID); err != nil {
+func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_unlock", start, err) }()
+
+	if _, err = c.clientRepo.Get(ctx, clientID); err != nil {
 		return err
 	}
 	return c.clientRepo.UpdateLockState(ctx, clientID, 0, nil)
 }
 
 // RevokeTokens marks all active tokens for a specific client as revoked.
-func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) error {
+func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_revoke_tokens", start, err) }()
+
 	// Check if client exists
-	if _, err := c.clientRepo.Get(ctx, clientID); err != nil {
+	if _, err = c.clientRepo.Get(ctx, clientID); err != nil {
 		return err
 	}
 
 	// Revoke all tokens for the client
-	if err := c.tokenRepo.RevokeByClientID(ctx, clientID); err != nil {
+	if err = c.tokenRepo.RevokeByClientID(ctx, clientID); err != nil {
 		return err
 	}
 
@@ -155,10 +178,13 @@ func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) er
 func (c *clientUseCase) RotateSecret(
 	ctx context.Context,
 	clientID uuid.UUID,
-) (*authDomain.CreateClientOutput, error) {
+) (result *authDomain.CreateClientOutput, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_rotate_secret", start, err) }()
+
 	var output *authDomain.CreateClientOutput
 
-	err := c.txManager.WithTx(ctx, func(ctx context.Context) error {
+	err = c.txManager.WithTx(ctx, func(ctx context.Context) error {
 		// Get the existing client
 		client, err := c.clientRepo.Get(ctx, clientID)
 		if err != nil {
@@ -220,6 +246,7 @@ func NewClientUseCase(
 	tokenRepo TokenRepository,
 	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
+	bm metricsLib.BusinessMetrics,
 ) ClientUseCase {
 	return &clientUseCase{
 		txManager:       txManager,
@@ -227,5 +254,6 @@ func NewClientUseCase(
 		tokenRepo:       tokenRepo,
 		auditLogUseCase: auditLogUseCase,
 		secretService:   secretService,
+		metrics:         bm,
 	}
 }

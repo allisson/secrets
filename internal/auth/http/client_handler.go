@@ -18,23 +18,19 @@ import (
 )
 
 // ClientHandler handles HTTP requests for client management operations.
-// It coordinates authentication, authorization, and audit logging with the ClientUseCase.
 type ClientHandler struct {
-	clientUseCase   authUseCase.ClientUseCase
-	auditLogUseCase authUseCase.AuditLogUseCase
-	logger          *slog.Logger
+	clientUseCase authUseCase.ClientUseCase
+	logger        *slog.Logger
 }
 
 // NewClientHandler creates a new client handler with required dependencies.
 func NewClientHandler(
 	clientUseCase authUseCase.ClientUseCase,
-	auditLogUseCase authUseCase.AuditLogUseCase,
 	logger *slog.Logger,
 ) *ClientHandler {
 	return &ClientHandler{
-		clientUseCase:   clientUseCase,
-		auditLogUseCase: auditLogUseCase,
-		logger:          logger,
+		clientUseCase: clientUseCase,
+		logger:        logger,
 	}
 }
 

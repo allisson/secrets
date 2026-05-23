@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/allisson/secrets/internal/metrics"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
@@ -164,10 +165,19 @@ func (c *Container) initTokenizationKeyUseCase(
 		return nil, fmt.Errorf("failed to get keyring for tokenization key use case: %w", err)
 	}
 
+	var bm metrics.BusinessMetrics
+	if c.config.MetricsEnabled {
+		bm, err = c.BusinessMetrics(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for tokenization key use case: %w", err)
+		}
+	}
+
 	return tokenizationUseCase.NewTokenizationKeyUseCase(
 		txManager,
 		tokenizationKeyRepository,
 		kr,
+		bm,
 	), nil
 }
 
@@ -199,23 +209,22 @@ func (c *Container) initTokenizationUseCase(
 
 	hashService := tokenizationUseCase.NewSHA256HashService()
 
-	baseUseCase := tokenizationUseCase.NewTokenizationUseCase(
+	var bm metrics.BusinessMetrics
+	if c.config.MetricsEnabled {
+		bm, err = c.BusinessMetrics(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get business metrics for tokenization use case: %w", err)
+		}
+	}
+
+	return tokenizationUseCase.NewTokenizationUseCase(
 		txManager,
 		tokenizationKeyRepository,
 		tokenRepository,
 		hashService,
 		kr,
-	)
-
-	if c.config.MetricsEnabled {
-		businessMetrics, err := c.BusinessMetrics(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get business metrics for tokenization use case: %w", err)
-		}
-		return tokenizationUseCase.NewTokenizationUseCaseWithMetrics(baseUseCase, businessMetrics), nil
-	}
-
-	return baseUseCase, nil
+		bm,
+	), nil
 }
 
 func (c *Container) initTokenizationKeyHandler(
