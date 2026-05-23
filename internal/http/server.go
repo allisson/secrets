@@ -63,25 +63,28 @@ func NewServer(
 	}
 }
 
+// RouterDeps bundles the handler and usecase dependencies required by SetupRouter.
+// Using a struct instead of positional parameters prevents silent field-swap bugs
+// and makes adding a new handler a named-field change rather than a positional one.
+type RouterDeps struct {
+	ClientHandler          *authHTTP.ClientHandler
+	TokenHandler           *authHTTP.TokenHandler
+	AuditLogHandler        *authHTTP.AuditLogHandler
+	SecretHandler          *secretsHTTP.SecretHandler
+	TransitKeyHandler      *transitHTTP.TransitKeyHandler
+	CryptoHandler          *transitHTTP.CryptoHandler
+	TokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler
+	TokenizationHandler    *tokenizationHTTP.TokenizationHandler
+	TokenUseCase           authUseCase.TokenUseCase
+	TokenService           authService.TokenService
+	AuditLogUseCase        authUseCase.AuditLogUseCase
+	MetricsProvider        *metrics.Provider
+	MetricsNamespace       string
+}
+
 // SetupRouter configures the Gin router with all routes and middleware.
 // This method is called during server initialization with all required dependencies.
-func (s *Server) SetupRouter(
-	ctx context.Context,
-	cfg *config.Config,
-	clientHandler *authHTTP.ClientHandler,
-	tokenHandler *authHTTP.TokenHandler,
-	auditLogHandler *authHTTP.AuditLogHandler,
-	secretHandler *secretsHTTP.SecretHandler,
-	transitKeyHandler *transitHTTP.TransitKeyHandler,
-	cryptoHandler *transitHTTP.CryptoHandler,
-	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler,
-	tokenizationHandler *tokenizationHTTP.TokenizationHandler,
-	tokenUseCase authUseCase.TokenUseCase,
-	tokenService authService.TokenService,
-	auditLogUseCase authUseCase.AuditLogUseCase,
-	metricsProvider *metrics.Provider,
-	metricsNamespace string,
-) {
+func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps RouterDeps) {
 	// Create Gin engine without default middleware
 	router := gin.New()
 
@@ -104,8 +107,8 @@ func (s *Server) SetupRouter(
 	router.Use(CustomLoggerMiddleware(s.logger)) // Custom slog logger
 
 	// Add HTTP metrics middleware if metrics are enabled
-	if metricsProvider != nil {
-		router.Use(metrics.HTTPMetricsMiddleware(metricsProvider.MeterProvider(), metricsNamespace))
+	if deps.MetricsProvider != nil {
+		router.Use(metrics.HTTPMetricsMiddleware(deps.MetricsProvider.MeterProvider(), deps.MetricsNamespace))
 	}
 
 	// Health and readiness endpoints (outside API versioning)
@@ -117,8 +120,8 @@ func (s *Server) SetupRouter(
 	{
 		// Create authentication middleware
 		authMiddleware := authHTTP.AuthenticationMiddleware(
-			tokenUseCase,
-			tokenService,
+			deps.TokenUseCase,
+			deps.TokenService,
 			s.logger,
 		)
 
@@ -135,34 +138,34 @@ func (s *Server) SetupRouter(
 
 		// Build the per-route authorizer once; it pre-binds audit + logger so
 		// route registrations only carry the capability.
-		authz := authHTTP.NewAuthorizer(auditLogUseCase, s.logger)
+		authz := authHTTP.NewAuthorizer(deps.AuditLogUseCase, s.logger)
 
 		s.registerAuthRoutes(
 			ctx,
 			v1,
 			cfg,
-			clientHandler,
-			tokenHandler,
-			auditLogHandler,
-			tokenUseCase,
-			tokenService,
+			deps.ClientHandler,
+			deps.TokenHandler,
+			deps.AuditLogHandler,
+			deps.TokenUseCase,
+			deps.TokenService,
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
 		)
-		s.registerSecretRoutes(v1, secretHandler, authMiddleware, rateLimitMiddleware, authz)
+		s.registerSecretRoutes(v1, deps.SecretHandler, authMiddleware, rateLimitMiddleware, authz)
 		s.registerTransitRoutes(
 			v1,
-			transitKeyHandler,
-			cryptoHandler,
+			deps.TransitKeyHandler,
+			deps.CryptoHandler,
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
 		)
 		s.registerTokenizationRoutes(
 			v1,
-			tokenizationKeyHandler,
-			tokenizationHandler,
+			deps.TokenizationKeyHandler,
+			deps.TokenizationHandler,
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,

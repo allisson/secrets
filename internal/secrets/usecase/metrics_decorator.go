@@ -22,7 +22,6 @@ func NewSecretUseCaseWithMetrics(useCase SecretUseCase, m metrics.BusinessMetric
 	}
 }
 
-// CreateOrUpdate records metrics for secret creation/update operations.
 func (s *secretUseCaseWithMetrics) CreateOrUpdate(
 	ctx context.Context,
 	path string,
@@ -30,35 +29,17 @@ func (s *secretUseCaseWithMetrics) CreateOrUpdate(
 ) (*secretsDomain.Secret, error) {
 	start := time.Now()
 	secret, err := s.next.CreateOrUpdate(ctx, path, value)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_create", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_create", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_create", start, err)
 	return secret, err
 }
 
-// Get records metrics for secret retrieval operations.
 func (s *secretUseCaseWithMetrics) Get(ctx context.Context, path string) (*secretsDomain.Secret, error) {
 	start := time.Now()
 	secret, err := s.next.Get(ctx, path)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_get", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_get", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_get", start, err)
 	return secret, err
 }
 
-// GetByVersion records metrics for versioned secret retrieval operations.
 func (s *secretUseCaseWithMetrics) GetByVersion(
 	ctx context.Context,
 	path string,
@@ -66,35 +47,17 @@ func (s *secretUseCaseWithMetrics) GetByVersion(
 ) (*secretsDomain.Secret, error) {
 	start := time.Now()
 	secret, err := s.next.GetByVersion(ctx, path, version)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_get_version", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_get_version", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_get_version", start, err)
 	return secret, err
 }
 
-// Delete records metrics for secret deletion operations.
 func (s *secretUseCaseWithMetrics) Delete(ctx context.Context, path string) error {
 	start := time.Now()
 	err := s.next.Delete(ctx, path)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_delete", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_delete", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_delete", start, err)
 	return err
 }
 
-// List records metrics for secret listing operations.
 func (s *secretUseCaseWithMetrics) ListCursor(
 	ctx context.Context,
 	afterPath *string,
@@ -102,19 +65,10 @@ func (s *secretUseCaseWithMetrics) ListCursor(
 ) ([]*secretsDomain.Secret, error) {
 	start := time.Now()
 	secrets, err := s.next.ListCursor(ctx, afterPath, limit)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_list", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_list", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_list", start, err)
 	return secrets, err
 }
 
-// PurgeDeleted records metrics for secret purge operations.
 func (s *secretUseCaseWithMetrics) PurgeDeleted(
 	ctx context.Context,
 	olderThanDays int,
@@ -122,14 +76,6 @@ func (s *secretUseCaseWithMetrics) PurgeDeleted(
 ) (int64, error) {
 	start := time.Now()
 	count, err := s.next.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-
-	s.metrics.RecordOperation(ctx, "secrets", "secret_purge", status)
-	s.metrics.RecordDuration(ctx, "secrets", "secret_purge", time.Since(start), status)
-
+	metrics.Record(ctx, s.metrics, "secrets", "secret_purge", start, err)
 	return count, err
 }
