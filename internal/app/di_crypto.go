@@ -8,7 +8,49 @@ import (
 	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
+	"github.com/allisson/secrets/internal/keyring"
 )
+
+// Keyring returns the envelope-encryption keyring shared by all features.
+func (c *Container) Keyring(ctx context.Context) (keyring.Keyring, error) {
+	var err error
+	c.keyringInit.Do(func() {
+		c.keyring, err = c.initKeyring(ctx)
+		if err != nil {
+			c.initErrors.Store("keyring", err)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	if val, ok := c.initErrors.Load("keyring"); ok {
+		return nil, val.(error)
+	}
+	return c.keyring, nil
+}
+
+func (c *Container) initKeyring(ctx context.Context) (keyring.Keyring, error) {
+	db, err := c.DB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for keyring: %w", err)
+	}
+
+	kekChain, err := c.loadKekChain(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kek chain for keyring: %w", err)
+	}
+
+	// Keyring needs Create/Get/Update on DEKs. The concrete repository
+	// provides all three; cryptoUseCase.DekRepository (Update + batch lookup)
+	// is the narrower interface used by KEK rotation only.
+	return keyring.New(
+		kekChain,
+		cryptoRepository.NewDekRepository(db),
+		c.AEADManager(),
+		c.KeyManager(),
+		cryptoDomain.AESGCM,
+	), nil
+}
 
 // MasterKeyChain returns the master key chain loaded from environment variables.
 func (c *Container) MasterKeyChain(ctx context.Context) (*cryptoDomain.MasterKeyChain, error) {

@@ -1,6 +1,4 @@
 // Package usecase implements business logic orchestration for secret management.
-// This package coordinates between cryptographic services, repositories, and domain logic
-// to implement secure secret storage and retrieval with automatic versioning.
 package usecase
 
 import (
@@ -11,20 +9,16 @@ import (
 	"github.com/google/uuid"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 	"github.com/allisson/secrets/internal/database"
+	"github.com/allisson/secrets/internal/keyring"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
 
 // secretUseCase implements the SecretUseCase interface for managing secrets.
 type secretUseCase struct {
 	txManager            database.TxManager
-	dekRepo              DekRepository
+	keyring              keyring.Keyring
 	secretRepo           SecretRepository
-	kekChain             *cryptoDomain.KekChain
-	aeadManager          cryptoService.AEADManager
-	keyManager           cryptoService.KeyManager
-	dekAlgorithm         cryptoDomain.Algorithm
 	secretValueSizeLimit int
 }
 
@@ -34,38 +28,18 @@ func (s *secretUseCase) CreateOrUpdate(
 	path string,
 	value []byte,
 ) (*secretsDomain.Secret, error) {
-	// Validate secret path
 	if err := validateSecretPath(path); err != nil {
 		return nil, err
 	}
 
-	// Check if the secret value size exceeds the limit
 	if len(value) > s.secretValueSizeLimit {
 		return nil, secretsDomain.ErrSecretValueTooLarge
 	}
 
-	activeKek, found := s.kekChain.Get(s.kekChain.ActiveKekID())
-	if !found {
-		return nil, cryptoDomain.ErrKekNotFound
-	}
-
-	return s.createOrUpdateSecret(ctx, path, value, activeKek)
-}
-
-// createOrUpdateSecret is a helper method that handles the secret creation/update logic.
-func (s *secretUseCase) createOrUpdateSecret(
-	ctx context.Context,
-	path string,
-	value []byte,
-	kek *cryptoDomain.Kek,
-) (*secretsDomain.Secret, error) {
-	// Execute the creation within a transaction
 	var newSecret *secretsDomain.Secret
 	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
+		// Version lookup happens inside the transaction to avoid races.
 		var version uint = 1
-
-		// Check if secret already exists to determine the version
-		// This must happen inside the transaction to prevent race conditions
 		existingSecret, err := s.secretRepo.GetByPath(txCtx, path)
 		if err != nil && !errors.Is(err, secretsDomain.ErrSecretNotFound) {
 			return err
@@ -73,55 +47,23 @@ func (s *secretUseCase) createOrUpdateSecret(
 		if existingSecret != nil {
 			version = existingSecret.Version + 1
 		}
-		// Create a new DEK for this secret
-		dek, err := s.keyManager.CreateDek(kek, s.dekAlgorithm)
+
+		env, err := s.keyring.Encrypt(txCtx, value)
 		if err != nil {
 			return err
 		}
 
-		// Persist the DEK
-		if err := s.dekRepo.Create(txCtx, &dek); err != nil {
-			return err
-		}
-
-		// Decrypt the DEK first to get the plaintext key
-		dekKey, err := s.keyManager.DecryptDek(&dek, kek)
-		if err != nil {
-			return err
-		}
-		defer cryptoDomain.Zero(dekKey)
-
-		// Create cipher with the decrypted DEK key
-		cipher, err := s.aeadManager.CreateCipher(dekKey, s.dekAlgorithm)
-		if err != nil {
-			return err
-		}
-
-		// Encrypt the secret value
-		ciphertext, nonce, err := cipher.Encrypt(value, nil)
-		if err != nil {
-			return err
-		}
-
-		// Create the secret entity
 		newSecret = &secretsDomain.Secret{
 			ID:         uuid.Must(uuid.NewV7()),
 			Path:       path,
 			Version:    version,
-			DekID:      dek.ID,
-			Ciphertext: ciphertext,
-			Nonce:      nonce,
+			DekID:      env.DekID,
+			Ciphertext: env.Ciphertext,
+			Nonce:      env.Nonce,
 			CreatedAt:  time.Now().UTC(),
 		}
-
-		// Persist the secret
-		if err := s.secretRepo.Create(txCtx, newSecret); err != nil {
-			return err
-		}
-
-		return nil
+		return s.secretRepo.Create(txCtx, newSecret)
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -131,12 +73,10 @@ func (s *secretUseCase) createOrUpdateSecret(
 
 // Get retrieves and decrypts a secret by its path (latest version).
 func (s *secretUseCase) Get(ctx context.Context, path string) (*secretsDomain.Secret, error) {
-	// Retrieve the secret by path
 	secret, err := s.secretRepo.GetByPath(ctx, path)
 	if err != nil {
 		return nil, err
 	}
-
 	return s.decryptSecret(ctx, secret)
 }
 
@@ -146,60 +86,38 @@ func (s *secretUseCase) GetByVersion(
 	path string,
 	version uint,
 ) (*secretsDomain.Secret, error) {
-	// Retrieve the secret by path and version
 	secret, err := s.secretRepo.GetByPathAndVersion(ctx, path, version)
 	if err != nil {
 		return nil, err
 	}
-
 	return s.decryptSecret(ctx, secret)
 }
 
-// decryptSecret is a helper method that decrypts a secret's ciphertext.
 func (s *secretUseCase) decryptSecret(
 	ctx context.Context,
 	secret *secretsDomain.Secret,
 ) (*secretsDomain.Secret, error) {
-	// Retrieve the DEK
-	dek, err := s.dekRepo.Get(ctx, secret.DekID)
+	plaintext, err := s.keyring.Decrypt(ctx, keyring.Envelope{
+		DekID:      secret.DekID,
+		Ciphertext: secret.Ciphertext,
+		Nonce:      secret.Nonce,
+	})
 	if err != nil {
-		return nil, err
-	}
-
-	// Retrieve the KEK needed to decrypt the DEK
-	kek, found := s.kekChain.Get(dek.KekID)
-	if !found {
-		return nil, cryptoDomain.ErrKekNotFound
-	}
-
-	// Decrypt the DEK
-	dekKey, err := s.keyManager.DecryptDek(dek, kek)
-	if err != nil {
-		return nil, err
-	}
-	defer cryptoDomain.Zero(dekKey)
-
-	// Create cipher with the decrypted DEK key
-	cipher, err := s.aeadManager.CreateCipher(dekKey, dek.Algorithm)
-	if err != nil {
-		return nil, err
-	}
-
-	// Decrypt the secret value
-	plaintext, err := cipher.Decrypt(secret.Ciphertext, secret.Nonce, nil)
-	if err != nil {
+		// Preserve the existing error contract: decryption failures surface as
+		// ErrDecryptionFailed; lookup failures (DEK/KEK missing) pass through.
+		if errors.Is(err, cryptoDomain.ErrDekNotFound) ||
+			errors.Is(err, cryptoDomain.ErrKekNotFound) {
+			return nil, err
+		}
 		return nil, cryptoDomain.ErrDecryptionFailed
 	}
 
-	// Populate the plaintext field
 	secret.Plaintext = plaintext
-
 	return secret, nil
 }
 
 // Delete performs a soft delete on all versions of a secret by its path.
 func (s *secretUseCase) Delete(ctx context.Context, path string) error {
-	// Perform soft delete on all versions
 	return s.secretRepo.Delete(ctx, path)
 }
 
@@ -213,8 +131,6 @@ func (s *secretUseCase) ListCursor(
 }
 
 // PurgeDeleted permanently removes soft-deleted secrets older than specified days.
-// If dryRun is true, returns count without performing deletion.
-// Returns the number of secrets that were (or would be) deleted.
 func (s *secretUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dryRun bool) (int64, error) {
 	if olderThanDays < 0 {
 		return 0, errors.New("olderThanDays must be non-negative")
@@ -224,25 +140,17 @@ func (s *secretUseCase) PurgeDeleted(ctx context.Context, olderThanDays int, dry
 	return s.secretRepo.HardDelete(ctx, olderThan, dryRun)
 }
 
-// NewSecretUseCase creates a new secret use case instance with the provided dependencies.
+// NewSecretUseCase creates a new secret use case backed by a Keyring.
 func NewSecretUseCase(
 	txManager database.TxManager,
-	dekRepo DekRepository,
+	kr keyring.Keyring,
 	secretRepo SecretRepository,
-	kekChain *cryptoDomain.KekChain,
-	aeadManager cryptoService.AEADManager,
-	keyManager cryptoService.KeyManager,
-	dekAlgorithm cryptoDomain.Algorithm,
 	secretValueSizeLimit int,
 ) SecretUseCase {
 	return &secretUseCase{
 		txManager:            txManager,
-		dekRepo:              dekRepo,
+		keyring:              kr,
 		secretRepo:           secretRepo,
-		kekChain:             kekChain,
-		aeadManager:          aeadManager,
-		keyManager:           keyManager,
-		dekAlgorithm:         dekAlgorithm,
 		secretValueSizeLimit: secretValueSizeLimit,
 	}
 }

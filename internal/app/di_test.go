@@ -748,9 +748,9 @@ func TestContainerSecretsComponents(t *testing.T) {
 
 	// Since repositories need a DB, we expect errors if DB is not and cannot be connected
 
-	_, err := container.DekRepository(ctx)
+	_, err := container.Keyring(ctx)
 	if err == nil {
-		t.Error("expected error for dek repository with invalid db config")
+		t.Error("expected error for keyring with invalid db config")
 	}
 
 	_, err = container.SecretRepository(ctx)

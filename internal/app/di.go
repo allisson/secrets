@@ -18,6 +18,7 @@ import (
 	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
@@ -51,10 +52,12 @@ type Container struct {
 	secretService authService.SecretService
 	tokenService  authService.TokenService
 
+	// Keyring (envelope encryption)
+	keyring keyring.Keyring
+
 	// Repositories
 	kekRepository               cryptoUseCase.KekRepository
 	cryptoDekRepository         cryptoUseCase.DekRepository
-	dekRepository               secretsUseCase.DekRepository
 	secretRepository            secretsUseCase.SecretRepository
 	clientRepository            authUseCase.ClientRepository
 	tokenRepository             authUseCase.TokenRepository
@@ -102,9 +105,9 @@ type Container struct {
 	kmsServiceInit                  sync.Once
 	secretServiceInit               sync.Once
 	tokenServiceInit                sync.Once
+	keyringInit                     sync.Once
 	kekRepositoryInit               sync.Once
 	cryptoDekRepositoryInit         sync.Once
-	dekRepositoryInit               sync.Once
 	secretRepositoryInit            sync.Once
 	clientRepositoryInit            sync.Once
 	tokenRepositoryInit             sync.Once

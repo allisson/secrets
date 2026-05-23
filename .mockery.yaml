@@ -35,7 +35,6 @@ packages:
       TxManager: {}
   github.com/allisson/secrets/internal/secrets/usecase:
     interfaces:
-      DekRepository: {}
       SecretRepository: {}
       SecretUseCase: {}
   github.com/allisson/secrets/internal/transit/usecase:
