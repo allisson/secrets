@@ -31,7 +31,7 @@ func setupTestHandler(t *testing.T) (*SecretHandler, *mocks.MockSecretUseCase) {
 	mockSecretUseCase := mocks.NewMockSecretUseCase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	handler := NewSecretHandler(mockSecretUseCase, nil, logger)
+	handler := NewSecretHandler(mockSecretUseCase, logger)
 
 	return handler, mockSecretUseCase
 }

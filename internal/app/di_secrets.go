@@ -112,10 +112,5 @@ func (c *Container) initSecretHandler(ctx context.Context) (*secretsHTTP.SecretH
 		return nil, fmt.Errorf("failed to get secret use case for secret handler: %w", err)
 	}
 
-	auditLogUseCase, err := c.AuditLogUseCase(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get audit log use case for secret handler: %w", err)
-	}
-
-	return secretsHTTP.NewSecretHandler(secretUseCase, auditLogUseCase, c.Logger()), nil
+	return secretsHTTP.NewSecretHandler(secretUseCase, c.Logger()), nil
 }
