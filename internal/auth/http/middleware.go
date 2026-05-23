@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/httputil"
@@ -15,8 +14,8 @@ import (
 
 // AuthenticationMiddleware validates Bearer tokens and stores authenticated clients in request context.
 //
-// Extracts Bearer token from Authorization header, hashes it via tokenService.HashToken(),
-// validates via tokenUseCase.Authenticate(), and stores the client for downstream handlers.
+// Extracts Bearer token from Authorization header, validates via tokenUseCase.Authenticate(),
+// and stores the client for downstream handlers. Hash derivation is internal to the use case.
 //
 // Authorization header format: "Bearer <token>" (case-insensitive)
 //
@@ -26,7 +25,6 @@ import (
 //   - 500 Internal Server Error: Other errors
 func AuthenticationMiddleware(
 	tokenUseCase authUseCase.TokenUseCase,
-	tokenService authService.TokenService,
 	logger *slog.Logger,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -58,11 +56,7 @@ func AuthenticationMiddleware(
 			return
 		}
 
-		// Hash the token for lookup
-		tokenHash := tokenService.HashToken(plainToken)
-
-		// Authenticate using the token hash
-		client, err := tokenUseCase.Authenticate(c.Request.Context(), tokenHash)
+		client, err := tokenUseCase.Authenticate(c.Request.Context(), plainToken)
 		if err != nil {
 			logger.Debug("authentication failed",
 				slog.String("error", err.Error()))

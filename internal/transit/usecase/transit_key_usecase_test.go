@@ -31,7 +31,7 @@ func newTransitKeyUseCase(
 	t.Helper()
 	fake := keyring.NewFake()
 	repo := mocks.NewMockTransitKeyRepository(t)
-	uc := usecase.NewTransitKeyUseCase(noopTxManager{}, repo, fake)
+	uc := usecase.NewTransitKeyUseCase(noopTxManager{}, repo, fake, nil)
 	return uc, fake, repo
 }
 

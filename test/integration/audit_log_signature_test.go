@@ -45,7 +45,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	require.NoError(t, err, "failed to get audit log repository")
 
 	// Create use case with signing enabled
-	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner)
+	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner, nil)
 
 	t.Run("CreateSignedAuditLog", func(t *testing.T) {
 		// Create a signed audit log
@@ -247,7 +247,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 
 	t.Run("LegacyUnsignedLogs", func(t *testing.T) {
 		// Create an unsigned legacy audit log (no signer)
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
 
 		requestID := uuid.Must(uuid.NewV7())
 		clientID := testCtx.rootClient.ID
@@ -285,7 +285,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		clientID := testCtx.rootClient.ID
 
 		// Create 2 signed logs
-		signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner)
+		signedUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner, nil)
 		for i := 0; i < 2; i++ {
 			requestID := uuid.Must(uuid.NewV7())
 			err := signedUseCase.Create(
@@ -301,7 +301,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		}
 
 		// Create 2 unsigned legacy logs
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
+		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil, nil)
 		for i := 0; i < 2; i++ {
 			requestID := uuid.Must(uuid.NewV7())
 			err := legacyUseCase.Create(

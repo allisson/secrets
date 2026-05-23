@@ -12,7 +12,6 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/httputil"
@@ -20,22 +19,18 @@ import (
 )
 
 // TokenHandler handles HTTP requests for token operations.
-// It coordinates token issuance with the TokenUseCase.
 type TokenHandler struct {
 	tokenUseCase authUseCase.TokenUseCase
-	tokenService authService.TokenService
 	logger       *slog.Logger
 }
 
 // NewTokenHandler creates a new token handler with required dependencies.
 func NewTokenHandler(
 	tokenUseCase authUseCase.TokenUseCase,
-	tokenService authService.TokenService,
 	logger *slog.Logger,
 ) *TokenHandler {
 	return &TokenHandler{
 		tokenUseCase: tokenUseCase,
-		tokenService: tokenService,
 		logger:       logger,
 	}
 }
@@ -108,11 +103,7 @@ func (h *TokenHandler) RevokeTokenHandler(c *gin.Context) {
 	}
 	token := authHeader[len(bearerPrefix):]
 
-	// Hash the token for lookup
-	tokenHash := h.tokenService.HashToken(token)
-
-	// Call use case
-	if err := h.tokenUseCase.Revoke(c.Request.Context(), tokenHash); err != nil {
+	if err := h.tokenUseCase.Revoke(c.Request.Context(), token); err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}

@@ -3,6 +3,8 @@ package usecase
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	"github.com/allisson/secrets/internal/config"
+	metricsLib "github.com/allisson/secrets/internal/metrics"
 )
 
 // tokenUseCase implements TokenUseCase interface for managing authentication tokens.
@@ -21,6 +24,7 @@ type tokenUseCase struct {
 	auditLogUseCase AuditLogUseCase
 	secretService   authService.SecretService
 	tokenService    authService.TokenService
+	metrics         metricsLib.BusinessMetrics
 }
 
 // Issue authenticates a client and generates a new authentication token.
@@ -33,7 +37,10 @@ type tokenUseCase struct {
 func (t *tokenUseCase) Issue(
 	ctx context.Context,
 	issueTokenInput *authDomain.IssueTokenInput,
-) (*authDomain.IssueTokenOutput, error) {
+) (result *authDomain.IssueTokenOutput, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, t.metrics, "auth", "token_issue", start, err) }()
+
 	// Get the client by ID
 	client, err := t.clientRepo.Get(ctx, issueTokenInput.ClientID)
 	if err != nil {
@@ -90,7 +97,7 @@ func (t *tokenUseCase) Issue(
 	}
 
 	// Persist the token
-	if err := t.tokenRepo.Create(ctx, token); err != nil {
+	if err = t.tokenRepo.Create(ctx, token); err != nil {
 		return nil, err
 	}
 
@@ -101,13 +108,25 @@ func (t *tokenUseCase) Issue(
 	}, nil
 }
 
-// Authenticate validates a token hash and returns the associated client. Validates token
+// hashToken computes the SHA-256 hex digest of a raw bearer token.
+func (t *tokenUseCase) hashToken(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
+
+// Authenticate validates a raw bearer token and returns the associated client. Validates token
 // is not expired/revoked and client is active. Returns ErrInvalidCredentials for
 // invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
 // Returns ErrClientInactive if the client is not active. All time comparisons use UTC.
-func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*authDomain.Client, error) {
+func (t *tokenUseCase) Authenticate(
+	ctx context.Context,
+	rawToken string,
+) (result *authDomain.Client, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, t.metrics, "auth", "token_authenticate", start, err) }()
+
 	// Get the token by hash
-	token, err := t.tokenRepo.GetByTokenHash(ctx, tokenHash)
+	token, err := t.tokenRepo.GetByTokenHash(ctx, t.hashToken(rawToken))
 	if err != nil {
 		// If token not found, return generic error to prevent enumeration
 		if errors.Is(err, authDomain.ErrTokenNotFound) {
@@ -145,16 +164,19 @@ func (t *tokenUseCase) Authenticate(ctx context.Context, tokenHash string) (*aut
 	return client, nil
 }
 
-// Revoke marks a specific token as revoked using its hash value.
-func (t *tokenUseCase) Revoke(ctx context.Context, tokenHash string) error {
+// Revoke marks a specific token as revoked given its raw bearer value.
+func (t *tokenUseCase) Revoke(ctx context.Context, rawToken string) (err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, t.metrics, "auth", "token_revoke", start, err) }()
+
 	// Get the token by hash
-	token, err := t.tokenRepo.GetByTokenHash(ctx, tokenHash)
+	token, err := t.tokenRepo.GetByTokenHash(ctx, t.hashToken(rawToken))
 	if err != nil {
 		return err
 	}
 
 	// Revoke the token
-	if err := t.tokenRepo.RevokeByTokenID(ctx, token.ID); err != nil {
+	if err = t.tokenRepo.RevokeByTokenID(ctx, token.ID); err != nil {
 		return err
 	}
 
@@ -178,7 +200,10 @@ func (t *tokenUseCase) Revoke(ctx context.Context, tokenHash string) error {
 
 // PurgeExpiredAndRevoked permanently deletes tokens that are either expired or revoked
 // and were created before the specified number of days ago.
-func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (int64, error) {
+func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (count int64, err error) {
+	start := time.Now()
+	defer func() { metricsLib.Record(ctx, t.metrics, "auth", "token_purge", start, err) }()
+
 	// Standard project validation for days/retention parameters
 	// If days is 0, it means delete anything that is already expired or revoked.
 	if days < 0 {
@@ -186,7 +211,8 @@ func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (in
 	}
 
 	olderThan := time.Now().UTC().AddDate(0, 0, -days)
-	return t.tokenRepo.PurgeExpiredAndRevoked(ctx, olderThan)
+	count, err = t.tokenRepo.PurgeExpiredAndRevoked(ctx, olderThan)
+	return
 }
 
 // NewTokenUseCase creates a new TokenUseCase with the provided dependencies.
@@ -197,6 +223,7 @@ func NewTokenUseCase(
 	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
 	tokenService authService.TokenService,
+	bm metricsLib.BusinessMetrics,
 ) TokenUseCase {
 	return &tokenUseCase{
 		config:          config,
@@ -205,5 +232,6 @@ func NewTokenUseCase(
 		auditLogUseCase: auditLogUseCase,
 		secretService:   secretService,
 		tokenService:    tokenService,
+		metrics:         bm,
 	}
 }

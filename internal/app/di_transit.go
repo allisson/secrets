@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/allisson/secrets/internal/metrics"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitRepository "github.com/allisson/secrets/internal/transit/repository"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
@@ -104,17 +105,15 @@ func (c *Container) initTransitKeyUseCase(ctx context.Context) (transitUseCase.T
 		return nil, fmt.Errorf("failed to get keyring for transit key use case: %w", err)
 	}
 
-	baseUseCase := transitUseCase.NewTransitKeyUseCase(txManager, transitKeyRepository, kr)
-
+	var bm metrics.BusinessMetrics
 	if c.config.MetricsEnabled {
-		businessMetrics, err := c.BusinessMetrics(ctx)
+		bm, err = c.BusinessMetrics(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get business metrics for transit key use case: %w", err)
 		}
-		return transitUseCase.NewTransitKeyUseCaseWithMetrics(baseUseCase, businessMetrics), nil
 	}
 
-	return baseUseCase, nil
+	return transitUseCase.NewTransitKeyUseCase(txManager, transitKeyRepository, kr, bm), nil
 }
 
 func (c *Container) initTransitKeyHandler(ctx context.Context) (*transitHTTP.TransitKeyHandler, error) {

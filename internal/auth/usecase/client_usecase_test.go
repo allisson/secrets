@@ -56,6 +56,7 @@ func TestClientUseCase_Create(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		output, err := uc.Create(ctx, createInput)
 
@@ -97,6 +98,7 @@ func TestClientUseCase_Update(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		err := uc.Update(ctx, clientID, updateInput)
 
@@ -128,6 +130,7 @@ func TestClientUseCase_Get(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		client, err := uc.Get(ctx, clientID)
 
@@ -152,6 +155,7 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -180,6 +184,7 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -218,6 +223,7 @@ func TestClientUseCase_Delete(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		err := uc.Delete(ctx, clientID)
 
@@ -250,6 +256,7 @@ func TestClientUseCase_Unlock(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		err := uc.Unlock(ctx, clientID)
 
@@ -305,6 +312,7 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		output, err := uc.RotateSecret(ctx, clientID)
 
@@ -339,6 +347,7 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 			mockTokenRepo,
 			mockAuditLogUseCase,
 			mockSecretService,
+			nil,
 		)
 		output, err := uc.RotateSecret(ctx, clientID)
 

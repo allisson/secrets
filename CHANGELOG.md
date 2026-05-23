@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deepened the `keyring` module: re-exported error sentinels and `Zero` so callers no longer need to import `crypto/domain`; errors are now mapped to `ErrDecryptionFailed` at the keyring boundary. No behavior change.
 - Moved transit nonce framing (`nonce ‖ ciphertext`) from the usecase into `transit/domain` via `NewFramedBlob` / `SplitNonce`. No behavior change.
 - Moved audit-log signing key derivation (HKDF-SHA256 + HMAC-SHA256) inside the keyring via a new `KeySigner` interface; the audit log usecase no longer holds raw KEK bytes. No behavior change.
+- Absorbed `TokenService.HashToken` into `TokenUseCase`: raw bearer tokens flow directly to `Authenticate` and `Revoke`; SHA-256 hashing is now an internal detail. `TokenHandler` and the authentication middleware no longer hold a `TokenService` reference. No behavior change.
+- Removed unused `auditLogUseCase` dependency from `ClientHandler`. No behavior change.
+- Inlined `BusinessMetrics` into all use case structs via a named-return defer pattern and deleted the five metrics decorator layers. No behavior change.
 
 ## [0.28.0] - 2026-03-23
 
