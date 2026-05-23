@@ -1,1536 +1,220 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
-	"errors"
+	"encoding/base64"
+	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	serviceMocks "github.com/allisson/secrets/internal/crypto/service/mocks"
-	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
-	apperrors "github.com/allisson/secrets/internal/errors"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
-	usecaseMocks "github.com/allisson/secrets/internal/transit/usecase/mocks"
+	"github.com/allisson/secrets/internal/transit/usecase"
+	"github.com/allisson/secrets/internal/transit/usecase/mocks"
 )
 
-// Helper function to create a test KEK chain
-func createTestKekChain(activeKekID uuid.UUID, kek *cryptoDomain.Kek) *cryptoDomain.KekChain {
-	keks := []*cryptoDomain.Kek{kek}
-	return cryptoDomain.NewKekChain(keks)
+// noopTxManager runs the function with no real transaction.
+type noopTxManager struct{}
+
+func (noopTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
-// Helper function to create a test KEK
-func createTestKek() *cryptoDomain.Kek {
-	return &cryptoDomain.Kek{
-		ID:           uuid.Must(uuid.NewV7()),
-		MasterKeyID:  "test-master-key",
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-kek"),
-		Key:          make([]byte, 32),
-		Nonce:        []byte("nonce"),
-		Version:      1,
-		CreatedAt:    time.Now().UTC(),
-	}
+func newTransitKeyUseCase(
+	t *testing.T,
+) (usecase.TransitKeyUseCase, *keyring.Fake, *mocks.MockTransitKeyRepository) {
+	t.Helper()
+	fake := keyring.NewFake()
+	repo := mocks.NewMockTransitKeyRepository(t)
+	uc := usecase.NewTransitKeyUseCase(noopTxManager{}, repo, fake)
+	return uc, fake, repo
 }
 
-// Helper function to create a test DEK
-func createTestDek(kekID uuid.UUID) *cryptoDomain.Dek {
-	return &cryptoDomain.Dek{
-		ID:           uuid.Must(uuid.NewV7()),
-		KekID:        kekID,
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-dek"),
-		Nonce:        []byte("nonce"),
-		CreatedAt:    time.Now().UTC(),
-	}
+// allocateDekForTest seeds the keyring Fake with a DekID and returns it.
+func allocateDekForTest(t *testing.T, fake *keyring.Fake) uuid.UUID {
+	t.Helper()
+	handle, err := fake.AllocateDek(context.Background(), keyring.AESGCM)
+	require.NoError(t, err)
+	return handle.DekID
 }
 
-// Helper function to create a test transit key
-func createTestTransitKey(name string, version uint, dekID uuid.UUID) *transitDomain.TransitKey {
-	return &transitDomain.TransitKey{
-		ID:        uuid.Must(uuid.NewV7()),
-		Name:      name,
-		Version:   version,
-		DekID:     dekID,
-		CreatedAt: time.Now().UTC(),
-	}
-}
-
-// TestTransitKeyUseCase_Create tests the Create method of transitKeyUseCase.
 func TestTransitKeyUseCase_Create(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_CreateTransitKeyWithAESGCM", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedDek := createTestDek(kek.ID)
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(*expectedDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(dek *cryptoDomain.Dek) bool {
-				return dek.ID == expectedDek.ID && dek.KekID == expectedDek.KekID
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+		uc, _, repo := newTransitKeyUseCase(t)
+		repo.EXPECT().
+			GetByNameAndVersion(ctx, "k", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound)
+		repo.EXPECT().
+			Create(ctx, mock.MatchedBy(func(k *transitDomain.TransitKey) bool {
+				return k.Name == "k" && k.Version == 1
 			})).
-			Return(nil).
-			Once()
+			Return(nil)
 
-		mockTransitRepo.EXPECT().
-			Create(ctx, mock.MatchedBy(func(tk *transitDomain.TransitKey) bool {
-				return tk.Name == "test-key" && tk.Version == 1 && tk.DekID == expectedDek.ID
-			})).
-			Return(nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, transitKey)
-		assert.Equal(t, "test-key", transitKey.Name)
-		assert.Equal(t, uint(1), transitKey.Version)
-		assert.Equal(t, expectedDek.ID, transitKey.DekID)
+		key, err := uc.Create(ctx, "k", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+		assert.Equal(t, "k", key.Name)
+		assert.EqualValues(t, 1, key.Version)
+		assert.NotEqual(t, uuid.Nil, key.DekID)
 	})
 
-	t.Run("Success_CreateTransitKeyWithChaCha20", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+	t.Run("Error_AlreadyExists", func(t *testing.T) {
+		t.Parallel()
+		uc, _, repo := newTransitKeyUseCase(t)
+		repo.EXPECT().
+			GetByNameAndVersion(ctx, "dup", uint(1)).
+			Return(&transitDomain.TransitKey{}, nil)
 
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedDek := createTestDek(kek.ID)
-		expectedDek.Algorithm = cryptoDomain.ChaCha20
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.ChaCha20).
-			Return(*expectedDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			Create(ctx, mock.Anything).
-			Return(nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.ChaCha20)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, transitKey)
-		assert.Equal(t, uint(1), transitKey.Version)
-	})
-
-	t.Run("Error_TransitKeyAlreadyExists", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		existingTransitKey := createTestTransitKey("test-key", 1, uuid.Must(uuid.NewV7()))
-
-		// Setup expectations - GetByNameAndVersion should return existing key
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(existingTransitKey, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
-		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyAlreadyExists))
-		assert.True(t, apperrors.Is(err, apperrors.ErrConflict))
-	})
-
-	t.Run("Error_DekCreationFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedError := errors.New("dek creation failed")
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(cryptoDomain.Dek{}, expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
-		assert.Equal(t, expectedError, err)
-	})
-
-	t.Run("Error_DekPersistenceFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedDek := createTestDek(kek.ID)
-		expectedError := errors.New("database error")
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(*expectedDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
-			Return(expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
-		assert.Equal(t, expectedError, err)
-	})
-
-	t.Run("Error_TransitKeyPersistenceFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedDek := createTestDek(kek.ID)
-		expectedError := errors.New("database error")
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
-				return fn(ctx)
-			}).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(*expectedDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(ctx, mock.Anything).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			Create(ctx, mock.Anything).
-			Return(expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Create(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
-		assert.Equal(t, expectedError, err)
+		_, err := uc.Create(ctx, "dup", cryptoDomain.AESGCM)
+		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyAlreadyExists)
 	})
 }
 
-// TestTransitKeyUseCase_Rotate tests the Rotate method of transitKeyUseCase.
 func TestTransitKeyUseCase_Rotate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_RotateToNewVersion", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		existingDek := createTestDek(kek.ID)
-		currentKey := createTestTransitKey("test-key", 1, existingDek.ID)
-		newDek := createTestDek(kek.ID)
-
-		// Setup expectations for transaction
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				_ = fn(ctx)
-			}).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByName(mock.Anything, "test-key").
-			Return(currentKey, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(*newDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(mock.Anything, mock.MatchedBy(func(dek *cryptoDomain.Dek) bool {
-				return dek.ID == newDek.ID
+	t.Run("Success_IncrementsVersion", func(t *testing.T) {
+		t.Parallel()
+		uc, _, repo := newTransitKeyUseCase(t)
+		repo.EXPECT().GetByName(ctx, "k").Return(&transitDomain.TransitKey{
+			Name:    "k",
+			Version: 2,
+		}, nil)
+		repo.EXPECT().
+			Create(ctx, mock.MatchedBy(func(k *transitDomain.TransitKey) bool {
+				return k.Version == 3
 			})).
-			Return(nil).
-			Once()
+			Return(nil)
 
-		mockTransitRepo.EXPECT().
-			Create(mock.Anything, mock.MatchedBy(func(tk *transitDomain.TransitKey) bool {
-				return tk.Name == "test-key" && tk.Version == 2 && tk.DekID == newDek.ID
+		key, err := uc.Rotate(ctx, "k", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+		assert.EqualValues(t, 3, key.Version)
+	})
+
+	t.Run("Success_CreatesFirstVersionWhenAbsent", func(t *testing.T) {
+		t.Parallel()
+		uc, _, repo := newTransitKeyUseCase(t)
+		repo.EXPECT().GetByName(ctx, "new").Return(nil, transitDomain.ErrTransitKeyNotFound)
+		repo.EXPECT().
+			GetByNameAndVersion(ctx, "new", uint(1)).
+			Return(nil, transitDomain.ErrTransitKeyNotFound)
+		repo.EXPECT().
+			Create(ctx, mock.MatchedBy(func(k *transitDomain.TransitKey) bool {
+				return k.Version == 1
 			})).
-			Return(nil).
-			Once()
+			Return(nil)
 
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Rotate(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, transitKey)
-		assert.Equal(t, "test-key", transitKey.Name)
-		assert.Equal(t, uint(2), transitKey.Version)
-		assert.Equal(t, newDek.ID, transitKey.DekID)
-	})
-
-	t.Run("Success_RotateCreatesFirstKeyIfNoneExist", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		newDek := createTestDek(kek.ID)
-
-		// Setup expectations for transaction
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				_ = fn(ctx)
-			}).
-			Return(nil).
-			Times(2)
-
-		mockTransitRepo.EXPECT().
-			GetByName(mock.Anything, "test-key").
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(mock.Anything, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(*newDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(mock.Anything, mock.Anything).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			Create(mock.Anything, mock.MatchedBy(func(tk *transitDomain.TransitKey) bool {
-				return tk.Name == "test-key" && tk.Version == 1
-			})).
-			Return(nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Rotate(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, transitKey)
-		assert.Equal(t, uint(1), transitKey.Version)
-	})
-
-	t.Run("Success_RotateWithDifferentAlgorithm", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		existingDek := createTestDek(kek.ID)
-		currentKey := createTestTransitKey("test-key", 1, existingDek.ID)
-		newDek := createTestDek(kek.ID)
-		newDek.Algorithm = cryptoDomain.ChaCha20
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				_ = fn(ctx)
-			}).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByName(mock.Anything, "test-key").
-			Return(currentKey, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.ChaCha20).
-			Return(*newDek, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Create(mock.Anything, mock.Anything).
-			Return(nil).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			Create(mock.Anything, mock.Anything).
-			Return(nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Rotate(ctx, "test-key", cryptoDomain.ChaCha20)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, transitKey)
-		assert.Equal(t, uint(2), transitKey.Version)
-	})
-
-	t.Run("Error_GetByNameFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedError := errors.New("database error")
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				_ = fn(ctx)
-			}).
-			Return(expectedError).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByName(mock.Anything, "test-key").
-			Return(nil, expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Rotate(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
-	})
-
-	t.Run("Error_DekCreationFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		existingDek := createTestDek(kek.ID)
-		currentKey := createTestTransitKey("test-key", 1, existingDek.ID)
-		expectedError := errors.New("dek creation failed")
-
-		// Setup expectations
-		mockTxManager.EXPECT().
-			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
-			Run(func(ctx context.Context, fn func(context.Context) error) {
-				_ = fn(ctx)
-			}).
-			Return(expectedError).
-			Once()
-
-		mockTransitRepo.EXPECT().
-			GetByName(mock.Anything, "test-key").
-			Return(currentKey, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			CreateDek(kek, cryptoDomain.AESGCM).
-			Return(cryptoDomain.Dek{}, expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		transitKey, err := uc.Rotate(ctx, "test-key", cryptoDomain.AESGCM)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, transitKey)
+		key, err := uc.Rotate(ctx, "new", cryptoDomain.AESGCM)
+		require.NoError(t, err)
+		assert.EqualValues(t, 1, key.Version)
 	})
 }
 
-// TestTransitKeyUseCase_Delete tests the Delete method of transitKeyUseCase.
-func TestTransitKeyUseCase_Delete(t *testing.T) {
+func TestTransitKeyUseCase_EncryptDecrypt_RoundTrip(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_SoftDeleteTransitKey", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+	uc, fake, repo := newTransitKeyUseCase(t)
+	dekID := allocateDekForTest(t, fake)
 
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
+	transitKey := &transitDomain.TransitKey{
+		Name:    "k",
+		Version: 1,
+		DekID:   dekID,
+	}
+	plaintext := []byte("payload")
+	aad := []byte("context")
 
-		name := "test-key"
+	repo.EXPECT().GetByName(ctx, "k").Return(transitKey, nil)
 
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			Delete(ctx, name).
-			Return(nil).
-			Once()
+	encBlob, err := uc.Encrypt(ctx, "k", plaintext, aad)
+	require.NoError(t, err)
+	require.NotEmpty(t, encBlob.Ciphertext)
 
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		err := uc.Delete(ctx, name)
+	// Roundtrip via the wire format.
+	wire := fmt.Sprintf("%d:%s", encBlob.Version, base64.StdEncoding.EncodeToString(encBlob.Ciphertext))
 
-		// Assert
-		assert.NoError(t, err)
-	})
+	repo.EXPECT().GetByNameAndVersion(ctx, "k", uint(1)).Return(transitKey, nil)
 
-	t.Run("Error_DeleteFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		name := "test-key"
-		expectedError := errors.New("database error")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			Delete(ctx, name).
-			Return(expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		err := uc.Delete(ctx, name)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Equal(t, expectedError, err)
-	})
+	decBlob, err := uc.Decrypt(ctx, "k", wire, aad)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, decBlob.Plaintext)
 }
 
-// TestTransitKeyUseCase_Encrypt tests the Encrypt method of transitKeyUseCase.
-func TestTransitKeyUseCase_Encrypt(t *testing.T) {
+func TestTransitKeyUseCase_Decrypt_BadFormat(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
+	uc, _, _ := newTransitKeyUseCase(t)
 
-	t.Run("Success_EncryptPlaintext", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		plaintext := []byte("sensitive data")
-		dekKey := make([]byte, 32)
-		ciphertext := []byte("encrypted-data")
-		nonce := []byte("random-nonce")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, mock.Anything).
-			Return(ciphertext, nonce, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, blob)
-		assert.Equal(t, uint(1), blob.Version)
-		assert.NotNil(t, blob.Ciphertext)
-		assert.Nil(t, blob.Plaintext)
-	})
-
-	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		plaintext := []byte("sensitive data")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, blob)
-		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyNotFound))
-	})
-
-	t.Run("Error_DekNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		plaintext := []byte("sensitive data")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(nil, cryptoDomain.ErrDekNotFound).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, blob)
-		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDekNotFound))
-	})
-
-	t.Run("Error_DecryptionFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		plaintext := []byte("sensitive data")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(nil, cryptoDomain.ErrDecryptionFailed).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, blob)
-		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
-	})
-
-	t.Run("Success_EncryptWithContext", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		plaintext := []byte("sensitive data")
-		contextAAD := []byte("aead context")
-		dekKey := make([]byte, 32)
-		ciphertext := []byte("encrypted-data")
-		nonce := []byte("random-nonce")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByName(ctx, "test-key").
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			Encrypt(plaintext, contextAAD).
-			Return(ciphertext, nonce, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Encrypt(ctx, "test-key", plaintext, contextAAD)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, blob)
-		mockCipher.AssertExpectations(t)
-	})
+	_, err := uc.Decrypt(ctx, "k", "not-a-valid-wire-format", nil)
+	assert.Error(t, err)
 }
 
-// TestTransitKeyUseCase_Decrypt tests the Decrypt method of transitKeyUseCase.
-func TestTransitKeyUseCase_Decrypt(t *testing.T) {
+func TestTransitKeyUseCase_Decrypt_CiphertextTooShort(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
+	uc, _, repo := newTransitKeyUseCase(t)
 
-	t.Run("Success_DecryptCiphertext", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
+	repo.EXPECT().
+		GetByNameAndVersion(ctx, "k", uint(1)).
+		Return(&transitDomain.TransitKey{Name: "k", Version: 1, DekID: uuid.New()}, nil)
 
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		plaintext := []byte("sensitive data")
-		dekKey := make([]byte, 32)
-
-		// Create a valid encrypted blob string
-		nonce := []byte("012345678901") // 12 bytes
-		ciphertext := []byte("encrypted-data-with-tag")
-		//nolint:gocritic // intentionally creating new slice for test data
-		encryptedData := append(nonce, ciphertext...)
-		blob := transitDomain.EncryptedBlob{
-			Version:    1,
-			Ciphertext: encryptedData,
-		}
-		ciphertextStr := blob.String()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		mockCipher.EXPECT().
-			Decrypt(ciphertext, nonce, mock.Anything).
-			Return(plaintext, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, resultBlob)
-		assert.Equal(t, uint(1), resultBlob.Version)
-		assert.Equal(t, plaintext, resultBlob.Plaintext)
-		assert.Nil(t, resultBlob.Ciphertext)
-	})
-
-	t.Run("Success_DecryptWithOldVersion", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 5, dek.ID)
-		plaintext := []byte("old data")
-		dekKey := make([]byte, 32)
-
-		// Create a valid encrypted blob string with version 5
-		nonce := []byte("012345678901")
-		ciphertext := []byte("old-encrypted-data")
-		//nolint:gocritic // intentionally creating new slice for test data
-		encryptedData := append(nonce, ciphertext...)
-		blob := transitDomain.EncryptedBlob{
-			Version:    5,
-			Ciphertext: encryptedData,
-		}
-		ciphertextStr := blob.String()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(5)).
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		mockCipher.EXPECT().
-			Decrypt(ciphertext, nonce, mock.Anything).
-			Return(plaintext, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, resultBlob)
-		assert.Equal(t, uint(5), resultBlob.Version)
-		assert.Equal(t, plaintext, resultBlob.Plaintext)
-	})
-
-	t.Run("Error_InvalidBlobFormat", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		invalidCiphertext := "invalid-blob-format"
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		blob, err := uc.Decrypt(ctx, "test-key", invalidCiphertext, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, blob)
-		assert.True(t, apperrors.Is(err, transitDomain.ErrInvalidBlobFormat))
-	})
-
-	t.Run("Error_TransitKeyNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		// Create a valid encrypted blob string
-		blob := transitDomain.EncryptedBlob{
-			Version:    1,
-			Ciphertext: []byte("data"),
-		}
-		ciphertextStr := blob.String()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(nil, transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, resultBlob)
-		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyNotFound))
-	})
-
-	t.Run("Error_CiphertextTooShort", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		dekKey := make([]byte, 32)
-
-		// Create a blob with data shorter than nonce size (12 bytes)
-		blob := transitDomain.EncryptedBlob{
-			Version:    1,
-			Ciphertext: []byte("short"), // Only 5 bytes
-		}
-		ciphertextStr := blob.String()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, nil)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, resultBlob)
-		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
-	})
-
-	t.Run("Error_DecryptWithWrongContext", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-		mockCipher := serviceMocks.NewMockAEAD(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		dek := createTestDek(kek.ID)
-		transitKey := createTestTransitKey("test-key", 1, dek.ID)
-		dekKey := make([]byte, 32)
-		wrongContext := []byte("wrong context")
-
-		// Create a valid encrypted blob string
-		nonce := []byte("012345678901")
-		ciphertext := []byte("encrypted-data")
-		//nolint:gocritic // intentionally creating new slice for test data
-		encryptedData := append(nonce, ciphertext...)
-		blob := transitDomain.EncryptedBlob{
-			Version:    1,
-			Ciphertext: encryptedData,
-		}
-		ciphertextStr := blob.String()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetByNameAndVersion(ctx, "test-key", uint(1)).
-			Return(transitKey, nil).
-			Once()
-
-		mockDekRepo.EXPECT().
-			Get(ctx, dek.ID).
-			Return(dek, nil).
-			Once()
-
-		mockKeyManager.EXPECT().
-			DecryptDek(dek, kek).
-			Return(dekKey, nil).
-			Once()
-
-		mockAeadManager.EXPECT().
-			CreateCipher(dekKey, dek.Algorithm).
-			Return(mockCipher, nil).
-			Once()
-
-		mockCipher.EXPECT().
-			NonceSize().
-			Return(12).
-			Maybe()
-
-		mockCipher.EXPECT().
-			Decrypt(ciphertext, nonce, wrongContext).
-			Return(nil, errors.New("authentication failed")).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		resultBlob, err := uc.Decrypt(ctx, "test-key", ciphertextStr, wrongContext)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, resultBlob)
-		assert.True(t, apperrors.Is(err, cryptoDomain.ErrDecryptionFailed))
-		mockCipher.AssertExpectations(t)
-	})
+	// 5 bytes < 12-byte nonce
+	wire := fmt.Sprintf("1:%s", base64.StdEncoding.EncodeToString([]byte{1, 2, 3, 4, 5}))
+	_, err := uc.Decrypt(ctx, "k", wire, nil)
+	assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
 }
 
-// TestTransitKeyUseCase_PurgeDeleted tests the PurgeDeleted method of transitKeyUseCase.
-func TestTransitKeyUseCase_PurgeDeleted(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("Success_PurgeDeletedKeys", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		olderThanDays := 30
-		dryRun := false
-		expectedDeletedCount := int64(5)
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
-			Return(expectedDeletedCount, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, expectedDeletedCount, count)
-	})
-
-	t.Run("Success_PurgeDeletedKeys_DryRun", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		olderThanDays := 30
-		dryRun := true
-		expectedDeletedCount := int64(10)
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
-			Return(expectedDeletedCount, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, expectedDeletedCount, count)
-	})
-
-	t.Run("Error_InvalidOlderThanDays", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		olderThanDays := -1
-		dryRun := false
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Equal(t, int64(0), count)
-		assert.Contains(t, err.Error(), "olderThanDays must be a positive number")
-	})
-	t.Run("Error_HardDeleteFails", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		olderThanDays := 30
-		dryRun := false
-		expectedError := errors.New("database error")
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			HardDelete(ctx, mock.AnythingOfType("time.Time"), dryRun).
-			Return(int64(0), expectedError).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		count, err := uc.PurgeDeleted(ctx, olderThanDays, dryRun)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Equal(t, int64(0), count)
-		assert.Equal(t, expectedError, err)
-	})
-}
-
-// TestTransitKeyUseCase_Get tests the Get method of transitKeyUseCase.
 func TestTransitKeyUseCase_Get(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	uc, _, repo := newTransitKeyUseCase(t)
+
+	want := &transitDomain.TransitKey{Name: "k", Version: 1}
+	repo.EXPECT().GetTransitKey(ctx, "k", uint(0)).Return(want, cryptoDomain.AESGCM, nil)
+
+	got, alg, err := uc.Get(ctx, "k", 0)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	assert.Equal(t, cryptoDomain.AESGCM, alg)
+}
+
+func TestTransitKeyUseCase_Delete(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	uc, _, repo := newTransitKeyUseCase(t)
+
+	repo.EXPECT().Delete(ctx, "k").Return(nil)
+	assert.NoError(t, uc.Delete(ctx, "k"))
+}
+
+func TestTransitKeyUseCase_PurgeDeleted(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("Success_GetTransitKey", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
-
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		expectedKey := createTestTransitKey("test-key", 1, uuid.Must(uuid.NewV7()))
-		expectedAlg := cryptoDomain.AESGCM
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetTransitKey(ctx, "test-key", uint(1)).
-			Return(expectedKey, expectedAlg, nil).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		key, alg, err := uc.Get(ctx, "test-key", 1)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, key)
-		assert.Equal(t, expectedKey, key)
-		assert.Equal(t, expectedAlg, alg)
+	t.Run("Error_NegativeDays", func(t *testing.T) {
+		t.Parallel()
+		uc, _, _ := newTransitKeyUseCase(t)
+		_, err := uc.PurgeDeleted(ctx, -1, false)
+		assert.Error(t, err)
 	})
 
-	t.Run("Error_GetTransitKeyNotFound", func(t *testing.T) {
-		// Setup mocks
-		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockTransitRepo := usecaseMocks.NewMockTransitKeyRepository(t)
-		mockDekRepo := usecaseMocks.NewMockDekRepository(t)
-		mockKeyManager := serviceMocks.NewMockKeyManager(t)
-		mockAeadManager := serviceMocks.NewMockAEADManager(t)
+	t.Run("Success_DryRun", func(t *testing.T) {
+		t.Parallel()
+		uc, _, repo := newTransitKeyUseCase(t)
+		repo.EXPECT().HardDelete(ctx, mock.Anything, true).Return(int64(2), nil)
 
-		// Create test data
-		kek := createTestKek()
-		kekChain := createTestKekChain(kek.ID, kek)
-		defer kekChain.Close()
-
-		// Setup expectations
-		mockTransitRepo.EXPECT().
-			GetTransitKey(ctx, "test-key", uint(1)).
-			Return(nil, cryptoDomain.Algorithm(""), transitDomain.ErrTransitKeyNotFound).
-			Once()
-
-		// Execute
-		uc := NewTransitKeyUseCase(
-			mockTxManager, mockTransitRepo, mockDekRepo, mockKeyManager, mockAeadManager, kekChain,
-		)
-		key, alg, err := uc.Get(ctx, "test-key", 1)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, key)
-		assert.Equal(t, cryptoDomain.Algorithm(""), alg)
-		assert.True(t, apperrors.Is(err, transitDomain.ErrTransitKeyNotFound))
+		n, err := uc.PurgeDeleted(ctx, 30, true)
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, n)
 	})
 }

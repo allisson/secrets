@@ -63,7 +63,6 @@ type Container struct {
 	tokenRepository             authUseCase.TokenRepository
 	auditLogRepository          authUseCase.AuditLogRepository
 	transitKeyRepository        transitUseCase.TransitKeyRepository
-	transitDekRepository        transitUseCase.DekRepository
 	tokenizationKeyRepository   tokenizationUseCase.TokenizationKeyRepository
 	tokenizationTokenRepository tokenizationUseCase.TokenRepository
 
@@ -112,7 +111,6 @@ type Container struct {
 	tokenRepositoryInit             sync.Once
 	auditLogRepositoryInit          sync.Once
 	transitKeyRepositoryInit        sync.Once
-	transitDekRepositoryInit        sync.Once
 	tokenizationKeyRepositoryInit   sync.Once
 	tokenizationTokenRepositoryInit sync.Once
 	kekUseCaseInit                  sync.Once

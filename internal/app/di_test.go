@@ -783,11 +783,6 @@ func TestContainerTransitComponents(t *testing.T) {
 		t.Error("expected error for transit key repository with invalid db config")
 	}
 
-	_, err = container.TransitDekRepository(ctx)
-	if err == nil {
-		t.Error("expected error for transit dek repository with invalid db config")
-	}
-
 	_, err = container.TransitKeyUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for transit key use case with invalid db config")

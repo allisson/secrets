@@ -9,9 +9,8 @@ import (
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
 
-// Re-export repository interfaces for convenience and backward compatibility if needed.
-// However, the canonical location is now internal/transit/domain/repository.go.
-type DekRepository = transitDomain.DekRepository
+// TransitKeyRepository is re-exported for convenience. The canonical location
+// is internal/transit/domain/repository.go.
 type TransitKeyRepository = transitDomain.TransitKeyRepository
 
 // TransitKeyUseCase defines the interface for transit encryption operations.
