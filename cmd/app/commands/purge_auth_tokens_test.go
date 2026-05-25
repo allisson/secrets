@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
+	"github.com/allisson/secrets/internal/metrics"
 )
 
 func TestRunPurgeAuthTokens(t *testing.T) {
@@ -21,7 +22,16 @@ func TestRunPurgeAuthTokens(t *testing.T) {
 		mockUseCase.EXPECT().PurgeExpiredAndRevoked(ctx, days).Return(int64(100), nil).Once()
 
 		var out bytes.Buffer
-		err := RunPurgeAuthTokens(ctx, mockUseCase, logger, &out, days, false, "text")
+		err := RunPurgeAuthTokens(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			false,
+			"text",
+		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), "Successfully purged 100 expired/revoked authentication token(s)")
@@ -32,7 +42,16 @@ func TestRunPurgeAuthTokens(t *testing.T) {
 		mockUseCase.EXPECT().PurgeExpiredAndRevoked(ctx, days).Return(int64(50), nil).Once()
 
 		var out bytes.Buffer
-		err := RunPurgeAuthTokens(ctx, mockUseCase, logger, &out, days, false, "json")
+		err := RunPurgeAuthTokens(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			false,
+			"json",
+		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), `"count": 50`)
@@ -41,7 +60,16 @@ func TestRunPurgeAuthTokens(t *testing.T) {
 
 	t.Run("invalid-days", func(t *testing.T) {
 		mockUseCase := usecaseMocks.NewMockTokenUseCase(t)
-		err := RunPurgeAuthTokens(ctx, mockUseCase, logger, &bytes.Buffer{}, -1, false, "text")
+		err := RunPurgeAuthTokens(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&bytes.Buffer{},
+			-1,
+			false,
+			"text",
+		)
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "days must be a non-negative number")

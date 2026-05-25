@@ -98,15 +98,7 @@ func (c *Container) initTokenizationKeyUseCase(
 		return nil, fmt.Errorf("failed to get keyring for tokenization key use case: %w", err)
 	}
 
-	inner := tokenizationUseCase.NewTokenizationKeyUseCase(txManager, tokenizationKeyRepository, kr)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for tokenization key use case: %w", err)
-	}
-	return tokenizationUseCase.NewMetricsTokenizationKeyUseCase(inner, bm, "tokenization"), nil
+	return tokenizationUseCase.NewTokenizationKeyUseCase(txManager, tokenizationKeyRepository, kr), nil
 }
 
 func (c *Container) initTokenizationUseCase(
@@ -137,21 +129,13 @@ func (c *Container) initTokenizationUseCase(
 
 	hashService := tokenizationUseCase.NewSHA256HashService()
 
-	inner := tokenizationUseCase.NewTokenizationUseCase(
+	return tokenizationUseCase.NewTokenizationUseCase(
 		txManager,
 		tokenizationKeyRepository,
 		tokenRepository,
 		hashService,
 		kr,
-	)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for tokenization use case: %w", err)
-	}
-	return tokenizationUseCase.NewMetricsTokenizationUseCase(inner, bm, "tokenization"), nil
+	), nil
 }
 
 func (c *Container) initTokenizationKeyHandler(

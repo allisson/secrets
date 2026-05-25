@@ -137,10 +137,15 @@ func getSystemCommands(version string) []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
 						return commands.RunPurgeSecrets(
 							ctx,
 							secretUseCase,
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),
@@ -182,10 +187,15 @@ func getSystemCommands(version string) []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
 						return commands.RunPurgeTransitKeys(
 							ctx,
 							transitUseCase,
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),
@@ -227,10 +237,15 @@ func getSystemCommands(version string) []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
 						return commands.RunPurgeTokenizationKeys(
 							ctx,
 							tokenizationUseCase,
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),

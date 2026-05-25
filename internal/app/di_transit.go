@@ -60,15 +60,7 @@ func (c *Container) initTransitKeyUseCase(ctx context.Context) (transitUseCase.T
 		return nil, fmt.Errorf("failed to get keyring for transit key use case: %w", err)
 	}
 
-	inner := transitUseCase.NewTransitKeyUseCase(txManager, transitKeyRepository, kr)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for transit key use case: %w", err)
-	}
-	return transitUseCase.NewMetricsTransitKeyUseCase(inner, bm, "transit"), nil
+	return transitUseCase.NewTransitKeyUseCase(txManager, transitKeyRepository, kr), nil
 }
 
 func (c *Container) initTransitKeyHandler(ctx context.Context) (*transitHTTP.TransitKeyHandler, error) {

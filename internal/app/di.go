@@ -247,20 +247,22 @@ func (c *Container) initMetricsProvider(ctx context.Context) (*metrics.Provider,
 }
 
 // initBusinessMetrics creates the business metrics recorder.
+// Returns a no-op implementation when metrics are disabled so callers never receive nil.
 func (c *Container) initBusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
+	if !c.config.MetricsEnabled {
+		return metrics.NewNopBusinessMetrics(), nil
+	}
+
 	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
-	if provider == nil {
-		return nil, fmt.Errorf("metrics provider is nil despite MetricsEnabled=true")
-	}
 
-	businessMetrics, err := metrics.NewBusinessMetrics(provider.MeterProvider(), c.config.MetricsNamespace)
+	bm, err := metrics.NewBusinessMetrics(provider.MeterProvider(), c.config.MetricsNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create business metrics: %w", err)
 	}
-	return businessMetrics, nil
+	return bm, nil
 }
 
 // initHTTPServer creates the HTTP server with all its dependencies.
@@ -336,6 +338,11 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
 
+	businessMetrics, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics: %w", err)
+	}
+
 	server.SetupRouter(ctx, c.config, http.RouterDeps{
 		ClientHandler:          clientHandler,
 		TokenHandler:           tokenHandler,
@@ -347,6 +354,7 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		TokenizationHandler:    tokenizationHandler,
 		TokenUseCase:           tokenUseCase,
 		AuditLogUseCase:        auditLogUseCase,
+		BusinessMetrics:        businessMetrics,
 		MetricsProvider:        metricsProvider,
 		MetricsNamespace:       c.config.MetricsNamespace,
 	})

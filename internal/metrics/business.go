@@ -100,3 +100,12 @@ func Record(ctx context.Context, m BusinessMetrics, domain, op string, start tim
 	m.RecordOperation(ctx, domain, op, status)
 	m.RecordDuration(ctx, domain, op, time.Since(start), status)
 }
+
+// Track records metrics for fn — a synchronous operation returning only an error.
+// Return values beyond error must be captured via closure by the caller.
+func Track(ctx context.Context, m BusinessMetrics, domain, op string, fn func() error) error {
+	start := time.Now()
+	err := fn()
+	Record(ctx, m, domain, op, start, err)
+	return err
+}

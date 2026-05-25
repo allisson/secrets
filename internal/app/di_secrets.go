@@ -55,20 +55,12 @@ func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.Secre
 		return nil, fmt.Errorf("failed to get secret repository for secret use case: %w", err)
 	}
 
-	inner := secretsUseCase.NewSecretUseCase(
+	return secretsUseCase.NewSecretUseCase(
 		txManager,
 		kr,
 		secretRepository,
 		c.config.SecretValueSizeLimitBytes,
-	)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for secret use case: %w", err)
-	}
-	return secretsUseCase.NewMetricsSecretUseCase(inner, bm, "secrets"), nil
+	), nil
 }
 
 func (c *Container) initSecretHandler(ctx context.Context) (*secretsHTTP.SecretHandler, error) {

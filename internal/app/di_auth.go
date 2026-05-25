@@ -128,21 +128,13 @@ func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUs
 
 	secretService := c.SecretService()
 
-	inner := authUseCase.NewClientUseCase(
+	return authUseCase.NewClientUseCase(
 		txManager,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
 		secretService,
-	)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for client use case: %w", err)
-	}
-	return authUseCase.NewMetricsClientUseCase(inner, bm, "auth"), nil
+	), nil
 }
 
 // initTokenService creates the token service for authentication.
@@ -190,22 +182,14 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 	secretService := c.SecretService()
 	tokenService := c.TokenService()
 
-	inner := authUseCase.NewTokenUseCase(
+	return authUseCase.NewTokenUseCase(
 		c.config,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
 		secretService,
 		tokenService,
-	)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for token use case: %w", err)
-	}
-	return authUseCase.NewMetricsTokenUseCase(inner, bm, "auth"), nil
+	), nil
 }
 
 // initAuditLogUseCase creates the audit log use case with all its dependencies.
@@ -220,15 +204,7 @@ func (c *Container) initAuditLogUseCase(ctx context.Context) (authUseCase.AuditL
 		return nil, fmt.Errorf("failed to get key signer for audit log use case: %w", err)
 	}
 
-	inner := authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner)
-	if !c.config.MetricsEnabled {
-		return inner, nil
-	}
-	bm, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics for audit log use case: %w", err)
-	}
-	return authUseCase.NewMetricsAuditLogUseCase(inner, bm, "auth"), nil
+	return authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner), nil
 }
 
 // initClientHandler creates the client HTTP handler with all its dependencies.

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/allisson/secrets/internal/auth/usecase"
+	"github.com/allisson/secrets/internal/metrics"
 )
 
 // PurgeAuthTokensResult holds the result of the authentication token purge operation.
@@ -44,6 +45,7 @@ func (r *PurgeAuthTokensResult) ToJSON() string {
 func RunPurgeAuthTokens(
 	ctx context.Context,
 	tokenUseCase usecase.TokenUseCase,
+	bm metrics.BusinessMetrics,
 	logger *slog.Logger,
 	writer io.Writer,
 	days int,
@@ -77,8 +79,12 @@ func RunPurgeAuthTokens(
 	}
 
 	// Execute purge
-	count, err := tokenUseCase.PurgeExpiredAndRevoked(ctx, days)
-	if err != nil {
+	var count int64
+	if err := metrics.Track(ctx, bm, "auth", "token_purge", func() error {
+		var e error
+		count, e = tokenUseCase.PurgeExpiredAndRevoked(ctx, days)
+		return e
+	}); err != nil {
 		return fmt.Errorf("failed to purge authentication tokens: %w", err)
 	}
 
