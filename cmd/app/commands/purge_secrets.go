@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/allisson/secrets/internal/metrics"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
 
@@ -40,6 +41,7 @@ func (r *PurgeSecretsResult) ToJSON() string {
 func RunPurgeSecrets(
 	ctx context.Context,
 	secretUseCase secretsUseCase.SecretUseCase,
+	bm metrics.BusinessMetrics,
 	logger *slog.Logger,
 	writer io.Writer,
 	days int,
@@ -57,8 +59,12 @@ func RunPurgeSecrets(
 	)
 
 	// Execute purge operation
-	count, err := secretUseCase.PurgeDeleted(ctx, days, dryRun)
-	if err != nil {
+	var count int64
+	if err := metrics.Track(ctx, bm, "secrets", "secret_purge_deleted", func() error {
+		var e error
+		count, e = secretUseCase.PurgeDeleted(ctx, days, dryRun)
+		return e
+	}); err != nil {
 		return fmt.Errorf("failed to purge secrets: %w", err)
 	}
 

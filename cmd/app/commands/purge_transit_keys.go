@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/allisson/secrets/internal/metrics"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
@@ -40,6 +41,7 @@ func (r *PurgeTransitKeysResult) ToJSON() string {
 func RunPurgeTransitKeys(
 	ctx context.Context,
 	transitUseCase transitUseCase.TransitKeyUseCase,
+	bm metrics.BusinessMetrics,
 	logger *slog.Logger,
 	writer io.Writer,
 	days int,
@@ -57,8 +59,12 @@ func RunPurgeTransitKeys(
 	)
 
 	// Execute purge operation
-	count, err := transitUseCase.PurgeDeleted(ctx, days, dryRun)
-	if err != nil {
+	var count int64
+	if err := metrics.Track(ctx, bm, "transit", "transit_key_purge_deleted", func() error {
+		var e error
+		count, e = transitUseCase.PurgeDeleted(ctx, days, dryRun)
+		return e
+	}); err != nil {
 		return fmt.Errorf("failed to purge transit keys: %w", err)
 	}
 

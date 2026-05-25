@@ -76,6 +76,7 @@ type RouterDeps struct {
 	TokenizationHandler    *tokenizationHTTP.TokenizationHandler
 	TokenUseCase           authUseCase.TokenUseCase
 	AuditLogUseCase        authUseCase.AuditLogUseCase
+	BusinessMetrics        metrics.BusinessMetrics
 	MetricsProvider        *metrics.Provider
 	MetricsNamespace       string
 }
@@ -147,8 +148,16 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
+			deps.BusinessMetrics,
 		)
-		s.registerSecretRoutes(v1, deps.SecretHandler, authMiddleware, rateLimitMiddleware, authz)
+		s.registerSecretRoutes(
+			v1,
+			deps.SecretHandler,
+			authMiddleware,
+			rateLimitMiddleware,
+			authz,
+			deps.BusinessMetrics,
+		)
 		s.registerTransitRoutes(
 			v1,
 			deps.TransitKeyHandler,
@@ -156,6 +165,7 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
+			deps.BusinessMetrics,
 		)
 		s.registerTokenizationRoutes(
 			v1,
@@ -164,6 +174,7 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 			authMiddleware,
 			rateLimitMiddleware,
 			authz,
+			deps.BusinessMetrics,
 		)
 	}
 
@@ -181,6 +192,7 @@ func (s *Server) registerAuthRoutes(
 	authMiddleware gin.HandlerFunc,
 	rateLimitMiddleware gin.HandlerFunc,
 	authz *authHTTP.Authorizer,
+	bm metrics.BusinessMetrics,
 ) {
 	// Create token rate limit middleware (IP-based, for unauthenticated token endpoint)
 	var tokenRateLimitMiddleware gin.HandlerFunc
@@ -195,13 +207,27 @@ func (s *Server) registerAuthRoutes(
 
 	// Token issuance endpoint (no authentication required, IP-based rate limiting)
 	if tokenRateLimitMiddleware != nil {
-		v1.POST("/token", tokenRateLimitMiddleware, tokenHandler.IssueTokenHandler)
+		v1.POST(
+			"/token",
+			tokenRateLimitMiddleware,
+			BusinessMetricsMiddleware(bm, "auth", "token_issue"),
+			tokenHandler.IssueTokenHandler,
+		)
 	} else {
-		v1.POST("/token", tokenHandler.IssueTokenHandler)
+		v1.POST(
+			"/token",
+			BusinessMetricsMiddleware(bm, "auth", "token_issue"),
+			tokenHandler.IssueTokenHandler,
+		)
 	}
 
 	// Token revocation endpoint (requires authentication)
-	v1.DELETE("/token", authMiddleware, tokenHandler.RevokeTokenHandler)
+	v1.DELETE(
+		"/token",
+		authMiddleware,
+		BusinessMetricsMiddleware(bm, "auth", "token_revoke"),
+		tokenHandler.RevokeTokenHandler,
+	)
 
 	// Client management endpoints
 	clients := v1.Group("/clients")
@@ -212,34 +238,42 @@ func (s *Server) registerAuthRoutes(
 	{
 		clients.POST("",
 			authz.Require(authDomain.WriteCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_create"),
 			clientHandler.CreateHandler,
 		)
 		clients.GET("",
 			authz.Require(authDomain.ReadCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_list"),
 			clientHandler.ListHandler,
 		)
 		clients.GET("/:id",
 			authz.Require(authDomain.ReadCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_get"),
 			clientHandler.GetHandler,
 		)
 		clients.PUT("/:id",
 			authz.Require(authDomain.WriteCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_update"),
 			clientHandler.UpdateHandler,
 		)
 		clients.DELETE("/:id",
 			authz.Require(authDomain.DeleteCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_delete"),
 			clientHandler.DeleteHandler,
 		)
 		clients.POST("/:id/unlock",
 			authz.Require(authDomain.WriteCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_unlock"),
 			clientHandler.UnlockHandler,
 		)
 		clients.POST("/:id/rotate-secret",
 			authz.Require(authDomain.RotateCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_rotate_secret"),
 			clientHandler.RotateSecretHandler,
 		)
 		clients.DELETE("/:id/tokens",
 			authz.Require(authDomain.DeleteCapability),
+			BusinessMetricsMiddleware(bm, "auth", "client_revoke_tokens"),
 			clientHandler.RevokeTokensHandler,
 		)
 	}
@@ -253,6 +287,7 @@ func (s *Server) registerAuthRoutes(
 	{
 		auditLogs.GET("",
 			authz.Require(authDomain.ReadCapability),
+			BusinessMetricsMiddleware(bm, "auth", "audit_log_list"),
 			auditLogHandler.ListHandler,
 		)
 	}
@@ -265,6 +300,7 @@ func (s *Server) registerSecretRoutes(
 	authMiddleware gin.HandlerFunc,
 	rateLimitMiddleware gin.HandlerFunc,
 	authz *authHTTP.Authorizer,
+	bm metrics.BusinessMetrics,
 ) {
 	// Secret management endpoints
 	secrets := v1.Group("/secrets")
@@ -275,18 +311,22 @@ func (s *Server) registerSecretRoutes(
 	{
 		secrets.GET("",
 			authz.Require(authDomain.ReadCapability),
+			BusinessMetricsMiddleware(bm, "secrets", "secret_list"),
 			secretHandler.ListHandler,
 		)
 		secrets.POST("/*path",
 			authz.Require(authDomain.EncryptCapability),
+			BusinessMetricsMiddleware(bm, "secrets", "secret_create_or_update"),
 			secretHandler.CreateOrUpdateHandler,
 		)
 		secrets.GET("/*path",
 			authz.Require(authDomain.DecryptCapability),
+			BusinessMetricsMiddleware(bm, "secrets", "secret_get"),
 			secretHandler.GetHandler,
 		)
 		secrets.DELETE("/*path",
 			authz.Require(authDomain.DeleteCapability),
+			BusinessMetricsMiddleware(bm, "secrets", "secret_delete"),
 			secretHandler.DeleteHandler,
 		)
 	}
@@ -300,6 +340,7 @@ func (s *Server) registerTransitRoutes(
 	authMiddleware gin.HandlerFunc,
 	rateLimitMiddleware gin.HandlerFunc,
 	authz *authHTTP.Authorizer,
+	bm metrics.BusinessMetrics,
 ) {
 	// Transit encryption endpoints
 	transit := v1.Group("/transit")
@@ -313,42 +354,49 @@ func (s *Server) registerTransitRoutes(
 			// List transit keys
 			keys.GET("",
 				authz.Require(authDomain.ReadCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_key_list"),
 				transitKeyHandler.ListHandler,
 			)
 
 			// Get individual transit key
 			keys.GET("/:name",
 				authz.Require(authDomain.ReadCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_key_get"),
 				transitKeyHandler.GetHandler,
 			)
 
 			// Create new transit key
 			keys.POST("",
 				authz.Require(authDomain.WriteCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_key_create"),
 				transitKeyHandler.CreateHandler,
 			)
 
 			// Rotate transit key to new version
 			keys.POST("/:name/rotate",
 				authz.Require(authDomain.RotateCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_key_rotate"),
 				transitKeyHandler.RotateHandler,
 			)
 
 			// Delete transit key
 			keys.DELETE("/:name",
 				authz.Require(authDomain.DeleteCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_key_delete"),
 				transitKeyHandler.DeleteHandler,
 			)
 
 			// Encrypt plaintext with transit key
 			keys.POST("/:name/encrypt",
 				authz.Require(authDomain.EncryptCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_encrypt"),
 				cryptoHandler.EncryptHandler,
 			)
 
 			// Decrypt ciphertext with transit key
 			keys.POST("/:name/decrypt",
 				authz.Require(authDomain.DecryptCapability),
+				BusinessMetricsMiddleware(bm, "transit", "transit_decrypt"),
 				cryptoHandler.DecryptHandler,
 			)
 		}
@@ -363,6 +411,7 @@ func (s *Server) registerTokenizationRoutes(
 	authMiddleware gin.HandlerFunc,
 	rateLimitMiddleware gin.HandlerFunc,
 	authz *authHTTP.Authorizer,
+	bm metrics.BusinessMetrics,
 ) {
 	// Tokenization endpoints
 	tokenization := v1.Group("/tokenization")
@@ -376,42 +425,49 @@ func (s *Server) registerTokenizationRoutes(
 			// List tokenization keys
 			keys.GET("",
 				authz.Require(authDomain.ReadCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_list"),
 				tokenizationKeyHandler.ListHandler,
 			)
 
 			// Get individual tokenization key
 			keys.GET("/:name",
 				authz.Require(authDomain.ReadCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_get"),
 				tokenizationKeyHandler.GetByNameHandler,
 			)
 
 			// Create new tokenization key
 			keys.POST("",
 				authz.Require(authDomain.WriteCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_create"),
 				tokenizationKeyHandler.CreateHandler,
 			)
 
 			// Rotate tokenization key to new version
 			keys.POST("/:name/rotate",
 				authz.Require(authDomain.RotateCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_rotate"),
 				tokenizationKeyHandler.RotateHandler,
 			)
 
 			// Delete tokenization key
 			keys.DELETE("/:name",
 				authz.Require(authDomain.DeleteCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_delete"),
 				tokenizationKeyHandler.DeleteHandler,
 			)
 
 			// Tokenize plaintext with tokenization key
 			keys.POST("/:name/tokenize",
 				authz.Require(authDomain.EncryptCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenize"),
 				tokenizationHandler.TokenizeHandler,
 			)
 
 			// Tokenize batch of plaintexts with tokenization key
 			keys.POST("/:name/tokenize-batch",
 				authz.Require(authDomain.EncryptCapability),
+				BusinessMetricsMiddleware(bm, "tokenization", "tokenize_batch"),
 				tokenizationHandler.TokenizeBatchHandler,
 			)
 		}
@@ -419,24 +475,28 @@ func (s *Server) registerTokenizationRoutes(
 		// Detokenize token to retrieve plaintext
 		tokenization.POST("/detokenize",
 			authz.Require(authDomain.DecryptCapability),
+			BusinessMetricsMiddleware(bm, "tokenization", "detokenize"),
 			tokenizationHandler.DetokenizeHandler,
 		)
 
 		// Detokenize batch of tokens to retrieve plaintexts
 		tokenization.POST("/detokenize-batch",
 			authz.Require(authDomain.DecryptCapability),
+			BusinessMetricsMiddleware(bm, "tokenization", "detokenize_batch"),
 			tokenizationHandler.DetokenizeBatchHandler,
 		)
 
 		// Validate token existence and validity
 		tokenization.POST("/validate",
 			authz.Require(authDomain.ReadCapability),
+			BusinessMetricsMiddleware(bm, "tokenization", "tokenize_validate"),
 			tokenizationHandler.ValidateHandler,
 		)
 
 		// Revoke token to prevent further detokenization
 		tokenization.POST("/revoke",
 			authz.Require(authDomain.DeleteCapability),
+			BusinessMetricsMiddleware(bm, "tokenization", "tokenize_revoke"),
 			tokenizationHandler.RevokeHandler,
 		)
 	}

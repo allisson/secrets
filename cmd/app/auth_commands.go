@@ -44,10 +44,15 @@ func getAuthCommands() []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
 						return commands.RunPurgeAuthTokens(
 							ctx,
 							tokenUseCase,
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),
@@ -89,10 +94,15 @@ func getAuthCommands() []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
 						return commands.RunCleanExpiredTokens(
 							ctx,
 							tokenizationUseCase,
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),

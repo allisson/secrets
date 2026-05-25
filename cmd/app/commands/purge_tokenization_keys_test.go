@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/allisson/secrets/internal/metrics"
 	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
 )
 
@@ -21,7 +22,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, days, false).Return(int64(100), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, days, false, "text")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			false,
+			"text",
+		)
 
 		require.NoError(t, err)
 		require.Contains(
@@ -37,7 +47,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, days, true).Return(int64(75), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, days, true, "text")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			true,
+			"text",
+		)
 
 		require.NoError(t, err)
 		require.Contains(
@@ -53,7 +72,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, days, true).Return(int64(50), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, days, true, "json")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			true,
+			"json",
+		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), `"count": 50`)
@@ -67,7 +95,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, days, false).Return(int64(25), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, days, false, "json")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			false,
+			"json",
+		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), `"count": 25`)
@@ -78,7 +115,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 
 	t.Run("invalid-days-negative", func(t *testing.T) {
 		mockUseCase := &tokenizationMocks.MockTokenizationKeyUseCase{}
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &bytes.Buffer{}, -1, false, "text")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&bytes.Buffer{},
+			-1,
+			false,
+			"text",
+		)
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "days must be a positive number")
@@ -89,7 +135,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, 0, false).Return(int64(10), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, 0, false, "text")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			0,
+			false,
+			"text",
+		)
 
 		require.NoError(t, err)
 		require.Contains(
@@ -105,7 +160,16 @@ func TestRunPurgeTokenizationKeys(t *testing.T) {
 		mockUseCase.On("PurgeDeleted", ctx, days, false).Return(int64(0), nil)
 
 		var out bytes.Buffer
-		err := RunPurgeTokenizationKeys(ctx, mockUseCase, logger, &out, days, false, "text")
+		err := RunPurgeTokenizationKeys(
+			ctx,
+			mockUseCase,
+			metrics.NewNopBusinessMetrics(),
+			logger,
+			&out,
+			days,
+			false,
+			"text",
+		)
 
 		require.NoError(t, err)
 		require.Contains(t, out.String(), "Successfully deleted 0 tokenization key(s)")

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/allisson/secrets/internal/metrics"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
 
@@ -44,6 +45,7 @@ func (r *PurgeTokenizationKeysResult) ToJSON() string {
 func RunPurgeTokenizationKeys(
 	ctx context.Context,
 	tokenizationUseCase tokenizationUseCase.TokenizationKeyUseCase,
+	bm metrics.BusinessMetrics,
 	logger *slog.Logger,
 	writer io.Writer,
 	days int,
@@ -61,8 +63,12 @@ func RunPurgeTokenizationKeys(
 	)
 
 	// Execute purge operation
-	count, err := tokenizationUseCase.PurgeDeleted(ctx, days, dryRun)
-	if err != nil {
+	var count int64
+	if err := metrics.Track(ctx, bm, "tokenization", "tokenization_key_purge_deleted", func() error {
+		var e error
+		count, e = tokenizationUseCase.PurgeDeleted(ctx, days, dryRun)
+		return e
+	}); err != nil {
 		return fmt.Errorf("failed to purge tokenization keys: %w", err)
 	}
 
