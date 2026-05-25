@@ -10,7 +10,6 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	"github.com/allisson/secrets/internal/database"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 )
 
 // clientUseCase implements ClientUseCase interface for managing client authentication.
@@ -20,7 +19,6 @@ type clientUseCase struct {
 	tokenRepo       TokenRepository
 	auditLogUseCase AuditLogUseCase
 	secretService   authService.SecretService
-	metrics         metricsLib.BusinessMetrics
 }
 
 // Create generates and persists a new Client with a random secret.
@@ -30,9 +28,6 @@ func (c *clientUseCase) Create(
 	ctx context.Context,
 	createClientInput *authDomain.CreateClientInput,
 ) (result *authDomain.CreateClientOutput, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_create", start, err) }()
-
 	// Generate a secure random secret
 	plainSecret, hashedSecret, err := c.secretService.GenerateSecret()
 	if err != nil {
@@ -72,9 +67,6 @@ func (c *clientUseCase) Update(
 	clientID uuid.UUID,
 	updateClientInput *authDomain.UpdateClientInput,
 ) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_update", start, err) }()
-
 	// Get the existing client
 	client, err := c.clientRepo.Get(ctx, clientID)
 	if err != nil {
@@ -93,8 +85,6 @@ func (c *clientUseCase) Update(
 // Get retrieves a client by ID.
 // Returns ErrClientNotFound if the client doesn't exist.
 func (c *clientUseCase) Get(ctx context.Context, clientID uuid.UUID) (result *authDomain.Client, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_get", start, err) }()
 	result, err = c.clientRepo.Get(ctx, clientID)
 	return
 }
@@ -102,9 +92,6 @@ func (c *clientUseCase) Get(ctx context.Context, clientID uuid.UUID) (result *au
 // Delete performs a soft delete on a client by setting IsActive to false.
 // This prevents the client from authenticating while preserving audit history.
 func (c *clientUseCase) Delete(ctx context.Context, clientID uuid.UUID) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_delete", start, err) }()
-
 	// Get the existing client
 	client, err := c.clientRepo.Get(ctx, clientID)
 	if err != nil {
@@ -126,8 +113,6 @@ func (c *clientUseCase) ListCursor(
 	afterID *uuid.UUID,
 	limit int,
 ) (result []*authDomain.Client, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_list", start, err) }()
 	result, err = c.clientRepo.ListCursor(ctx, afterID, limit)
 	return
 }
@@ -135,9 +120,6 @@ func (c *clientUseCase) ListCursor(
 // Unlock clears the lockout state for a client, resetting failed_attempts and locked_until.
 // Returns ErrClientNotFound if the client doesn't exist.
 func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_unlock", start, err) }()
-
 	if _, err = c.clientRepo.Get(ctx, clientID); err != nil {
 		return err
 	}
@@ -146,9 +128,6 @@ func (c *clientUseCase) Unlock(ctx context.Context, clientID uuid.UUID) (err err
 
 // RevokeTokens marks all active tokens for a specific client as revoked.
 func (c *clientUseCase) RevokeTokens(ctx context.Context, clientID uuid.UUID) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_revoke_tokens", start, err) }()
-
 	// Check if client exists
 	if _, err = c.clientRepo.Get(ctx, clientID); err != nil {
 		return err
@@ -179,9 +158,6 @@ func (c *clientUseCase) RotateSecret(
 	ctx context.Context,
 	clientID uuid.UUID,
 ) (result *authDomain.CreateClientOutput, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, c.metrics, "auth", "client_rotate_secret", start, err) }()
-
 	var output *authDomain.CreateClientOutput
 
 	err = c.txManager.WithTx(ctx, func(ctx context.Context) error {
@@ -246,7 +222,6 @@ func NewClientUseCase(
 	tokenRepo TokenRepository,
 	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
-	bm metricsLib.BusinessMetrics,
 ) ClientUseCase {
 	return &clientUseCase{
 		txManager:       txManager,
@@ -254,6 +229,5 @@ func NewClientUseCase(
 		tokenRepo:       tokenRepo,
 		auditLogUseCase: auditLogUseCase,
 		secretService:   secretService,
-		metrics:         bm,
 	}
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/keyring"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 )
 
@@ -20,7 +19,6 @@ type secretUseCase struct {
 	keyring              keyring.Keyring
 	secretRepo           SecretRepository
 	secretValueSizeLimit int
-	metrics              metricsLib.BusinessMetrics
 }
 
 // CreateOrUpdate creates a new secret or creates a new version of an existing secret.
@@ -29,9 +27,6 @@ func (s *secretUseCase) CreateOrUpdate(
 	path string,
 	value []byte,
 ) (result *secretsDomain.Secret, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_create_or_update", start, err) }()
-
 	if err = validateSecretPath(path); err != nil {
 		return nil, err
 	}
@@ -77,9 +72,6 @@ func (s *secretUseCase) CreateOrUpdate(
 
 // Get retrieves and decrypts a secret by its path (latest version).
 func (s *secretUseCase) Get(ctx context.Context, path string) (result *secretsDomain.Secret, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_get", start, err) }()
-
 	var secret *secretsDomain.Secret
 	secret, err = s.secretRepo.GetByPath(ctx, path)
 	if err != nil {
@@ -95,9 +87,6 @@ func (s *secretUseCase) GetByVersion(
 	path string,
 	version uint,
 ) (result *secretsDomain.Secret, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_get_by_version", start, err) }()
-
 	var secret *secretsDomain.Secret
 	secret, err = s.secretRepo.GetByPathAndVersion(ctx, path, version)
 	if err != nil {
@@ -126,8 +115,6 @@ func (s *secretUseCase) decryptSecret(
 
 // Delete performs a soft delete on all versions of a secret by its path.
 func (s *secretUseCase) Delete(ctx context.Context, path string) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_delete", start, err) }()
 	err = s.secretRepo.Delete(ctx, path)
 	return
 }
@@ -138,8 +125,6 @@ func (s *secretUseCase) ListCursor(
 	afterPath *string,
 	limit int,
 ) (result []*secretsDomain.Secret, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_list", start, err) }()
 	result, err = s.secretRepo.ListCursor(ctx, afterPath, limit)
 	return
 }
@@ -150,9 +135,6 @@ func (s *secretUseCase) PurgeDeleted(
 	olderThanDays int,
 	dryRun bool,
 ) (count int64, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, s.metrics, "secrets", "secret_purge_deleted", start, err) }()
-
 	if olderThanDays < 0 {
 		return 0, errors.New("olderThanDays must be non-negative")
 	}
@@ -168,13 +150,11 @@ func NewSecretUseCase(
 	kr keyring.Keyring,
 	secretRepo SecretRepository,
 	secretValueSizeLimit int,
-	bm metricsLib.BusinessMetrics,
 ) SecretUseCase {
 	return &secretUseCase{
 		txManager:            txManager,
 		keyring:              kr,
 		secretRepo:           secretRepo,
 		secretValueSizeLimit: secretValueSizeLimit,
-		metrics:              bm,
 	}
 }

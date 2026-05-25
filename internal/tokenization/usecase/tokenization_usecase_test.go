@@ -32,7 +32,7 @@ func newTokenizationUseCase(
 	keyRepo := mocks.NewMockTokenizationKeyRepository(t)
 	tokenRepo := mocks.NewMockTokenRepository(t)
 	hashSvc := mocks.NewMockHashService(t)
-	uc := usecase.NewTokenizationUseCase(noopTxManager{}, keyRepo, tokenRepo, hashSvc, fake, nil)
+	uc := usecase.NewTokenizationUseCase(noopTxManager{}, keyRepo, tokenRepo, hashSvc, fake)
 	return uc, fake, keyRepo, tokenRepo, hashSvc
 }
 

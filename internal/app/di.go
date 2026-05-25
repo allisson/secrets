@@ -364,18 +364,15 @@ func (c *Container) initMetricsProvider(ctx context.Context) (*metrics.Provider,
 	return provider, nil
 }
 
-// initBusinessMetrics creates the business metrics recorder if metrics are enabled.
+// initBusinessMetrics creates the business metrics recorder.
+// Only called when MetricsEnabled is true.
 func (c *Container) initBusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
-	if !c.config.MetricsEnabled {
-		return metrics.NewNoOpBusinessMetrics(), nil
-	}
-
 	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
 	if provider == nil {
-		return metrics.NewNoOpBusinessMetrics(), nil
+		return nil, fmt.Errorf("metrics provider is nil despite MetricsEnabled=true")
 	}
 
 	businessMetrics, err := metrics.NewBusinessMetrics(provider.MeterProvider(), c.config.MetricsNamespace)

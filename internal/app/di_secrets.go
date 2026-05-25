@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/allisson/secrets/internal/metrics"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
@@ -89,21 +88,20 @@ func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.Secre
 		return nil, fmt.Errorf("failed to get secret repository for secret use case: %w", err)
 	}
 
-	var bm metrics.BusinessMetrics
-	if c.config.MetricsEnabled {
-		bm, err = c.BusinessMetrics(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get business metrics for secret use case: %w", err)
-		}
-	}
-
-	return secretsUseCase.NewSecretUseCase(
+	inner := secretsUseCase.NewSecretUseCase(
 		txManager,
 		kr,
 		secretRepository,
 		c.config.SecretValueSizeLimitBytes,
-		bm,
-	), nil
+	)
+	if !c.config.MetricsEnabled {
+		return inner, nil
+	}
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for secret use case: %w", err)
+	}
+	return secretsUseCase.NewMetricsSecretUseCase(inner, bm, "secrets"), nil
 }
 
 func (c *Container) initSecretHandler(ctx context.Context) (*secretsHTTP.SecretHandler, error) {

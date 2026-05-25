@@ -80,31 +80,6 @@ func TestBusinessMetrics_RecordDuration(t *testing.T) {
 	})
 }
 
-func TestNewNoOpBusinessMetrics(t *testing.T) {
-	noOpMetrics := NewNoOpBusinessMetrics()
-
-	assert.NotNil(t, noOpMetrics)
-	assert.IsType(t, &NoOpBusinessMetrics{}, noOpMetrics)
-
-	t.Run("NoOp_RecordOperationDoesNotPanic", func(t *testing.T) {
-		// Should not panic or do anything
-		noOpMetrics.RecordOperation(context.Background(), "auth", "create_client", "success")
-		noOpMetrics.RecordOperation(context.Background(), "secrets", "encrypt", "error")
-	})
-
-	t.Run("NoOp_RecordDurationDoesNotPanic", func(t *testing.T) {
-		// Should not panic or do anything
-		noOpMetrics.RecordDuration(
-			context.Background(),
-			"auth",
-			"create_client",
-			100*time.Millisecond,
-			"success",
-		)
-		noOpMetrics.RecordDuration(context.Background(), "secrets", "encrypt", 200*time.Millisecond, "error")
-	})
-}
-
 func TestBusinessMetrics_Integration(t *testing.T) {
 	provider, err := NewProvider("integration_test")
 	require.NoError(t, err)
