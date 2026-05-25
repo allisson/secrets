@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inlined `BusinessMetrics` into all use case structs via a named-return defer pattern and deleted the five metrics decorator layers. No behavior change.
 - Unified the two rate limiter store implementations (`rateLimiterStore` / `tokenRateLimiterStore`) behind a single generic `rateLimiterStore[K comparable]`; `RateLimitMiddleware` and `TokenRateLimitMiddleware` are now thin adapters over a shared factory. No behavior change.
 - Folded the `Algorithm` return value into `TransitKey.Algorithm` so `GetTransitKey` and `Get` return `(*TransitKey, error)` instead of a three-value tuple; replaced `crypto/domain.Algorithm` with `keyring.Algorithm` across transit and tokenization layers. No behavior change.
+- Collapsed `internal/crypto/{domain,repository,service,usecase}` into `internal/keyring`; all types, stores, cipher primitives, KMS adapter, and KEK use case now live in a single package. No behavior change.
 
 ## [0.28.0] - 2026-03-23
 

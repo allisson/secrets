@@ -12,7 +12,7 @@ import (
 	"gocloud.dev/secrets"
 
 	"github.com/allisson/secrets/internal/config"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // TestNewContainer verifies that a new container can be created with a valid configuration.
@@ -166,43 +166,23 @@ func TestContainerShutdownAggregation(t *testing.T) {
 	// For now, we trust the logic in Shutdown which uses a slice to collect errors.
 }
 
-// TestContainerAEADManager verifies that the AEAD manager can be retrieved from the container.
-func TestContainerAEADManager(t *testing.T) {
+// TestContainerKMSService verifies that the KMS service can be retrieved from the container.
+func TestContainerKMSService(t *testing.T) {
 	cfg := &config.Config{
 		LogLevel: "info",
 	}
 
 	container := NewContainer(cfg)
-	aeadManager := container.AEADManager()
+	kmsService := container.KMSService()
 
-	if aeadManager == nil {
-		t.Fatal("expected non-nil AEAD manager")
+	if kmsService == nil {
+		t.Fatal("expected non-nil KMS service")
 	}
 
-	// Calling AEADManager() again should return the same instance (singleton)
-	aeadManager2 := container.AEADManager()
-	if aeadManager != aeadManager2 {
-		t.Error("expected same AEAD manager instance on multiple calls")
-	}
-}
-
-// TestContainerKeyManager verifies that the key manager can be retrieved from the container.
-func TestContainerKeyManager(t *testing.T) {
-	cfg := &config.Config{
-		LogLevel: "info",
-	}
-
-	container := NewContainer(cfg)
-	keyManager := container.KeyManager()
-
-	if keyManager == nil {
-		t.Fatal("expected non-nil key manager")
-	}
-
-	// Calling KeyManager() again should return the same instance (singleton)
-	keyManager2 := container.KeyManager()
-	if keyManager != keyManager2 {
-		t.Error("expected same key manager instance on multiple calls")
+	// Calling KMSService() again should return the same instance (singleton)
+	kmsService2 := container.KMSService()
+	if kmsService != kmsService2 {
+		t.Error("expected same KMS service instance on multiple calls")
 	}
 }
 
@@ -304,28 +284,6 @@ func TestContainerMetricsServer_CustomTimeouts(t *testing.T) {
 	}
 }
 
-// TestContainerKekRepositoryErrors verifies that KEK repository initialization errors are properly handled.
-func TestContainerKekRepositoryErrors(t *testing.T) {
-	// Create a container with invalid database configuration
-	cfg := &config.Config{
-		DBConnectionString: "",
-	}
-
-	container := NewContainer(cfg)
-
-	// Attempting to get KEK repository should return an error
-	_, err := container.KekRepository(context.Background())
-	if err == nil {
-		t.Error("expected error when connecting with invalid config")
-	}
-
-	// Attempting to get KEK repository again should return the same error
-	_, err2 := container.KekRepository(context.Background())
-	if err2 == nil {
-		t.Error("expected error on second call to KekRepository()")
-	}
-}
-
 // TestContainerKekUseCaseErrors verifies that KEK use case initialization errors are properly handled.
 func TestContainerKekUseCaseErrors(t *testing.T) {
 	// Create a container with invalid database configuration
@@ -364,7 +322,7 @@ func TestContainerMasterKeyChain(t *testing.T) {
 	masterKeyBytes := []byte("12345678901234567890123456789012") // 32 bytes
 
 	// Encrypt master key with KMS
-	kmsService := cryptoService.NewKMSService()
+	kmsService := keyring.NewKMSService()
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		t.Fatalf("failed to open KMS keeper: %v", err)
@@ -476,7 +434,7 @@ func TestContainerMasterKeyChainMultipleKeys(t *testing.T) {
 	key2Bytes := []byte("abcdefghijklmnopqrstuvwxyz123456") // 32 bytes
 
 	// Encrypt master keys with KMS
-	kmsService := cryptoService.NewKMSService()
+	kmsService := keyring.NewKMSService()
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		t.Fatalf("failed to open KMS keeper: %v", err)
@@ -564,7 +522,7 @@ func TestContainerShutdownWithMasterKeyChain(t *testing.T) {
 	masterKeyBytes := []byte("12345678901234567890123456789012") // 32 bytes
 
 	// Encrypt master key with KMS
-	kmsService := cryptoService.NewKMSService()
+	kmsService := keyring.NewKMSService()
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		t.Fatalf("failed to open KMS keeper: %v", err)

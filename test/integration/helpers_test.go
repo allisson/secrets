@@ -30,8 +30,7 @@ import (
 	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/config"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/testutil"
 )
 
@@ -43,7 +42,7 @@ type integrationTestContext struct {
 	rootClient     *authDomain.Client
 	rootToken      string
 	rootSecret     string
-	masterKeyChain *cryptoDomain.MasterKeyChain
+	masterKeyChain *keyring.MasterKeyChain
 	kmsKeyURI      string
 }
 
@@ -89,19 +88,19 @@ func (ctx *integrationTestContext) makeRequest(
 }
 
 // generateMasterKey creates a new 32-byte master key for testing.
-func generateMasterKey() *cryptoDomain.MasterKey {
+func generateMasterKey() *keyring.MasterKey {
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
 		panic(fmt.Sprintf("failed to generate master key: %v", err))
 	}
-	return &cryptoDomain.MasterKey{
+	return &keyring.MasterKey{
 		ID:  "test-key-1",
 		Key: key,
 	}
 }
 
 // createMasterKeyChain creates a master key chain with KMS encryption using localsecrets provider.
-func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.MasterKeyChain {
+func createMasterKeyChain(masterKey *keyring.MasterKey) *keyring.MasterKeyChain {
 	ctx := context.Background()
 
 	// Generate a random KMS key for localsecrets provider
@@ -112,7 +111,7 @@ func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.Maste
 	kmsKeyURI := "base64key://" + base64.URLEncoding.EncodeToString(kmsKey)
 
 	// Open KMS keeper
-	kmsService := cryptoService.NewKMSService()
+	kmsService := keyring.NewKMSService()
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		panic(fmt.Sprintf("failed to open KMS keeper: %v", err))
@@ -157,7 +156,7 @@ func createMasterKeyChain(masterKey *cryptoDomain.MasterKey) *cryptoDomain.Maste
 		SecretValueSizeLimitBytes: 1024 * 1024,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
+	chain, err := keyring.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load master key chain: %v", err))
 	}
@@ -178,13 +177,13 @@ func generateLocalSecretsKMSKey(t *testing.T) string {
 func createMasterKeyChainWithKMS(
 	ctx context.Context,
 	t *testing.T,
-	masterKey *cryptoDomain.MasterKey,
+	masterKey *keyring.MasterKey,
 	kmsKeyURI string,
-) *cryptoDomain.MasterKeyChain {
+) *keyring.MasterKeyChain {
 	t.Helper()
 
 	// Open KMS keeper
-	kmsService := cryptoService.NewKMSService()
+	kmsService := keyring.NewKMSService()
 	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	require.NoError(t, err, "failed to open KMS keeper")
 	defer func() {
@@ -222,7 +221,7 @@ func createMasterKeyChainWithKMS(
 		SecretValueSizeLimitBytes: 1024 * 1024,
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	chain, err := cryptoDomain.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
+	chain, err := keyring.LoadMasterKeyChain(ctx, cfg, kmsService, logger)
 	require.NoError(t, err, "failed to load master key chain from KMS")
 
 	return chain
@@ -267,7 +266,7 @@ func setupIntegrationTestWithKMS(t *testing.T) *integrationTestContext {
 	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
-	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
+	err = kekUseCase.Create(context.Background(), masterKeyChain, keyring.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
@@ -372,7 +371,7 @@ func setupIntegrationTest(t *testing.T) *integrationTestContext {
 	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
-	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
+	err = kekUseCase.Create(context.Background(), masterKeyChain, keyring.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
@@ -485,7 +484,7 @@ func setupIntegrationTestWithTokenExpiration(
 	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
-	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
+	err = kekUseCase.Create(context.Background(), masterKeyChain, keyring.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities
@@ -600,7 +599,7 @@ func setupIntegrationTestWithLockout(
 	kekUseCase, err := container.KekUseCase(context.Background())
 	require.NoError(t, err, "failed to get kek use case")
 
-	err = kekUseCase.Create(context.Background(), masterKeyChain, cryptoDomain.AESGCM)
+	err = kekUseCase.Create(context.Background(), masterKeyChain, keyring.AESGCM)
 	require.NoError(t, err, "failed to create initial KEK")
 
 	// Create root client with all capabilities

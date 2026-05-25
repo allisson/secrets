@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	"github.com/allisson/secrets/internal/tokenization/http/dto"
 	"github.com/allisson/secrets/internal/tokenization/usecase/mocks"
@@ -58,7 +58,7 @@ func TestTokenizationKeyHandler_CreateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Create(mock.Anything, "test-key", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM).
+			Create(mock.Anything, "test-key", tokenizationDomain.FormatUUID, false, keyring.AESGCM).
 			Return(expectedKey, nil).
 			Once()
 
@@ -105,7 +105,7 @@ func TestTokenizationKeyHandler_CreateHandler(t *testing.T) {
 				"cc-tokenizer",
 				tokenizationDomain.FormatLuhnPreserving,
 				true,
-				cryptoDomain.ChaCha20,
+				keyring.ChaCha20,
 			).
 			Return(expectedKey, nil).
 			Once()
@@ -218,7 +218,7 @@ func TestTokenizationKeyHandler_CreateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Create(mock.Anything, "existing-key", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM).
+			Create(mock.Anything, "existing-key", tokenizationDomain.FormatUUID, false, keyring.AESGCM).
 			Return(nil, tokenizationDomain.ErrTokenizationKeyAlreadyExists).
 			Once()
 
@@ -257,7 +257,7 @@ func TestTokenizationKeyHandler_RotateHandler(t *testing.T) {
 				"existing-key",
 				tokenizationDomain.FormatNumeric,
 				true,
-				cryptoDomain.AESGCM,
+				keyring.AESGCM,
 			).
 			Return(expectedKey, nil).
 			Once()
@@ -333,7 +333,7 @@ func TestTokenizationKeyHandler_RotateHandler(t *testing.T) {
 				"nonexistent-key",
 				tokenizationDomain.FormatUUID,
 				false,
-				cryptoDomain.AESGCM,
+				keyring.AESGCM,
 			).
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound).
 			Once()

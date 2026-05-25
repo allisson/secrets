@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // Manual mocks for KMS since they might not be generated in all environments
@@ -19,12 +19,12 @@ type MockKMSService struct {
 	mock.Mock
 }
 
-func (m *MockKMSService) OpenKeeper(ctx context.Context, uri string) (cryptoDomain.KMSKeeper, error) {
+func (m *MockKMSService) OpenKeeper(ctx context.Context, uri string) (keyring.KMSKeeper, error) {
 	args := m.Called(ctx, uri)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(cryptoDomain.KMSKeeper), args.Error(1)
+	return args.Get(0).(keyring.KMSKeeper), args.Error(1)
 }
 
 type MockKMSKeeper struct {

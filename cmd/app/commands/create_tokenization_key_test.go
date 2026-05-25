@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationMocks "github.com/allisson/secrets/internal/tokenization/usecase/mocks"
 )
@@ -20,7 +20,7 @@ func TestRunCreateTokenizationKey(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockUseCase := &tokenizationMocks.MockTokenizationKeyUseCase{}
-		mockUseCase.On("Create", ctx, name, tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM).
+		mockUseCase.On("Create", ctx, name, tokenizationDomain.FormatUUID, false, keyring.AESGCM).
 			Return(&tokenizationDomain.TokenizationKey{
 				ID: uuid.New(),
 			}, nil)

@@ -17,7 +17,7 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authDTO "github.com/allisson/secrets/internal/auth/http/dto"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDTO "github.com/allisson/secrets/internal/transit/http/dto"
 )
 
@@ -168,7 +168,7 @@ func TestIntegration_Transit_DecryptAfterRotation(t *testing.T) {
 			t.Run("01_CreateKey", func(t *testing.T) {
 				requestBody := transitDTO.CreateTransitKeyRequest{
 					Name:      keyName,
-					Algorithm: string(cryptoDomain.AESGCM),
+					Algorithm: string(keyring.AESGCM),
 				}
 
 				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/transit/keys", requestBody, true)
@@ -202,7 +202,7 @@ func TestIntegration_Transit_DecryptAfterRotation(t *testing.T) {
 			// [3] Rotate key to version 2
 			t.Run("03_RotateKey", func(t *testing.T) {
 				requestBody := transitDTO.RotateTransitKeyRequest{
-					Algorithm: string(cryptoDomain.AESGCM),
+					Algorithm: string(keyring.AESGCM),
 				}
 
 				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/transit/keys/"+keyName+"/rotate", requestBody, true)
@@ -286,7 +286,7 @@ func TestIntegration_Transit_DeleteKey(t *testing.T) {
 			t.Run("01_CreateKey", func(t *testing.T) {
 				requestBody := transitDTO.CreateTransitKeyRequest{
 					Name:      keyName,
-					Algorithm: string(cryptoDomain.AESGCM),
+					Algorithm: string(keyring.AESGCM),
 				}
 
 				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/transit/keys", requestBody, true)

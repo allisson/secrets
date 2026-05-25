@@ -14,7 +14,7 @@ import (
 
 	"github.com/allisson/secrets/internal/app"
 	"github.com/allisson/secrets/internal/config"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
@@ -86,13 +86,13 @@ func CloseMigrate(migrate *migrate.Migrate, logger *slog.Logger) {
 	}
 }
 
-// ParseAlgorithm converts algorithm string to cryptoDomain.Algorithm type.
-func ParseAlgorithm(algorithmStr string) (cryptoDomain.Algorithm, error) {
+// ParseAlgorithm converts algorithm string to keyring.Algorithm type.
+func ParseAlgorithm(algorithmStr string) (keyring.Algorithm, error) {
 	switch algorithmStr {
 	case "aes-gcm":
-		return cryptoDomain.AESGCM, nil
+		return keyring.AESGCM, nil
 	case "chacha20-poly1305":
-		return cryptoDomain.ChaCha20, nil
+		return keyring.ChaCha20, nil
 	default:
 		return "", fmt.Errorf(
 			"invalid algorithm: %s (valid options: aes-gcm, chacha20-poly1305)",

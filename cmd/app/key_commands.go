@@ -9,7 +9,7 @@ import (
 
 	"github.com/allisson/secrets/cmd/app/commands"
 	"github.com/allisson/secrets/internal/app"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // getKeyCommands returns the key-related CLI commands.
@@ -44,7 +44,7 @@ func getKeyCommands() []*cli.Command {
 					func(ctx context.Context, container *app.Container) error {
 						return commands.RunCreateMasterKey(
 							ctx,
-							cryptoService.NewKMSService(),
+							keyring.NewKMSService(),
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							cmd.String("id"),
@@ -84,7 +84,7 @@ func getKeyCommands() []*cli.Command {
 					func(ctx context.Context, container *app.Container) error {
 						return commands.RunRotateMasterKey(
 							ctx,
-							cryptoService.NewKMSService(),
+							keyring.NewKMSService(),
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							cmd.String("id"),

@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"log/slog"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // RunCreateKek creates a new Key Encryption Key (KEK) and encrypts it with the master key.
 // The new KEK will be stored in the database and marked as active for its algorithm.
 func RunCreateKek(
 	ctx context.Context,
-	kekUseCase cryptoUseCase.KekUseCase,
-	masterKeyChain *cryptoDomain.MasterKeyChain,
+	kekUseCase keyring.KekUseCase,
+	masterKeyChain *keyring.MasterKeyChain,
 	logger *slog.Logger,
 	algorithmStr string,
 ) error {

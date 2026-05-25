@@ -18,8 +18,7 @@ import (
 	"gocloud.dev/secrets"
 
 	"github.com/allisson/secrets/internal/config"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
+	"github.com/allisson/secrets/internal/keyring"
 	secretsDTO "github.com/allisson/secrets/internal/secrets/http/dto"
 )
 
@@ -63,19 +62,13 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 		// KEK was created during setup - verify it exists in database
 		// This validates KMS-decrypted master key successfully encrypted KEK
 
-		kekUseCase, err := ctx.container.KekUseCase(context.Background())
+		kr, err := ctx.container.Keyring(context.Background())
 		require.NoError(t, err)
 
-		kekChain, err := kekUseCase.Unwrap(context.Background(), ctx.masterKeyChain)
-		require.NoError(t, err)
-		require.NotNil(t, kekChain, "KEK chain should not be nil")
+		activeKekID := kr.ActiveKekID()
+		assert.NotEmpty(t, activeKekID, "active KEK should exist")
 
-		// Verify at least one KEK exists
-		activeKek, exists := kekChain.Get(kekChain.ActiveKekID())
-		assert.True(t, exists, "active KEK should exist")
-		assert.NotNil(t, activeKek, "active KEK should not be nil")
-
-		t.Logf("KEK created with KMS-protected master key: version=%d", activeKek.Version)
+		t.Logf("KEK created with KMS-protected master key: id=%s", activeKekID)
 	})
 
 	// [3/7] Create secret (encrypt with KMS-protected KEK)
@@ -120,7 +113,7 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 	// [5/7] Rotate master key with KMS
 	t.Run("05_RotateMasterKeyWithKMS", func(t *testing.T) {
 		// Generate new master key
-		newMasterKey := &cryptoDomain.MasterKey{
+		newMasterKey := &keyring.MasterKey{
 			ID:  "test-key-2",
 			Key: make([]byte, 32),
 		}
@@ -128,7 +121,7 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Encrypt new master key with KMS
-		kmsService := cryptoService.NewKMSService()
+		kmsService := keyring.NewKMSService()
 		keeperInterface, err := kmsService.OpenKeeper(context.Background(), ctx.kmsKeyURI)
 		require.NoError(t, err)
 		defer func() {
@@ -165,7 +158,7 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 		// Close old chain before loading new one
 		ctx.masterKeyChain.Close()
 
-		newChain, err := cryptoDomain.LoadMasterKeyChain(
+		newChain, err := keyring.LoadMasterKeyChain(
 			context.Background(),
 			cfg,
 			kmsService,
