@@ -10,7 +10,6 @@ import (
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
@@ -19,7 +18,6 @@ type tokenizationKeyUseCase struct {
 	txManager           database.TxManager
 	tokenizationKeyRepo TokenizationKeyRepository
 	keyring             keyring.Keyring
-	metrics             metricsLib.BusinessMetrics
 }
 
 // createTokenizationKey is a helper that creates a tokenization key within an existing
@@ -77,11 +75,6 @@ func (t *tokenizationKeyUseCase) Create(
 	isDeterministic bool,
 	alg keyring.Algorithm,
 ) (result *tokenizationDomain.TokenizationKey, err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_create", start, err)
-	}()
-
 	if err = formatType.Validate(); err != nil {
 		return nil, tokenizationDomain.ErrInvalidFormatType
 	}
@@ -115,11 +108,6 @@ func (t *tokenizationKeyUseCase) Rotate(
 	isDeterministic bool,
 	alg keyring.Algorithm,
 ) (result *tokenizationDomain.TokenizationKey, err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_rotate", start, err)
-	}()
-
 	if err = formatType.Validate(); err != nil {
 		return nil, tokenizationDomain.ErrInvalidFormatType
 	}
@@ -153,11 +141,6 @@ func (t *tokenizationKeyUseCase) Rotate(
 
 // Delete soft deletes a tokenization key and all its versions by name.
 func (t *tokenizationKeyUseCase) Delete(ctx context.Context, name string) (err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_delete", start, err)
-	}()
-
 	if err = t.tokenizationKeyRepo.Delete(ctx, name); err != nil {
 		return apperrors.Wrap(err, "failed to delete tokenization key")
 	}
@@ -169,11 +152,6 @@ func (t *tokenizationKeyUseCase) GetByName(
 	ctx context.Context,
 	name string,
 ) (result *tokenizationDomain.TokenizationKey, err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_get", start, err)
-	}()
-
 	key, err := t.tokenizationKeyRepo.GetByName(ctx, name)
 	if err != nil {
 		if apperrors.Is(err, tokenizationDomain.ErrTokenizationKeyNotFound) {
@@ -190,11 +168,6 @@ func (t *tokenizationKeyUseCase) ListCursor(
 	afterName *string,
 	limit int,
 ) (result []*tokenizationDomain.TokenizationKey, err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_list", start, err)
-	}()
-
 	keys, err := t.tokenizationKeyRepo.ListCursor(ctx, afterName, limit)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list tokenization keys")
@@ -208,11 +181,6 @@ func (t *tokenizationKeyUseCase) PurgeDeleted(
 	olderThanDays int,
 	dryRun bool,
 ) (count int64, err error) {
-	start := time.Now()
-	defer func() {
-		metricsLib.Record(ctx, t.metrics, "tokenization", "tokenization_key_purge_deleted", start, err)
-	}()
-
 	if olderThanDays < 0 {
 		return 0, apperrors.New("olderThanDays must be a positive number")
 	}
@@ -227,12 +195,10 @@ func NewTokenizationKeyUseCase(
 	txManager database.TxManager,
 	tokenizationKeyRepo TokenizationKeyRepository,
 	kr keyring.Keyring,
-	bm metricsLib.BusinessMetrics,
 ) TokenizationKeyUseCase {
 	return &tokenizationKeyUseCase{
 		txManager:           txManager,
 		tokenizationKeyRepo: tokenizationKeyRepo,
 		keyring:             kr,
-		metrics:             bm,
 	}
 }

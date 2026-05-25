@@ -14,7 +14,6 @@ import (
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationService "github.com/allisson/secrets/internal/tokenization/service"
 )
@@ -44,7 +43,6 @@ type tokenizationUseCase struct {
 	tokenRepo        TokenRepository
 	hashService      HashService
 	keyring          keyring.Keyring
-	metrics          metricsLib.BusinessMetrics
 }
 
 // Tokenize generates a token for the given plaintext value using the latest version of the named key.
@@ -55,9 +53,6 @@ func (t *tokenizationUseCase) Tokenize(
 	metadata map[string]any,
 	expiresAt *time.Time,
 ) (result *tokenizationDomain.Token, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "tokenize", start, err) }()
-
 	if len(plaintext) == 0 {
 		return nil, tokenizationDomain.ErrPlaintextEmpty
 	}
@@ -154,9 +149,6 @@ func (t *tokenizationUseCase) TokenizeBatch(
 	metadatas []map[string]any,
 	expiresAt *time.Time,
 ) (result []*tokenizationDomain.Token, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "tokenize_batch", start, err) }()
-
 	var tokens []*tokenizationDomain.Token
 	err = t.txManager.WithTx(ctx, func(ctx context.Context) error {
 		for i, plaintext := range plaintexts {
@@ -184,9 +176,6 @@ func (t *tokenizationUseCase) Detokenize(
 	ctx context.Context,
 	token string,
 ) (plaintext []byte, metadata map[string]any, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "detokenize", start, err) }()
-
 	tokenRecord, err := t.tokenRepo.GetByToken(ctx, token)
 	if err != nil {
 		return nil, nil, apperrors.Wrap(err, "failed to get token")
@@ -221,9 +210,6 @@ func (t *tokenizationUseCase) DetokenizeBatch(
 	ctx context.Context,
 	tokens []string,
 ) (plaintexts [][]byte, metadatas []map[string]any, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "detokenize_batch", start, err) }()
-
 	err = t.txManager.WithTx(ctx, func(ctx context.Context) error {
 		for _, token := range tokens {
 			plaintext, metadata, err := t.Detokenize(ctx, token)
@@ -243,13 +229,9 @@ func (t *tokenizationUseCase) DetokenizeBatch(
 
 // Validate checks if a token exists and is valid (not expired or revoked).
 func (t *tokenizationUseCase) Validate(ctx context.Context, token string) (valid bool, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "tokenize_validate", start, err) }()
-
 	tokenRecord, err := t.tokenRepo.GetByToken(ctx, token)
 	if err != nil {
 		if apperrors.Is(err, tokenizationDomain.ErrTokenNotFound) {
-			err = nil
 			return false, nil
 		}
 		return false, apperrors.Wrap(err, "failed to validate token")
@@ -259,9 +241,6 @@ func (t *tokenizationUseCase) Validate(ctx context.Context, token string) (valid
 
 // Revoke marks a token as revoked, preventing further detokenization.
 func (t *tokenizationUseCase) Revoke(ctx context.Context, token string) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "tokenize_revoke", start, err) }()
-
 	if _, err = t.tokenRepo.GetByToken(ctx, token); err != nil {
 		return apperrors.Wrap(err, "failed to get token for revocation")
 	}
@@ -277,9 +256,6 @@ func (t *tokenizationUseCase) CleanupExpired(
 	days int,
 	dryRun bool,
 ) (count int64, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "tokenization", "tokenize_cleanup_expired", start, err) }()
-
 	if days < 0 {
 		return 0, apperrors.New("days must be non-negative")
 	}
@@ -300,7 +276,6 @@ func NewTokenizationUseCase(
 	tokenRepo TokenRepository,
 	hashService HashService,
 	kr keyring.Keyring,
-	bm metricsLib.BusinessMetrics,
 ) TokenizationUseCase {
 	return &tokenizationUseCase{
 		txManager:        txManager,
@@ -308,6 +283,5 @@ func NewTokenizationUseCase(
 		tokenRepo:        tokenRepo,
 		hashService:      hashService,
 		keyring:          kr,
-		metrics:          bm,
 	}
 }

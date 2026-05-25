@@ -89,37 +89,10 @@ func (b *businessMetrics) RecordDuration(
 	)
 }
 
-// NoOpBusinessMetrics is a no-op implementation of BusinessMetrics for when metrics are disabled.
-type NoOpBusinessMetrics struct{}
-
-// NewNoOpBusinessMetrics creates a no-op BusinessMetrics implementation.
-func NewNoOpBusinessMetrics() BusinessMetrics {
-	return &NoOpBusinessMetrics{}
-}
-
-// RecordOperation does nothing when metrics are disabled.
-func (n *NoOpBusinessMetrics) RecordOperation(ctx context.Context, domain, operation, status string) {
-	// No-op
-}
-
-// RecordDuration does nothing when metrics are disabled.
-func (n *NoOpBusinessMetrics) RecordDuration(
-	ctx context.Context,
-	domain, operation string,
-	duration time.Duration,
-	status string,
-) {
-	// No-op
-}
-
 // Record calls RecordOperation and RecordDuration for a completed operation.
 // status is "success" when err is nil, "error" otherwise.
 // Callers capture time.Now() before the operation and pass it as start.
-// If m is nil, Record is a no-op.
 func Record(ctx context.Context, m BusinessMetrics, domain, op string, start time.Time, err error) {
-	if m == nil {
-		return
-	}
 	status := "success"
 	if err != nil {
 		status = "error"

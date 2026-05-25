@@ -13,7 +13,6 @@ import (
 	"github.com/allisson/secrets/internal/database"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
 
@@ -22,7 +21,6 @@ type transitKeyUseCase struct {
 	txManager   database.TxManager
 	transitRepo TransitKeyRepository
 	keyring     keyring.Keyring
-	metrics     metricsLib.BusinessMetrics
 }
 
 // Create generates and persists a new transit key with version 1.
@@ -31,9 +29,6 @@ func (t *transitKeyUseCase) Create(
 	name string,
 	alg keyring.Algorithm,
 ) (result *transitDomain.TransitKey, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_create", start, err) }()
-
 	var transitKey *transitDomain.TransitKey
 
 	err = t.txManager.WithTx(ctx, func(txCtx context.Context) error {
@@ -72,9 +67,6 @@ func (t *transitKeyUseCase) Rotate(
 	name string,
 	alg keyring.Algorithm,
 ) (result *transitDomain.TransitKey, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_rotate", start, err) }()
-
 	var newTransitKey *transitDomain.TransitKey
 
 	err = t.txManager.WithTx(ctx, func(txCtx context.Context) error {
@@ -114,16 +106,12 @@ func (t *transitKeyUseCase) Get(
 	name string,
 	version uint,
 ) (key *transitDomain.TransitKey, alg keyring.Algorithm, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_get", start, err) }()
 	key, alg, err = t.transitRepo.GetTransitKey(ctx, name, version)
 	return
 }
 
 // Delete soft-deletes all versions of a transit key by name.
 func (t *transitKeyUseCase) Delete(ctx context.Context, name string) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_delete", start, err) }()
 	err = t.transitRepo.Delete(ctx, name)
 	return
 }
@@ -137,9 +125,6 @@ func (t *transitKeyUseCase) Encrypt(
 	name string,
 	plaintext, context []byte,
 ) (result *transitDomain.EncryptedBlob, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_encrypt", start, err) }()
-
 	transitKey, err := t.transitRepo.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
@@ -162,9 +147,6 @@ func (t *transitKeyUseCase) Decrypt(
 	ciphertext string,
 	context []byte,
 ) (result *transitDomain.EncryptedBlob, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_decrypt", start, err) }()
-
 	blob, err := transitDomain.NewEncryptedBlob(ciphertext)
 	if err != nil {
 		return nil, err
@@ -198,8 +180,6 @@ func (t *transitKeyUseCase) ListCursor(
 	afterName *string,
 	limit int,
 ) (result []*transitDomain.TransitKey, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_list", start, err) }()
 	result, err = t.transitRepo.ListCursor(ctx, afterName, limit)
 	return
 }
@@ -210,9 +190,6 @@ func (t *transitKeyUseCase) PurgeDeleted(
 	olderThanDays int,
 	dryRun bool,
 ) (count int64, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, t.metrics, "transit", "transit_key_purge_deleted", start, err) }()
-
 	if olderThanDays < 0 {
 		return 0, apperrors.New("olderThanDays must be a positive number")
 	}
@@ -227,12 +204,10 @@ func NewTransitKeyUseCase(
 	txManager database.TxManager,
 	transitRepo TransitKeyRepository,
 	kr keyring.Keyring,
-	bm metricsLib.BusinessMetrics,
 ) TransitKeyUseCase {
 	return &transitKeyUseCase{
 		txManager:   txManager,
 		transitRepo: transitRepo,
 		keyring:     kr,
-		metrics:     bm,
 	}
 }

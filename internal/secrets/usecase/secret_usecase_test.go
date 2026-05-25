@@ -36,7 +36,7 @@ func newSecretUseCase(
 	t.Helper()
 	fake := keyring.NewFake()
 	repo := mocks.NewMockSecretRepository(t)
-	uc := usecase.NewSecretUseCase(noopTxManager{}, fake, repo, sizeLimit, nil)
+	uc := usecase.NewSecretUseCase(noopTxManager{}, fake, repo, sizeLimit)
 	return uc, fake, repo
 }
 

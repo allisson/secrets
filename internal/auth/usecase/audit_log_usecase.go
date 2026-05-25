@@ -11,7 +11,6 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
-	metricsLib "github.com/allisson/secrets/internal/metrics"
 )
 
 // auditLogUseCase implements AuditLogUseCase interface for recording and verifying audit logs.
@@ -19,7 +18,6 @@ import (
 type auditLogUseCase struct {
 	auditLogRepo AuditLogRepository
 	keySigner    keyring.KeySigner
-	metrics      metricsLib.BusinessMetrics
 }
 
 // Create records an audit log entry for an authenticated operation. Generates a unique
@@ -34,9 +32,6 @@ func (a *auditLogUseCase) Create(
 	path string,
 	metadata map[string]any,
 ) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_create", start, err) }()
-
 	// Create the audit log entity
 	// Truncate timestamp to microsecond precision to match database storage (PostgreSQL TIMESTAMPTZ
 	// ). This ensures the signature matches the value
@@ -89,9 +84,6 @@ func (a *auditLogUseCase) ListCursor(
 	createdAtFrom, createdAtTo *time.Time,
 	clientID *uuid.UUID,
 ) (result []*authDomain.AuditLog, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_list", start, err) }()
-
 	auditLogs, err := a.auditLogRepo.ListCursor(ctx, afterID, limit, createdAtFrom, createdAtTo, clientID)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list audit logs with cursor")
@@ -109,9 +101,6 @@ func (a *auditLogUseCase) DeleteOlderThan(
 	days int,
 	dryRun bool,
 ) (count int64, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_delete", start, err) }()
-
 	// Calculate cutoff date in UTC
 	cutoffDate := time.Now().UTC().AddDate(0, 0, -days)
 
@@ -128,9 +117,6 @@ func (a *auditLogUseCase) DeleteOlderThan(
 // Retrieves the log from the repository and validates its HMAC-SHA256 signature
 // using the KEK referenced by log.KekID. Returns nil if valid, error otherwise.
 func (a *auditLogUseCase) VerifyIntegrity(ctx context.Context, id uuid.UUID) (err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_verify", start, err) }()
-
 	// Retrieve audit log from repository
 	auditLog, err := a.auditLogRepo.Get(ctx, id)
 	if err != nil {
@@ -164,9 +150,6 @@ func (a *auditLogUseCase) VerifyBatch(
 	ctx context.Context,
 	startTime, endTime time.Time,
 ) (result *VerificationReport, err error) {
-	start := time.Now()
-	defer func() { metricsLib.Record(ctx, a.metrics, "auth", "audit_log_verify_batch", start, err) }()
-
 	report := &VerificationReport{
 		InvalidLogs: []uuid.UUID{},
 	}
@@ -233,11 +216,9 @@ func (a *auditLogUseCase) VerifyBatch(
 func NewAuditLogUseCase(
 	auditLogRepo AuditLogRepository,
 	keySigner keyring.KeySigner,
-	bm metricsLib.BusinessMetrics,
 ) AuditLogUseCase {
 	return &auditLogUseCase{
 		auditLogRepo: auditLogRepo,
 		keySigner:    keySigner,
-		metrics:      bm,
 	}
 }

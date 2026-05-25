@@ -8,7 +8,6 @@ import (
 	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
-	"github.com/allisson/secrets/internal/metrics"
 )
 
 // SecretService returns the secret service for authentication operations.
@@ -228,22 +227,21 @@ func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUs
 
 	secretService := c.SecretService()
 
-	var bm metrics.BusinessMetrics
-	if c.config.MetricsEnabled {
-		bm, err = c.BusinessMetrics(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get business metrics for client use case: %w", err)
-		}
-	}
-
-	return authUseCase.NewClientUseCase(
+	inner := authUseCase.NewClientUseCase(
 		txManager,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
 		secretService,
-		bm,
-	), nil
+	)
+	if !c.config.MetricsEnabled {
+		return inner, nil
+	}
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for client use case: %w", err)
+	}
+	return authUseCase.NewMetricsClientUseCase(inner, bm, "auth"), nil
 }
 
 // initTokenService creates the token service for authentication.
@@ -291,23 +289,22 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 	secretService := c.SecretService()
 	tokenService := c.TokenService()
 
-	var bm metrics.BusinessMetrics
-	if c.config.MetricsEnabled {
-		bm, err = c.BusinessMetrics(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get business metrics for token use case: %w", err)
-		}
-	}
-
-	return authUseCase.NewTokenUseCase(
+	inner := authUseCase.NewTokenUseCase(
 		c.config,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
 		secretService,
 		tokenService,
-		bm,
-	), nil
+	)
+	if !c.config.MetricsEnabled {
+		return inner, nil
+	}
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for token use case: %w", err)
+	}
+	return authUseCase.NewMetricsTokenUseCase(inner, bm, "auth"), nil
 }
 
 // initAuditLogUseCase creates the audit log use case with all its dependencies.
@@ -322,15 +319,15 @@ func (c *Container) initAuditLogUseCase(ctx context.Context) (authUseCase.AuditL
 		return nil, fmt.Errorf("failed to get key signer for audit log use case: %w", err)
 	}
 
-	var bm metrics.BusinessMetrics
-	if c.config.MetricsEnabled {
-		bm, err = c.BusinessMetrics(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get business metrics for audit log use case: %w", err)
-		}
+	inner := authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner)
+	if !c.config.MetricsEnabled {
+		return inner, nil
 	}
-
-	return authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner, bm), nil
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for audit log use case: %w", err)
+	}
+	return authUseCase.NewMetricsAuditLogUseCase(inner, bm, "auth"), nil
 }
 
 // initClientHandler creates the client HTTP handler with all its dependencies.
