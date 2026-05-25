@@ -237,7 +237,7 @@ func TestRateLimitMiddleware_RequiresAuthentication(t *testing.T) {
 }
 
 func TestRateLimiterStore_CleanupStaleEntries(t *testing.T) {
-	store := &rateLimiterStore{
+	store := &rateLimiterStore[uuid.UUID]{
 		rps:   10.0,
 		burst: 20,
 	}
