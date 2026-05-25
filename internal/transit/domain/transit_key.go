@@ -17,6 +17,7 @@ type TransitKey struct {
 	Name      string     // Human-readable name (shared across all versions of this key)
 	Version   uint       // Key version number (increments with rotation, starts at 1)
 	DekID     uuid.UUID  // Reference to the Data Encryption Key used to encrypt this transit key
+	Algorithm string     // AEAD algorithm name (populated on read; empty when creating)
 	CreatedAt time.Time  // Timestamp when this key version was created (UTC)
 	DeletedAt *time.Time // Soft deletion timestamp (nil if active, set when deleted)
 }

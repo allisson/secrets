@@ -208,13 +208,13 @@ func (h *TransitKeyHandler) GetHandler(c *gin.Context) {
 	}
 
 	// Call use case
-	transitKey, alg, err := h.transitKeyUseCase.Get(c.Request.Context(), name, version)
+	transitKey, err := h.transitKeyUseCase.Get(c.Request.Context(), name, version)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
 	}
 
 	// Map to response
-	response := dto.MapTransitKeyToMetadataResponse(transitKey, string(alg))
+	response := dto.MapTransitKeyToMetadataResponse(transitKey, transitKey.Algorithm)
 	c.JSON(http.StatusOK, response)
 }

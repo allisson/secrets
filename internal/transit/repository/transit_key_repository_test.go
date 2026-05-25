@@ -847,35 +847,33 @@ func TestTransitKeyRepository_GetTransitKey(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Get latest version", func(t *testing.T) {
-		tk, alg, err := repo.GetTransitKey(ctx, name, 0)
+		tk, err := repo.GetTransitKey(ctx, name, 0)
 		require.NoError(t, err)
 		assert.Equal(t, key2.ID, tk.ID)
 		assert.Equal(t, name, tk.Name)
 		assert.Equal(t, uint(2), tk.Version)
-		assert.Equal(t, algorithm, alg)
+		assert.Equal(t, string(algorithm), tk.Algorithm)
 	})
 
 	t.Run("Get specific version", func(t *testing.T) {
-		tk, alg, err := repo.GetTransitKey(ctx, name, 1)
+		tk, err := repo.GetTransitKey(ctx, name, 1)
 		require.NoError(t, err)
 		assert.Equal(t, key1.ID, tk.ID)
 		assert.Equal(t, name, tk.Name)
 		assert.Equal(t, uint(1), tk.Version)
-		assert.Equal(t, algorithm, alg)
+		assert.Equal(t, string(algorithm), tk.Algorithm)
 	})
 
 	t.Run("Key not found", func(t *testing.T) {
-		tk, alg, err := repo.GetTransitKey(ctx, "non-existent", 0)
+		tk, err := repo.GetTransitKey(ctx, "non-existent", 0)
 		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
 		assert.Nil(t, tk)
-		assert.Empty(t, alg)
 	})
 
 	t.Run("Version not found", func(t *testing.T) {
-		tk, alg, err := repo.GetTransitKey(ctx, name, 3)
+		tk, err := repo.GetTransitKey(ctx, name, 3)
 		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyNotFound)
 		assert.Nil(t, tk)
-		assert.Empty(t, alg)
 	})
 }
 

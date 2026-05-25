@@ -296,4 +296,3 @@ func (_c *MockTokenService_GenerateToken_Call) RunAndReturn(run func() (string, 
 	_c.Call.Return(run)
 	return _c
 }
-

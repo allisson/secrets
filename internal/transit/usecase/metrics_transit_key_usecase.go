@@ -50,9 +50,9 @@ func (m *metricsTransitKeyUseCase) Get(
 	ctx context.Context,
 	name string,
 	version uint,
-) (key *transitDomain.TransitKey, alg keyring.Algorithm, err error) {
+) (key *transitDomain.TransitKey, err error) {
 	start := time.Now()
-	key, alg, err = m.inner.Get(ctx, name, version)
+	key, err = m.inner.Get(ctx, name, version)
 	metrics.Record(ctx, m.bm, m.domain, "transit_key_get", start, err)
 	return
 }
