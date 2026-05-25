@@ -23,13 +23,14 @@ type TransitKeyUseCase interface {
 	// Generates a new DEK for the new version while preserving old versions for decryption.
 	Rotate(ctx context.Context, name string, alg keyring.Algorithm) (*transitDomain.TransitKey, error)
 
-	// Get retrieves transit key metadata (including its algorithm) by name and optional version.
+	// Get retrieves transit key metadata by name and optional version.
 	// If version is 0, the latest version is retrieved.
+	// The algorithm is available in the returned TransitKey.Algorithm field.
 	Get(
 		ctx context.Context,
 		name string,
 		version uint,
-	) (*transitDomain.TransitKey, keyring.Algorithm, error)
+	) (*transitDomain.TransitKey, error)
 
 	// Delete soft deletes a transit key and all its versions by name.
 	Delete(ctx context.Context, name string) error

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 func TestCreateTransitKeyRequest_Validate(t *testing.T) {
@@ -195,13 +195,13 @@ func TestParseAlgorithm(t *testing.T) {
 	t.Run("Success_AESGCM", func(t *testing.T) {
 		alg, err := ParseAlgorithm("aes-gcm")
 		assert.NoError(t, err)
-		assert.Equal(t, cryptoDomain.AESGCM, alg)
+		assert.Equal(t, keyring.AESGCM, alg)
 	})
 
 	t.Run("Success_ChaCha20", func(t *testing.T) {
 		alg, err := ParseAlgorithm("chacha20-poly1305")
 		assert.NoError(t, err)
-		assert.Equal(t, cryptoDomain.ChaCha20, alg)
+		assert.Equal(t, keyring.ChaCha20, alg)
 	})
 
 	t.Run("Error_InvalidAlgorithm", func(t *testing.T) {

@@ -100,14 +100,14 @@ func (t *transitKeyUseCase) Rotate(
 	return newTransitKey, nil
 }
 
-// Get retrieves transit key metadata (including its algorithm) by name and optional version.
+// Get retrieves transit key metadata by name and optional version.
+// The algorithm is available in the returned TransitKey.Algorithm field.
 func (t *transitKeyUseCase) Get(
 	ctx context.Context,
 	name string,
 	version uint,
-) (key *transitDomain.TransitKey, alg keyring.Algorithm, err error) {
-	key, alg, err = t.transitRepo.GetTransitKey(ctx, name, version)
-	return
+) (*transitDomain.TransitKey, error) {
+	return t.transitRepo.GetTransitKey(ctx, name, version)
 }
 
 // Delete soft-deletes all versions of a transit key by name.

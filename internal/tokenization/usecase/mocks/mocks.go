@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	domain0 "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/tokenization/domain"
 	"github.com/google/uuid"
 	mock "github.com/stretchr/testify/mock"
@@ -1163,7 +1163,7 @@ func (_m *MockTokenizationKeyUseCase) EXPECT() *MockTokenizationKeyUseCase_Expec
 }
 
 // Create provides a mock function for the type MockTokenizationKeyUseCase
-func (_mock *MockTokenizationKeyUseCase) Create(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm) (*domain.TokenizationKey, error) {
+func (_mock *MockTokenizationKeyUseCase) Create(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm) (*domain.TokenizationKey, error) {
 	ret := _mock.Called(ctx, name, formatType, isDeterministic, alg)
 
 	if len(ret) == 0 {
@@ -1172,17 +1172,17 @@ func (_mock *MockTokenizationKeyUseCase) Create(ctx context.Context, name string
 
 	var r0 *domain.TokenizationKey
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) (*domain.TokenizationKey, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) (*domain.TokenizationKey, error)); ok {
 		return returnFunc(ctx, name, formatType, isDeterministic, alg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) *domain.TokenizationKey); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) *domain.TokenizationKey); ok {
 		r0 = returnFunc(ctx, name, formatType, isDeterministic, alg)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.TokenizationKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) error); ok {
 		r1 = returnFunc(ctx, name, formatType, isDeterministic, alg)
 	} else {
 		r1 = ret.Error(1)
@@ -1200,12 +1200,12 @@ type MockTokenizationKeyUseCase_Create_Call struct {
 //   - name string
 //   - formatType domain.FormatType
 //   - isDeterministic bool
-//   - alg domain0.Algorithm
+//   - alg keyring.Algorithm
 func (_e *MockTokenizationKeyUseCase_Expecter) Create(ctx interface{}, name interface{}, formatType interface{}, isDeterministic interface{}, alg interface{}) *MockTokenizationKeyUseCase_Create_Call {
 	return &MockTokenizationKeyUseCase_Create_Call{Call: _e.mock.On("Create", ctx, name, formatType, isDeterministic, alg)}
 }
 
-func (_c *MockTokenizationKeyUseCase_Create_Call) Run(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm)) *MockTokenizationKeyUseCase_Create_Call {
+func (_c *MockTokenizationKeyUseCase_Create_Call) Run(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm)) *MockTokenizationKeyUseCase_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1223,9 +1223,9 @@ func (_c *MockTokenizationKeyUseCase_Create_Call) Run(run func(ctx context.Conte
 		if args[3] != nil {
 			arg3 = args[3].(bool)
 		}
-		var arg4 domain0.Algorithm
+		var arg4 keyring.Algorithm
 		if args[4] != nil {
-			arg4 = args[4].(domain0.Algorithm)
+			arg4 = args[4].(keyring.Algorithm)
 		}
 		run(
 			arg0,
@@ -1243,7 +1243,7 @@ func (_c *MockTokenizationKeyUseCase_Create_Call) Return(tokenizationKey *domain
 	return _c
 }
 
-func (_c *MockTokenizationKeyUseCase_Create_Call) RunAndReturn(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm) (*domain.TokenizationKey, error)) *MockTokenizationKeyUseCase_Create_Call {
+func (_c *MockTokenizationKeyUseCase_Create_Call) RunAndReturn(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm) (*domain.TokenizationKey, error)) *MockTokenizationKeyUseCase_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1520,7 +1520,7 @@ func (_c *MockTokenizationKeyUseCase_PurgeDeleted_Call) RunAndReturn(run func(ct
 }
 
 // Rotate provides a mock function for the type MockTokenizationKeyUseCase
-func (_mock *MockTokenizationKeyUseCase) Rotate(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm) (*domain.TokenizationKey, error) {
+func (_mock *MockTokenizationKeyUseCase) Rotate(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm) (*domain.TokenizationKey, error) {
 	ret := _mock.Called(ctx, name, formatType, isDeterministic, alg)
 
 	if len(ret) == 0 {
@@ -1529,17 +1529,17 @@ func (_mock *MockTokenizationKeyUseCase) Rotate(ctx context.Context, name string
 
 	var r0 *domain.TokenizationKey
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) (*domain.TokenizationKey, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) (*domain.TokenizationKey, error)); ok {
 		return returnFunc(ctx, name, formatType, isDeterministic, alg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) *domain.TokenizationKey); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) *domain.TokenizationKey); ok {
 		r0 = returnFunc(ctx, name, formatType, isDeterministic, alg)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.TokenizationKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain.FormatType, bool, domain0.Algorithm) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain.FormatType, bool, keyring.Algorithm) error); ok {
 		r1 = returnFunc(ctx, name, formatType, isDeterministic, alg)
 	} else {
 		r1 = ret.Error(1)
@@ -1557,12 +1557,12 @@ type MockTokenizationKeyUseCase_Rotate_Call struct {
 //   - name string
 //   - formatType domain.FormatType
 //   - isDeterministic bool
-//   - alg domain0.Algorithm
+//   - alg keyring.Algorithm
 func (_e *MockTokenizationKeyUseCase_Expecter) Rotate(ctx interface{}, name interface{}, formatType interface{}, isDeterministic interface{}, alg interface{}) *MockTokenizationKeyUseCase_Rotate_Call {
 	return &MockTokenizationKeyUseCase_Rotate_Call{Call: _e.mock.On("Rotate", ctx, name, formatType, isDeterministic, alg)}
 }
 
-func (_c *MockTokenizationKeyUseCase_Rotate_Call) Run(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm)) *MockTokenizationKeyUseCase_Rotate_Call {
+func (_c *MockTokenizationKeyUseCase_Rotate_Call) Run(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm)) *MockTokenizationKeyUseCase_Rotate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1580,9 +1580,9 @@ func (_c *MockTokenizationKeyUseCase_Rotate_Call) Run(run func(ctx context.Conte
 		if args[3] != nil {
 			arg3 = args[3].(bool)
 		}
-		var arg4 domain0.Algorithm
+		var arg4 keyring.Algorithm
 		if args[4] != nil {
-			arg4 = args[4].(domain0.Algorithm)
+			arg4 = args[4].(keyring.Algorithm)
 		}
 		run(
 			arg0,
@@ -1600,7 +1600,7 @@ func (_c *MockTokenizationKeyUseCase_Rotate_Call) Return(tokenizationKey *domain
 	return _c
 }
 
-func (_c *MockTokenizationKeyUseCase_Rotate_Call) RunAndReturn(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg domain0.Algorithm) (*domain.TokenizationKey, error)) *MockTokenizationKeyUseCase_Rotate_Call {
+func (_c *MockTokenizationKeyUseCase_Rotate_Call) RunAndReturn(run func(ctx context.Context, name string, formatType domain.FormatType, isDeterministic bool, alg keyring.Algorithm) (*domain.TokenizationKey, error)) *MockTokenizationKeyUseCase_Rotate_Call {
 	_c.Call.Return(run)
 	return _c
 }

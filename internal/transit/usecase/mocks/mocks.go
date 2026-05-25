@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	domain0 "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/transit/domain"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -297,7 +297,7 @@ func (_c *MockTransitKeyRepository_GetByNameAndVersion_Call) RunAndReturn(run fu
 }
 
 // GetTransitKey provides a mock function for the type MockTransitKeyRepository
-func (_mock *MockTransitKeyRepository) GetTransitKey(ctx context.Context, name string, version uint) (*domain.TransitKey, domain0.Algorithm, error) {
+func (_mock *MockTransitKeyRepository) GetTransitKey(ctx context.Context, name string, version uint) (*domain.TransitKey, error) {
 	ret := _mock.Called(ctx, name, version)
 
 	if len(ret) == 0 {
@@ -305,9 +305,8 @@ func (_mock *MockTransitKeyRepository) GetTransitKey(ctx context.Context, name s
 	}
 
 	var r0 *domain.TransitKey
-	var r1 domain0.Algorithm
-	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.TransitKey, domain0.Algorithm, error)); ok {
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.TransitKey, error)); ok {
 		return returnFunc(ctx, name, version)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) *domain.TransitKey); ok {
@@ -317,17 +316,12 @@ func (_mock *MockTransitKeyRepository) GetTransitKey(ctx context.Context, name s
 			r0 = ret.Get(0).(*domain.TransitKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) domain0.Algorithm); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
 		r1 = returnFunc(ctx, name, version)
 	} else {
-		r1 = ret.Get(1).(domain0.Algorithm)
+		r1 = ret.Error(1)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, string, uint) error); ok {
-		r2 = returnFunc(ctx, name, version)
-	} else {
-		r2 = ret.Error(2)
-	}
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockTransitKeyRepository_GetTransitKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransitKey'
@@ -366,12 +360,12 @@ func (_c *MockTransitKeyRepository_GetTransitKey_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockTransitKeyRepository_GetTransitKey_Call) Return(transitKey *domain.TransitKey, algorithm domain0.Algorithm, err error) *MockTransitKeyRepository_GetTransitKey_Call {
-	_c.Call.Return(transitKey, algorithm, err)
+func (_c *MockTransitKeyRepository_GetTransitKey_Call) Return(transitKey *domain.TransitKey, err error) *MockTransitKeyRepository_GetTransitKey_Call {
+	_c.Call.Return(transitKey, err)
 	return _c
 }
 
-func (_c *MockTransitKeyRepository_GetTransitKey_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain.TransitKey, domain0.Algorithm, error)) *MockTransitKeyRepository_GetTransitKey_Call {
+func (_c *MockTransitKeyRepository_GetTransitKey_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain.TransitKey, error)) *MockTransitKeyRepository_GetTransitKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -550,7 +544,7 @@ func (_m *MockTransitKeyUseCase) EXPECT() *MockTransitKeyUseCase_Expecter {
 }
 
 // Create provides a mock function for the type MockTransitKeyUseCase
-func (_mock *MockTransitKeyUseCase) Create(ctx context.Context, name string, alg domain0.Algorithm) (*domain.TransitKey, error) {
+func (_mock *MockTransitKeyUseCase) Create(ctx context.Context, name string, alg keyring.Algorithm) (*domain.TransitKey, error) {
 	ret := _mock.Called(ctx, name, alg)
 
 	if len(ret) == 0 {
@@ -559,17 +553,17 @@ func (_mock *MockTransitKeyUseCase) Create(ctx context.Context, name string, alg
 
 	var r0 *domain.TransitKey
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain0.Algorithm) (*domain.TransitKey, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, keyring.Algorithm) (*domain.TransitKey, error)); ok {
 		return returnFunc(ctx, name, alg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain0.Algorithm) *domain.TransitKey); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, keyring.Algorithm) *domain.TransitKey); ok {
 		r0 = returnFunc(ctx, name, alg)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.TransitKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain0.Algorithm) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, keyring.Algorithm) error); ok {
 		r1 = returnFunc(ctx, name, alg)
 	} else {
 		r1 = ret.Error(1)
@@ -585,12 +579,12 @@ type MockTransitKeyUseCase_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - alg domain0.Algorithm
+//   - alg keyring.Algorithm
 func (_e *MockTransitKeyUseCase_Expecter) Create(ctx interface{}, name interface{}, alg interface{}) *MockTransitKeyUseCase_Create_Call {
 	return &MockTransitKeyUseCase_Create_Call{Call: _e.mock.On("Create", ctx, name, alg)}
 }
 
-func (_c *MockTransitKeyUseCase_Create_Call) Run(run func(ctx context.Context, name string, alg domain0.Algorithm)) *MockTransitKeyUseCase_Create_Call {
+func (_c *MockTransitKeyUseCase_Create_Call) Run(run func(ctx context.Context, name string, alg keyring.Algorithm)) *MockTransitKeyUseCase_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -600,9 +594,9 @@ func (_c *MockTransitKeyUseCase_Create_Call) Run(run func(ctx context.Context, n
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 domain0.Algorithm
+		var arg2 keyring.Algorithm
 		if args[2] != nil {
-			arg2 = args[2].(domain0.Algorithm)
+			arg2 = args[2].(keyring.Algorithm)
 		}
 		run(
 			arg0,
@@ -618,7 +612,7 @@ func (_c *MockTransitKeyUseCase_Create_Call) Return(transitKey *domain.TransitKe
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Create_Call) RunAndReturn(run func(ctx context.Context, name string, alg domain0.Algorithm) (*domain.TransitKey, error)) *MockTransitKeyUseCase_Create_Call {
+func (_c *MockTransitKeyUseCase_Create_Call) RunAndReturn(run func(ctx context.Context, name string, alg keyring.Algorithm) (*domain.TransitKey, error)) *MockTransitKeyUseCase_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -841,7 +835,7 @@ func (_c *MockTransitKeyUseCase_Encrypt_Call) RunAndReturn(run func(ctx context.
 }
 
 // Get provides a mock function for the type MockTransitKeyUseCase
-func (_mock *MockTransitKeyUseCase) Get(ctx context.Context, name string, version uint) (*domain.TransitKey, domain0.Algorithm, error) {
+func (_mock *MockTransitKeyUseCase) Get(ctx context.Context, name string, version uint) (*domain.TransitKey, error) {
 	ret := _mock.Called(ctx, name, version)
 
 	if len(ret) == 0 {
@@ -849,9 +843,8 @@ func (_mock *MockTransitKeyUseCase) Get(ctx context.Context, name string, versio
 	}
 
 	var r0 *domain.TransitKey
-	var r1 domain0.Algorithm
-	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.TransitKey, domain0.Algorithm, error)); ok {
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) (*domain.TransitKey, error)); ok {
 		return returnFunc(ctx, name, version)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, uint) *domain.TransitKey); ok {
@@ -861,17 +854,12 @@ func (_mock *MockTransitKeyUseCase) Get(ctx context.Context, name string, versio
 			r0 = ret.Get(0).(*domain.TransitKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) domain0.Algorithm); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
 		r1 = returnFunc(ctx, name, version)
 	} else {
-		r1 = ret.Get(1).(domain0.Algorithm)
+		r1 = ret.Error(1)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, string, uint) error); ok {
-		r2 = returnFunc(ctx, name, version)
-	} else {
-		r2 = ret.Error(2)
-	}
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockTransitKeyUseCase_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
@@ -910,12 +898,12 @@ func (_c *MockTransitKeyUseCase_Get_Call) Run(run func(ctx context.Context, name
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Get_Call) Return(transitKey *domain.TransitKey, algorithm domain0.Algorithm, err error) *MockTransitKeyUseCase_Get_Call {
-	_c.Call.Return(transitKey, algorithm, err)
+func (_c *MockTransitKeyUseCase_Get_Call) Return(transitKey *domain.TransitKey, err error) *MockTransitKeyUseCase_Get_Call {
+	_c.Call.Return(transitKey, err)
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Get_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain.TransitKey, domain0.Algorithm, error)) *MockTransitKeyUseCase_Get_Call {
+func (_c *MockTransitKeyUseCase_Get_Call) RunAndReturn(run func(ctx context.Context, name string, version uint) (*domain.TransitKey, error)) *MockTransitKeyUseCase_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1067,7 +1055,7 @@ func (_c *MockTransitKeyUseCase_PurgeDeleted_Call) RunAndReturn(run func(ctx con
 }
 
 // Rotate provides a mock function for the type MockTransitKeyUseCase
-func (_mock *MockTransitKeyUseCase) Rotate(ctx context.Context, name string, alg domain0.Algorithm) (*domain.TransitKey, error) {
+func (_mock *MockTransitKeyUseCase) Rotate(ctx context.Context, name string, alg keyring.Algorithm) (*domain.TransitKey, error) {
 	ret := _mock.Called(ctx, name, alg)
 
 	if len(ret) == 0 {
@@ -1076,17 +1064,17 @@ func (_mock *MockTransitKeyUseCase) Rotate(ctx context.Context, name string, alg
 
 	var r0 *domain.TransitKey
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain0.Algorithm) (*domain.TransitKey, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, keyring.Algorithm) (*domain.TransitKey, error)); ok {
 		return returnFunc(ctx, name, alg)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, domain0.Algorithm) *domain.TransitKey); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, keyring.Algorithm) *domain.TransitKey); ok {
 		r0 = returnFunc(ctx, name, alg)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.TransitKey)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, domain0.Algorithm) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, keyring.Algorithm) error); ok {
 		r1 = returnFunc(ctx, name, alg)
 	} else {
 		r1 = ret.Error(1)
@@ -1102,12 +1090,12 @@ type MockTransitKeyUseCase_Rotate_Call struct {
 // Rotate is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - alg domain0.Algorithm
+//   - alg keyring.Algorithm
 func (_e *MockTransitKeyUseCase_Expecter) Rotate(ctx interface{}, name interface{}, alg interface{}) *MockTransitKeyUseCase_Rotate_Call {
 	return &MockTransitKeyUseCase_Rotate_Call{Call: _e.mock.On("Rotate", ctx, name, alg)}
 }
 
-func (_c *MockTransitKeyUseCase_Rotate_Call) Run(run func(ctx context.Context, name string, alg domain0.Algorithm)) *MockTransitKeyUseCase_Rotate_Call {
+func (_c *MockTransitKeyUseCase_Rotate_Call) Run(run func(ctx context.Context, name string, alg keyring.Algorithm)) *MockTransitKeyUseCase_Rotate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1117,9 +1105,9 @@ func (_c *MockTransitKeyUseCase_Rotate_Call) Run(run func(ctx context.Context, n
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 domain0.Algorithm
+		var arg2 keyring.Algorithm
 		if args[2] != nil {
-			arg2 = args[2].(domain0.Algorithm)
+			arg2 = args[2].(keyring.Algorithm)
 		}
 		run(
 			arg0,
@@ -1135,7 +1123,7 @@ func (_c *MockTransitKeyUseCase_Rotate_Call) Return(transitKey *domain.TransitKe
 	return _c
 }
 
-func (_c *MockTransitKeyUseCase_Rotate_Call) RunAndReturn(run func(ctx context.Context, name string, alg domain0.Algorithm) (*domain.TransitKey, error)) *MockTransitKeyUseCase_Rotate_Call {
+func (_c *MockTransitKeyUseCase_Rotate_Call) RunAndReturn(run func(ctx context.Context, name string, alg keyring.Algorithm) (*domain.TransitKey, error)) *MockTransitKeyUseCase_Rotate_Call {
 	_c.Call.Return(run)
 	return _c
 }

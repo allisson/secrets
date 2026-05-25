@@ -3,8 +3,6 @@ package domain
 import (
 	"context"
 	"time"
-
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
 
 // TransitKeyRepository defines the interface for transit key persistence.
@@ -22,8 +20,9 @@ type TransitKeyRepository interface {
 	GetByNameAndVersion(ctx context.Context, name string, version uint) (*TransitKey, error)
 
 	// GetTransitKey retrieves a transit key version by name and optional version (0 for latest),
-	// including its associated encryption algorithm. Returns ErrTransitKeyNotFound if not found.
-	GetTransitKey(ctx context.Context, name string, version uint) (*TransitKey, cryptoDomain.Algorithm, error)
+	// including its associated encryption algorithm (populated in TransitKey.Algorithm).
+	// Returns ErrTransitKeyNotFound if not found.
+	GetTransitKey(ctx context.Context, name string, version uint) (*TransitKey, error)
 
 	// ListCursor retrieves transit keys ordered by name ascending with cursor-based pagination.
 	// If afterName is provided, returns keys with name greater than afterName (ASC order).

@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	"github.com/allisson/secrets/internal/transit/http/dto"
 	"github.com/allisson/secrets/internal/transit/usecase/mocks"
@@ -58,7 +58,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Create(mock.Anything, "test-key", cryptoDomain.AESGCM).
+			Create(mock.Anything, "test-key", keyring.AESGCM).
 			Return(expectedTransitKey, nil).
 			Once()
 
@@ -98,7 +98,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Create(mock.Anything, "test-key-chacha", cryptoDomain.ChaCha20).
+			Create(mock.Anything, "test-key-chacha", keyring.ChaCha20).
 			Return(expectedTransitKey, nil).
 			Once()
 
@@ -180,7 +180,7 @@ func TestTransitKeyHandler_CreateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Create(mock.Anything, "test-key", cryptoDomain.AESGCM).
+			Create(mock.Anything, "test-key", keyring.AESGCM).
 			Return(nil, apperrors.ErrConflict).
 			Once()
 
@@ -213,7 +213,7 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Rotate(mock.Anything, "test-key", cryptoDomain.AESGCM).
+			Rotate(mock.Anything, "test-key", keyring.AESGCM).
 			Return(expectedTransitKey, nil).
 			Once()
 
@@ -297,7 +297,7 @@ func TestTransitKeyHandler_RotateHandler(t *testing.T) {
 		}
 
 		mockUseCase.EXPECT().
-			Rotate(mock.Anything, "nonexistent-key", cryptoDomain.AESGCM).
+			Rotate(mock.Anything, "nonexistent-key", keyring.AESGCM).
 			Return(nil, transitDomain.ErrTransitKeyNotFound).
 			Once()
 
@@ -408,13 +408,13 @@ func TestTransitKeyHandler_GetHandler(t *testing.T) {
 			Name:      "test-key",
 			Version:   1,
 			DekID:     uuid.Must(uuid.NewV7()),
+			Algorithm: string(keyring.AESGCM),
 			CreatedAt: now,
 		}
-		expectedAlg := cryptoDomain.AESGCM
 
 		mockUseCase.EXPECT().
 			Get(mock.Anything, "test-key", uint(0)).
-			Return(expectedKey, expectedAlg, nil).
+			Return(expectedKey, nil).
 			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/test-key", nil)
@@ -441,13 +441,13 @@ func TestTransitKeyHandler_GetHandler(t *testing.T) {
 			Name:      "test-key",
 			Version:   2,
 			DekID:     uuid.Must(uuid.NewV7()),
+			Algorithm: string(keyring.ChaCha20),
 			CreatedAt: now,
 		}
-		expectedAlg := cryptoDomain.ChaCha20
 
 		mockUseCase.EXPECT().
 			Get(mock.Anything, "test-key", uint(2)).
-			Return(expectedKey, expectedAlg, nil).
+			Return(expectedKey, nil).
 			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/test-key?version=2", nil)
@@ -492,7 +492,7 @@ func TestTransitKeyHandler_GetHandler(t *testing.T) {
 
 		mockUseCase.EXPECT().
 			Get(mock.Anything, "nonexistent", uint(0)).
-			Return(nil, cryptoDomain.Algorithm(""), transitDomain.ErrTransitKeyNotFound).
+			Return(nil, transitDomain.ErrTransitKeyNotFound).
 			Once()
 
 		c, w := createTestContext(http.MethodGet, "/v1/transit/keys/nonexistent", nil)

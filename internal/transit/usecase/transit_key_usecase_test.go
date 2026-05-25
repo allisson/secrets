@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	"github.com/allisson/secrets/internal/transit/usecase"
@@ -59,7 +58,7 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Create(ctx, "k", cryptoDomain.AESGCM)
+		key, err := uc.Create(ctx, "k", keyring.AESGCM)
 		require.NoError(t, err)
 		assert.Equal(t, "k", key.Name)
 		assert.EqualValues(t, 1, key.Version)
@@ -73,7 +72,7 @@ func TestTransitKeyUseCase_Create(t *testing.T) {
 			GetByNameAndVersion(ctx, "dup", uint(1)).
 			Return(&transitDomain.TransitKey{}, nil)
 
-		_, err := uc.Create(ctx, "dup", cryptoDomain.AESGCM)
+		_, err := uc.Create(ctx, "dup", keyring.AESGCM)
 		assert.ErrorIs(t, err, transitDomain.ErrTransitKeyAlreadyExists)
 	})
 }
@@ -95,7 +94,7 @@ func TestTransitKeyUseCase_Rotate(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Rotate(ctx, "k", cryptoDomain.AESGCM)
+		key, err := uc.Rotate(ctx, "k", keyring.AESGCM)
 		require.NoError(t, err)
 		assert.EqualValues(t, 3, key.Version)
 	})
@@ -113,7 +112,7 @@ func TestTransitKeyUseCase_Rotate(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Rotate(ctx, "new", cryptoDomain.AESGCM)
+		key, err := uc.Rotate(ctx, "new", keyring.AESGCM)
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, key.Version)
 	})
@@ -171,7 +170,7 @@ func TestTransitKeyUseCase_Decrypt_CiphertextTooShort(t *testing.T) {
 	// 5 bytes < 12-byte nonce
 	wire := fmt.Sprintf("1:%s", base64.StdEncoding.EncodeToString([]byte{1, 2, 3, 4, 5}))
 	_, err := uc.Decrypt(ctx, "k", wire, nil)
-	assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+	assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 }
 
 func TestTransitKeyUseCase_Get(t *testing.T) {
@@ -179,13 +178,12 @@ func TestTransitKeyUseCase_Get(t *testing.T) {
 	ctx := context.Background()
 	uc, _, repo := newTransitKeyUseCase(t)
 
-	want := &transitDomain.TransitKey{Name: "k", Version: 1}
-	repo.EXPECT().GetTransitKey(ctx, "k", uint(0)).Return(want, cryptoDomain.AESGCM, nil)
+	want := &transitDomain.TransitKey{Name: "k", Version: 1, Algorithm: string(keyring.AESGCM)}
+	repo.EXPECT().GetTransitKey(ctx, "k", uint(0)).Return(want, nil)
 
-	got, alg, err := uc.Get(ctx, "k", 0)
+	got, err := uc.Get(ctx, "k", 0)
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
-	assert.Equal(t, cryptoDomain.AESGCM, alg)
 }
 
 func TestTransitKeyUseCase_Delete(t *testing.T) {
