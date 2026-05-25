@@ -20,38 +20,16 @@ func (c *Container) SecretService() authService.SecretService {
 
 // ClientRepository returns the client repository.
 func (c *Container) ClientRepository(ctx context.Context) (authUseCase.ClientRepository, error) {
-	var err error
-	c.clientRepositoryInit.Do(func() {
-		c.clientRepository, err = c.initClientRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("clientRepository", err)
-		}
+	return c.clientRepository.get(func() (authUseCase.ClientRepository, error) {
+		return c.initClientRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("clientRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.clientRepository, nil
 }
 
 // ClientUseCase returns the client use case.
 func (c *Container) ClientUseCase(ctx context.Context) (authUseCase.ClientUseCase, error) {
-	var err error
-	c.clientUseCaseInit.Do(func() {
-		c.clientUseCase, err = c.initClientUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("clientUseCase", err)
-		}
+	return c.clientUseCase.get(func() (authUseCase.ClientUseCase, error) {
+		return c.initClientUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("clientUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.clientUseCase, nil
 }
 
 // TokenService returns the token service for authentication operations.
@@ -64,128 +42,51 @@ func (c *Container) TokenService() authService.TokenService {
 
 // TokenRepository returns the token repository.
 func (c *Container) TokenRepository(ctx context.Context) (authUseCase.TokenRepository, error) {
-	var err error
-	c.tokenRepositoryInit.Do(func() {
-		c.tokenRepository, err = c.initTokenRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenRepository", err)
-		}
+	return c.tokenRepository.get(func() (authUseCase.TokenRepository, error) {
+		return c.initTokenRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenRepository, nil
 }
 
 // AuditLogRepository returns the audit log repository.
 func (c *Container) AuditLogRepository(ctx context.Context) (authUseCase.AuditLogRepository, error) {
-	var err error
-	c.auditLogRepositoryInit.Do(func() {
-		c.auditLogRepository, err = c.initAuditLogRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("auditLogRepository", err)
-		}
+	return c.auditLogRepository.get(func() (authUseCase.AuditLogRepository, error) {
+		return c.initAuditLogRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("auditLogRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.auditLogRepository, nil
 }
 
 // TokenUseCase returns the token use case.
 func (c *Container) TokenUseCase(ctx context.Context) (authUseCase.TokenUseCase, error) {
-	var err error
-	c.tokenUseCaseInit.Do(func() {
-		c.tokenUseCase, err = c.initTokenUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenUseCase", err)
-		}
+	return c.tokenUseCase.get(func() (authUseCase.TokenUseCase, error) {
+		return c.initTokenUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenUseCase, nil
 }
 
 // AuditLogUseCase returns the audit log use case.
 func (c *Container) AuditLogUseCase(ctx context.Context) (authUseCase.AuditLogUseCase, error) {
-	var err error
-	c.auditLogUseCaseInit.Do(func() {
-		c.auditLogUseCase, err = c.initAuditLogUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("auditLogUseCase", err)
-		}
+	return c.auditLogUseCase.get(func() (authUseCase.AuditLogUseCase, error) {
+		return c.initAuditLogUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("auditLogUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.auditLogUseCase, nil
 }
 
 // ClientHandler returns the HTTP handler for client management operations.
 func (c *Container) ClientHandler(ctx context.Context) (*authHTTP.ClientHandler, error) {
-	var err error
-	c.clientHandlerInit.Do(func() {
-		c.clientHandler, err = c.initClientHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("clientHandler", err)
-		}
+	return c.clientHandler.get(func() (*authHTTP.ClientHandler, error) {
+		return c.initClientHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("clientHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.clientHandler, nil
 }
 
 // TokenHandler returns the HTTP handler for token operations.
 func (c *Container) TokenHandler(ctx context.Context) (*authHTTP.TokenHandler, error) {
-	var err error
-	c.tokenHandlerInit.Do(func() {
-		c.tokenHandler, err = c.initTokenHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenHandler", err)
-		}
+	return c.tokenHandler.get(func() (*authHTTP.TokenHandler, error) {
+		return c.initTokenHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenHandler, nil
 }
 
 // AuditLogHandler returns the HTTP handler for audit log operations.
 func (c *Container) AuditLogHandler(ctx context.Context) (*authHTTP.AuditLogHandler, error) {
-	var err error
-	c.auditLogHandlerInit.Do(func() {
-		c.auditLogHandler, err = c.initAuditLogHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("auditLogHandler", err)
-		}
+	return c.auditLogHandler.get(func() (*authHTTP.AuditLogHandler, error) {
+		return c.initAuditLogHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("auditLogHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.auditLogHandler, nil
 }
 
 // initSecretService creates the secret service for authentication.
@@ -357,7 +258,5 @@ func (c *Container) initAuditLogHandler(ctx context.Context) (*authHTTP.AuditLog
 		return nil, fmt.Errorf("failed to get audit log use case for audit log handler: %w", err)
 	}
 
-	logger := c.Logger()
-
-	return authHTTP.NewAuditLogHandler(auditLogUseCase, logger), nil
+	return authHTTP.NewAuditLogHandler(auditLogUseCase, c.Logger()), nil
 }

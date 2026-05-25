@@ -9,20 +9,9 @@ import (
 
 // Keyring returns the envelope-encryption keyring shared by all features.
 func (c *Container) Keyring(ctx context.Context) (keyring.Keyring, error) {
-	var err error
-	c.keyringInit.Do(func() {
-		c.keyring, err = c.initKeyring(ctx)
-		if err != nil {
-			c.initErrors.Store("keyring", err)
-		}
+	return c.keyring.get(func() (keyring.Keyring, error) {
+		return c.initKeyring(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("keyring"); ok {
-		return nil, val.(error)
-	}
-	return c.keyring, nil
 }
 
 func (c *Container) initKeyring(ctx context.Context) (keyring.Keyring, error) {
@@ -39,20 +28,9 @@ func (c *Container) initKeyring(ctx context.Context) (keyring.Keyring, error) {
 
 // MasterKeyChain returns the master key chain loaded from environment variables.
 func (c *Container) MasterKeyChain(ctx context.Context) (*keyring.MasterKeyChain, error) {
-	var err error
-	c.masterKeyChainInit.Do(func() {
-		c.masterKeyChain, err = c.initMasterKeyChain(ctx)
-		if err != nil {
-			c.initErrors.Store("masterKeyChain", err)
-		}
+	return c.masterKeyChain.get(func() (*keyring.MasterKeyChain, error) {
+		return c.initMasterKeyChain(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("masterKeyChain"); ok {
-		return nil, val.(error)
-	}
-	return c.masterKeyChain, nil
 }
 
 func (c *Container) initMasterKeyChain(ctx context.Context) (*keyring.MasterKeyChain, error) {
@@ -74,20 +52,9 @@ func (c *Container) KeySigner(ctx context.Context) (keyring.KeySigner, error) {
 
 // KekUseCase returns the KEK use case.
 func (c *Container) KekUseCase(ctx context.Context) (keyring.KekUseCase, error) {
-	var err error
-	c.kekUseCaseInit.Do(func() {
-		c.kekUseCase, err = c.initKekUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("kekUseCase", err)
-		}
+	return c.kekUseCase.get(func() (keyring.KekUseCase, error) {
+		return c.initKekUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("kekUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.kekUseCase, nil
 }
 
 func (c *Container) initKekUseCase(ctx context.Context) (keyring.KekUseCase, error) {

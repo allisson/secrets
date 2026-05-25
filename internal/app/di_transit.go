@@ -10,71 +10,27 @@ import (
 )
 
 func (c *Container) TransitKeyRepository(ctx context.Context) (transitUseCase.TransitKeyRepository, error) {
-	var err error
-	c.transitKeyRepositoryInit.Do(func() {
-		c.transitKeyRepository, err = c.initTransitKeyRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("transitKeyRepository", err)
-		}
+	return c.transitKeyRepository.get(func() (transitUseCase.TransitKeyRepository, error) {
+		return c.initTransitKeyRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("transitKeyRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.transitKeyRepository, nil
 }
 
 func (c *Container) TransitKeyUseCase(ctx context.Context) (transitUseCase.TransitKeyUseCase, error) {
-	var err error
-	c.transitKeyUseCaseInit.Do(func() {
-		c.transitKeyUseCase, err = c.initTransitKeyUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("transitKeyUseCase", err)
-		}
+	return c.transitKeyUseCase.get(func() (transitUseCase.TransitKeyUseCase, error) {
+		return c.initTransitKeyUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("transitKeyUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.transitKeyUseCase, nil
 }
 
 func (c *Container) TransitKeyHandler(ctx context.Context) (*transitHTTP.TransitKeyHandler, error) {
-	var err error
-	c.transitKeyHandlerInit.Do(func() {
-		c.transitKeyHandler, err = c.initTransitKeyHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("transitKeyHandler", err)
-		}
+	return c.transitKeyHandler.get(func() (*transitHTTP.TransitKeyHandler, error) {
+		return c.initTransitKeyHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("transitKeyHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.transitKeyHandler, nil
 }
 
 func (c *Container) CryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandler, error) {
-	var err error
-	c.cryptoHandlerInit.Do(func() {
-		c.cryptoHandler, err = c.initCryptoHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("cryptoHandler", err)
-		}
+	return c.cryptoHandler.get(func() (*transitHTTP.CryptoHandler, error) {
+		return c.initCryptoHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("cryptoHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.cryptoHandler, nil
 }
 
 func (c *Container) initTransitKeyRepository(
