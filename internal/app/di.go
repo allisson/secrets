@@ -27,99 +27,62 @@ import (
 
 // Container holds all application dependencies with lazy initialization.
 type Container struct {
-	// Configuration
 	config *config.Config
 
-	// Infrastructure
-	logger         *slog.Logger
-	db             *sql.DB
-	masterKeyChain *keyring.MasterKeyChain
+	// Infallible singletons — kept as plain sync.Once because they cannot fail.
+	logger            *slog.Logger
+	loggerInit        sync.Once
+	kmsService        keyring.KMSService
+	kmsServiceInit    sync.Once
+	secretService     authService.SecretService
+	secretServiceInit sync.Once
+	tokenService      authService.TokenService
+	tokenServiceInit  sync.Once
 
-	// Managers
-	txManager database.TxManager
+	// Infrastructure
+	db             once[*sql.DB]
+	masterKeyChain once[*keyring.MasterKeyChain]
+	txManager      once[database.TxManager]
 
 	// Metrics
-	metricsProvider *metrics.Provider
-	businessMetrics metrics.BusinessMetrics
-
-	// Services
-	kmsService    keyring.KMSService
-	secretService authService.SecretService
-	tokenService  authService.TokenService
+	metricsProvider once[*metrics.Provider]
+	businessMetrics once[metrics.BusinessMetrics]
 
 	// Keyring (envelope encryption)
-	keyring keyring.Keyring
+	keyring once[keyring.Keyring]
 
 	// Repositories
-	secretRepository            secretsUseCase.SecretRepository
-	clientRepository            authUseCase.ClientRepository
-	tokenRepository             authUseCase.TokenRepository
-	auditLogRepository          authUseCase.AuditLogRepository
-	transitKeyRepository        transitUseCase.TransitKeyRepository
-	tokenizationKeyRepository   tokenizationUseCase.TokenizationKeyRepository
-	tokenizationTokenRepository tokenizationUseCase.TokenRepository
+	secretRepository            once[secretsUseCase.SecretRepository]
+	clientRepository            once[authUseCase.ClientRepository]
+	tokenRepository             once[authUseCase.TokenRepository]
+	auditLogRepository          once[authUseCase.AuditLogRepository]
+	transitKeyRepository        once[transitUseCase.TransitKeyRepository]
+	tokenizationKeyRepository   once[tokenizationUseCase.TokenizationKeyRepository]
+	tokenizationTokenRepository once[tokenizationUseCase.TokenRepository]
 
 	// Use Cases
-	kekUseCase             keyring.KekUseCase
-	secretUseCase          secretsUseCase.SecretUseCase
-	clientUseCase          authUseCase.ClientUseCase
-	tokenUseCase           authUseCase.TokenUseCase
-	auditLogUseCase        authUseCase.AuditLogUseCase
-	transitKeyUseCase      transitUseCase.TransitKeyUseCase
-	tokenizationKeyUseCase tokenizationUseCase.TokenizationKeyUseCase
-	tokenizationUseCase    tokenizationUseCase.TokenizationUseCase
+	kekUseCase             once[keyring.KekUseCase]
+	secretUseCase          once[secretsUseCase.SecretUseCase]
+	clientUseCase          once[authUseCase.ClientUseCase]
+	tokenUseCase           once[authUseCase.TokenUseCase]
+	auditLogUseCase        once[authUseCase.AuditLogUseCase]
+	transitKeyUseCase      once[transitUseCase.TransitKeyUseCase]
+	tokenizationKeyUseCase once[tokenizationUseCase.TokenizationKeyUseCase]
+	tokenizationUseCase    once[tokenizationUseCase.TokenizationUseCase]
 
 	// HTTP Handlers
-	clientHandler          *authHTTP.ClientHandler
-	tokenHandler           *authHTTP.TokenHandler
-	auditLogHandler        *authHTTP.AuditLogHandler
-	secretHandler          *secretsHTTP.SecretHandler
-	transitKeyHandler      *transitHTTP.TransitKeyHandler
-	cryptoHandler          *transitHTTP.CryptoHandler
-	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler
-	tokenizationHandler    *tokenizationHTTP.TokenizationHandler
+	clientHandler          once[*authHTTP.ClientHandler]
+	tokenHandler           once[*authHTTP.TokenHandler]
+	auditLogHandler        once[*authHTTP.AuditLogHandler]
+	secretHandler          once[*secretsHTTP.SecretHandler]
+	transitKeyHandler      once[*transitHTTP.TransitKeyHandler]
+	cryptoHandler          once[*transitHTTP.CryptoHandler]
+	tokenizationKeyHandler once[*tokenizationHTTP.TokenizationKeyHandler]
+	tokenizationHandler    once[*tokenizationHTTP.TokenizationHandler]
 
-	// Servers and Workers
-	httpServer    *http.Server
-	metricsServer *http.MetricsServer
-
-	// Initialization flags and sync.Once for thread-safety
-	loggerInit                      sync.Once
-	dbInit                          sync.Once
-	masterKeyChainInit              sync.Once
-	txManagerInit                   sync.Once
-	metricsProviderInit             sync.Once
-	businessMetricsInit             sync.Once
-	kmsServiceInit                  sync.Once
-	secretServiceInit               sync.Once
-	tokenServiceInit                sync.Once
-	keyringInit                     sync.Once
-	secretRepositoryInit            sync.Once
-	clientRepositoryInit            sync.Once
-	tokenRepositoryInit             sync.Once
-	auditLogRepositoryInit          sync.Once
-	transitKeyRepositoryInit        sync.Once
-	tokenizationKeyRepositoryInit   sync.Once
-	tokenizationTokenRepositoryInit sync.Once
-	kekUseCaseInit                  sync.Once
-	secretUseCaseInit               sync.Once
-	clientUseCaseInit               sync.Once
-	tokenUseCaseInit                sync.Once
-	auditLogUseCaseInit             sync.Once
-	transitKeyUseCaseInit           sync.Once
-	tokenizationKeyUseCaseInit      sync.Once
-	tokenizationUseCaseInit         sync.Once
-	clientHandlerInit               sync.Once
-	tokenHandlerInit                sync.Once
-	auditLogHandlerInit             sync.Once
-	secretHandlerInit               sync.Once
-	transitKeyHandlerInit           sync.Once
-	cryptoHandlerInit               sync.Once
-	tokenizationKeyHandlerInit      sync.Once
-	tokenizationHandlerInit         sync.Once
-	httpServerInit                  sync.Once
-	metricsServerInit               sync.Once
-	initErrors                      sync.Map
+	// Servers
+	httpServer    once[*http.Server]
+	metricsServer once[*http.MetricsServer]
 }
 
 // NewContainer creates a new dependency injection container with the provided configuration.
@@ -144,150 +107,78 @@ func (c *Container) Logger() *slog.Logger {
 
 // DB returns the database connection.
 func (c *Container) DB(ctx context.Context) (*sql.DB, error) {
-	var err error
-	c.dbInit.Do(func() {
-		c.db, err = c.initDB(ctx)
-		if err != nil {
-			c.initErrors.Store("db", err)
-		}
+	return c.db.get(func() (*sql.DB, error) {
+		return c.initDB(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("db"); ok {
-		return nil, val.(error)
-	}
-	return c.db, nil
 }
 
 // TxManager returns the transaction manager.
 func (c *Container) TxManager(ctx context.Context) (database.TxManager, error) {
-	var err error
-	c.txManagerInit.Do(func() {
-		c.txManager, err = c.initTxManager(ctx)
-		if err != nil {
-			c.initErrors.Store("txManager", err)
-		}
+	return c.txManager.get(func() (database.TxManager, error) {
+		return c.initTxManager(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("txManager"); ok {
-		return nil, val.(error)
-	}
-	return c.txManager, nil
 }
 
 // MetricsProvider returns the metrics provider for Prometheus export.
 func (c *Container) MetricsProvider(ctx context.Context) (*metrics.Provider, error) {
-	var err error
-	c.metricsProviderInit.Do(func() {
-		c.metricsProvider, err = c.initMetricsProvider(ctx)
-		if err != nil {
-			c.initErrors.Store("metricsProvider", err)
-		}
+	return c.metricsProvider.get(func() (*metrics.Provider, error) {
+		return c.initMetricsProvider(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("metricsProvider"); ok {
-		return nil, val.(error)
-	}
-	return c.metricsProvider, nil
 }
 
 // BusinessMetrics returns the business metrics recorder.
 func (c *Container) BusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
-	var err error
-	c.businessMetricsInit.Do(func() {
-		c.businessMetrics, err = c.initBusinessMetrics(ctx)
-		if err != nil {
-			c.initErrors.Store("businessMetrics", err)
-		}
+	return c.businessMetrics.get(func() (metrics.BusinessMetrics, error) {
+		return c.initBusinessMetrics(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("businessMetrics"); ok {
-		return nil, val.(error)
-	}
-	return c.businessMetrics, nil
 }
 
 // HTTPServer returns the HTTP server instance.
 func (c *Container) HTTPServer(ctx context.Context) (*http.Server, error) {
-	var err error
-	c.httpServerInit.Do(func() {
-		c.httpServer, err = c.initHTTPServer(ctx)
-		if err != nil {
-			c.initErrors.Store("httpServer", err)
-		}
+	return c.httpServer.get(func() (*http.Server, error) {
+		return c.initHTTPServer(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("httpServer"); ok {
-		return nil, val.(error)
-	}
-	return c.httpServer, nil
 }
 
 // MetricsServer returns the Metrics server instance.
 func (c *Container) MetricsServer(ctx context.Context) (*http.MetricsServer, error) {
-	var err error
-	c.metricsServerInit.Do(func() {
-		c.metricsServer, err = c.initMetricsServer(ctx)
-		if err != nil {
-			c.initErrors.Store("metricsServer", err)
-		}
+	return c.metricsServer.get(func() (*http.MetricsServer, error) {
+		return c.initMetricsServer(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("metricsServer"); ok {
-		return nil, val.(error)
-	}
-	return c.metricsServer, nil
 }
 
 // Shutdown performs cleanup of all initialized resources.
 func (c *Container) Shutdown(ctx context.Context) error {
 	var shutdownErrors []error
 
-	// Shutdown HTTP server if initialized
-	if c.httpServer != nil {
-		if err := c.httpServer.Shutdown(ctx); err != nil {
+	if c.httpServer.val != nil {
+		if err := c.httpServer.val.Shutdown(ctx); err != nil {
 			shutdownErrors = append(shutdownErrors, fmt.Errorf("http server shutdown: %w", err))
 		}
 	}
 
-	// Shutdown metrics provider if initialized
-	if c.metricsProvider != nil {
-		if err := c.metricsProvider.Shutdown(ctx); err != nil {
+	if c.metricsProvider.val != nil {
+		if err := c.metricsProvider.val.Shutdown(ctx); err != nil {
 			shutdownErrors = append(shutdownErrors, fmt.Errorf("metrics provider shutdown: %w", err))
 		}
 	}
 
-	// Shutdown metrics server if initialized
-	if c.metricsServer != nil {
-		if err := c.metricsServer.Shutdown(ctx); err != nil {
+	if c.metricsServer.val != nil {
+		if err := c.metricsServer.val.Shutdown(ctx); err != nil {
 			shutdownErrors = append(shutdownErrors, fmt.Errorf("metrics server shutdown: %w", err))
 		}
 	}
 
-	// Close master key chain if initialized
-	if c.masterKeyChain != nil {
-		c.masterKeyChain.Close()
+	if c.masterKeyChain.val != nil {
+		c.masterKeyChain.val.Close()
 	}
 
-	// Close database connection if initialized
-	if c.db != nil {
-		if err := c.db.Close(); err != nil {
+	if c.db.val != nil {
+		if err := c.db.val.Close(); err != nil {
 			shutdownErrors = append(shutdownErrors, fmt.Errorf("database close: %w", err))
 		}
 	}
 
-	// Return combined errors if any occurred
 	if len(shutdownErrors) > 0 {
 		return fmt.Errorf("shutdown errors: %v", shutdownErrors)
 	}
@@ -356,7 +247,6 @@ func (c *Container) initMetricsProvider(ctx context.Context) (*metrics.Provider,
 }
 
 // initBusinessMetrics creates the business metrics recorder.
-// Only called when MetricsEnabled is true.
 func (c *Container) initBusinessMetrics(ctx context.Context) (metrics.BusinessMetrics, error) {
 	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
@@ -391,7 +281,6 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		logger,
 	)
 
-	// Get dependencies for routing
 	clientHandler, err := c.ClientHandler(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client handler: %w", err)
@@ -442,13 +331,11 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
 	}
 
-	// Get metrics provider (may be nil if metrics are disabled)
 	metricsProvider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
 
-	// Setup router with dependencies
 	server.SetupRouter(ctx, c.config, http.RouterDeps{
 		ClientHandler:          clientHandler,
 		TokenHandler:           tokenHandler,
@@ -474,7 +361,6 @@ func (c *Container) initMetricsServer(ctx context.Context) (*http.MetricsServer,
 	}
 
 	logger := c.Logger()
-	// Get metrics provider using existing accessor
 	provider, err := c.MetricsProvider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)

@@ -12,113 +12,47 @@ import (
 func (c *Container) TokenizationKeyRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyRepository, error) {
-	var err error
-	c.tokenizationKeyRepositoryInit.Do(func() {
-		c.tokenizationKeyRepository, err = c.initTokenizationKeyRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationKeyRepository", err)
-		}
+	return c.tokenizationKeyRepository.get(func() (tokenizationUseCase.TokenizationKeyRepository, error) {
+		return c.initTokenizationKeyRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationKeyRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationKeyRepository, nil
 }
 
 func (c *Container) TokenizationTokenRepository(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenRepository, error) {
-	var err error
-	c.tokenizationTokenRepositoryInit.Do(func() {
-		c.tokenizationTokenRepository, err = c.initTokenizationTokenRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationTokenRepository", err)
-		}
+	return c.tokenizationTokenRepository.get(func() (tokenizationUseCase.TokenRepository, error) {
+		return c.initTokenizationTokenRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationTokenRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationTokenRepository, nil
 }
 
 func (c *Container) TokenizationKeyUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyUseCase, error) {
-	var err error
-	c.tokenizationKeyUseCaseInit.Do(func() {
-		c.tokenizationKeyUseCase, err = c.initTokenizationKeyUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationKeyUseCase", err)
-		}
+	return c.tokenizationKeyUseCase.get(func() (tokenizationUseCase.TokenizationKeyUseCase, error) {
+		return c.initTokenizationKeyUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationKeyUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationKeyUseCase, nil
 }
 
 func (c *Container) TokenizationUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationUseCase, error) {
-	var err error
-	c.tokenizationUseCaseInit.Do(func() {
-		c.tokenizationUseCase, err = c.initTokenizationUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationUseCase", err)
-		}
+	return c.tokenizationUseCase.get(func() (tokenizationUseCase.TokenizationUseCase, error) {
+		return c.initTokenizationUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationUseCase, nil
 }
 
 func (c *Container) TokenizationKeyHandler(
 	ctx context.Context,
 ) (*tokenizationHTTP.TokenizationKeyHandler, error) {
-	var err error
-	c.tokenizationKeyHandlerInit.Do(func() {
-		c.tokenizationKeyHandler, err = c.initTokenizationKeyHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationKeyHandler", err)
-		}
+	return c.tokenizationKeyHandler.get(func() (*tokenizationHTTP.TokenizationKeyHandler, error) {
+		return c.initTokenizationKeyHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationKeyHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationKeyHandler, nil
 }
 
 func (c *Container) TokenizationHandler(ctx context.Context) (*tokenizationHTTP.TokenizationHandler, error) {
-	var err error
-	c.tokenizationHandlerInit.Do(func() {
-		c.tokenizationHandler, err = c.initTokenizationHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("tokenizationHandler", err)
-		}
+	return c.tokenizationHandler.get(func() (*tokenizationHTTP.TokenizationHandler, error) {
+		return c.initTokenizationHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("tokenizationHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.tokenizationHandler, nil
 }
 
 func (c *Container) initTokenizationKeyRepository(

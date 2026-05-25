@@ -11,56 +11,23 @@ import (
 
 // SecretRepository returns the secret repository.
 func (c *Container) SecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
-	var err error
-	c.secretRepositoryInit.Do(func() {
-		c.secretRepository, err = c.initSecretRepository(ctx)
-		if err != nil {
-			c.initErrors.Store("secretRepository", err)
-		}
+	return c.secretRepository.get(func() (secretsUseCase.SecretRepository, error) {
+		return c.initSecretRepository(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("secretRepository"); ok {
-		return nil, val.(error)
-	}
-	return c.secretRepository, nil
 }
 
 // SecretUseCase returns the secret use case.
 func (c *Container) SecretUseCase(ctx context.Context) (secretsUseCase.SecretUseCase, error) {
-	var err error
-	c.secretUseCaseInit.Do(func() {
-		c.secretUseCase, err = c.initSecretUseCase(ctx)
-		if err != nil {
-			c.initErrors.Store("secretUseCase", err)
-		}
+	return c.secretUseCase.get(func() (secretsUseCase.SecretUseCase, error) {
+		return c.initSecretUseCase(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("secretUseCase"); ok {
-		return nil, val.(error)
-	}
-	return c.secretUseCase, nil
 }
 
 // SecretHandler returns the HTTP handler for secret management operations.
 func (c *Container) SecretHandler(ctx context.Context) (*secretsHTTP.SecretHandler, error) {
-	var err error
-	c.secretHandlerInit.Do(func() {
-		c.secretHandler, err = c.initSecretHandler(ctx)
-		if err != nil {
-			c.initErrors.Store("secretHandler", err)
-		}
+	return c.secretHandler.get(func() (*secretsHTTP.SecretHandler, error) {
+		return c.initSecretHandler(ctx)
 	})
-	if err != nil {
-		return nil, err
-	}
-	if val, ok := c.initErrors.Load("secretHandler"); ok {
-		return nil, val.(error)
-	}
-	return c.secretHandler, nil
 }
 
 func (c *Container) initSecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
