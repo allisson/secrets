@@ -182,7 +182,7 @@ func TestTokenRateLimitMiddleware_NoAuthenticationRequired(t *testing.T) {
 }
 
 func TestTokenRateLimiterStore_CleanupStaleEntries(t *testing.T) {
-	store := &tokenRateLimiterStore{
+	store := &rateLimiterStore[string]{
 		rps:   10.0,
 		burst: 20,
 	}
@@ -198,7 +198,7 @@ func TestTokenRateLimiterStore_CleanupStaleEntries(t *testing.T) {
 
 	// Manually set last access to old time
 	if val, ok := store.limiters.Load(ip1); ok {
-		entry := val.(*tokenRateLimiterEntry)
+		entry := val.(*rateLimiterEntry)
 		entry.mu.Lock()
 		entry.lastAccess = time.Now().Add(-2 * time.Hour)
 		entry.mu.Unlock()
@@ -207,7 +207,7 @@ func TestTokenRateLimiterStore_CleanupStaleEntries(t *testing.T) {
 	// Run cleanup manually
 	threshold := time.Now().Add(-1 * time.Hour)
 	store.limiters.Range(func(key, value interface{}) bool {
-		entry := value.(*tokenRateLimiterEntry)
+		entry := value.(*rateLimiterEntry)
 		entry.mu.Lock()
 		shouldDelete := entry.lastAccess.Before(threshold)
 		entry.mu.Unlock()
