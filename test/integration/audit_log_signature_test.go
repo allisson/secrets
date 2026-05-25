@@ -18,7 +18,7 @@ import (
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/testutil"
 )
 
@@ -38,8 +38,6 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	// Get key signer and repositories from container
 	keySigner, err := testCtx.container.KeySigner(ctx)
 	require.NoError(t, err, "failed to get key signer")
-
-	kekChain := testCtx.kekChain
 
 	auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
 	require.NoError(t, err, "failed to get audit log repository")
@@ -72,7 +70,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 		assert.True(t, log.IsSigned, "audit log should be signed")
 		assert.NotNil(t, log.KekID, "kek_id should not be nil")
 		assert.NotEmpty(t, log.Signature, "signature should not be empty")
-		assert.Equal(t, kekChain.ActiveKekID(), *log.KekID, "kek_id should match active KEK")
+		assert.Equal(t, testCtx.activeKekID, *log.KekID, "kek_id should match active KEK")
 
 		// Verify the signature is valid
 		err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
@@ -334,7 +332,7 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 type auditLogTestContext struct {
 	container  *app.Container
 	db         *sql.DB
-	kekChain   *cryptoDomain.KekChain
+	activeKekID uuid.UUID
 	rootClient *authDomain.Client
 }
 
@@ -371,12 +369,11 @@ func setupAuditLogTestContext(t *testing.T, dsn string) *auditLogTestContext {
 	kekUseCase, err := container.KekUseCase(ctx)
 	require.NoError(t, err, "failed to get kek use case")
 
-	err = kekUseCase.Create(ctx, masterKeyChain, cryptoDomain.AESGCM)
+	err = kekUseCase.Create(ctx, masterKeyChain, keyring.AESGCM)
 	require.NoError(t, err, "failed to create KEK")
 
-	// Load KEK chain
-	kekChain, err := kekUseCase.Unwrap(ctx, masterKeyChain)
-	require.NoError(t, err, "failed to unwrap KEK chain")
+	kr, err := container.Keyring(ctx)
+	require.NoError(t, err, "failed to get keyring")
 
 	// Create root client for test operations
 	clientUseCase, err := container.ClientUseCase(ctx)
@@ -407,10 +404,10 @@ func setupAuditLogTestContext(t *testing.T, dsn string) *auditLogTestContext {
 	require.NoError(t, err, "failed to get root client")
 
 	return &auditLogTestContext{
-		container:  container,
-		db:         db,
-		kekChain:   kekChain,
-		rootClient: rootClient,
+		container:   container,
+		db:          db,
+		activeKekID: kr.ActiveKekID(),
+		rootClient:  rootClient,
 	}
 }
 

@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/testutil"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
@@ -25,33 +23,20 @@ func createKekAndDek(t *testing.T, db *sql.DB) (kekID uuid.UUID, dekID uuid.UUID
 
 	ctx := context.Background()
 
-	// Create KEK
 	kekID = uuid.Must(uuid.NewV7())
-	kekRepo := cryptoRepository.NewKekRepository(db)
-	kek := &cryptoDomain.Kek{
-		ID:           kekID,
-		MasterKeyID:  "master-key-1",
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-kek-data"),
-		Nonce:        []byte("kek-nonce-12345"),
-		Version:      1,
-		CreatedAt:    time.Now().UTC(),
-	}
-	err := kekRepo.Create(ctx, kek)
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		kekID, "master-key-1", "aes-gcm", []byte("encrypted-kek-data"), []byte("kek-nonce-12345"), 1, time.Now().UTC(),
+	)
 	require.NoError(t, err)
 
-	// Create DEK
 	dekID = uuid.Must(uuid.NewV7())
-	dekRepo := cryptoRepository.NewDekRepository(db)
-	dek := &cryptoDomain.Dek{
-		ID:           dekID,
-		KekID:        kekID,
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-dek-data"),
-		Nonce:        []byte("dek-nonce-12345"),
-		CreatedAt:    time.Now().UTC(),
-	}
-	err = dekRepo.Create(ctx, dek)
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO deks (id, kek_id, algorithm, encrypted_key, nonce, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		dekID, kekID, "aes-gcm", []byte("encrypted-dek-data"), []byte("dek-nonce-12345"), time.Now().UTC(),
+	)
 	require.NoError(t, err)
 
 	return kekID, dekID

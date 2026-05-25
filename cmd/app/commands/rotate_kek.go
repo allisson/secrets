@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
+	"github.com/allisson/secrets/internal/keyring"
 )
 
 // RunRotateKek rotates the Key Encryption Key (KEK) for a specific algorithm.
@@ -14,8 +13,8 @@ import (
 // with old KEKs remain valid until rewrapped.
 func RunRotateKek(
 	ctx context.Context,
-	kekUseCase cryptoUseCase.KekUseCase,
-	masterKeyChain *cryptoDomain.MasterKeyChain,
+	kekUseCase keyring.KekUseCase,
+	masterKeyChain *keyring.MasterKeyChain,
 	logger *slog.Logger,
 	algorithmStr string,
 ) error {

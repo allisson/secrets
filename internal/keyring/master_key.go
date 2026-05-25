@@ -1,4 +1,4 @@
-package domain
+package keyring
 
 import (
 	"context"
@@ -12,43 +12,44 @@ import (
 	"github.com/allisson/secrets/internal/config"
 )
 
-// MasterKey represents a cryptographic master key used to encrypt KEKs.
-// Must be 32 bytes (256 bits) and stored securely in KMS or environment variables.
-// The Key field contains sensitive data and should be zeroed after use.
+// MasterKey is a plaintext root key used to wrap KEKs. Key material must be
+// zeroed via Zero when no longer needed.
 type MasterKey struct {
-	ID  string // Unique identifier for the master key
-	Key []byte // The raw 32-byte master key material
+	ID  string
+	Key []byte
 }
 
-// MasterKeyChain manages a collection of master keys with one designated as active.
-// Supports key rotation by maintaining multiple keys simultaneously.
+// MasterKeyChain is an in-memory store of one or more MasterKeys, one of
+// which is designated active. The active key is used for new KEK operations;
+// all keys are available for decryption of existing KEKs.
+// Concurrency-safe.
 type MasterKeyChain struct {
-	activeID string   // ID of the master key to use for encrypting new KEKs
-	keys     sync.Map // Thread-safe map of master key ID to MasterKey instances
+	activeID string
+	keys     sync.Map
 }
 
-// NewMasterKeyChain creates a new MasterKeyChain with the specified active key ID.
+// NewMasterKeyChain returns an empty MasterKeyChain whose active key ID is activeID.
+// Keys must be added via direct store calls before passing the chain to Bootstrap.
 func NewMasterKeyChain(activeID string) *MasterKeyChain {
 	return &MasterKeyChain{activeID: activeID}
 }
 
-// ActiveMasterKeyID returns the ID of the currently active master key.
+// ActiveMasterKeyID returns the ID of the master key used for new operations.
 func (m *MasterKeyChain) ActiveMasterKeyID() string {
 	return m.activeID
 }
 
-// Get retrieves a master key from the keychain by its ID.
+// Get returns the MasterKey with the given ID, or false if it is not in the chain.
 func (m *MasterKeyChain) Get(id string) (*MasterKey, bool) {
 	if masterKey, ok := m.keys.Load(id); ok {
 		return masterKey.(*MasterKey), ok
 	}
-
 	return nil, false
 }
 
-// Close securely zeros all master keys from memory, clears the chain, and resets the active ID.
+// Close zeroes all key material in the chain and removes every entry.
+// After Close the chain must not be used.
 func (m *MasterKeyChain) Close() {
-	// Zero all master keys before clearing the chain
 	m.keys.Range(func(key, value interface{}) bool {
 		if masterKey, ok := value.(*MasterKey); ok {
 			Zero(masterKey.Key)
@@ -59,30 +60,11 @@ func (m *MasterKeyChain) Close() {
 	m.keys.Clear()
 }
 
-// KMSService defines the interface for KMS operations required by LoadMasterKeyChain.
-// This interface is implemented by crypto/service.KMSService.
-type KMSService interface {
-	// OpenKeeper opens a secrets.Keeper for the configured KMS provider.
-	OpenKeeper(ctx context.Context, keyURI string) (KMSKeeper, error)
-}
-
-// KMSKeeper defines the interface for KMS decrypt operations.
-type KMSKeeper interface {
-	// Decrypt decrypts ciphertext using the KMS key.
-	Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error)
-
-	// Close releases resources held by the keeper.
-	Close() error
-}
-
-// maskKeyURI masks sensitive components of a KMS key URI for secure logging.
-// Examples: gcpkms://projects/***/.../cryptoKeys/*** or base64key://***
 func maskKeyURI(uri string) string {
 	if uri == "" {
 		return ""
 	}
 
-	// Extract scheme
 	parts := strings.SplitN(uri, "://", 2)
 	if len(parts) != 2 {
 		return "***"
@@ -91,29 +73,20 @@ func maskKeyURI(uri string) string {
 	scheme := parts[0]
 	remainder := parts[1]
 
-	// For base64key, mask everything after scheme
 	if scheme == "base64key" {
 		return scheme + "://***"
 	}
 
-	// For cloud providers, mask key identifiers but keep structure
-	// gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY
-	// awskms://KEY_ID?region=REGION
-	// azurekeyvault://VAULT.vault.azure.net/keys/KEY
-	// hashivault://KEY_NAME
-
 	switch scheme {
 	case "gcpkms":
-		// Mask project, keyRing, and cryptoKey names
 		pathParts := strings.Split(remainder, "/")
 		for i := range pathParts {
-			if i%2 == 1 { // Values (odd indices)
+			if i%2 == 1 {
 				pathParts[i] = "***"
 			}
 		}
 		return scheme + "://" + strings.Join(pathParts, "/")
 	case "awskms":
-		// Mask key ID but keep region parameter
 		queryParts := strings.SplitN(remainder, "?", 2)
 		masked := scheme + "://***"
 		if len(queryParts) == 2 {
@@ -121,16 +94,12 @@ func maskKeyURI(uri string) string {
 		}
 		return masked
 	case "azurekeyvault", "hashivault":
-		// Mask the entire path
 		return scheme + "://***"
 	default:
 		return scheme + "://***"
 	}
 }
 
-// loadMasterKeyChainFromKMS loads and decrypts master keys from MASTER_KEYS using KMS.
-// The MASTER_KEYS environment variable contains KMS-encrypted keys in format "id:base64ciphertext".
-// Returns ErrKMSOpenKeeperFailed, ErrKMSDecryptionFailed, ErrInvalidKeySize, or ErrActiveMasterKeyNotFound on failure.
 func loadMasterKeyChainFromKMS(
 	ctx context.Context,
 	cfg *config.Config,
@@ -147,7 +116,6 @@ func loadMasterKeyChainFromKMS(
 		return nil, ErrActiveMasterKeyIDNotSet
 	}
 
-	// Open KMS keeper
 	maskedURI := maskKeyURI(cfg.KMSKeyURI)
 	logger.Info("opening KMS keeper",
 		slog.String("kms_provider", cfg.KMSProvider),
@@ -177,7 +145,6 @@ func loadMasterKeyChainFromKMS(
 		}
 		id := p[0]
 
-		// Decode base64 ciphertext
 		ciphertext, err := base64.StdEncoding.DecodeString(p[1])
 		if err != nil {
 			mkc.Close()
@@ -189,15 +156,13 @@ func loadMasterKeyChainFromKMS(
 			slog.String("kms_provider", cfg.KMSProvider),
 		)
 
-		// Decrypt with KMS
 		key, err := keeper.Decrypt(ctx, ciphertext)
-		Zero(ciphertext) // Zero ciphertext after use
+		Zero(ciphertext)
 		if err != nil {
 			mkc.Close()
 			return nil, fmt.Errorf("%w for master key %s: %v", ErrKMSDecryptionFailed, id, err)
 		}
 
-		// Validate key size
 		if len(key) != 32 {
 			Zero(key)
 			mkc.Close()
@@ -214,8 +179,6 @@ func loadMasterKeyChainFromKMS(
 			slog.Int("key_size_bytes", len(key)),
 		)
 
-		// Make a copy of the key data before storing to prevent issues if the underlying
-		// slice is reused. The original 'key' slice from KMS is zeroed after copying.
 		keyCopy := make([]byte, len(key))
 		copy(keyCopy, key)
 		Zero(key)
@@ -236,18 +199,15 @@ func loadMasterKeyChainFromKMS(
 	return mkc, nil
 }
 
-// LoadMasterKeyChain loads master keys from environment variables using KMS for decryption.
-// Both KMS_PROVIDER and KMS_KEY_URI environment variables must be set.
-// Master keys in MASTER_KEYS must be KMS-encrypted ciphertext (not plaintext).
-// For local development, use the localsecrets provider with KMS_PROVIDER=localsecrets.
-// Returns ErrKMSProviderNotSet, ErrKMSKeyURINotSet, or errors from loadMasterKeyChainFromKMS.
+// LoadMasterKeyChain reads MASTER_KEYS and ACTIVE_MASTER_KEY_ID from the
+// environment, decrypts each key via the KMS, and returns a populated chain.
+// KMS_PROVIDER and KMS_KEY_URI must be set in cfg.
 func LoadMasterKeyChain(
 	ctx context.Context,
 	cfg *config.Config,
 	kmsService KMSService,
 	logger *slog.Logger,
 ) (*MasterKeyChain, error) {
-	// Validate KMS configuration is provided
 	if cfg.KMSProvider == "" {
 		return nil, ErrKMSProviderNotSet
 	}

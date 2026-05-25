@@ -10,70 +10,38 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
-
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
 )
 
 var errKeyringBadBatchSize = errors.New("keyring: batch size must be positive")
 
-// dekStore is the persistence contract Keyring relies on for DEK rows.
-//
-// Implemented by *crypto/repository.DekRepository today. Kept narrow here so
-// keyring can swap to its own repository once internal/crypto is folded in.
-type dekStore interface {
-	Create(ctx context.Context, dek *cryptoDomain.Dek) error
-	Get(ctx context.Context, dekID uuid.UUID) (*cryptoDomain.Dek, error)
-	Update(ctx context.Context, dek *cryptoDomain.Dek) error
-	GetBatchNotKekID(ctx context.Context, kekID uuid.UUID, limit int) ([]*cryptoDomain.Dek, error)
-}
-
-// keyring is the production Keyring. It orchestrates KEK chain lookup, DEK
+// keyringImpl is the production Keyring. It orchestrates KEK chain lookup, DEK
 // creation/persistence, AEAD cipher construction, and ciphertext I/O.
-type keyring struct {
-	kekChain     *cryptoDomain.KekChain
+type keyringImpl struct {
+	kekChain     *kekChain
 	dekStore     dekStore
-	aeadManager  cryptoService.AEADManager
-	keyManager   cryptoService.KeyManager
+	aeadManager  aeadManager
+	keyManager   keyManager
 	dekAlgorithm Algorithm
 }
 
-// New constructs a Keyring with the given dependencies. The kekChain must be
-// non-empty and have at least one usable KEK (the active one).
-func New(
-	kekChain *cryptoDomain.KekChain,
-	dekStore dekStore,
-	aeadManager cryptoService.AEADManager,
-	keyManager cryptoService.KeyManager,
-	dekAlgorithm Algorithm,
-) Keyring {
-	return &keyring{
-		kekChain:     kekChain,
-		dekStore:     dekStore,
-		aeadManager:  aeadManager,
-		keyManager:   keyManager,
-		dekAlgorithm: dekAlgorithm,
-	}
-}
-
-func (k *keyring) Encrypt(ctx context.Context, plaintext []byte) (Envelope, error) {
-	kek, err := k.activeKek()
+func (k *keyringImpl) Encrypt(ctx context.Context, plaintext []byte) (Envelope, error) {
+	kk, err := k.activeKek()
 	if err != nil {
 		return Envelope{}, err
 	}
 
-	dek, err := k.createAndPersistDek(ctx, kek, k.dekAlgorithm)
+	d, err := k.createAndPersistDek(ctx, kk, k.dekAlgorithm)
 	if err != nil {
 		return Envelope{}, err
 	}
 
-	dekKey, err := k.keyManager.DecryptDek(&dek, kek)
+	dekKey, err := k.keyManager.decryptDek(&d, kk)
 	if err != nil {
 		return Envelope{}, err
 	}
-	defer cryptoDomain.Zero(dekKey)
+	defer Zero(dekKey)
 
-	cipher, err := k.aeadManager.CreateCipher(dekKey, k.dekAlgorithm)
+	cipher, err := k.aeadManager.createCipher(dekKey, k.dekAlgorithm)
 	if err != nil {
 		return Envelope{}, err
 	}
@@ -84,33 +52,33 @@ func (k *keyring) Encrypt(ctx context.Context, plaintext []byte) (Envelope, erro
 	}
 
 	return Envelope{
-		DekID:      dek.ID,
+		DekID:      d.id,
 		Ciphertext: ciphertext,
 		Nonce:      nonce,
 	}, nil
 }
 
-func (k *keyring) Decrypt(ctx context.Context, env Envelope) ([]byte, error) {
-	dek, err := k.dekStore.Get(ctx, env.DekID)
+func (k *keyringImpl) Decrypt(ctx context.Context, env Envelope) ([]byte, error) {
+	d, err := k.dekStore.get(ctx, env.DekID)
 	if err != nil {
-		if errors.Is(err, cryptoDomain.ErrDekNotFound) {
+		if errors.Is(err, ErrDekNotFound) {
 			return nil, ErrDecryptionFailed
 		}
 		return nil, err
 	}
 
-	kek, ok := k.kekChain.Get(dek.KekID)
+	kk, ok := k.kekChain.get(d.kekID)
 	if !ok {
 		return nil, ErrDecryptionFailed
 	}
 
-	dekKey, err := k.keyManager.DecryptDek(dek, kek)
+	dekKey, err := k.keyManager.decryptDek(d, kk)
 	if err != nil {
 		return nil, err
 	}
-	defer cryptoDomain.Zero(dekKey)
+	defer Zero(dekKey)
 
-	cipher, err := k.aeadManager.CreateCipher(dekKey, dek.Algorithm)
+	cipher, err := k.aeadManager.createCipher(dekKey, d.algorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -118,21 +86,21 @@ func (k *keyring) Decrypt(ctx context.Context, env Envelope) ([]byte, error) {
 	return cipher.Decrypt(env.Ciphertext, env.Nonce, nil)
 }
 
-func (k *keyring) AllocateDek(ctx context.Context, alg Algorithm) (DekHandle, error) {
-	kek, err := k.activeKek()
+func (k *keyringImpl) AllocateDek(ctx context.Context, alg Algorithm) (DekHandle, error) {
+	kk, err := k.activeKek()
 	if err != nil {
 		return DekHandle{}, err
 	}
 
-	dek, err := k.createAndPersistDek(ctx, kek, alg)
+	d, err := k.createAndPersistDek(ctx, kk, alg)
 	if err != nil {
 		return DekHandle{}, err
 	}
 
-	return DekHandle{DekID: dek.ID}, nil
+	return DekHandle{DekID: d.id}, nil
 }
 
-func (k *keyring) EncryptWith(
+func (k *keyringImpl) EncryptWith(
 	ctx context.Context,
 	handle DekHandle,
 	plaintext, aad []byte,
@@ -146,7 +114,7 @@ func (k *keyring) EncryptWith(
 	return cipher.Encrypt(plaintext, aad)
 }
 
-func (k *keyring) DecryptWith(
+func (k *keyringImpl) DecryptWith(
 	ctx context.Context,
 	handle DekHandle,
 	ciphertext, nonce, aad []byte,
@@ -160,8 +128,8 @@ func (k *keyring) DecryptWith(
 	return cipher.Decrypt(ciphertext, nonce, aad)
 }
 
-func (k *keyring) Rewrap(ctx context.Context, dekID uuid.UUID) error {
-	dek, err := k.dekStore.Get(ctx, dekID)
+func (k *keyringImpl) Rewrap(ctx context.Context, dekID uuid.UUID) error {
+	d, err := k.dekStore.get(ctx, dekID)
 	if err != nil {
 		return err
 	}
@@ -171,50 +139,50 @@ func (k *keyring) Rewrap(ctx context.Context, dekID uuid.UUID) error {
 		return err
 	}
 
-	if dek.KekID == activeKek.ID {
+	if d.kekID == activeKek.id {
 		return nil
 	}
 
-	oldKek, ok := k.kekChain.Get(dek.KekID)
+	oldKek, ok := k.kekChain.get(d.kekID)
 	if !ok {
-		return cryptoDomain.ErrKekNotFound
+		return ErrKekNotFound
 	}
 
-	dekKey, err := k.keyManager.DecryptDek(dek, oldKek)
+	dekKey, err := k.keyManager.decryptDek(d, oldKek)
 	if err != nil {
 		return err
 	}
-	defer cryptoDomain.Zero(dekKey)
+	defer Zero(dekKey)
 
-	newEncKey, newNonce, err := k.keyManager.EncryptDek(dekKey, activeKek)
+	newEncKey, newNonce, err := k.keyManager.encryptDek(dekKey, activeKek)
 	if err != nil {
 		return err
 	}
 
-	dek.KekID = activeKek.ID
-	dek.EncryptedKey = newEncKey
-	dek.Nonce = newNonce
+	d.kekID = activeKek.id
+	d.encryptedKey = newEncKey
+	d.nonce = newNonce
 
-	return k.dekStore.Update(ctx, dek)
+	return k.dekStore.update(ctx, d)
 }
 
-func (k *keyring) RewrapAll(ctx context.Context, batchSize int) (int, error) {
+func (k *keyringImpl) RewrapAll(ctx context.Context, batchSize int) (int, error) {
 	if batchSize <= 0 {
 		return 0, errKeyringBadBatchSize
 	}
 
-	activeKekID := k.kekChain.ActiveKekID()
+	activeKekID := k.kekChain.activeKekID()
 	total := 0
 	for {
-		deks, err := k.dekStore.GetBatchNotKekID(ctx, activeKekID, batchSize)
+		deks, err := k.dekStore.getBatchNotKekID(ctx, activeKekID, batchSize)
 		if err != nil {
 			return total, err
 		}
 		if len(deks) == 0 {
 			return total, nil
 		}
-		for _, dek := range deks {
-			if err := k.Rewrap(ctx, dek.ID); err != nil {
+		for _, d := range deks {
+			if err := k.Rewrap(ctx, d.id); err != nil {
 				return total, err
 			}
 			total++
@@ -222,38 +190,38 @@ func (k *keyring) RewrapAll(ctx context.Context, batchSize int) (int, error) {
 	}
 }
 
-func (k *keyring) ActiveKekID() uuid.UUID {
-	return k.kekChain.ActiveKekID()
+func (k *keyringImpl) ActiveKekID() uuid.UUID {
+	return k.kekChain.activeKekID()
 }
 
-func (k *keyring) SignWithKey(data []byte) ([]byte, uuid.UUID, error) {
-	kek, err := k.activeKek()
+func (k *keyringImpl) SignWithKey(data []byte) ([]byte, uuid.UUID, error) {
+	kk, err := k.activeKek()
 	if err != nil {
 		return nil, uuid.Nil, err
 	}
 
-	signingKey, err := deriveAuditSigningKey(kek.Key)
+	signingKey, err := deriveAuditSigningKey(kk.key)
 	if err != nil {
 		return nil, uuid.Nil, err
 	}
-	defer cryptoDomain.Zero(signingKey)
+	defer Zero(signingKey)
 
 	mac := hmac.New(sha256.New, signingKey)
 	mac.Write(data)
-	return mac.Sum(nil), kek.ID, nil
+	return mac.Sum(nil), kk.id, nil
 }
 
-func (k *keyring) VerifyWithKey(kekID uuid.UUID, data, sig []byte) error {
-	kek, ok := k.kekChain.Get(kekID)
+func (k *keyringImpl) VerifyWithKey(kekID uuid.UUID, data, sig []byte) error {
+	kk, ok := k.kekChain.get(kekID)
 	if !ok {
 		return ErrKekNotFound
 	}
 
-	signingKey, err := deriveAuditSigningKey(kek.Key)
+	signingKey, err := deriveAuditSigningKey(kk.key)
 	if err != nil {
 		return err
 	}
-	defer cryptoDomain.Zero(signingKey)
+	defer Zero(signingKey)
 
 	mac := hmac.New(sha256.New, signingKey)
 	mac.Write(data)
@@ -274,65 +242,65 @@ func deriveAuditSigningKey(kekKey []byte) ([]byte, error) {
 	return signingKey, nil
 }
 
-func (k *keyring) activeKek() (*cryptoDomain.Kek, error) {
-	kek, ok := k.kekChain.Get(k.kekChain.ActiveKekID())
+func (k *keyringImpl) activeKek() (*kek, error) {
+	kk, ok := k.kekChain.get(k.kekChain.activeKekID())
 	if !ok {
-		return nil, cryptoDomain.ErrKekNotFound
+		return nil, ErrKekNotFound
 	}
-	return kek, nil
+	return kk, nil
 }
 
-func (k *keyring) createAndPersistDek(
+func (k *keyringImpl) createAndPersistDek(
 	ctx context.Context,
-	kek *cryptoDomain.Kek,
+	kk *kek,
 	alg Algorithm,
-) (cryptoDomain.Dek, error) {
-	dek, err := k.keyManager.CreateDek(kek, alg)
+) (dek, error) {
+	d, err := k.keyManager.createDek(kk, alg)
 	if err != nil {
-		return cryptoDomain.Dek{}, err
+		return dek{}, err
 	}
 
-	if dek.CreatedAt.IsZero() {
-		dek.CreatedAt = time.Now().UTC()
+	if d.createdAt.IsZero() {
+		d.createdAt = time.Now().UTC()
 	}
 
-	if err := k.dekStore.Create(ctx, &dek); err != nil {
-		return cryptoDomain.Dek{}, err
+	if err := k.dekStore.create(ctx, &d); err != nil {
+		return dek{}, err
 	}
 
-	return dek, nil
+	return d, nil
 }
 
 // openCipher loads the DEK referenced by handle, unwraps it under its KEK,
-// and returns an AEAD cipher plus a cleanup function that zeroes the DEK.
-func (k *keyring) openCipher(
+// and returns an AEAD cipher plus a cleanup function that zeroes the DEK key.
+func (k *keyringImpl) openCipher(
 	ctx context.Context,
 	handle DekHandle,
-) (cryptoService.AEAD, func(), error) {
-	dek, err := k.dekStore.Get(ctx, handle.DekID)
+) (aead, func(), error) {
+	d, err := k.dekStore.get(ctx, handle.DekID)
 	if err != nil {
-		if errors.Is(err, cryptoDomain.ErrDekNotFound) {
+		if errors.Is(err, ErrDekNotFound) {
 			return nil, func() {}, ErrDecryptionFailed
 		}
 		return nil, func() {}, err
 	}
 
-	kek, ok := k.kekChain.Get(dek.KekID)
+	kk, ok := k.kekChain.get(d.kekID)
 	if !ok {
 		return nil, func() {}, ErrDecryptionFailed
 	}
 
-	dekKey, err := k.keyManager.DecryptDek(dek, kek)
+	dekKey, err := k.keyManager.decryptDek(d, kk)
 	if err != nil {
 		return nil, func() {}, err
 	}
 
-	cipher, err := k.aeadManager.CreateCipher(dekKey, dek.Algorithm)
+	cipher, err := k.aeadManager.createCipher(dekKey, d.algorithm)
 	if err != nil {
-		cryptoDomain.Zero(dekKey)
+		Zero(dekKey)
 		return nil, func() {}, err
 	}
 
-	cleanup := func() { cryptoDomain.Zero(dekKey) }
+	cleanup := func() { Zero(dekKey) }
 	return cipher, cleanup, nil
 }

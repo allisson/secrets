@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoRepository "github.com/allisson/secrets/internal/crypto/repository"
 	"github.com/allisson/secrets/internal/testutil"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 )
@@ -778,33 +776,20 @@ func createTestDek(t *testing.T, db *sql.DB) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 
-	// Create KEK
 	kekID := uuid.Must(uuid.NewV7())
-	kekRepo := cryptoRepository.NewKekRepository(db)
-	kek := &cryptoDomain.Kek{
-		ID:           kekID,
-		MasterKeyID:  "master-key-test",
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-kek-data"),
-		Nonce:        []byte("kek-nonce"),
-		Version:      1,
-		CreatedAt:    time.Now().UTC(),
-	}
-	err := kekRepo.Create(ctx, kek)
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO keks (id, master_key_id, algorithm, encrypted_key, nonce, version, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		kekID, "master-key-test", "aes-gcm", []byte("encrypted-kek-data"), []byte("kek-nonce"), 1, time.Now().UTC(),
+	)
 	require.NoError(t, err)
 
-	// Create DEK
 	dekID := uuid.Must(uuid.NewV7())
-	dekRepo := cryptoRepository.NewDekRepository(db)
-	dek := &cryptoDomain.Dek{
-		ID:           dekID,
-		KekID:        kekID,
-		Algorithm:    cryptoDomain.AESGCM,
-		EncryptedKey: []byte("encrypted-dek-data"),
-		Nonce:        []byte("dek-nonce"),
-		CreatedAt:    time.Now().UTC(),
-	}
-	err = dekRepo.Create(ctx, dek)
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO deks (id, kek_id, algorithm, encrypted_key, nonce, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		dekID, kekID, "aes-gcm", []byte("encrypted-dek-data"), []byte("dek-nonce"), time.Now().UTC(),
+	)
 	require.NoError(t, err)
 
 	return dekID
@@ -820,7 +805,7 @@ func TestTransitKeyRepository_GetTransitKey(t *testing.T) {
 
 	// Create prerequisite KEK and DEK
 	dekID := createTestDek(t, db)
-	algorithm := cryptoDomain.AESGCM
+	algorithm := "aes-gcm"
 
 	name := "test-key"
 

@@ -22,43 +22,19 @@ package keyring
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
-
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 )
 
 // Algorithm is the AEAD algorithm used to wrap a DEK and to encrypt under it.
-// Re-exported from internal/crypto/domain so callers do not need that import.
-type Algorithm = cryptoDomain.Algorithm
+type Algorithm string
 
 const (
-	// AESGCM is AES-256-GCM (optimal with AES-NI).
-	AESGCM = cryptoDomain.AESGCM
+	// AESGCM selects AES-256-GCM. Prefer this on hardware with AES-NI acceleration.
+	AESGCM Algorithm = "aes-gcm"
 
-	// ChaCha20 is ChaCha20-Poly1305 (optimal without AES-NI).
-	ChaCha20 = cryptoDomain.ChaCha20
-)
-
-var (
-	// ErrDecryptionFailed is returned when Decrypt or DecryptWith cannot recover
-	// plaintext due to missing key material or cipher failure.
-	// Re-exported so callers do not need to import crypto/domain.
-	ErrDecryptionFailed = cryptoDomain.ErrDecryptionFailed
-
-	// Zero overwrites b with zeros, clearing sensitive material from memory.
-	// Re-exported from crypto/domain so callers do not need that import.
-	Zero = cryptoDomain.Zero
-
-	// ErrSignatureInvalid is returned by VerifyWithKey when the HMAC signature
-	// does not match the payload.
-	ErrSignatureInvalid = errors.New("keyring: signature invalid")
-
-	// ErrKekNotFound is returned by VerifyWithKey when the referenced KEK is
-	// not present in the chain.
-	// Re-exported so callers do not need to import crypto/domain.
-	ErrKekNotFound = cryptoDomain.ErrKekNotFound
+	// ChaCha20 selects ChaCha20-Poly1305. Prefer this on hardware without AES-NI.
+	ChaCha20 Algorithm = "chacha20-poly1305"
 )
 
 // Envelope is the result of Keyring.Encrypt and the input to Keyring.Decrypt.

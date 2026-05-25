@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	transitDTO "github.com/allisson/secrets/internal/transit/http/dto"
 )
 
@@ -42,7 +42,7 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 			t.Run("01_CreateTransitKey", func(t *testing.T) {
 				requestBody := transitDTO.CreateTransitKeyRequest{
 					Name:      transitKeyName,
-					Algorithm: string(cryptoDomain.AESGCM),
+					Algorithm: string(keyring.AESGCM),
 				}
 
 				resp, body := ctx.makeRequest(t, http.MethodPost, "/v1/transit/keys", requestBody, true)
@@ -158,7 +158,7 @@ func TestIntegration_Transit_CompleteFlow(t *testing.T) {
 			// [5/8] Test POST /v1/transit/keys/:name/rotate - Rotate transit key
 			t.Run("05_RotateTransitKey", func(t *testing.T) {
 				requestBody := transitDTO.RotateTransitKeyRequest{
-					Algorithm: string(cryptoDomain.AESGCM),
+					Algorithm: string(keyring.AESGCM),
 				}
 
 				resp, body := ctx.makeRequest(

@@ -13,9 +13,6 @@ import (
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
-	cryptoService "github.com/allisson/secrets/internal/crypto/service"
-	cryptoUseCase "github.com/allisson/secrets/internal/crypto/usecase"
 	"github.com/allisson/secrets/internal/database"
 	"github.com/allisson/secrets/internal/http"
 	"github.com/allisson/secrets/internal/keyring"
@@ -36,7 +33,7 @@ type Container struct {
 	// Infrastructure
 	logger         *slog.Logger
 	db             *sql.DB
-	masterKeyChain *cryptoDomain.MasterKeyChain
+	masterKeyChain *keyring.MasterKeyChain
 
 	// Managers
 	txManager database.TxManager
@@ -46,9 +43,7 @@ type Container struct {
 	businessMetrics metrics.BusinessMetrics
 
 	// Services
-	aeadManager   cryptoService.AEADManager
-	keyManager    cryptoService.KeyManager
-	kmsService    cryptoDomain.KMSService
+	kmsService    keyring.KMSService
 	secretService authService.SecretService
 	tokenService  authService.TokenService
 
@@ -56,7 +51,6 @@ type Container struct {
 	keyring keyring.Keyring
 
 	// Repositories
-	kekRepository               cryptoUseCase.KekRepository
 	secretRepository            secretsUseCase.SecretRepository
 	clientRepository            authUseCase.ClientRepository
 	tokenRepository             authUseCase.TokenRepository
@@ -66,7 +60,7 @@ type Container struct {
 	tokenizationTokenRepository tokenizationUseCase.TokenRepository
 
 	// Use Cases
-	kekUseCase             cryptoUseCase.KekUseCase
+	kekUseCase             keyring.KekUseCase
 	secretUseCase          secretsUseCase.SecretUseCase
 	clientUseCase          authUseCase.ClientUseCase
 	tokenUseCase           authUseCase.TokenUseCase
@@ -96,13 +90,10 @@ type Container struct {
 	txManagerInit                   sync.Once
 	metricsProviderInit             sync.Once
 	businessMetricsInit             sync.Once
-	aeadManagerInit                 sync.Once
-	keyManagerInit                  sync.Once
 	kmsServiceInit                  sync.Once
 	secretServiceInit               sync.Once
 	tokenServiceInit                sync.Once
 	keyringInit                     sync.Once
-	kekRepositoryInit               sync.Once
 	secretRepositoryInit            sync.Once
 	clientRepositoryInit            sync.Once
 	tokenRepositoryInit             sync.Once

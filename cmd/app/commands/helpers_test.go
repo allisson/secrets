@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
+	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 )
 
@@ -40,11 +40,11 @@ func TestWriteOutput(t *testing.T) {
 func TestParseAlgorithm(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected cryptoDomain.Algorithm
+		expected keyring.Algorithm
 		wantErr  bool
 	}{
-		{"aes-gcm", cryptoDomain.AESGCM, false},
-		{"chacha20-poly1305", cryptoDomain.ChaCha20, false},
+		{"aes-gcm", keyring.AESGCM, false},
+		{"chacha20-poly1305", keyring.ChaCha20, false},
 		{"invalid", "", true},
 	}
 

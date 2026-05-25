@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
@@ -228,7 +227,7 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 		}, nil)
 
 		_, _, err := uc.Detokenize(ctx, "tok")
-		assert.ErrorIs(t, err, cryptoDomain.ErrDecryptionFailed)
+		assert.ErrorIs(t, err, keyring.ErrDecryptionFailed)
 	})
 }
 

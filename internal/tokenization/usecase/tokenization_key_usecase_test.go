@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	cryptoDomain "github.com/allisson/secrets/internal/crypto/domain"
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
@@ -55,7 +54,7 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Create(ctx, "test-key", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM)
+		key, err := uc.Create(ctx, "test-key", tokenizationDomain.FormatUUID, false, keyring.AESGCM)
 		require.NoError(t, err)
 		assert.Equal(t, "test-key", key.Name)
 		assert.Equal(t, uint(1), key.Version)
@@ -68,14 +67,14 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			GetByNameAndVersion(ctx, "dup", uint(1)).
 			Return(&tokenizationDomain.TokenizationKey{}, nil)
 
-		_, err := uc.Create(ctx, "dup", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM)
+		_, err := uc.Create(ctx, "dup", tokenizationDomain.FormatUUID, false, keyring.AESGCM)
 		assert.ErrorIs(t, err, tokenizationDomain.ErrTokenizationKeyAlreadyExists)
 	})
 
 	t.Run("Error_InvalidFormatType", func(t *testing.T) {
 		t.Parallel()
 		uc, _, _ := newTokenizationKeyUseCase(t)
-		_, err := uc.Create(ctx, "k", tokenizationDomain.FormatType("nope"), false, cryptoDomain.AESGCM)
+		_, err := uc.Create(ctx, "k", tokenizationDomain.FormatType("nope"), false, keyring.AESGCM)
 		assert.ErrorIs(t, err, tokenizationDomain.ErrInvalidFormatType)
 	})
 
@@ -88,7 +87,7 @@ func TestTokenizationKeyUseCase_Create(t *testing.T) {
 			GetByNameAndVersion(ctx, "k", uint(1)).
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound)
 
-		_, err := uc.Create(ctx, "k", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM)
+		_, err := uc.Create(ctx, "k", tokenizationDomain.FormatUUID, false, keyring.AESGCM)
 		assert.Error(t, err)
 	})
 }
@@ -113,7 +112,7 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Rotate(ctx, "k", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM)
+		key, err := uc.Rotate(ctx, "k", tokenizationDomain.FormatUUID, false, keyring.AESGCM)
 		require.NoError(t, err)
 		assert.Equal(t, uint(3), key.Version)
 	})
@@ -129,7 +128,7 @@ func TestTokenizationKeyUseCase_Rotate(t *testing.T) {
 			})).
 			Return(nil)
 
-		key, err := uc.Rotate(ctx, "new", tokenizationDomain.FormatUUID, false, cryptoDomain.AESGCM)
+		key, err := uc.Rotate(ctx, "new", tokenizationDomain.FormatUUID, false, keyring.AESGCM)
 		require.NoError(t, err)
 		assert.Equal(t, uint(1), key.Version)
 	})
