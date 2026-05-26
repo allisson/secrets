@@ -9,9 +9,10 @@ import (
 	"os"
 	"sync"
 
+	"github.com/allisson/go-pwdhash"
+
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/database"
@@ -34,14 +35,12 @@ type Container struct {
 	config *config.Config
 
 	// Infallible singletons — kept as plain sync.Once because they cannot fail.
-	logger            *slog.Logger
-	loggerInit        sync.Once
-	kmsService        keyring.KMSService
-	kmsServiceInit    sync.Once
-	secretService     authService.SecretService
-	secretServiceInit sync.Once
-	tokenService      authService.TokenService
-	tokenServiceInit  sync.Once
+	logger             *slog.Logger
+	loggerInit         sync.Once
+	kmsService         keyring.KMSService
+	kmsServiceInit     sync.Once
+	passwordHasher     *pwdhash.PasswordHasher
+	passwordHasherInit sync.Once
 
 	// Infrastructure
 	db             once[*sql.DB]

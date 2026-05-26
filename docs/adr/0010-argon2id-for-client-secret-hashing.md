@@ -201,5 +201,5 @@ Maximum GPU-resistant variant of Argon2.
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - [Password Hashing Competition](https://www.password-hashing.net/)
 - [go-pwdhash library](https://github.com/allisson/go-pwdhash)
-- [Token authentication implementation](../../internal/auth/service/secret_service.go)
+- [Password-hash wiring (Argon2id PolicyModerate)](../../internal/app/di_auth.go)
 - [ADR 0006: Dual-Scope Rate Limiting Strategy](0006-dual-scope-rate-limiting-strategy.md) - Rate limiting on auth endpoint

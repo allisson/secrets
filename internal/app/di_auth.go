@@ -4,19 +4,48 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/allisson/go-pwdhash"
+
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authRepository "github.com/allisson/secrets/internal/auth/repository"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
+	apperrors "github.com/allisson/secrets/internal/errors"
 )
 
-// SecretService returns the secret service for authentication operations.
-func (c *Container) SecretService() authService.SecretService {
-	c.secretServiceInit.Do(func() {
-		c.secretService = c.initSecretService()
+// PasswordHasher returns a process-singleton pwdhash.PasswordHasher configured with
+// the production policy. Used by HashSecret and CompareSecret closures below.
+func (c *Container) PasswordHasher() *pwdhash.PasswordHasher {
+	c.passwordHasherInit.Do(func() {
+		h, err := pwdhash.New(pwdhash.WithPolicy(pwdhash.PolicyModerate))
+		if err != nil {
+			// PolicyModerate is a constant known to be valid; failure here is a programming bug.
+			panic(err)
+		}
+		c.passwordHasher = h
 	})
-	return c.secretService
+	return c.passwordHasher
+}
+
+// HashSecret returns the HashSecretFunc closure bound to the production hasher.
+func (c *Container) HashSecret() authUseCase.HashSecretFunc {
+	h := c.PasswordHasher()
+	return func(plain string) (string, error) {
+		hashed, err := h.Hash([]byte(plain))
+		if err != nil {
+			return "", apperrors.Wrap(err, "failed to hash secret")
+		}
+		return hashed, nil
+	}
+}
+
+// CompareSecret returns the CompareSecretFunc closure bound to the production hasher.
+func (c *Container) CompareSecret() authUseCase.CompareSecretFunc {
+	h := c.PasswordHasher()
+	return func(plain, hashed string) bool {
+		ok, err := h.Verify([]byte(plain), hashed)
+		return err == nil && ok
+	}
 }
 
 // ClientRepository returns the client repository.
@@ -31,14 +60,6 @@ func (c *Container) ClientUseCase(ctx context.Context) (authUseCase.ClientUseCas
 	return c.clientUseCase.get(func() (authUseCase.ClientUseCase, error) {
 		return c.initClientUseCase(ctx)
 	})
-}
-
-// TokenService returns the token service for authentication operations.
-func (c *Container) TokenService() authService.TokenService {
-	c.tokenServiceInit.Do(func() {
-		c.tokenService = c.initTokenService()
-	})
-	return c.tokenService
 }
 
 // TokenRepository returns the token repository.
@@ -90,11 +111,6 @@ func (c *Container) AuditLogHandler(ctx context.Context) (*authHTTP.AuditLogHand
 	})
 }
 
-// initSecretService creates the secret service for authentication.
-func (c *Container) initSecretService() authService.SecretService {
-	return authService.NewSecretService()
-}
-
 // initClientRepository creates the client repository.
 func (c *Container) initClientRepository(ctx context.Context) (authDomain.ClientRepository, error) {
 	db, err := c.DB(ctx)
@@ -127,20 +143,13 @@ func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUs
 		return nil, fmt.Errorf("failed to get audit log use case for client use case: %w", err)
 	}
 
-	secretService := c.SecretService()
-
 	return authUseCase.NewClientUseCase(
 		txManager,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
-		secretService,
+		c.HashSecret(),
 	), nil
-}
-
-// initTokenService creates the token service for authentication.
-func (c *Container) initTokenService() authService.TokenService {
-	return authService.NewTokenService()
 }
 
 // initTokenRepository creates the token repository.
@@ -180,16 +189,13 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 		return nil, fmt.Errorf("failed to get audit log use case for token use case: %w", err)
 	}
 
-	secretService := c.SecretService()
-	tokenService := c.TokenService()
-
 	return authUseCase.NewTokenUseCase(
 		c.config,
 		clientRepository,
 		tokenRepository,
 		auditLogUseCase,
-		secretService,
-		tokenService,
+		c.CompareSecret(),
+		c.Logger(),
 	), nil
 }
 

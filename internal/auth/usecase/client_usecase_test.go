@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	serviceMocks "github.com/allisson/secrets/internal/auth/service/mocks"
 	"github.com/allisson/secrets/internal/auth/usecase"
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
@@ -25,11 +24,13 @@ func TestClientUseCase_Create(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
 
-		// Test data
-		plainSecret := "test-plain-secret-abc123"                  //nolint:gosec
-		hashedSecret := "$argon2id$v=19$m=65536,t=3,p=4$test-hash" //nolint:gosec
+		var capturedPlain string
+		hashSecret := func(plain string) (string, error) {
+			capturedPlain = plain
+			return "hashed:" + plain, nil
+		}
+
 		createInput := &authDomain.CreateClientInput{
 			Name:     "test-client",
 			IsActive: true,
@@ -41,28 +42,25 @@ func TestClientUseCase_Create(t *testing.T) {
 			},
 		}
 
-		// Setup expectations
-		mockSecretService.EXPECT().GenerateSecret().Return(plainSecret, hashedSecret, nil).Once()
 		mockClientRepo.EXPECT().Create(ctx, mock.MatchedBy(func(client *authDomain.Client) bool {
-			return client.Secret == hashedSecret &&
+			return client.Secret == "hashed:"+capturedPlain &&
 				client.Name == createInput.Name &&
 				client.IsActive == createInput.IsActive
 		})).Return(nil).Once()
 
-		// Execute
 		uc := usecase.NewClientUseCase(
 			mockTxManager,
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
+			hashSecret,
 		)
 		output, err := uc.Create(ctx, createInput)
 
-		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
-		assert.Equal(t, plainSecret, output.PlainSecret)
+		assert.NotEmpty(t, output.PlainSecret)
+		assert.Equal(t, capturedPlain, output.PlainSecret)
 	})
 }
 
@@ -74,7 +72,7 @@ func TestClientUseCase_Update(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
 		clientID := uuid.Must(uuid.NewV7())
 		existingClient := &authDomain.Client{
@@ -96,8 +94,7 @@ func TestClientUseCase_Update(t *testing.T) {
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 		err := uc.Update(ctx, clientID, updateInput)
 
 		assert.NoError(t, err)
@@ -112,7 +109,7 @@ func TestClientUseCase_Get(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
 		clientID := uuid.Must(uuid.NewV7())
 		expectedClient := &authDomain.Client{
@@ -127,8 +124,7 @@ func TestClientUseCase_Get(t *testing.T) {
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 		client, err := uc.Get(ctx, clientID)
 
 		assert.NoError(t, err)
@@ -145,14 +141,13 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 		uc := usecase.NewClientUseCase(
 			mockTxManager,
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 
 		clientID := uuid.Must(uuid.NewV7())
 		client := &authDomain.Client{ID: clientID}
@@ -173,14 +168,13 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 		uc := usecase.NewClientUseCase(
 			mockTxManager,
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -199,7 +193,7 @@ func TestClientUseCase_Delete(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
 		clientID := uuid.Must(uuid.NewV7())
 		existingClient := &authDomain.Client{
@@ -217,8 +211,7 @@ func TestClientUseCase_Delete(t *testing.T) {
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 		err := uc.Delete(ctx, clientID)
 
 		assert.NoError(t, err)
@@ -233,7 +226,7 @@ func TestClientUseCase_Unlock(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
 		clientID := uuid.Must(uuid.NewV7())
 		existingClient := &authDomain.Client{
@@ -249,8 +242,7 @@ func TestClientUseCase_Unlock(t *testing.T) {
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 		err := uc.Unlock(ctx, clientID)
 
 		assert.NoError(t, err)
@@ -261,25 +253,24 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success_RotateClientSecret", func(t *testing.T) {
-		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+
+		var capturedPlain string
+		hashSecret := func(plain string) (string, error) {
+			capturedPlain = plain
+			return "hashed:" + plain, nil
+		}
 
 		clientID := uuid.Must(uuid.NewV7())
-		oldHashedSecret := "old-hash"
-		newPlainSecret := "new-plain-secret"
-		newHashedSecret := "new-hash"
-
 		existingClient := &authDomain.Client{
 			ID:       clientID,
-			Secret:   oldHashedSecret,
+			Secret:   "old-hash",
 			IsActive: true,
 		}
 
-		// Setup expectations
 		mockTxManager.EXPECT().
 			WithTx(ctx, mock.AnythingOfType("func(context.Context) error")).
 			RunAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
@@ -288,9 +279,8 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 			Once()
 
 		mockClientRepo.EXPECT().Get(ctx, clientID).Return(existingClient, nil).Once()
-		mockSecretService.EXPECT().GenerateSecret().Return(newPlainSecret, newHashedSecret, nil).Once()
 		mockClientRepo.EXPECT().Update(ctx, mock.MatchedBy(func(client *authDomain.Client) bool {
-			return client.ID == clientID && client.Secret == newHashedSecret
+			return client.ID == clientID && client.Secret == "hashed:"+capturedPlain
 		})).Return(nil).Once()
 		mockTokenRepo.EXPECT().RevokeByClientID(ctx, clientID).Return(nil).Once()
 		mockAuditLogUseCase.EXPECT().
@@ -298,21 +288,20 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 			Return(nil).
 			Once()
 
-		// Execute
 		uc := usecase.NewClientUseCase(
 			mockTxManager,
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
+			hashSecret,
 		)
 		output, err := uc.RotateSecret(ctx, clientID)
 
-		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, output)
 		assert.Equal(t, clientID, output.ID)
-		assert.Equal(t, newPlainSecret, output.PlainSecret)
+		assert.NotEmpty(t, output.PlainSecret)
+		assert.Equal(t, capturedPlain, output.PlainSecret)
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
@@ -320,7 +309,7 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
 		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
-		mockSecretService := serviceMocks.NewMockSecretService(t)
+		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
 		clientID := uuid.Must(uuid.NewV7())
 
@@ -338,8 +327,7 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 			mockClientRepo,
 			mockTokenRepo,
 			mockAuditLogUseCase,
-			mockSecretService,
-		)
+			hashSecret)
 		output, err := uc.RotateSecret(ctx, clientID)
 
 		assert.ErrorIs(t, err, authDomain.ErrClientNotFound)

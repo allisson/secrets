@@ -8,9 +8,12 @@ import (
 	"github.com/google/uuid"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	"github.com/allisson/secrets/internal/database"
 )
+
+// HashSecretFunc hashes a plaintext client secret under the configured password-hash
+// policy. Bound in DI; tests inject trivial closures.
+type HashSecretFunc func(plain string) (hashed string, err error)
 
 // clientUseCase implements ClientUseCase interface for managing client authentication.
 type clientUseCase struct {
@@ -18,7 +21,21 @@ type clientUseCase struct {
 	clientRepo      authDomain.ClientRepository
 	tokenRepo       authDomain.TokenRepository
 	auditLogUseCase AuditLogUseCase
-	secretService   authService.SecretService
+	hashSecret      HashSecretFunc
+}
+
+// mintAndHashSecret generates a fresh client secret, hashes it, and returns both.
+// Centralises the two-step "mint then hash" sequence used by Create and RotateSecret.
+func (c *clientUseCase) mintAndHashSecret() (plain, hashed string, err error) {
+	plain, err = authDomain.MintClientSecret()
+	if err != nil {
+		return "", "", err
+	}
+	hashed, err = c.hashSecret(plain)
+	if err != nil {
+		return "", "", err
+	}
+	return plain, hashed, nil
 }
 
 // Create generates and persists a new Client with a random secret.
@@ -28,8 +45,8 @@ func (c *clientUseCase) Create(
 	ctx context.Context,
 	createClientInput *authDomain.CreateClientInput,
 ) (result *authDomain.CreateClientOutput, err error) {
-	// Generate a secure random secret
-	plainSecret, hashedSecret, err := c.secretService.GenerateSecret()
+	// Generate a secure random secret and hash it under the configured policy.
+	plainSecret, hashedSecret, err := c.mintAndHashSecret()
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +184,8 @@ func (c *clientUseCase) RotateSecret(
 			return err
 		}
 
-		// Generate a new secure random secret
-		plainSecret, hashedSecret, err := c.secretService.GenerateSecret()
+		// Generate a new secure random secret and hash it.
+		plainSecret, hashedSecret, err := c.mintAndHashSecret()
 		if err != nil {
 			return err
 		}
@@ -221,13 +238,13 @@ func NewClientUseCase(
 	clientRepo authDomain.ClientRepository,
 	tokenRepo authDomain.TokenRepository,
 	auditLogUseCase AuditLogUseCase,
-	secretService authService.SecretService,
+	hashSecret HashSecretFunc,
 ) ClientUseCase {
 	return &clientUseCase{
 		txManager:       txManager,
 		clientRepo:      clientRepo,
 		tokenRepo:       tokenRepo,
 		auditLogUseCase: auditLogUseCase,
-		secretService:   secretService,
+		hashSecret:      hashSecret,
 	}
 }
