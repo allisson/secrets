@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authService "github.com/allisson/secrets/internal/auth/service"
@@ -19,8 +20,8 @@ func (c *Container) SecretService() authService.SecretService {
 }
 
 // ClientRepository returns the client repository.
-func (c *Container) ClientRepository(ctx context.Context) (authUseCase.ClientRepository, error) {
-	return c.clientRepository.get(func() (authUseCase.ClientRepository, error) {
+func (c *Container) ClientRepository(ctx context.Context) (authDomain.ClientRepository, error) {
+	return c.clientRepository.get(func() (authDomain.ClientRepository, error) {
 		return c.initClientRepository(ctx)
 	})
 }
@@ -41,15 +42,15 @@ func (c *Container) TokenService() authService.TokenService {
 }
 
 // TokenRepository returns the token repository.
-func (c *Container) TokenRepository(ctx context.Context) (authUseCase.TokenRepository, error) {
-	return c.tokenRepository.get(func() (authUseCase.TokenRepository, error) {
+func (c *Container) TokenRepository(ctx context.Context) (authDomain.TokenRepository, error) {
+	return c.tokenRepository.get(func() (authDomain.TokenRepository, error) {
 		return c.initTokenRepository(ctx)
 	})
 }
 
 // AuditLogRepository returns the audit log repository.
-func (c *Container) AuditLogRepository(ctx context.Context) (authUseCase.AuditLogRepository, error) {
-	return c.auditLogRepository.get(func() (authUseCase.AuditLogRepository, error) {
+func (c *Container) AuditLogRepository(ctx context.Context) (authDomain.AuditLogRepository, error) {
+	return c.auditLogRepository.get(func() (authDomain.AuditLogRepository, error) {
 		return c.initAuditLogRepository(ctx)
 	})
 }
@@ -95,7 +96,7 @@ func (c *Container) initSecretService() authService.SecretService {
 }
 
 // initClientRepository creates the client repository.
-func (c *Container) initClientRepository(ctx context.Context) (authUseCase.ClientRepository, error) {
+func (c *Container) initClientRepository(ctx context.Context) (authDomain.ClientRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for client repository: %w", err)
@@ -143,7 +144,7 @@ func (c *Container) initTokenService() authService.TokenService {
 }
 
 // initTokenRepository creates the token repository.
-func (c *Container) initTokenRepository(ctx context.Context) (authUseCase.TokenRepository, error) {
+func (c *Container) initTokenRepository(ctx context.Context) (authDomain.TokenRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for token repository: %w", err)
@@ -153,7 +154,7 @@ func (c *Container) initTokenRepository(ctx context.Context) (authUseCase.TokenR
 }
 
 // initAuditLogRepository creates the audit log repository.
-func (c *Container) initAuditLogRepository(ctx context.Context) (authUseCase.AuditLogRepository, error) {
+func (c *Container) initAuditLogRepository(ctx context.Context) (authDomain.AuditLogRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for audit log repository: %w", err)

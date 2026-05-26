@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
 
 // SecretRepository returns the secret repository.
-func (c *Container) SecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
-	return c.secretRepository.get(func() (secretsUseCase.SecretRepository, error) {
+func (c *Container) SecretRepository(ctx context.Context) (secretsDomain.SecretRepository, error) {
+	return c.secretRepository.get(func() (secretsDomain.SecretRepository, error) {
 		return c.initSecretRepository(ctx)
 	})
 }
@@ -30,7 +31,7 @@ func (c *Container) SecretHandler(ctx context.Context) (*secretsHTTP.SecretHandl
 	})
 }
 
-func (c *Container) initSecretRepository(ctx context.Context) (secretsUseCase.SecretRepository, error) {
+func (c *Container) initSecretRepository(ctx context.Context) (secretsDomain.SecretRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for secret repository: %w", err)

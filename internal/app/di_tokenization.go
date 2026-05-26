@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
@@ -11,16 +12,16 @@ import (
 
 func (c *Container) TokenizationKeyRepository(
 	ctx context.Context,
-) (tokenizationUseCase.TokenizationKeyRepository, error) {
-	return c.tokenizationKeyRepository.get(func() (tokenizationUseCase.TokenizationKeyRepository, error) {
+) (tokenizationDomain.TokenizationKeyRepository, error) {
+	return c.tokenizationKeyRepository.get(func() (tokenizationDomain.TokenizationKeyRepository, error) {
 		return c.initTokenizationKeyRepository(ctx)
 	})
 }
 
 func (c *Container) TokenizationTokenRepository(
 	ctx context.Context,
-) (tokenizationUseCase.TokenRepository, error) {
-	return c.tokenizationTokenRepository.get(func() (tokenizationUseCase.TokenRepository, error) {
+) (tokenizationDomain.TokenRepository, error) {
+	return c.tokenizationTokenRepository.get(func() (tokenizationDomain.TokenRepository, error) {
 		return c.initTokenizationTokenRepository(ctx)
 	})
 }
@@ -57,7 +58,7 @@ func (c *Container) TokenizationHandler(ctx context.Context) (*tokenizationHTTP.
 
 func (c *Container) initTokenizationKeyRepository(
 	ctx context.Context,
-) (tokenizationUseCase.TokenizationKeyRepository, error) {
+) (tokenizationDomain.TokenizationKeyRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for tokenization key repository: %w", err)
@@ -68,7 +69,7 @@ func (c *Container) initTokenizationKeyRepository(
 
 func (c *Container) initTokenizationTokenRepository(
 	ctx context.Context,
-) (tokenizationUseCase.TokenRepository, error) {
+) (tokenizationDomain.TokenRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for tokenization token repository: %w", err)
@@ -127,13 +128,10 @@ func (c *Container) initTokenizationUseCase(
 		return nil, fmt.Errorf("failed to get keyring for tokenization use case: %w", err)
 	}
 
-	hashService := tokenizationUseCase.NewSHA256HashService()
-
 	return tokenizationUseCase.NewTokenizationUseCase(
 		txManager,
 		tokenizationKeyRepository,
 		tokenRepository,
-		hashService,
 		kr,
 	), nil
 }

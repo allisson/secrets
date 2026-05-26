@@ -7,6 +7,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +20,18 @@ import (
 	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationService "github.com/allisson/secrets/internal/tokenization/service"
 )
+
+// tokenValueHash computes HMAC-SHA256(value, salt) as a hex string.
+// Falls back to plain SHA-256 when salt is empty (legacy path).
+func tokenValueHash(value, salt []byte) string {
+	if len(salt) == 0 {
+		h := sha256.Sum256(value)
+		return hex.EncodeToString(h[:])
+	}
+	mac := hmac.New(sha256.New, salt)
+	mac.Write(value)
+	return hex.EncodeToString(mac.Sum(nil))
+}
 
 // validateTokenLength checks if the plaintext length is valid for the token format type.
 func validateTokenLength(formatType tokenizationDomain.FormatType, length int) error {
@@ -39,9 +54,8 @@ func validateTokenLength(formatType tokenizationDomain.FormatType, length int) e
 // tokenizationUseCase implements TokenizationUseCase for managing tokenization operations.
 type tokenizationUseCase struct {
 	txManager        database.TxManager
-	tokenizationRepo TokenizationKeyRepository
-	tokenRepo        TokenRepository
-	hashService      HashService
+	tokenizationRepo tokenizationDomain.TokenizationKeyRepository
+	tokenRepo        tokenizationDomain.TokenRepository
 	keyring          keyring.Keyring
 }
 
@@ -67,7 +81,7 @@ func (t *tokenizationUseCase) Tokenize(
 
 	// In deterministic mode, look up an existing token before encrypting.
 	if tokenizationKey.IsDeterministic {
-		valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
+		valueHash := tokenValueHash(plaintext, tokenizationKey.Salt)
 		existingToken, err := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
 		if err != nil && !apperrors.Is(err, tokenizationDomain.ErrTokenNotFound) {
 			return nil, apperrors.Wrap(err, "failed to check existing token in deterministic mode")
@@ -117,7 +131,7 @@ func (t *tokenizationUseCase) Tokenize(
 	}
 
 	if tokenizationKey.IsDeterministic {
-		valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
+		valueHash := tokenValueHash(plaintext, tokenizationKey.Salt)
 		token.ValueHash = &valueHash
 	}
 
@@ -125,7 +139,7 @@ func (t *tokenizationUseCase) Tokenize(
 		// Race: another goroutine inserted the deterministic token between the
 		// existence check and the insert. Re-read and return that one.
 		if tokenizationKey.IsDeterministic && apperrors.Is(err, apperrors.ErrConflict) {
-			valueHash := t.hashService.Hash(plaintext, tokenizationKey.Salt)
+			valueHash := tokenValueHash(plaintext, tokenizationKey.Salt)
 			existingToken, queryErr := t.tokenRepo.GetByValueHash(ctx, tokenizationKey.ID, valueHash)
 			if queryErr != nil {
 				return nil, apperrors.Wrap(err, "failed to create token")
@@ -272,16 +286,14 @@ func (t *tokenizationUseCase) CleanupExpired(
 // NewTokenizationUseCase creates a new TokenizationUseCase backed by a Keyring.
 func NewTokenizationUseCase(
 	txManager database.TxManager,
-	tokenizationRepo TokenizationKeyRepository,
-	tokenRepo TokenRepository,
-	hashService HashService,
+	tokenizationRepo tokenizationDomain.TokenizationKeyRepository,
+	tokenRepo tokenizationDomain.TokenRepository,
 	kr keyring.Keyring,
 ) TokenizationUseCase {
 	return &tokenizationUseCase{
 		txManager:        txManager,
 		tokenizationRepo: tokenizationRepo,
 		tokenRepo:        tokenRepo,
-		hashService:      hashService,
 		keyring:          kr,
 	}
 }

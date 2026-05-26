@@ -244,36 +244,26 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	})
 
 	t.Run("LegacyUnsignedLogs", func(t *testing.T) {
-		// Create an unsigned legacy audit log (no signer)
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
-
-		requestID := uuid.Must(uuid.NewV7())
-		clientID := testCtx.rootClient.ID
-
-		err := legacyUseCase.Create(
-			ctx,
-			requestID,
-			clientID,
-			authDomain.ReadCapability,
-			"/api/v1/secrets/legacy",
-			nil,
-		)
+		// Insert an unsigned legacy log directly, simulating pre-signing-era data.
+		legacyLog := &authDomain.AuditLog{
+			ID:         uuid.Must(uuid.NewV7()),
+			RequestID:  uuid.Must(uuid.NewV7()),
+			ClientID:   testCtx.rootClient.ID,
+			Capability: authDomain.ReadCapability,
+			Path:       "/api/v1/secrets/legacy",
+			CreatedAt:  time.Now().UTC().Truncate(time.Microsecond),
+			IsSigned:   false,
+		}
+		err := auditLogRepo.Create(ctx, legacyLog)
 		require.NoError(t, err, "failed to create legacy audit log")
 
-		// Retrieve the log
-		logs, err := legacyUseCase.ListCursor(ctx, nil, 1, nil, nil, nil)
-		require.NoError(t, err, "failed to list audit logs")
-		require.Len(t, logs, 1, "expected exactly one audit log")
-
-		log := logs[0]
-
 		// Verify it's unsigned
-		assert.False(t, log.IsSigned, "audit log should not be signed")
-		assert.Nil(t, log.KekID, "kek_id should be nil")
-		assert.Empty(t, log.Signature, "signature should be empty")
+		assert.False(t, legacyLog.IsSigned, "audit log should not be signed")
+		assert.Nil(t, legacyLog.KekID, "kek_id should be nil")
+		assert.Empty(t, legacyLog.Signature, "signature should be empty")
 
 		// Verification should return ErrSignatureMissing
-		err = auditLogUseCase.VerifyIntegrity(ctx, log.ID)
+		err = auditLogUseCase.VerifyIntegrity(ctx, legacyLog.ID)
 		assert.Error(t, err, "verification should fail for unsigned log")
 		assert.ErrorIs(t, err, authDomain.ErrSignatureMissing, "error should be ErrSignatureMissing")
 	})
@@ -298,18 +288,18 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		// Create 2 unsigned legacy logs
-		legacyUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, nil)
+		// Insert 2 unsigned legacy logs directly, simulating pre-signing-era data.
 		for i := 0; i < 2; i++ {
-			requestID := uuid.Must(uuid.NewV7())
-			err := legacyUseCase.Create(
-				ctx,
-				requestID,
-				clientID,
-				authDomain.WriteCapability,
-				"/legacy",
-				nil,
-			)
+			legacyLog := &authDomain.AuditLog{
+				ID:         uuid.Must(uuid.NewV7()),
+				RequestID:  uuid.Must(uuid.NewV7()),
+				ClientID:   clientID,
+				Capability: authDomain.WriteCapability,
+				Path:       "/legacy",
+				CreatedAt:  time.Now().UTC().Truncate(time.Microsecond),
+				IsSigned:   false,
+			}
+			err := auditLogRepo.Create(ctx, legacyLog)
 			require.NoError(t, err)
 			time.Sleep(10 * time.Millisecond)
 		}

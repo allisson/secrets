@@ -16,7 +16,7 @@ import (
 // tokenizationKeyUseCase implements TokenizationKeyUseCase for managing tokenization keys.
 type tokenizationKeyUseCase struct {
 	txManager           database.TxManager
-	tokenizationKeyRepo TokenizationKeyRepository
+	tokenizationKeyRepo tokenizationDomain.TokenizationKeyRepository
 	keyring             keyring.Keyring
 }
 
@@ -193,7 +193,7 @@ func (t *tokenizationKeyUseCase) PurgeDeleted(
 // NewTokenizationKeyUseCase creates a new tokenization key use case instance.
 func NewTokenizationKeyUseCase(
 	txManager database.TxManager,
-	tokenizationKeyRepo TokenizationKeyRepository,
+	tokenizationKeyRepo tokenizationDomain.TokenizationKeyRepository,
 	kr keyring.Keyring,
 ) TokenizationKeyUseCase {
 	return &tokenizationKeyUseCase{

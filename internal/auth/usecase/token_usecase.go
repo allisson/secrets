@@ -18,8 +18,8 @@ import (
 // tokenUseCase implements TokenUseCase interface for managing authentication tokens.
 type tokenUseCase struct {
 	config          *config.Config
-	clientRepo      ClientRepository
-	tokenRepo       TokenRepository
+	clientRepo      authDomain.ClientRepository
+	tokenRepo       authDomain.TokenRepository
 	auditLogUseCase AuditLogUseCase
 	secretService   authService.SecretService
 	tokenService    authService.TokenService
@@ -204,8 +204,8 @@ func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (co
 // NewTokenUseCase creates a new TokenUseCase with the provided dependencies.
 func NewTokenUseCase(
 	config *config.Config,
-	clientRepo ClientRepository,
-	tokenRepo TokenRepository,
+	clientRepo authDomain.ClientRepository,
+	tokenRepo authDomain.TokenRepository,
 	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
 	tokenService authService.TokenService,
