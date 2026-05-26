@@ -2,6 +2,9 @@ package usecase_test
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -24,15 +27,13 @@ func newTokenizationUseCase(
 	*keyring.Fake,
 	*mocks.MockTokenizationKeyRepository,
 	*mocks.MockTokenRepository,
-	*mocks.MockHashService,
 ) {
 	t.Helper()
 	fake := keyring.NewFake()
 	keyRepo := mocks.NewMockTokenizationKeyRepository(t)
 	tokenRepo := mocks.NewMockTokenRepository(t)
-	hashSvc := mocks.NewMockHashService(t)
-	uc := usecase.NewTokenizationUseCase(noopTxManager{}, keyRepo, tokenRepo, hashSvc, fake)
-	return uc, fake, keyRepo, tokenRepo, hashSvc
+	uc := usecase.NewTokenizationUseCase(noopTxManager{}, keyRepo, tokenRepo, fake)
+	return uc, fake, keyRepo, tokenRepo
 }
 
 // allocateDekForTest seeds the keyring Fake with a DekID and returns it,
@@ -50,7 +51,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_NonDeterministic", func(t *testing.T) {
 		t.Parallel()
-		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, fake, keyRepo, tokenRepo := newTokenizationUseCase(t)
 		dekID := allocateDekForTest(t, fake)
 
 		key := &tokenizationDomain.TokenizationKey{
@@ -76,7 +77,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Success_Deterministic_ReturnsExistingValidToken", func(t *testing.T) {
 		t.Parallel()
-		uc, fake, keyRepo, tokenRepo, hashSvc := newTokenizationUseCase(t)
+		uc, fake, keyRepo, tokenRepo := newTokenizationUseCase(t)
 		dekID := allocateDekForTest(t, fake)
 
 		key := &tokenizationDomain.TokenizationKey{
@@ -94,10 +95,13 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 			Token:             "existing-token",
 		}
 
+		mac := hmac.New(sha256.New, []byte("salt"))
+		mac.Write([]byte("payload"))
+		expectedHash := hex.EncodeToString(mac.Sum(nil))
+
 		keyRepo.EXPECT().GetByName(ctx, "k").Return(key, nil)
-		hashSvc.EXPECT().Hash([]byte("payload"), []byte("salt")).Return("hash-value")
 		tokenRepo.EXPECT().
-			GetByValueHash(ctx, key.ID, "hash-value").
+			GetByValueHash(ctx, key.ID, expectedHash).
 			Return(existing, nil)
 
 		got, err := uc.Tokenize(ctx, "k", []byte("payload"), nil, nil)
@@ -107,14 +111,14 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_PlaintextEmpty", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, _, _ := newTokenizationUseCase(t)
+		uc, _, _, _ := newTokenizationUseCase(t)
 		_, err := uc.Tokenize(ctx, "k", nil, nil, nil)
 		assert.ErrorIs(t, err, tokenizationDomain.ErrPlaintextEmpty)
 	})
 
 	t.Run("Error_PlaintextTooLarge", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, _, _ := newTokenizationUseCase(t)
+		uc, _, _, _ := newTokenizationUseCase(t)
 		big := make([]byte, tokenizationDomain.MaxPlaintextSize+1)
 		_, err := uc.Tokenize(ctx, "k", big, nil, nil)
 		assert.ErrorIs(t, err, tokenizationDomain.ErrPlaintextTooLarge)
@@ -122,7 +126,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_KeyNotFound", func(t *testing.T) {
 		t.Parallel()
-		uc, _, keyRepo, _, _ := newTokenizationUseCase(t)
+		uc, _, keyRepo, _ := newTokenizationUseCase(t)
 		keyRepo.EXPECT().
 			GetByName(ctx, "missing").
 			Return(nil, tokenizationDomain.ErrTokenizationKeyNotFound)
@@ -133,7 +137,7 @@ func TestTokenizationUseCase_Tokenize(t *testing.T) {
 
 	t.Run("Error_KeyringEncryptFails", func(t *testing.T) {
 		t.Parallel()
-		uc, fake, keyRepo, _, _ := newTokenizationUseCase(t)
+		uc, fake, keyRepo, _ := newTokenizationUseCase(t)
 		dekID := allocateDekForTest(t, fake)
 		fake.FailEncrypt = apperrors.New("boom")
 
@@ -154,7 +158,7 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Success_RoundTrip", func(t *testing.T) {
 		t.Parallel()
-		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, fake, keyRepo, tokenRepo := newTokenizationUseCase(t)
 
 		// Encrypt via the fake to get matching ciphertext/nonce/dekID.
 		handle, err := fake.AllocateDek(ctx, keyring.AESGCM)
@@ -186,7 +190,7 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		past := time.Now().Add(-time.Hour)
 		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
 			Token:     "tok",
@@ -199,7 +203,7 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_TokenRevoked", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		now := time.Now()
 		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
 			Token:     "tok",
@@ -212,7 +216,7 @@ func TestTokenizationUseCase_Detokenize(t *testing.T) {
 
 	t.Run("Error_DecryptFails", func(t *testing.T) {
 		t.Parallel()
-		uc, fake, keyRepo, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, fake, keyRepo, tokenRepo := newTokenizationUseCase(t)
 		dekID := allocateDekForTest(t, fake)
 		fake.FailDecrypt = apperrors.New("AEAD tag mismatch")
 
@@ -237,7 +241,7 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("Valid", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{
 			Token:     "tok",
 			CreatedAt: time.Now(),
@@ -250,7 +254,7 @@ func TestTokenizationUseCase_Validate(t *testing.T) {
 
 	t.Run("NotFound_ReturnsFalseNoError", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(nil, tokenizationDomain.ErrTokenNotFound)
 
 		ok, err := uc.Validate(ctx, "tok")
@@ -263,7 +267,7 @@ func TestTokenizationUseCase_Revoke(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+	uc, _, _, tokenRepo := newTokenizationUseCase(t)
 	tokenRepo.EXPECT().GetByToken(ctx, "tok").Return(&tokenizationDomain.Token{Token: "tok"}, nil)
 	tokenRepo.EXPECT().Revoke(ctx, "tok").Return(nil)
 
@@ -276,14 +280,14 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Error_NegativeDays", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, _, _ := newTokenizationUseCase(t)
+		uc, _, _, _ := newTokenizationUseCase(t)
 		_, err := uc.CleanupExpired(ctx, -1, false)
 		assert.Error(t, err)
 	})
 
 	t.Run("Success_DryRun", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		tokenRepo.EXPECT().CountExpired(ctx, mock.Anything).Return(int64(7), nil)
 
 		n, err := uc.CleanupExpired(ctx, 30, true)
@@ -293,7 +297,7 @@ func TestTokenizationUseCase_CleanupExpired(t *testing.T) {
 
 	t.Run("Success_Delete", func(t *testing.T) {
 		t.Parallel()
-		uc, _, _, tokenRepo, _ := newTokenizationUseCase(t)
+		uc, _, _, tokenRepo := newTokenizationUseCase(t)
 		tokenRepo.EXPECT().DeleteExpired(ctx, mock.Anything).Return(int64(4), nil)
 
 		n, err := uc.CleanupExpired(ctx, 30, false)

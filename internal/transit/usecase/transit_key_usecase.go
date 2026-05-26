@@ -19,7 +19,7 @@ import (
 // transitKeyUseCase implements TransitKeyUseCase for managing transit keys.
 type transitKeyUseCase struct {
 	txManager   database.TxManager
-	transitRepo TransitKeyRepository
+	transitRepo transitDomain.TransitKeyRepository
 	keyring     keyring.Keyring
 }
 
@@ -202,7 +202,7 @@ func (t *transitKeyUseCase) PurgeDeleted(
 // NewTransitKeyUseCase creates a new TransitKeyUseCase backed by a Keyring.
 func NewTransitKeyUseCase(
 	txManager database.TxManager,
-	transitRepo TransitKeyRepository,
+	transitRepo transitDomain.TransitKeyRepository,
 	kr keyring.Keyring,
 ) TransitKeyUseCase {
 	return &transitKeyUseCase{

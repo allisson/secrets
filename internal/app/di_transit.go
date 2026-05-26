@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitRepository "github.com/allisson/secrets/internal/transit/repository"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
-func (c *Container) TransitKeyRepository(ctx context.Context) (transitUseCase.TransitKeyRepository, error) {
-	return c.transitKeyRepository.get(func() (transitUseCase.TransitKeyRepository, error) {
+func (c *Container) TransitKeyRepository(ctx context.Context) (transitDomain.TransitKeyRepository, error) {
+	return c.transitKeyRepository.get(func() (transitDomain.TransitKeyRepository, error) {
 		return c.initTransitKeyRepository(ctx)
 	})
 }
@@ -35,7 +36,7 @@ func (c *Container) CryptoHandler(ctx context.Context) (*transitHTTP.CryptoHandl
 
 func (c *Container) initTransitKeyRepository(
 	ctx context.Context,
-) (transitUseCase.TransitKeyRepository, error) {
+) (transitDomain.TransitKeyRepository, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database for transit key repository: %w", err)

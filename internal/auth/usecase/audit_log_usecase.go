@@ -16,14 +16,13 @@ import (
 // auditLogUseCase implements AuditLogUseCase interface for recording and verifying audit logs.
 // Provides cryptographic signing with HMAC-SHA256 for tamper detection.
 type auditLogUseCase struct {
-	auditLogRepo AuditLogRepository
+	auditLogRepo authDomain.AuditLogRepository
 	keySigner    keyring.KeySigner
 }
 
 // Create records an audit log entry for an authenticated operation. Generates a unique
-// UUIDv7 identifier and timestamp, then signs the log with HMAC-SHA256 using the active KEK
-// if a keyring.KeySigner is provided. For legacy/testing scenarios without signing,
-// creates unsigned audit logs. The metadata parameter is optional and can be nil.
+// UUIDv7 identifier and timestamp, signs the log with HMAC-SHA256 via keySigner, and
+// persists it. The metadata parameter is optional and can be nil.
 func (a *auditLogUseCase) Create(
 	ctx context.Context,
 	requestID uuid.UUID,
@@ -32,10 +31,8 @@ func (a *auditLogUseCase) Create(
 	path string,
 	metadata map[string]any,
 ) (err error) {
-	// Create the audit log entity
-	// Truncate timestamp to microsecond precision to match database storage (PostgreSQL TIMESTAMPTZ
-	// ). This ensures the signature matches the value
-	// retrieved from the database during verification.
+	// Truncate timestamp to microsecond precision to match database storage (PostgreSQL TIMESTAMPTZ).
+	// This ensures the signature matches the value retrieved from the database during verification.
 	auditLog := &authDomain.AuditLog{
 		ID:         uuid.Must(uuid.NewV7()),
 		RequestID:  requestID,
@@ -44,27 +41,22 @@ func (a *auditLogUseCase) Create(
 		Path:       path,
 		Metadata:   metadata,
 		CreatedAt:  time.Now().UTC().Truncate(time.Microsecond),
-		IsSigned:   false, // Default to unsigned
 	}
 
-	// Sign the audit log if a KeySigner is available
-	if a.keySigner != nil {
-		canonical, err := auditLog.Canonical()
-		if err != nil {
-			return apperrors.Wrap(err, "failed to canonicalize audit log for signing")
-		}
-
-		signature, kekID, err := a.keySigner.SignWithKey(canonical)
-		if err != nil {
-			return apperrors.Wrap(err, "failed to sign audit log")
-		}
-
-		auditLog.Signature = signature
-		auditLog.KekID = &kekID
-		auditLog.IsSigned = true
+	canonical, err := auditLog.Canonical()
+	if err != nil {
+		return apperrors.Wrap(err, "failed to canonicalize audit log for signing")
 	}
 
-	// Persist the audit log (signed or unsigned)
+	signature, kekID, err := a.keySigner.SignWithKey(canonical)
+	if err != nil {
+		return apperrors.Wrap(err, "failed to sign audit log")
+	}
+
+	auditLog.Signature = signature
+	auditLog.KekID = &kekID
+	auditLog.IsSigned = true
+
 	if err = a.auditLogRepo.Create(ctx, auditLog); err != nil {
 		return apperrors.Wrap(err, "failed to create audit log")
 	}
@@ -212,9 +204,9 @@ func (a *auditLogUseCase) VerifyBatch(
 }
 
 // NewAuditLogUseCase creates a new AuditLogUseCase with the provided dependencies.
-// Pass nil for keySigner to create unsigned audit logs (legacy / testing mode).
+// Pass keyring.NullSigner{} for tests that do not exercise signing behaviour.
 func NewAuditLogUseCase(
-	auditLogRepo AuditLogRepository,
+	auditLogRepo authDomain.AuditLogRepository,
 	keySigner keyring.KeySigner,
 ) AuditLogUseCase {
 	return &auditLogUseCase{

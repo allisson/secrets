@@ -17,7 +17,7 @@ import (
 type secretUseCase struct {
 	txManager            database.TxManager
 	keyring              keyring.Keyring
-	secretRepo           SecretRepository
+	secretRepo           secretsDomain.SecretRepository
 	secretValueSizeLimit int
 }
 
@@ -148,7 +148,7 @@ func (s *secretUseCase) PurgeDeleted(
 func NewSecretUseCase(
 	txManager database.TxManager,
 	kr keyring.Keyring,
-	secretRepo SecretRepository,
+	secretRepo secretsDomain.SecretRepository,
 	secretValueSizeLimit int,
 ) SecretUseCase {
 	return &secretUseCase{

@@ -15,8 +15,8 @@ import (
 // clientUseCase implements ClientUseCase interface for managing client authentication.
 type clientUseCase struct {
 	txManager       database.TxManager
-	clientRepo      ClientRepository
-	tokenRepo       TokenRepository
+	clientRepo      authDomain.ClientRepository
+	tokenRepo       authDomain.TokenRepository
 	auditLogUseCase AuditLogUseCase
 	secretService   authService.SecretService
 }
@@ -218,8 +218,8 @@ func (c *clientUseCase) RotateSecret(
 // NewClientUseCase creates a new ClientUseCase with the provided dependencies.
 func NewClientUseCase(
 	txManager database.TxManager,
-	clientRepo ClientRepository,
-	tokenRepo TokenRepository,
+	clientRepo authDomain.ClientRepository,
+	tokenRepo authDomain.TokenRepository,
 	auditLogUseCase AuditLogUseCase,
 	secretService authService.SecretService,
 ) ClientUseCase {

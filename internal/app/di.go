@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 
+	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authService "github.com/allisson/secrets/internal/auth/service"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
@@ -17,10 +18,13 @@ import (
 	"github.com/allisson/secrets/internal/http"
 	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/metrics"
+	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
+	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
@@ -52,13 +56,13 @@ type Container struct {
 	keyring once[keyring.Keyring]
 
 	// Repositories
-	secretRepository            once[secretsUseCase.SecretRepository]
-	clientRepository            once[authUseCase.ClientRepository]
-	tokenRepository             once[authUseCase.TokenRepository]
-	auditLogRepository          once[authUseCase.AuditLogRepository]
-	transitKeyRepository        once[transitUseCase.TransitKeyRepository]
-	tokenizationKeyRepository   once[tokenizationUseCase.TokenizationKeyRepository]
-	tokenizationTokenRepository once[tokenizationUseCase.TokenRepository]
+	secretRepository            once[secretsDomain.SecretRepository]
+	clientRepository            once[authDomain.ClientRepository]
+	tokenRepository             once[authDomain.TokenRepository]
+	auditLogRepository          once[authDomain.AuditLogRepository]
+	transitKeyRepository        once[transitDomain.TransitKeyRepository]
+	tokenizationKeyRepository   once[tokenizationDomain.TokenizationKeyRepository]
+	tokenizationTokenRepository once[tokenizationDomain.TokenRepository]
 
 	// Use Cases
 	kekUseCase             once[keyring.KekUseCase]
