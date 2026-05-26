@@ -584,16 +584,21 @@ func TestContainerAuthComponents(t *testing.T) {
 
 	container := NewContainer(cfg)
 
-	// SecretService
-	secretService := container.SecretService()
-	if secretService == nil {
-		t.Error("expected non-nil secret service")
+	// PasswordHasher
+	hasher := container.PasswordHasher()
+	if hasher == nil {
+		t.Error("expected non-nil password hasher")
 	}
 
-	// TokenService
-	tokenService := container.TokenService()
-	if tokenService == nil {
-		t.Error("expected non-nil token service")
+	// HashSecret and CompareSecret round-trip
+	hashSecret := container.HashSecret()
+	compareSecret := container.CompareSecret()
+	hashed, err := hashSecret("plain-test-secret")
+	if err != nil {
+		t.Fatalf("HashSecret failed: %v", err)
+	}
+	if !compareSecret("plain-test-secret", hashed) {
+		t.Error("CompareSecret failed to verify a known-good hash")
 	}
 }
 

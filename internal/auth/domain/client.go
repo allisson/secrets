@@ -146,3 +146,87 @@ type UpdateClientInput struct {
 	IsActive bool             // Updated active status (false prevents authentication)
 	Policies []PolicyDocument // Updated authorization policies
 }
+
+// Decision is the outcome variant of Client.AttemptLogin.
+type Decision int
+
+const (
+	// DecisionAuthenticated indicates the secret matched on an active, unlocked client.
+	DecisionAuthenticated Decision = iota
+	// DecisionBadSecret indicates the client exists and is active, but the secret did not match.
+	DecisionBadSecret
+	// DecisionLocked indicates the client is within an active lockout window; no attempt was counted.
+	DecisionLocked
+	// DecisionInactive indicates the client has IsActive=false; no attempt was counted.
+	DecisionInactive
+)
+
+// LockoutPolicy configures how Client.AttemptLogin reacts to failures.
+// MaxAttempts of zero disables locking; the counter is still incremented for visibility.
+type LockoutPolicy struct {
+	MaxAttempts int
+	Duration    time.Duration
+}
+
+// LoginOutcome is the result of Client.AttemptLogin. It carries the post-attempt
+// state the caller must persist (FailedAttempts, LockedUntil); the Client receiver
+// is not mutated.
+type LoginOutcome struct {
+	Decision       Decision
+	FailedAttempts int
+	LockedUntil    *time.Time
+}
+
+// AttemptLogin runs the login state machine for this client and returns the outcome.
+//
+// Order of checks:
+//  1. If LockedUntil is in the future, return Locked (attempt is not counted).
+//  2. If the client is not active, return Inactive (attempt is not counted).
+//  3. If compare returns false, return BadSecret with incremented attempts and,
+//     when MaxAttempts > 0 and the threshold is reached, a fresh LockedUntil.
+//  4. Otherwise return Authenticated with FailedAttempts reset to 0 and LockedUntil nil.
+//
+// The receiver is not mutated; the outcome is the single source of truth for the
+// new (FailedAttempts, LockedUntil) tuple. The caller persists it.
+func (c *Client) AttemptLogin(
+	plain string,
+	compare func(plain, hashed string) bool,
+	policy LockoutPolicy,
+	now time.Time,
+) LoginOutcome {
+	if c.LockedUntil != nil && now.Before(*c.LockedUntil) {
+		return LoginOutcome{
+			Decision:       DecisionLocked,
+			FailedAttempts: c.FailedAttempts,
+			LockedUntil:    c.LockedUntil,
+		}
+	}
+
+	if !c.IsActive {
+		return LoginOutcome{
+			Decision:       DecisionInactive,
+			FailedAttempts: c.FailedAttempts,
+			LockedUntil:    c.LockedUntil,
+		}
+	}
+
+	if !compare(plain, c.Secret) {
+		newAttempts := c.FailedAttempts + 1
+		var lockedUntil *time.Time
+		if policy.MaxAttempts > 0 && newAttempts >= policy.MaxAttempts {
+			t := now.Add(policy.Duration)
+			lockedUntil = &t
+		}
+		return LoginOutcome{
+			Decision:       DecisionBadSecret,
+			FailedAttempts: newAttempts,
+			LockedUntil:    lockedUntil,
+		}
+	}
+
+	return LoginOutcome{
+		Decision:       DecisionAuthenticated,
+		FailedAttempts: 0,
+		LockedUntil:    nil,
+	}
+}

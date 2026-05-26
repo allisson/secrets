@@ -1552,3 +1552,177 @@ func TestClient_IsAllowed_CommonMistakes(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_AttemptLogin(t *testing.T) {
+	const (
+		hashedSecret   = "stored-hash"
+		correctPlain   = "correct"
+		wrongPlain     = "wrong"
+		matchesCorrect = true
+		matchesNothing = false
+	)
+
+	now := time.Date(2026, 5, 26, 12, 0, 0, 0, time.UTC)
+	future := now.Add(5 * time.Minute)
+	past := now.Add(-5 * time.Minute)
+
+	compare := func(matchesPlain string) func(plain, hashed string) bool {
+		return func(plain, hashed string) bool {
+			return plain == matchesPlain && hashed == hashedSecret
+		}
+	}
+
+	tests := []struct {
+		name    string
+		client  *Client
+		plain   string
+		matches bool
+		policy  LockoutPolicy
+		want    LoginOutcome
+	}{
+		{
+			name: "Locked_FuturelockShortCircuits",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 5, LockedUntil: &future,
+			},
+			plain: correctPlain, matches: matchesCorrect,
+			policy: LockoutPolicy{MaxAttempts: 10, Duration: 30 * time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionLocked, FailedAttempts: 5, LockedUntil: &future,
+			},
+		},
+		{
+			name: "Inactive_TakesPrecedenceOverBadSecret",
+			client: &Client{
+				Secret: hashedSecret, IsActive: false,
+				FailedAttempts: 2,
+			},
+			plain: wrongPlain, matches: matchesNothing,
+			policy: LockoutPolicy{MaxAttempts: 10, Duration: time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionInactive, FailedAttempts: 2, LockedUntil: nil,
+			},
+		},
+		{
+			name: "BadSecret_IncrementsBelowThreshold",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 1,
+			},
+			plain: wrongPlain, matches: matchesNothing,
+			policy: LockoutPolicy{MaxAttempts: 5, Duration: time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionBadSecret, FailedAttempts: 2, LockedUntil: nil,
+			},
+		},
+		{
+			name: "BadSecret_AtThresholdLocks",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 2,
+			},
+			plain: wrongPlain, matches: matchesNothing,
+			policy: LockoutPolicy{MaxAttempts: 3, Duration: 10 * time.Minute},
+			want: LoginOutcome{
+				Decision:       DecisionBadSecret,
+				FailedAttempts: 3,
+				LockedUntil:    timePtr(now.Add(10 * time.Minute)),
+			},
+		},
+		{
+			name: "BadSecret_FirstFailureLocksWhenMaxIsOne",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+			},
+			plain: wrongPlain, matches: matchesNothing,
+			policy: LockoutPolicy{MaxAttempts: 1, Duration: time.Hour},
+			want: LoginOutcome{
+				Decision:       DecisionBadSecret,
+				FailedAttempts: 1,
+				LockedUntil:    timePtr(now.Add(time.Hour)),
+			},
+		},
+		{
+			name: "BadSecret_DisabledLockoutCountsButNeverLocks",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 99,
+			},
+			plain: wrongPlain, matches: matchesNothing,
+			policy: LockoutPolicy{MaxAttempts: 0, Duration: time.Hour},
+			want: LoginOutcome{
+				Decision: DecisionBadSecret, FailedAttempts: 100, LockedUntil: nil,
+			},
+		},
+		{
+			name: "Authenticated_ResetsCounterAndLock",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 4, LockedUntil: &past,
+			},
+			plain: correctPlain, matches: matchesCorrect,
+			policy: LockoutPolicy{MaxAttempts: 5, Duration: time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionAuthenticated, FailedAttempts: 0, LockedUntil: nil,
+			},
+		},
+		{
+			name: "Authenticated_CleanStateStillReturnsReset",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+			},
+			plain: correctPlain, matches: matchesCorrect,
+			policy: LockoutPolicy{MaxAttempts: 5, Duration: time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionAuthenticated, FailedAttempts: 0, LockedUntil: nil,
+			},
+		},
+		{
+			name: "Authenticated_ExpiredLockAllowsThrough",
+			client: &Client{
+				Secret: hashedSecret, IsActive: true,
+				FailedAttempts: 3, LockedUntil: &past,
+			},
+			plain: correctPlain, matches: matchesCorrect,
+			policy: LockoutPolicy{MaxAttempts: 5, Duration: time.Minute},
+			want: LoginOutcome{
+				Decision: DecisionAuthenticated, FailedAttempts: 0, LockedUntil: nil,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			matcher := compare(correctPlain)
+			if !tt.matches {
+				matcher = compare("__never_matches__")
+			}
+			got := tt.client.AttemptLogin(tt.plain, matcher, tt.policy, now)
+
+			assert.Equal(t, tt.want.Decision, got.Decision, "Decision")
+			assert.Equal(t, tt.want.FailedAttempts, got.FailedAttempts, "FailedAttempts")
+			switch {
+			case tt.want.LockedUntil == nil:
+				assert.Nil(t, got.LockedUntil, "LockedUntil")
+			case assert.NotNil(t, got.LockedUntil, "LockedUntil"):
+				assert.True(t, tt.want.LockedUntil.Equal(*got.LockedUntil),
+					"LockedUntil: want %v, got %v", tt.want.LockedUntil, got.LockedUntil)
+			}
+		})
+	}
+}
+
+func TestClient_AttemptLogin_DoesNotMutateReceiver(t *testing.T) {
+	now := time.Now().UTC()
+	c := &Client{
+		Secret: "h", IsActive: true, FailedAttempts: 2,
+	}
+	_ = c.AttemptLogin("wrong", func(_, _ string) bool { return false },
+		LockoutPolicy{MaxAttempts: 3, Duration: time.Minute}, now)
+
+	assert.Equal(t, 2, c.FailedAttempts, "FailedAttempts must not be mutated")
+	assert.Nil(t, c.LockedUntil, "LockedUntil must not be mutated")
+}
+
+func timePtr(t time.Time) *time.Time { return &t }

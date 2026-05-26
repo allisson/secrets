@@ -91,6 +91,31 @@ the default read.
 A background job that calls `Keyring.Rewrap` for every DEK not yet
 encrypted under the active KEK. Runs after `Keyring.RotateKek`. Idempotent.
 
+## Authentication
+
+### Client
+An authentication principal. Holds a hashed `Secret`, an `IsActive` flag,
+authorization `Policies`, and the lockout state (`FailedAttempts`,
+`LockedUntil`). Owns the login state machine via `Client.AttemptLogin`.
+
+### LoginOutcome
+The value returned by `Client.AttemptLogin`. Carries the `Decision` and
+the new `(FailedAttempts, LockedUntil)` tuple the caller must persist.
+The Client itself is not mutated by `AttemptLogin`; the outcome is the
+single source of truth for the post-attempt state.
+
+### Decision
+The enum variant of `LoginOutcome`. One of:
+- `Authenticated` — secret matched on an active, unlocked client.
+- `BadSecret` — client exists and is active, but the secret didn't match.
+- `Locked` — `LockedUntil` is in the future; no attempt was counted.
+- `Inactive` — `IsActive == false`; no attempt was counted.
+
+### LockoutPolicy
+The configuration passed to `Client.AttemptLogin`: `MaxAttempts` (zero
+disables lockout) and `Duration` (how long a fresh lock lasts). Sourced
+from `config.Config.LockoutMaxAttempts` / `LockoutDuration` at the seam.
+
 ## Storage
 
 ### `keks` table

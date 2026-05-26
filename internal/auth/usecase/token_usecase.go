@@ -3,17 +3,19 @@ package usecase
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	authService "github.com/allisson/secrets/internal/auth/service"
 	"github.com/allisson/secrets/internal/config"
 )
+
+// CompareSecretFunc verifies a plaintext secret against its stored hash.
+// Bound in DI from the production password-hash policy; tests inject trivial closures.
+type CompareSecretFunc func(plain, hashed string) bool
 
 // tokenUseCase implements TokenUseCase interface for managing authentication tokens.
 type tokenUseCase struct {
@@ -21,8 +23,8 @@ type tokenUseCase struct {
 	clientRepo      authDomain.ClientRepository
 	tokenRepo       authDomain.TokenRepository
 	auditLogUseCase AuditLogUseCase
-	secretService   authService.SecretService
-	tokenService    authService.TokenService
+	compareSecret   CompareSecretFunc
+	logger          *slog.Logger
 }
 
 // Issue authenticates a client and generates a new authentication token.
@@ -46,36 +48,50 @@ func (t *tokenUseCase) Issue(
 		return nil, err
 	}
 
-	// Check hard lock (active lock window)
-	if client.LockedUntil != nil && time.Now().UTC().Before(*client.LockedUntil) {
-		return nil, authDomain.ErrClientLocked
-	}
+	outcome := client.AttemptLogin(
+		issueTokenInput.ClientSecret,
+		t.compareSecret,
+		authDomain.LockoutPolicy{
+			MaxAttempts: t.config.LockoutMaxAttempts,
+			Duration:    t.config.LockoutDuration,
+		},
+		time.Now().UTC(),
+	)
 
-	// Check if client is active
-	if !client.IsActive {
-		return nil, authDomain.ErrClientInactive
-	}
-
-	// Verify the client secret
-	if !t.secretService.CompareSecret(issueTokenInput.ClientSecret, client.Secret) {
-		newAttempts := client.FailedAttempts + 1
-		var lockedUntil *time.Time
-		if t.config.LockoutMaxAttempts > 0 && newAttempts >= t.config.LockoutMaxAttempts {
-			lockExpiry := time.Now().UTC().Add(t.config.LockoutDuration)
-			lockedUntil = &lockExpiry
+	if needsLockStatePersist(client, outcome) {
+		if persistErr := t.clientRepo.UpdateLockState(
+			ctx, client.ID, outcome.FailedAttempts, outcome.LockedUntil,
+		); persistErr != nil {
+			if t.logger != nil {
+				t.logger.Error(
+					"failed to persist client lockout state",
+					slog.String("client_id", client.ID.String()),
+					slog.Any("error", persistErr),
+				)
+			}
+			// On non-authenticated paths, preserve the existing security property:
+			// don't leak DB failure modes to attackers. The lockout counter may be
+			// briefly stale; the next attempt will reconcile.
+			if outcome.Decision != authDomain.DecisionAuthenticated {
+				return nil, authDomain.ErrInvalidCredentials
+			}
+			// On the authenticated path, fail loudly so no token is issued against
+			// an unreconciled lock state.
+			return nil, persistErr
 		}
-		// Best-effort: don't block on lock-state errors
-		_ = t.clientRepo.UpdateLockState(ctx, client.ID, newAttempts, lockedUntil)
+	}
+
+	switch outcome.Decision {
+	case authDomain.DecisionLocked:
+		return nil, authDomain.ErrClientLocked
+	case authDomain.DecisionInactive:
+		return nil, authDomain.ErrClientInactive
+	case authDomain.DecisionBadSecret:
 		return nil, authDomain.ErrInvalidCredentials
 	}
 
-	// Reset on success
-	if client.FailedAttempts > 0 || client.LockedUntil != nil {
-		_ = t.clientRepo.UpdateLockState(ctx, client.ID, 0, nil)
-	}
-
 	// Generate a new token
-	plainToken, tokenHash, err := t.tokenService.GenerateToken()
+	plainToken, tokenHash, err := authDomain.MintToken()
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +119,6 @@ func (t *tokenUseCase) Issue(
 	}, nil
 }
 
-// hashToken computes the SHA-256 hex digest of a raw bearer token.
-func (t *tokenUseCase) hashToken(raw string) string {
-	sum := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(sum[:])
-}
-
 // Authenticate validates a raw bearer token and returns the associated client. Validates token
 // is not expired/revoked and client is active. Returns ErrInvalidCredentials for
 // invalid/expired/revoked tokens or missing clients to prevent enumeration attacks.
@@ -118,7 +128,7 @@ func (t *tokenUseCase) Authenticate(
 	rawToken string,
 ) (result *authDomain.Client, err error) {
 	// Get the token by hash
-	token, err := t.tokenRepo.GetByTokenHash(ctx, t.hashToken(rawToken))
+	token, err := t.tokenRepo.GetByTokenHash(ctx, authDomain.HashTokenPlain(rawToken))
 	if err != nil {
 		// If token not found, return generic error to prevent enumeration
 		if errors.Is(err, authDomain.ErrTokenNotFound) {
@@ -159,7 +169,7 @@ func (t *tokenUseCase) Authenticate(
 // Revoke marks a specific token as revoked given its raw bearer value.
 func (t *tokenUseCase) Revoke(ctx context.Context, rawToken string) (err error) {
 	// Get the token by hash
-	token, err := t.tokenRepo.GetByTokenHash(ctx, t.hashToken(rawToken))
+	token, err := t.tokenRepo.GetByTokenHash(ctx, authDomain.HashTokenPlain(rawToken))
 	if err != nil {
 		return err
 	}
@@ -201,21 +211,37 @@ func (t *tokenUseCase) PurgeExpiredAndRevoked(ctx context.Context, days int) (co
 	return
 }
 
+// needsLockStatePersist reports whether the outcome changes the persisted lockout state.
+// Locked and Inactive decisions never change state. BadSecret always changes state
+// (FailedAttempts is incremented). Authenticated changes state only when the previous
+// FailedAttempts or LockedUntil was non-zero (a reset).
+func needsLockStatePersist(client *authDomain.Client, outcome authDomain.LoginOutcome) bool {
+	switch outcome.Decision {
+	case authDomain.DecisionBadSecret:
+		return true
+	case authDomain.DecisionAuthenticated:
+		return client.FailedAttempts > 0 || client.LockedUntil != nil
+	default:
+		return false
+	}
+}
+
 // NewTokenUseCase creates a new TokenUseCase with the provided dependencies.
+// A nil logger is permitted; lockout-state persistence failures will be swallowed silently.
 func NewTokenUseCase(
 	config *config.Config,
 	clientRepo authDomain.ClientRepository,
 	tokenRepo authDomain.TokenRepository,
 	auditLogUseCase AuditLogUseCase,
-	secretService authService.SecretService,
-	tokenService authService.TokenService,
+	compareSecret CompareSecretFunc,
+	logger *slog.Logger,
 ) TokenUseCase {
 	return &tokenUseCase{
 		config:          config,
 		clientRepo:      clientRepo,
 		tokenRepo:       tokenRepo,
 		auditLogUseCase: auditLogUseCase,
-		secretService:   secretService,
-		tokenService:    tokenService,
+		compareSecret:   compareSecret,
+		logger:          logger,
 	}
 }
