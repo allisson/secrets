@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Folded the `Algorithm` return value into `TransitKey.Algorithm` so `GetTransitKey` and `Get` return `(*TransitKey, error)` instead of a three-value tuple; replaced `crypto/domain.Algorithm` with `keyring.Algorithm` across transit and tokenization layers. No behavior change.
 - Collapsed `internal/crypto/{domain,repository,service,usecase}` into `internal/keyring`; all types, stores, cipher primitives, KMS adapter, and KEK use case now live in a single package. No behavior change.
 - Replaced seven shallow metrics decorator structs with a single `BusinessMetricsMiddleware` applied per-route in the HTTP server and a `metrics.Track` helper for CLI commands; added `NopBusinessMetrics` so the DI container always returns a valid recorder instead of branching on `MetricsEnabled`. No behavior change.
+- Collapsed the cursor-pagination over-fetch convention (fetch `limit+1`, trim, lift the next cursor) behind a generic `httputil.Paginate` helper; the five List handlers now supply only a fetch closure and a cursor-field extractor. No HTTP contract change.
 
 ## [0.28.0] - 2026-03-23
 

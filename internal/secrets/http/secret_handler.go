@@ -186,20 +186,16 @@ func (h *SecretHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case with limit + 1 to detect if there are more results
-	secrets, err := h.secretUseCase.ListCursor(c.Request.Context(), afterPath, limit+1)
+	secrets, nextCursor, err := httputil.Paginate(
+		func(l int) ([]*secretsDomain.Secret, error) {
+			return h.secretUseCase.ListCursor(c.Request.Context(), afterPath, l)
+		},
+		limit,
+		func(s *secretsDomain.Secret) string { return s.Path },
+	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
-	}
-
-	// Determine if there are more results and set next cursor
-	var nextCursor *string
-	if len(secrets) > limit {
-		// More results exist, use the last visible item's path as cursor
-		secrets = secrets[:limit]
-		cursorValue := secrets[len(secrets)-1].Path
-		nextCursor = &cursorValue
 	}
 
 	// Map to response

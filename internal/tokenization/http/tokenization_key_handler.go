@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/allisson/secrets/internal/httputil"
+	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	"github.com/allisson/secrets/internal/tokenization/http/dto"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 	customValidation "github.com/allisson/secrets/internal/validation"
@@ -199,20 +200,16 @@ func (h *TokenizationKeyHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case with limit + 1 to detect if there are more results
-	keys, err := h.keyUseCase.ListCursor(c.Request.Context(), afterName, limit+1)
+	keys, nextCursor, err := httputil.Paginate(
+		func(l int) ([]*tokenizationDomain.TokenizationKey, error) {
+			return h.keyUseCase.ListCursor(c.Request.Context(), afterName, l)
+		},
+		limit,
+		func(k *tokenizationDomain.TokenizationKey) string { return k.Name },
+	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
-	}
-
-	// Determine if there are more results and set next cursor
-	var nextCursor *string
-	if len(keys) > limit {
-		// More results exist, use the last visible item's name as cursor
-		keys = keys[:limit]
-		cursorValue := keys[len(keys)-1].Name
-		nextCursor = &cursorValue
 	}
 
 	// Map to response

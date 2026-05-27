@@ -49,6 +49,31 @@ func ParseUUIDCursorPagination(
 	return afterCursor, limit, nil
 }
 
+// Paginate applies the over-fetch-by-one convention for cursor pagination.
+// It calls fetch with limit+1 to detect whether more rows exist; if an extra
+// row came back it trims the page to limit and returns the cursor of the last
+// visible row (via cursorOf), otherwise next is nil. The whole convention —
+// the +1, the trim, and the cursor extraction — lives here so call sites only
+// supply the fetch and the cursor field.
+func Paginate[T any](
+	fetch func(limit int) ([]T, error),
+	limit int,
+	cursorOf func(T) string,
+) (page []T, next *string, err error) {
+	rows, err := fetch(limit + 1)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(rows) > limit {
+		rows = rows[:limit]
+		cursor := cursorOf(rows[len(rows)-1])
+		next = &cursor
+	}
+
+	return rows, next, nil
+}
+
 // ParseStringCursorPagination parses cursor-based pagination parameters for string-based cursors.
 // It accepts a cursor parameter name (e.g., "after_path", "after_name") and returns the parsed string cursor and limit.
 // The cursor is optional (nil if not provided). The limit defaults to 50 and is clamped to 1000.
