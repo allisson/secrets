@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/allisson/secrets/internal/httputil"
+	transitDomain "github.com/allisson/secrets/internal/transit/domain"
 	"github.com/allisson/secrets/internal/transit/http/dto"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 	customValidation "github.com/allisson/secrets/internal/validation"
@@ -155,20 +156,16 @@ func (h *TransitKeyHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case with limit + 1 to detect if there are more results
-	transitKeys, err := h.transitKeyUseCase.ListCursor(c.Request.Context(), afterName, limit+1)
+	transitKeys, nextCursor, err := httputil.Paginate(
+		func(l int) ([]*transitDomain.TransitKey, error) {
+			return h.transitKeyUseCase.ListCursor(c.Request.Context(), afterName, l)
+		},
+		limit,
+		func(k *transitDomain.TransitKey) string { return k.Name },
+	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
-	}
-
-	// Determine if there are more results and set next cursor
-	var nextCursor *string
-	if len(transitKeys) > limit {
-		// More results exist, use the last visible item's name as cursor
-		transitKeys = transitKeys[:limit]
-		cursorValue := transitKeys[len(transitKeys)-1].Name
-		nextCursor = &cursorValue
 	}
 
 	// Map to response

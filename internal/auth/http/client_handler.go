@@ -203,20 +203,16 @@ func (h *ClientHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case with limit + 1 to detect if there are more results
-	clients, err := h.clientUseCase.ListCursor(c.Request.Context(), afterID, limit+1)
+	clients, nextCursor, err := httputil.Paginate(
+		func(l int) ([]*authDomain.Client, error) {
+			return h.clientUseCase.ListCursor(c.Request.Context(), afterID, l)
+		},
+		limit,
+		func(client *authDomain.Client) string { return client.ID.String() },
+	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
-	}
-
-	// Determine if there are more results and set next cursor
-	var nextCursor *string
-	if len(clients) > limit {
-		// More results exist, use the last visible item's ID as cursor
-		clients = clients[:limit]
-		cursorValue := clients[len(clients)-1].ID.String()
-		nextCursor = &cursorValue
 	}
 
 	// Map to response

@@ -1,6 +1,7 @@
 package httputil_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -238,4 +239,71 @@ func TestParseStringCursorPagination(t *testing.T) {
 // stringPtr returns a pointer to a string value
 func stringPtr(s string) *string {
 	return &s
+}
+
+func TestPaginate(t *testing.T) {
+	type row struct{ name string }
+	cursorOf := func(r row) string { return r.name }
+
+	t.Run("empty result yields no cursor", func(t *testing.T) {
+		page, next, err := httputil.Paginate(
+			func(int) ([]row, error) { return nil, nil },
+			3,
+			cursorOf,
+		)
+		assert.NoError(t, err)
+		assert.Empty(t, page)
+		assert.Nil(t, next)
+	})
+
+	t.Run("fewer than limit yields no cursor", func(t *testing.T) {
+		page, next, err := httputil.Paginate(
+			func(int) ([]row, error) { return []row{{"a"}, {"b"}}, nil },
+			3,
+			cursorOf,
+		)
+		assert.NoError(t, err)
+		assert.Len(t, page, 2)
+		assert.Nil(t, next)
+	})
+
+	t.Run("exactly limit yields no cursor", func(t *testing.T) {
+		page, next, err := httputil.Paginate(
+			func(int) ([]row, error) { return []row{{"a"}, {"b"}, {"c"}}, nil },
+			3,
+			cursorOf,
+		)
+		assert.NoError(t, err)
+		assert.Len(t, page, 3)
+		assert.Nil(t, next)
+	})
+
+	t.Run("over-fetch trims to limit and sets cursor from last visible row", func(t *testing.T) {
+		var requested int
+		page, next, err := httputil.Paginate(
+			func(l int) ([]row, error) {
+				requested = l
+				return []row{{"a"}, {"b"}, {"c"}}, nil
+			},
+			2,
+			cursorOf,
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, requested, "fetch must be called with limit+1")
+		assert.Len(t, page, 2)
+		assert.Equal(t, []row{{"a"}, {"b"}}, page)
+		assert.Equal(t, stringPtr("b"), next)
+	})
+
+	t.Run("fetch error propagates", func(t *testing.T) {
+		wantErr := errors.New("boom")
+		page, next, err := httputil.Paginate(
+			func(int) ([]row, error) { return nil, wantErr },
+			3,
+			cursorOf,
+		)
+		assert.ErrorIs(t, err, wantErr)
+		assert.Nil(t, page)
+		assert.Nil(t, next)
+	})
 }

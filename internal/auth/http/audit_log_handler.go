@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	"github.com/allisson/secrets/internal/auth/http/dto"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/httputil"
@@ -100,27 +101,23 @@ func (h *AuditLogHandler) ListHandler(c *gin.Context) {
 		return
 	}
 
-	// Call use case with limit + 1 to detect if there are more results
-	auditLogs, err := h.auditLogUseCase.ListCursor(
-		c.Request.Context(),
-		afterID,
-		limit+1,
-		createdAtFrom,
-		createdAtTo,
-		clientID,
+	auditLogs, nextCursor, err := httputil.Paginate(
+		func(l int) ([]*authDomain.AuditLog, error) {
+			return h.auditLogUseCase.ListCursor(
+				c.Request.Context(),
+				afterID,
+				l,
+				createdAtFrom,
+				createdAtTo,
+				clientID,
+			)
+		},
+		limit,
+		func(a *authDomain.AuditLog) string { return a.ID.String() },
 	)
 	if err != nil {
 		httputil.HandleErrorGin(c, err, h.logger)
 		return
-	}
-
-	// Determine if there are more results and set next cursor
-	var nextCursor *string
-	if len(auditLogs) > limit {
-		// More results exist, use the last visible item's ID as cursor
-		auditLogs = auditLogs[:limit]
-		cursorValue := auditLogs[len(auditLogs)-1].ID.String()
-		nextCursor = &cursorValue
 	}
 
 	// Map to response
