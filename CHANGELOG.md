@@ -7,21 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-05-27
+
+### Removed
+
+- **BREAKING:** Dropped MySQL support. The service now runs on PostgreSQL only; configuration, migrations, repositories, and database-backed tests are standardized on PostgreSQL. Operators running MySQL must migrate to PostgreSQL before upgrading. See [ADR 0012](docs/adr/0012-postgresql-only-database.md) (#122).
+
+### Security
+
+- Patched `go-jose` and `gRPC` to versions resolving open Dependabot security alerts (#125).
+
 ### Changed
 
-- Removed MySQL support and standardized database configuration, migrations, repositories, and database-backed tests on PostgreSQL.
-- Collapsed HTTP authorization wiring behind a single `Authorizer` that pre-binds the audit log use case and logger; route registrations now read `authz.Require(<capability>)`. No HTTP contract change.
-- Deepened the `keyring` module: re-exported error sentinels and `Zero` so callers no longer need to import `crypto/domain`; errors are now mapped to `ErrDecryptionFailed` at the keyring boundary. No behavior change.
-- Moved transit nonce framing (`nonce ‖ ciphertext`) from the usecase into `transit/domain` via `NewFramedBlob` / `SplitNonce`. No behavior change.
-- Moved audit-log signing key derivation (HKDF-SHA256 + HMAC-SHA256) inside the keyring via a new `KeySigner` interface; the audit log usecase no longer holds raw KEK bytes. No behavior change.
-- Absorbed `TokenService.HashToken` into `TokenUseCase`: raw bearer tokens flow directly to `Authenticate` and `Revoke`; SHA-256 hashing is now an internal detail. `TokenHandler` and the authentication middleware no longer hold a `TokenService` reference. No behavior change.
-- Removed unused `auditLogUseCase` dependency from `ClientHandler`. No behavior change.
-- Inlined `BusinessMetrics` into all use case structs via a named-return defer pattern and deleted the five metrics decorator layers. No behavior change.
-- Unified the two rate limiter store implementations (`rateLimiterStore` / `tokenRateLimiterStore`) behind a single generic `rateLimiterStore[K comparable]`; `RateLimitMiddleware` and `TokenRateLimitMiddleware` are now thin adapters over a shared factory. No behavior change.
-- Folded the `Algorithm` return value into `TransitKey.Algorithm` so `GetTransitKey` and `Get` return `(*TransitKey, error)` instead of a three-value tuple; replaced `crypto/domain.Algorithm` with `keyring.Algorithm` across transit and tokenization layers. No behavior change.
-- Collapsed `internal/crypto/{domain,repository,service,usecase}` into `internal/keyring`; all types, stores, cipher primitives, KMS adapter, and KEK use case now live in a single package. No behavior change.
-- Replaced seven shallow metrics decorator structs with a single `BusinessMetricsMiddleware` applied per-route in the HTTP server and a `metrics.Track` helper for CLI commands; added `NopBusinessMetrics` so the DI container always returns a valid recorder instead of branching on `MetricsEnabled`. No behavior change.
-- Collapsed the cursor-pagination over-fetch convention (fetch `limit+1`, trim, lift the next cursor) behind a generic `httputil.Paginate` helper; the five List handlers now supply only a fetch closure and a cursor-field extractor. No HTTP contract change.
+- Internal refactors with no behavior or API change: consolidated all envelope-encryption primitives into a single `keyring` module (see [ADR 0013](docs/adr/0013-keyring-as-envelope-encryption-module.md)), moved transit nonce framing and audit-log signing-key derivation into their respective domains, replaced the metrics decorator chain with per-route HTTP middleware and a `metrics.Track` CLI helper, and unified the authorization, rate-limiter, and cursor-pagination seams.
 
 ## [0.28.0] - 2026-03-23
 
