@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Internal refactors with no API change: consolidated the six retention-sweep CLI commands (`purge-secrets`, `purge-transit-keys`, `purge-tokenization-keys`, `clean-expired-tokens`, `clean-audit-logs`, `purge-auth-tokens`) behind a single `RunRetentionSweep` module, and relocated the interactive policy-prompt helpers from `internal/ui` into the CLI commands package (#141).
+
+### Fixed
+
+- `clean-audit-logs` now records operation metrics like the other retention-sweep commands; audit-log cleanup was previously unmetered (#141).
+
 ## [0.29.0] - 2026-05-27
 
 ### Removed
