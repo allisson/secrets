@@ -92,10 +92,25 @@ func getSystemCommands(version string) []*cli.Command {
 						if err != nil {
 							return err
 						}
+						bm, err := container.BusinessMetrics(ctx)
+						if err != nil {
+							return err
+						}
 
-						return commands.RunCleanAuditLogs(
+						return commands.RunRetentionSweep(
 							ctx,
-							auditLogUseCase,
+							commands.SweepSpec{
+								Verb:           "delete",
+								VerbPast:       "deleted",
+								Subject:        "audit log(s)",
+								MetricModule:   "auth",
+								MetricOp:       "audit_log_clean",
+								SupportsDryRun: true,
+								Sweep: func(c context.Context, days int, dryRun bool) (int64, error) {
+									return auditLogUseCase.DeleteOlderThan(c, days, dryRun)
+								},
+							},
+							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
 							int(cmd.Int("days")),
@@ -142,9 +157,19 @@ func getSystemCommands(version string) []*cli.Command {
 							return err
 						}
 
-						return commands.RunPurgeSecrets(
+						return commands.RunRetentionSweep(
 							ctx,
-							secretUseCase,
+							commands.SweepSpec{
+								Verb:           "delete",
+								VerbPast:       "deleted",
+								Subject:        "secret(s)",
+								MetricModule:   "secrets",
+								MetricOp:       "secret_purge_deleted",
+								SupportsDryRun: true,
+								Sweep: func(c context.Context, days int, dryRun bool) (int64, error) {
+									return secretUseCase.PurgeDeleted(c, days, dryRun)
+								},
+							},
 							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
@@ -192,9 +217,19 @@ func getSystemCommands(version string) []*cli.Command {
 							return err
 						}
 
-						return commands.RunPurgeTransitKeys(
+						return commands.RunRetentionSweep(
 							ctx,
-							transitUseCase,
+							commands.SweepSpec{
+								Verb:           "delete",
+								VerbPast:       "deleted",
+								Subject:        "transit key(s)",
+								MetricModule:   "transit",
+								MetricOp:       "transit_key_purge_deleted",
+								SupportsDryRun: true,
+								Sweep: func(c context.Context, days int, dryRun bool) (int64, error) {
+									return transitUseCase.PurgeDeleted(c, days, dryRun)
+								},
+							},
 							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
@@ -242,9 +277,19 @@ func getSystemCommands(version string) []*cli.Command {
 							return err
 						}
 
-						return commands.RunPurgeTokenizationKeys(
+						return commands.RunRetentionSweep(
 							ctx,
-							tokenizationUseCase,
+							commands.SweepSpec{
+								Verb:           "delete",
+								VerbPast:       "deleted",
+								Subject:        "tokenization key(s) (and associated tokens)",
+								MetricModule:   "tokenization",
+								MetricOp:       "tokenization_key_purge_deleted",
+								SupportsDryRun: true,
+								Sweep: func(c context.Context, days int, dryRun bool) (int64, error) {
+									return tokenizationUseCase.PurgeDeleted(c, days, dryRun)
+								},
+							},
 							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
