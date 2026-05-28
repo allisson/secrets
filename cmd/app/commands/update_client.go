@@ -10,7 +10,6 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
-	"github.com/allisson/secrets/internal/ui"
 )
 
 // UpdateClientResult holds the result of the client update operation.
@@ -68,7 +67,7 @@ func RunUpdateClient(
 
 	if policiesJSON == "" {
 		// Interactive mode - show current policies and prompt for new ones
-		policies, err = ui.PromptForPoliciesUpdate(io.Reader, io.Writer, existingClient.Policies)
+		policies, err = PromptForPoliciesUpdate(io.Reader, io.Writer, existingClient.Policies)
 		if err != nil {
 			return fmt.Errorf("failed to get policies: %w", err)
 		}

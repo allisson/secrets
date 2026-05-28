@@ -1,4 +1,4 @@
-package ui
+package commands
 
 import (
 	"bytes"

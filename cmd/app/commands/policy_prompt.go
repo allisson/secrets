@@ -1,5 +1,4 @@
-// Package ui provides interactive CLI components and input validation for the application.
-package ui
+package commands
 
 import (
 	"bufio"
