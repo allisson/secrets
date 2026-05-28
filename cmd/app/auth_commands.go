@@ -49,9 +49,19 @@ func getAuthCommands() []*cli.Command {
 							return err
 						}
 
-						return commands.RunPurgeAuthTokens(
+						return commands.RunRetentionSweep(
 							ctx,
-							tokenUseCase,
+							commands.SweepSpec{
+								Verb:           "purge",
+								VerbPast:       "purged",
+								Subject:        "expired/revoked authentication token(s)",
+								MetricModule:   "auth",
+								MetricOp:       "token_purge",
+								SupportsDryRun: false,
+								Sweep: func(c context.Context, days int, _ bool) (int64, error) {
+									return tokenUseCase.PurgeExpiredAndRevoked(c, days)
+								},
+							},
 							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,
@@ -99,9 +109,19 @@ func getAuthCommands() []*cli.Command {
 							return err
 						}
 
-						return commands.RunCleanExpiredTokens(
+						return commands.RunRetentionSweep(
 							ctx,
-							tokenizationUseCase,
+							commands.SweepSpec{
+								Verb:           "delete",
+								VerbPast:       "deleted",
+								Subject:        "expired token(s)",
+								MetricModule:   "tokenization",
+								MetricOp:       "tokenize_cleanup_expired",
+								SupportsDryRun: true,
+								Sweep: func(c context.Context, days int, dryRun bool) (int64, error) {
+									return tokenizationUseCase.CleanupExpired(c, days, dryRun)
+								},
+							},
 							bm,
 							container.Logger(),
 							commands.DefaultIO().Writer,

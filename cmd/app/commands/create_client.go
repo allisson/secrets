@@ -8,7 +8,6 @@ import (
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
-	"github.com/allisson/secrets/internal/ui"
 )
 
 // CreateClientResult holds the result of the client creation operation.
@@ -57,7 +56,7 @@ func RunCreateClient(
 
 	if policiesJSON == "" {
 		// Interactive mode
-		policies, err = ui.PromptForPolicies(io.Reader, io.Writer)
+		policies, err = PromptForPolicies(io.Reader, io.Writer)
 		if err != nil {
 			return fmt.Errorf("failed to get policies: %w", err)
 		}

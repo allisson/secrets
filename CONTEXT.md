@@ -132,3 +132,28 @@ inside a `database.TxManager` transaction propagated via `context.Context`
 (per [ADR-0005](docs/adr/0005-context-based-transaction-management.md)).
 `Keyring.Encrypt` and `Keyring.AllocateDek` join the caller's transaction
 when one is present.
+
+## Operations
+
+### Retention sweep
+The age-based deletion shared by six CLI commands (`purge-secrets`,
+`purge-transit-keys`, `purge-tokenization-keys`, `clean-expired-tokens`,
+`clean-audit-logs`, `purge-auth-tokens`). Each deletes rows older than a
+`--days` threshold. The umbrella term covers both the soft-delete *purges*
+and the expiry-based *cleans*; use "retention sweep" for the shared concept
+and keep the per-command verb (`purge` / `clean`) in user-facing text.
+
+A single deep module, `RunRetentionSweep` in `cmd/app/commands`, owns the
+shape: validate `days` → log → `metrics.Track(module, op)` → run the
+feature's sweep func (dry-run aware where supported) → format output as
+text or JSON. Each command supplies a `SweepSpec`:
+
+- `Verb` / `Subject` — the wording for output (e.g. `purge` /
+  `"expired/revoked authentication token(s)"`).
+- `MetricModule` / `MetricOp` — the `metrics.Track` labels.
+- `SupportsDryRun` — `false` only for the auth-token sweep, whose
+  `TokenUseCase.PurgeExpiredAndRevoked` takes no `dryRun`; the module then
+  emits a "dry-run not supported" notice and deletes nothing.
+- `Sweep` — a closure adapting the feature usecase's sweep method
+  (`PurgeDeleted`, `CleanupExpired`, `DeleteOlderThan`,
+  `PurgeExpiredAndRevoked`), which have no shared interface.
