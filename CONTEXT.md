@@ -91,6 +91,26 @@ the default read.
 A background job that calls `Keyring.Rewrap` for every DEK not yet
 encrypted under the active KEK. Runs after `Keyring.RotateKek`. Idempotent.
 
+### Route Module
+Each feature (`auth`, `secrets`, `transit`, `tokenization`) owns a `Module`
+in its `http` package that registers that feature's HTTP routes next to its
+handlers. Constructed by the composition root with its handlers, the
+`Authorizer`, and business metrics already bound, it implements
+`RouteRegistrar`. `internal/http` imports no feature package; the import
+direction is feature → `internal/http`.
+
+### RouteRegistrar
+The seam `internal/http` exposes so it can mount features without knowing any
+of them: `Register(v1 *gin.RouterGroup, mw RouteMiddlewares)`. `SetupRouter`
+builds the global middleware chain and loops over a `[]RouteRegistrar`. Adding
+an endpoint is a one-file change inside the owning feature.
+
+### RouteMiddlewares
+The shared per-route middleware bundle passed to every `Register`:
+`Auth` and `RateLimit`, both plain `gin.HandlerFunc` so the seam carries no
+feature type. `RateLimit` is nil when disabled; the auth module's IP-based
+token rate limiter is captured by that module, not carried here.
+
 ## Authentication
 
 ### Client
