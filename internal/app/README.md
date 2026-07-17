@@ -5,12 +5,13 @@ This package provides a dependency injection (DI) container for assembling and m
 
 ## Overview
 
-The DI container centralizes the creation and wiring of all application dependencies, including:
+The DI container centralizes the creation and wiring of all application dependencies. Not everything is a container field:
 
-- Infrastructure components (database, logger)
-- Repositories (data access layer)
-- Use cases (business logic layer)
-- HTTP servers and handlers
+- **Infrastructure** (database, logger, tx manager, keyring, metrics) — memoized `once[T]` fields, shared widely.
+- **Use cases** (business logic) — memoized `once[T]` fields, because both the HTTP path and the CLI consume them.
+- **Authorizer** — a single memoized `once[T]` shared by every feature's Route Module.
+- **Repositories** — *not* container fields. Each is built inline inside its use case's `init` (single consumer, stateless over `*sql.DB`).
+- **HTTP handlers + Route Modules** — *not* container fields. Each feature owns a `build<Feature>Module` that builds use case → handler → module in one place.
 
 ## Key Features
 
@@ -55,8 +56,12 @@ defer container.Shutdown(ctx)
 
 ### Dependency Graph
 
+Container fields are the memoized nodes. Repositories and handlers do not appear
+because they are built inline (repos inside use cases, handlers inside the
+feature module builders).
+
 ```
-Container
+Container (memoized once[T] fields)
 ├── Config (provided)
 ├── Logger
 │   └── depends on: Config.LogLevel
@@ -64,32 +69,24 @@ Container
 │   └── depends on: Config.DB*
 ├── TxManager
 │   └── depends on: Database
-├── Crypto Services
-│   ├── KMS Provider
-│   │   └── depends on: Config.KMS*
-│   └── Encryption Service
-│       └── depends on: KMS Provider
-├── Repositories (by domain)
-│   ├── AuthRepository
-│   │   └── depends on: Database
-│   ├── SecretsRepository
-│   │   └── depends on: Database
-│   ├── TransitRepository
-│   │   └── depends on: Database
-│   └── TokenizationRepository
-│       └── depends on: Database
+├── Keyring (envelope encryption)
+│   └── depends on: Database, MasterKeyChain (KMS)
 ├── Use Cases (by domain)
-│   ├── AuthUseCase
-│   │   └── depends on: AuthRepository, Crypto
-│   ├── SecretsUseCase
-│   │   └── depends on: SecretsRepository, Crypto
-│   ├── TransitUseCase
-│   │   └── depends on: TransitRepository, Crypto
-│   └── TokenizationUseCase
-│       └── depends on: TokenizationRepository, Crypto
+│   ├── ClientUseCase / TokenUseCase / AuditLogUseCase
+│   │   └── depends on: TxManager, inline repos, Keyring (via KeySigner)
+│   ├── SecretUseCase
+│   │   └── depends on: TxManager, inline repo, Keyring
+│   ├── TransitKeyUseCase
+│   │   └── depends on: TxManager, inline repo, Keyring
+│   └── TokenizationKey/TokenizationUseCase
+│       └── depends on: TxManager, inline repos, Keyring
+├── Authorizer
+│   └── depends on: AuditLogUseCase
 └── HTTP Server
-    ├── depends on: Logger, Config
-    └── depends on: All Use Cases
+    ├── depends on: Logger, Config, global auth/rate-limit middleware
+    └── mounts: buildAuthModule, buildSecretsModule, buildTransitModule,
+        buildTokenizationModule  (each: use case → handler → Route Module,
+        with the shared Authorizer + business metrics bound)
 ```
 
 ### Layer Separation
@@ -175,53 +172,64 @@ func setupTestContainer(t *testing.T) *app.Container {
 
 ## Adding New Components
 
-To add a new component to the container:
+### Adding a use case (or shared infrastructure)
 
-### 1. Add field to Container struct
+Use cases and shared infrastructure are memoized `once[T]` fields.
+
+1. Add the field to the `Container` struct in `di.go`:
 
 ```go
-type Container struct {
-    // ... existing fields
-    
-    // New component
-    orderUseCase     *orderUsecase.OrderUseCase
-    orderUseCaseInit sync.Once
-}
+orderUseCase once[orderUseCase.OrderUseCase]
 ```
 
-### 2. Add getter method
+2. Add the accessor + `init` (build the repository inline — it is a single
+   consumer, stateless over `*sql.DB`):
 
 ```go
-func (c *Container) OrderUseCase() (*orderUsecase.OrderUseCase, error) {
-    var err error
-    c.orderUseCaseInit.Do(func() {
-        c.orderUseCase, err = c.initOrderUseCase()
-        if err != nil {
-            c.initErrors["orderUseCase"] = err
-        }
+func (c *Container) OrderUseCase(ctx context.Context) (orderUseCase.OrderUseCase, error) {
+    return c.orderUseCase.get(func() (orderUseCase.OrderUseCase, error) {
+        return c.initOrderUseCase(ctx)
     })
+}
+
+func (c *Container) initOrderUseCase(ctx context.Context) (orderUseCase.OrderUseCase, error) {
+    db, err := c.DB(ctx)
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("failed to get database for order use case: %w", err)
     }
-    if storedErr, exists := c.initErrors["orderUseCase"]; exists {
-        return nil, storedErr
+    txManager, err := c.TxManager(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get tx manager for order use case: %w", err)
     }
-    return c.orderUseCase, nil
+    return orderUseCase.NewOrderUseCase(txManager, orderRepository.NewOrderRepository(db)), nil
 }
 ```
 
-### 3. Add initialization method
+### Adding a feature (new HTTP endpoints)
+
+Each feature owns one `build<Feature>Module` that assembles use case → handler →
+Route Module. Handlers are locals, never container fields.
 
 ```go
-func (c *Container) initProductRepository() (productUsecase.ProductRepository, error) {
-    db, err := c.DB()
+func (c *Container) buildOrderModule(ctx context.Context) (*orderHTTP.Module, error) {
+    uc, err := c.OrderUseCase(ctx)
     if err != nil {
-        return nil, fmt.Errorf("failed to get database: %w", err)
+        return nil, fmt.Errorf("failed to get order use case for order module: %w", err)
     }
-    
-    return productRepository.NewProductRepository(db), nil
+    authz, err := c.Authorizer(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get authorizer for order module: %w", err)
+    }
+    bm, err := c.BusinessMetrics(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get business metrics for order module: %w", err)
+    }
+    handler := orderHTTP.NewOrderHandler(uc, c.Logger())
+    return orderHTTP.NewModule(handler, authz, bm), nil
 }
 ```
+
+Then add `c.buildOrderModule(ctx)` to the `registrars` slice in `initHTTPServer`.
 
 ## Benefits of This Approach
 

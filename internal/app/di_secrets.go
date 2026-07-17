@@ -4,18 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
 	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsRepository "github.com/allisson/secrets/internal/secrets/repository"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
 )
-
-// SecretRepository returns the secret repository.
-func (c *Container) SecretRepository(ctx context.Context) (secretsDomain.SecretRepository, error) {
-	return c.secretRepository.get(func() (secretsDomain.SecretRepository, error) {
-		return c.initSecretRepository(ctx)
-	})
-}
 
 // SecretUseCase returns the secret use case.
 func (c *Container) SecretUseCase(ctx context.Context) (secretsUseCase.SecretUseCase, error) {
@@ -24,23 +16,12 @@ func (c *Container) SecretUseCase(ctx context.Context) (secretsUseCase.SecretUse
 	})
 }
 
-// SecretHandler returns the HTTP handler for secret management operations.
-func (c *Container) SecretHandler(ctx context.Context) (*secretsHTTP.SecretHandler, error) {
-	return c.secretHandler.get(func() (*secretsHTTP.SecretHandler, error) {
-		return c.initSecretHandler(ctx)
-	})
-}
-
-func (c *Container) initSecretRepository(ctx context.Context) (secretsDomain.SecretRepository, error) {
+func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.SecretUseCase, error) {
 	db, err := c.DB(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get database for secret repository: %w", err)
+		return nil, fmt.Errorf("failed to get database for secret use case: %w", err)
 	}
 
-	return secretsRepository.NewSecretRepository(db), nil
-}
-
-func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.SecretUseCase, error) {
 	txManager, err := c.TxManager(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx manager for secret use case: %w", err)
@@ -51,24 +32,33 @@ func (c *Container) initSecretUseCase(ctx context.Context) (secretsUseCase.Secre
 		return nil, fmt.Errorf("failed to get keyring for secret use case: %w", err)
 	}
 
-	secretRepository, err := c.SecretRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret repository for secret use case: %w", err)
-	}
-
 	return secretsUseCase.NewSecretUseCase(
 		txManager,
 		kr,
-		secretRepository,
+		secretsRepository.NewSecretRepository(db),
 		c.config.SecretValueSizeLimitBytes,
 	), nil
 }
 
-func (c *Container) initSecretHandler(ctx context.Context) (*secretsHTTP.SecretHandler, error) {
+// buildSecretsModule assembles the secrets Route Module: use case → handler →
+// module, with the shared authorizer and business metrics bound.
+func (c *Container) buildSecretsModule(ctx context.Context) (*secretsHTTP.Module, error) {
 	secretUseCase, err := c.SecretUseCase(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get secret use case for secret handler: %w", err)
+		return nil, fmt.Errorf("failed to get secret use case for secrets module: %w", err)
 	}
 
-	return secretsHTTP.NewSecretHandler(secretUseCase, c.Logger()), nil
+	authz, err := c.Authorizer(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorizer for secrets module: %w", err)
+	}
+
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for secrets module: %w", err)
+	}
+
+	handler := secretsHTTP.NewSecretHandler(secretUseCase, c.Logger())
+
+	return secretsHTTP.NewModule(handler, authz, bm), nil
 }

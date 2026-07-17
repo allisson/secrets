@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/allisson/go-pwdhash"
+	"github.com/gin-gonic/gin"
 
-	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
@@ -48,31 +48,10 @@ func (c *Container) CompareSecret() authUseCase.CompareSecretFunc {
 	}
 }
 
-// ClientRepository returns the client repository.
-func (c *Container) ClientRepository(ctx context.Context) (authDomain.ClientRepository, error) {
-	return c.clientRepository.get(func() (authDomain.ClientRepository, error) {
-		return c.initClientRepository(ctx)
-	})
-}
-
 // ClientUseCase returns the client use case.
 func (c *Container) ClientUseCase(ctx context.Context) (authUseCase.ClientUseCase, error) {
 	return c.clientUseCase.get(func() (authUseCase.ClientUseCase, error) {
 		return c.initClientUseCase(ctx)
-	})
-}
-
-// TokenRepository returns the token repository.
-func (c *Container) TokenRepository(ctx context.Context) (authDomain.TokenRepository, error) {
-	return c.tokenRepository.get(func() (authDomain.TokenRepository, error) {
-		return c.initTokenRepository(ctx)
-	})
-}
-
-// AuditLogRepository returns the audit log repository.
-func (c *Container) AuditLogRepository(ctx context.Context) (authDomain.AuditLogRepository, error) {
-	return c.auditLogRepository.get(func() (authDomain.AuditLogRepository, error) {
-		return c.initAuditLogRepository(ctx)
 	})
 }
 
@@ -90,52 +69,24 @@ func (c *Container) AuditLogUseCase(ctx context.Context) (authUseCase.AuditLogUs
 	})
 }
 
-// ClientHandler returns the HTTP handler for client management operations.
-func (c *Container) ClientHandler(ctx context.Context) (*authHTTP.ClientHandler, error) {
-	return c.clientHandler.get(func() (*authHTTP.ClientHandler, error) {
-		return c.initClientHandler(ctx)
+// Authorizer returns the per-route authorizer shared by every feature's Route
+// Module. Memoized so repeated builder calls (e.g. in tests) reuse one instance.
+func (c *Container) Authorizer(ctx context.Context) (*authHTTP.Authorizer, error) {
+	return c.authorizer.get(func() (*authHTTP.Authorizer, error) {
+		return c.initAuthorizer(ctx)
 	})
-}
-
-// TokenHandler returns the HTTP handler for token operations.
-func (c *Container) TokenHandler(ctx context.Context) (*authHTTP.TokenHandler, error) {
-	return c.tokenHandler.get(func() (*authHTTP.TokenHandler, error) {
-		return c.initTokenHandler(ctx)
-	})
-}
-
-// AuditLogHandler returns the HTTP handler for audit log operations.
-func (c *Container) AuditLogHandler(ctx context.Context) (*authHTTP.AuditLogHandler, error) {
-	return c.auditLogHandler.get(func() (*authHTTP.AuditLogHandler, error) {
-		return c.initAuditLogHandler(ctx)
-	})
-}
-
-// initClientRepository creates the client repository.
-func (c *Container) initClientRepository(ctx context.Context) (authDomain.ClientRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for client repository: %w", err)
-	}
-
-	return authRepository.NewClientRepository(db), nil
 }
 
 // initClientUseCase creates the client use case with all its dependencies.
 func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUseCase, error) {
+	db, err := c.DB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for client use case: %w", err)
+	}
+
 	txManager, err := c.TxManager(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx manager for client use case: %w", err)
-	}
-
-	clientRepository, err := c.ClientRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client repository for client use case: %w", err)
-	}
-
-	tokenRepository, err := c.TokenRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token repository for client use case: %w", err)
 	}
 
 	auditLogUseCase, err := c.AuditLogUseCase(ctx)
@@ -145,43 +96,18 @@ func (c *Container) initClientUseCase(ctx context.Context) (authUseCase.ClientUs
 
 	return authUseCase.NewClientUseCase(
 		txManager,
-		clientRepository,
-		tokenRepository,
+		authRepository.NewClientRepository(db),
+		authRepository.NewTokenRepository(db),
 		auditLogUseCase,
 		c.HashSecret(),
 	), nil
 }
 
-// initTokenRepository creates the token repository.
-func (c *Container) initTokenRepository(ctx context.Context) (authDomain.TokenRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for token repository: %w", err)
-	}
-
-	return authRepository.NewTokenRepository(db), nil
-}
-
-// initAuditLogRepository creates the audit log repository.
-func (c *Container) initAuditLogRepository(ctx context.Context) (authDomain.AuditLogRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for audit log repository: %w", err)
-	}
-
-	return authRepository.NewAuditLogRepository(db), nil
-}
-
 // initTokenUseCase creates the token use case with all its dependencies.
 func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseCase, error) {
-	clientRepository, err := c.ClientRepository(ctx)
+	db, err := c.DB(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get client repository for token use case: %w", err)
-	}
-
-	tokenRepository, err := c.TokenRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token repository for token use case: %w", err)
+		return nil, fmt.Errorf("failed to get database for token use case: %w", err)
 	}
 
 	auditLogUseCase, err := c.AuditLogUseCase(ctx)
@@ -191,8 +117,8 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 
 	return authUseCase.NewTokenUseCase(
 		c.config,
-		clientRepository,
-		tokenRepository,
+		authRepository.NewClientRepository(db),
+		authRepository.NewTokenRepository(db),
 		auditLogUseCase,
 		c.CompareSecret(),
 		c.Logger(),
@@ -201,9 +127,9 @@ func (c *Container) initTokenUseCase(ctx context.Context) (authUseCase.TokenUseC
 
 // initAuditLogUseCase creates the audit log use case with all its dependencies.
 func (c *Container) initAuditLogUseCase(ctx context.Context) (authUseCase.AuditLogUseCase, error) {
-	auditLogRepository, err := c.AuditLogRepository(ctx)
+	db, err := c.DB(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get audit log repository for audit log use case: %w", err)
+		return nil, fmt.Errorf("failed to get database for audit log use case: %w", err)
 	}
 
 	keySigner, err := c.KeySigner(ctx)
@@ -211,35 +137,70 @@ func (c *Container) initAuditLogUseCase(ctx context.Context) (authUseCase.AuditL
 		return nil, fmt.Errorf("failed to get key signer for audit log use case: %w", err)
 	}
 
-	return authUseCase.NewAuditLogUseCase(auditLogRepository, keySigner), nil
+	return authUseCase.NewAuditLogUseCase(authRepository.NewAuditLogRepository(db), keySigner), nil
 }
 
-// initClientHandler creates the client HTTP handler with all its dependencies.
-func (c *Container) initClientHandler(ctx context.Context) (*authHTTP.ClientHandler, error) {
-	clientUseCase, err := c.ClientUseCase(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client use case for client handler: %w", err)
-	}
-
-	return authHTTP.NewClientHandler(clientUseCase, c.Logger()), nil
-}
-
-// initTokenHandler creates the token HTTP handler with all its dependencies.
-func (c *Container) initTokenHandler(ctx context.Context) (*authHTTP.TokenHandler, error) {
-	tokenUseCase, err := c.TokenUseCase(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token use case for token handler: %w", err)
-	}
-
-	return authHTTP.NewTokenHandler(tokenUseCase, c.Logger()), nil
-}
-
-// initAuditLogHandler creates the audit log HTTP handler with all its dependencies.
-func (c *Container) initAuditLogHandler(ctx context.Context) (*authHTTP.AuditLogHandler, error) {
+// initAuthorizer builds the per-route authorizer from the shared audit log use case.
+func (c *Container) initAuthorizer(ctx context.Context) (*authHTTP.Authorizer, error) {
 	auditLogUseCase, err := c.AuditLogUseCase(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get audit log use case for audit log handler: %w", err)
+		return nil, fmt.Errorf("failed to get audit log use case for authorizer: %w", err)
 	}
 
-	return authHTTP.NewAuditLogHandler(auditLogUseCase, c.Logger()), nil
+	return authHTTP.NewAuthorizer(auditLogUseCase, c.Logger()), nil
+}
+
+// buildAuthModule assembles the auth Route Module: use cases → handlers →
+// module. The optional token rate limiter is built last so the error paths above
+// never start its background goroutine.
+func (c *Container) buildAuthModule(ctx context.Context) (*authHTTP.Module, error) {
+	clientUseCase, err := c.ClientUseCase(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client use case for auth module: %w", err)
+	}
+
+	tokenUseCase, err := c.TokenUseCase(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token use case for auth module: %w", err)
+	}
+
+	auditLogUseCase, err := c.AuditLogUseCase(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get audit log use case for auth module: %w", err)
+	}
+
+	authz, err := c.Authorizer(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorizer for auth module: %w", err)
+	}
+
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for auth module: %w", err)
+	}
+
+	clientHandler := authHTTP.NewClientHandler(clientUseCase, c.Logger())
+	tokenHandler := authHTTP.NewTokenHandler(tokenUseCase, c.Logger())
+	auditLogHandler := authHTTP.NewAuditLogHandler(auditLogUseCase, c.Logger())
+
+	// Built last: TokenRateLimitMiddleware starts a cleanup goroutine, so it must
+	// not run on any of the error paths above.
+	var tokenRateLimitMiddleware gin.HandlerFunc
+	if c.config.RateLimitTokenEnabled {
+		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
+			ctx,
+			c.config.RateLimitTokenRequestsPerSec,
+			c.config.RateLimitTokenBurst,
+			c.Logger(),
+		)
+	}
+
+	return authHTTP.NewModule(
+		clientHandler,
+		tokenHandler,
+		auditLogHandler,
+		authz,
+		bm,
+		tokenRateLimitMiddleware,
+	), nil
 }

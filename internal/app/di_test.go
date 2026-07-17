@@ -602,7 +602,8 @@ func TestContainerAuthComponents(t *testing.T) {
 	}
 }
 
-// TestContainerAuthModule verifies that auth repositories and use cases can be retrieved.
+// TestContainerAuthModule verifies that auth use cases and the auth Route Module
+// surface the DB error through their construction chain.
 func TestContainerAuthModule(t *testing.T) {
 	cfg := &config.Config{
 		LogLevel: "info",
@@ -610,19 +611,9 @@ func TestContainerAuthModule(t *testing.T) {
 	container := NewContainer(cfg)
 	ctx := context.Background()
 
-	_, err := container.ClientRepository(ctx)
-	if err == nil {
-		t.Error("expected error for client repository with invalid db config")
-	}
-
-	_, err = container.ClientUseCase(ctx)
+	_, err := container.ClientUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for client use case with invalid db config")
-	}
-
-	_, err = container.TokenRepository(ctx)
-	if err == nil {
-		t.Error("expected error for token repository with invalid db config")
 	}
 
 	_, err = container.TokenUseCase(ctx)
@@ -630,29 +621,19 @@ func TestContainerAuthModule(t *testing.T) {
 		t.Error("expected error for token use case with invalid db config")
 	}
 
-	_, err = container.AuditLogRepository(ctx)
-	if err == nil {
-		t.Error("expected error for audit log repository with invalid db config")
-	}
-
 	_, err = container.AuditLogUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for audit log use case with invalid db config")
 	}
 
-	_, err = container.ClientHandler(ctx)
+	_, err = container.Authorizer(ctx)
 	if err == nil {
-		t.Error("expected error for client handler with invalid db config")
+		t.Error("expected error for authorizer with invalid db config")
 	}
 
-	_, err = container.TokenHandler(ctx)
+	_, err = container.buildAuthModule(ctx)
 	if err == nil {
-		t.Error("expected error for token handler with invalid db config")
-	}
-
-	_, err = container.AuditLogHandler(ctx)
-	if err == nil {
-		t.Error("expected error for audit log handler with invalid db config")
+		t.Error("expected error for auth module with invalid db config")
 	}
 }
 
@@ -665,16 +646,11 @@ func TestContainerSecretsComponents(t *testing.T) {
 	container := NewContainer(cfg)
 	ctx := context.Background()
 
-	// Since repositories need a DB, we expect errors if DB is not and cannot be connected
+	// Since the use case needs a DB, we expect errors if DB is not and cannot be connected
 
 	_, err := container.Keyring(ctx)
 	if err == nil {
 		t.Error("expected error for keyring with invalid db config")
-	}
-
-	_, err = container.SecretRepository(ctx)
-	if err == nil {
-		t.Error("expected error for secret repository with invalid db config")
 	}
 
 	_, err = container.SecretUseCase(ctx)
@@ -682,9 +658,9 @@ func TestContainerSecretsComponents(t *testing.T) {
 		t.Error("expected error for secret use case with invalid db config")
 	}
 
-	_, err = container.SecretHandler(ctx)
+	_, err = container.buildSecretsModule(ctx)
 	if err == nil {
-		t.Error("expected error for secret handler with invalid db config")
+		t.Error("expected error for secrets module with invalid db config")
 	}
 }
 
@@ -697,24 +673,14 @@ func TestContainerTransitComponents(t *testing.T) {
 	container := NewContainer(cfg)
 	ctx := context.Background()
 
-	_, err := container.TransitKeyRepository(ctx)
-	if err == nil {
-		t.Error("expected error for transit key repository with invalid db config")
-	}
-
-	_, err = container.TransitKeyUseCase(ctx)
+	_, err := container.TransitKeyUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for transit key use case with invalid db config")
 	}
 
-	_, err = container.TransitKeyHandler(ctx)
+	_, err = container.buildTransitModule(ctx)
 	if err == nil {
-		t.Error("expected error for transit key handler with invalid db config")
-	}
-
-	_, err = container.CryptoHandler(ctx)
-	if err == nil {
-		t.Error("expected error for crypto handler with invalid db config")
+		t.Error("expected error for transit module with invalid db config")
 	}
 }
 
@@ -727,17 +693,7 @@ func TestContainerTokenizationComponents(t *testing.T) {
 	container := NewContainer(cfg)
 	ctx := context.Background()
 
-	_, err := container.TokenizationKeyRepository(ctx)
-	if err == nil {
-		t.Error("expected error for tokenization key repository with invalid db config")
-	}
-
-	_, err = container.TokenizationTokenRepository(ctx)
-	if err == nil {
-		t.Error("expected error for tokenization token repository with invalid db config")
-	}
-
-	_, err = container.TokenizationKeyUseCase(ctx)
+	_, err := container.TokenizationKeyUseCase(ctx)
 	if err == nil {
 		t.Error("expected error for tokenization key use case with invalid db config")
 	}
@@ -747,14 +703,9 @@ func TestContainerTokenizationComponents(t *testing.T) {
 		t.Error("expected error for tokenization use case with invalid db config")
 	}
 
-	_, err = container.TokenizationKeyHandler(ctx)
+	_, err = container.buildTokenizationModule(ctx)
 	if err == nil {
-		t.Error("expected error for tokenization key handler with invalid db config")
-	}
-
-	_, err = container.TokenizationHandler(ctx)
-	if err == nil {
-		t.Error("expected error for tokenization handler with invalid db config")
+		t.Error("expected error for tokenization module with invalid db config")
 	}
 }
 
@@ -770,7 +721,7 @@ func TestContainerSyncMapConcurrency(t *testing.T) {
 		go func() {
 			_, _ = container.DB(ctx)
 			_, _ = container.TxManager(ctx)
-			_, _ = container.ClientRepository(ctx)
+			_, _ = container.ClientUseCase(ctx)
 			done <- true
 		}()
 	}
