@@ -24,21 +24,21 @@ type kekUseCase struct {
 	keyManager keyManager
 }
 
-func (k *kekUseCase) getMasterKey(masterKeyChain *MasterKeyChain, id string) (*MasterKey, error) {
-	masterKey, ok := masterKeyChain.Get(id)
+func (k *kekUseCase) getMasterKey(masterKeyChain *MasterKeyChain, id string) (*masterKey, error) {
+	mk, ok := masterKeyChain.get(id)
 	if !ok {
 		return nil, ErrMasterKeyNotFound
 	}
-	return masterKey, nil
+	return mk, nil
 }
 
 func (k *kekUseCase) Create(ctx context.Context, masterKeyChain *MasterKeyChain, alg Algorithm) error {
-	masterKey, err := k.getMasterKey(masterKeyChain, masterKeyChain.ActiveMasterKeyID())
+	mk, err := k.getMasterKey(masterKeyChain, masterKeyChain.ActiveMasterKeyID())
 	if err != nil {
 		return err
 	}
 
-	kk, err := k.keyManager.createKek(masterKey, alg)
+	kk, err := k.keyManager.createKek(mk, alg)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (k *kekUseCase) Create(ctx context.Context, masterKeyChain *MasterKeyChain,
 }
 
 func (k *kekUseCase) Rotate(ctx context.Context, masterKeyChain *MasterKeyChain, alg Algorithm) error {
-	masterKey, err := k.getMasterKey(masterKeyChain, masterKeyChain.ActiveMasterKeyID())
+	mk, err := k.getMasterKey(masterKeyChain, masterKeyChain.ActiveMasterKeyID())
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (k *kekUseCase) Rotate(ctx context.Context, masterKeyChain *MasterKeyChain,
 
 		currentKek := keks[0]
 
-		kk, err := k.keyManager.createKek(masterKey, alg)
+		kk, err := k.keyManager.createKek(mk, alg)
 		if err != nil {
 			return err
 		}

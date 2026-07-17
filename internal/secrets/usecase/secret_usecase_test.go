@@ -14,8 +14,8 @@ import (
 	apperrors "github.com/allisson/secrets/internal/errors"
 	"github.com/allisson/secrets/internal/keyring"
 	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
+	"github.com/allisson/secrets/internal/secrets/domain/mocks"
 	"github.com/allisson/secrets/internal/secrets/usecase"
-	"github.com/allisson/secrets/internal/secrets/usecase/mocks"
 )
 
 // noopTxManager runs the function with no real transaction. The secrets

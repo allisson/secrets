@@ -9,8 +9,8 @@ import (
 )
 
 type keyManager interface {
-	createKek(masterKey *MasterKey, alg Algorithm) (kek, error)
-	decryptKek(k *kek, masterKey *MasterKey) ([]byte, error)
+	createKek(mk *masterKey, alg Algorithm) (kek, error)
+	decryptKek(k *kek, mk *masterKey) ([]byte, error)
 	createDek(k *kek, alg Algorithm) (dek, error)
 	encryptDek(dekKey []byte, k *kek) (ciphertext, nonce []byte, err error)
 	decryptDek(d *dek, k *kek) ([]byte, error)
@@ -24,14 +24,14 @@ func newKeyManager(am aeadManager) keyManager {
 	return &keyManagerService{aeadManager: am}
 }
 
-func (km *keyManagerService) createKek(masterKey *MasterKey, alg Algorithm) (kek, error) {
+func (km *keyManagerService) createKek(mk *masterKey, alg Algorithm) (kek, error) {
 	kekKey := make([]byte, 32)
 	if _, err := rand.Read(kekKey); err != nil {
 		return kek{}, fmt.Errorf("failed to generate KEK: %w", err)
 	}
 	defer Zero(kekKey)
 
-	cipher, err := km.aeadManager.createCipher(masterKey.Key, alg)
+	cipher, err := km.aeadManager.createCipher(mk.key, alg)
 	if err != nil {
 		return kek{}, err
 	}
@@ -46,7 +46,7 @@ func (km *keyManagerService) createKek(masterKey *MasterKey, alg Algorithm) (kek
 
 	k := kek{
 		id:           uuid.Must(uuid.NewV7()),
-		masterKeyID:  masterKey.ID,
+		masterKeyID:  mk.ID,
 		algorithm:    alg,
 		encryptedKey: encryptedKey,
 		key:          keyCopy,
@@ -58,8 +58,8 @@ func (km *keyManagerService) createKek(masterKey *MasterKey, alg Algorithm) (kek
 	return k, nil
 }
 
-func (km *keyManagerService) decryptKek(k *kek, masterKey *MasterKey) ([]byte, error) {
-	cipher, err := km.aeadManager.createCipher(masterKey.Key, k.algorithm)
+func (km *keyManagerService) decryptKek(k *kek, mk *masterKey) ([]byte, error) {
+	cipher, err := km.aeadManager.createCipher(mk.key, k.algorithm)
 	if err != nil {
 		return nil, err
 	}

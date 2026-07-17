@@ -24,7 +24,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/localsecrets"
 
 	"github.com/allisson/secrets/internal/app"
@@ -87,20 +86,28 @@ func (ctx *integrationTestContext) makeRequest(
 	return resp, respBody
 }
 
+// testMasterKey is a test-only (id, raw key) pair. keyring no longer exports a
+// master-key type — production code never constructs one outside the package —
+// so tests carry their own to drive the KMS-encrypt flow.
+type testMasterKey struct {
+	ID  string
+	Key []byte
+}
+
 // generateMasterKey creates a new 32-byte master key for testing.
-func generateMasterKey() *keyring.MasterKey {
+func generateMasterKey() *testMasterKey {
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
 		panic(fmt.Sprintf("failed to generate master key: %v", err))
 	}
-	return &keyring.MasterKey{
+	return &testMasterKey{
 		ID:  "test-key-1",
 		Key: key,
 	}
 }
 
 // createMasterKeyChain creates a master key chain with KMS encryption using localsecrets provider.
-func createMasterKeyChain(masterKey *keyring.MasterKey) *keyring.MasterKeyChain {
+func createMasterKeyChain(masterKey *testMasterKey) *keyring.MasterKeyChain {
 	ctx := context.Background()
 
 	// Generate a random KMS key for localsecrets provider
@@ -112,19 +119,13 @@ func createMasterKeyChain(masterKey *keyring.MasterKey) *keyring.MasterKeyChain 
 
 	// Open KMS keeper
 	kmsService := keyring.NewKMSService()
-	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	keeper, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		panic(fmt.Sprintf("failed to open KMS keeper: %v", err))
 	}
 	defer func() {
-		_ = keeperInterface.Close()
+		_ = keeper.Close()
 	}()
-
-	// Type assert to get Encrypt method
-	keeper, ok := keeperInterface.(*secrets.Keeper)
-	if !ok {
-		panic("keeper should be *secrets.Keeper")
-	}
 
 	// Encrypt master key with KMS
 	ciphertext, err := keeper.Encrypt(ctx, masterKey.Key)
@@ -177,22 +178,18 @@ func generateLocalSecretsKMSKey(t *testing.T) string {
 func createMasterKeyChainWithKMS(
 	ctx context.Context,
 	t *testing.T,
-	masterKey *keyring.MasterKey,
+	masterKey *testMasterKey,
 	kmsKeyURI string,
 ) *keyring.MasterKeyChain {
 	t.Helper()
 
 	// Open KMS keeper
 	kmsService := keyring.NewKMSService()
-	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	keeper, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	require.NoError(t, err, "failed to open KMS keeper")
 	defer func() {
-		assert.NoError(t, keeperInterface.Close())
+		assert.NoError(t, keeper.Close())
 	}()
-
-	// Type assert to get Encrypt method
-	keeper, ok := keeperInterface.(*secrets.Keeper)
-	require.True(t, ok, "keeper should be *secrets.Keeper")
 
 	// Encrypt master key with KMS
 	ciphertext, err := keeper.Encrypt(ctx, masterKey.Key)

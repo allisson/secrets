@@ -62,7 +62,7 @@ type MockTxManager_WithTx_Call struct {
 // WithTx is a helper method to define mock.On call
 //   - ctx context.Context
 //   - fn func(ctx context.Context) error
-func (_e *MockTxManager_Expecter) WithTx(ctx interface{}, fn interface{}) *MockTxManager_WithTx_Call {
+func (_e *MockTxManager_Expecter) WithTx(ctx any, fn any) *MockTxManager_WithTx_Call {
 	return &MockTxManager_WithTx_Call{Call: _e.mock.On("WithTx", ctx, fn)}
 }
 

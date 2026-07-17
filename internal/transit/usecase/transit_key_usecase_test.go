@@ -13,8 +13,8 @@ import (
 
 	"github.com/allisson/secrets/internal/keyring"
 	transitDomain "github.com/allisson/secrets/internal/transit/domain"
+	"github.com/allisson/secrets/internal/transit/domain/mocks"
 	"github.com/allisson/secrets/internal/transit/usecase"
-	"github.com/allisson/secrets/internal/transit/usecase/mocks"
 )
 
 // noopTxManager runs the function with no real transaction.

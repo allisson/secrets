@@ -12,11 +12,12 @@ import (
 	"github.com/allisson/secrets/internal/config"
 )
 
-// MasterKey is a plaintext root key used to wrap KEKs. Key material must be
-// zeroed via Zero when no longer needed.
-type MasterKey struct {
+// masterKey is a plaintext root key used to wrap KEKs. Key material must be
+// zeroed via Zero when no longer needed. It is unexported: raw root-key bytes
+// never leave the keyring package.
+type masterKey struct {
 	ID  string
-	Key []byte
+	key []byte
 }
 
 // MasterKeyChain is an in-memory store of one or more MasterKeys, one of
@@ -39,20 +40,28 @@ func (m *MasterKeyChain) ActiveMasterKeyID() string {
 	return m.activeID
 }
 
-// Get returns the MasterKey with the given ID, or false if it is not in the chain.
-func (m *MasterKeyChain) Get(id string) (*MasterKey, bool) {
-	if masterKey, ok := m.keys.Load(id); ok {
-		return masterKey.(*MasterKey), ok
+// get returns the masterKey with the given ID, or false if it is not in the chain.
+func (m *MasterKeyChain) get(id string) (*masterKey, bool) {
+	if mk, ok := m.keys.Load(id); ok {
+		return mk.(*masterKey), ok
 	}
 	return nil, false
+}
+
+// Has reports whether a master key with the given ID is present in the chain.
+// It exposes presence without leaking key material, for callers that need to
+// verify a chain was populated (e.g. end-to-end tests).
+func (m *MasterKeyChain) Has(id string) bool {
+	_, ok := m.keys.Load(id)
+	return ok
 }
 
 // Close zeroes all key material in the chain and removes every entry.
 // After Close the chain must not be used.
 func (m *MasterKeyChain) Close() {
-	m.keys.Range(func(key, value interface{}) bool {
-		if masterKey, ok := value.(*MasterKey); ok {
-			Zero(masterKey.Key)
+	m.keys.Range(func(_, value any) bool {
+		if mk, ok := value.(*masterKey); ok {
+			Zero(mk.key)
 		}
 		return true
 	})
@@ -183,10 +192,10 @@ func loadMasterKeyChainFromKMS(
 		copy(keyCopy, key)
 		Zero(key)
 
-		mkc.keys.Store(id, &MasterKey{ID: id, Key: keyCopy})
+		mkc.keys.Store(id, &masterKey{ID: id, key: keyCopy})
 	}
 
-	if _, ok := mkc.Get(active); !ok {
+	if _, ok := mkc.get(active); !ok {
 		mkc.Close()
 		return nil, fmt.Errorf("%w: ACTIVE_MASTER_KEY_ID=%s", ErrActiveMasterKeyNotFound, active)
 	}

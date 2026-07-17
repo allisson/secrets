@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	domainMocks "github.com/allisson/secrets/internal/auth/domain/mocks"
 	"github.com/allisson/secrets/internal/auth/usecase"
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	"github.com/allisson/secrets/internal/config"
@@ -30,8 +31,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			LockoutMaxAttempts:  10,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -74,8 +75,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -103,8 +104,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 
 	t.Run("Error_ClientInactive", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -144,8 +145,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			LockoutMaxAttempts:  10,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -187,8 +188,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 
 	t.Run("Error_AccountLocked", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -226,8 +227,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			LockoutMaxAttempts:  3,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -270,8 +271,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  10,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -309,8 +310,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 
 	t.Run("Success_LockExpiredAllowsAuth", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -350,8 +351,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 
 	t.Run("Error_RepositoryCreateFails", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -388,8 +389,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 	t.Run("Success_TokenExpirationSetFromConfig", func(t *testing.T) {
 		expiration := 12 * time.Hour
 		mockConfig := &config.Config{AuthTokenExpiration: expiration}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -436,8 +437,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			AuthTokenExpiration: 24 * time.Hour,
 			LockoutMaxAttempts:  10,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -482,8 +483,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 			LockoutMaxAttempts:  1,
 			LockoutDuration:     30 * time.Minute,
 		}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -522,8 +523,8 @@ func TestTokenUseCase_Issue(t *testing.T) {
 	})
 
 	t.Run("Error_RepositoryGetReturnsUnexpectedError", func(t *testing.T) {
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -555,8 +556,8 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 
 	t.Run("Success_AuthenticateWithValidToken", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		clientID := uuid.Must(uuid.NewV7())
@@ -599,7 +600,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "not-found"
@@ -615,7 +616,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_TokenExpired", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "expired"
@@ -635,8 +636,8 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 
 	t.Run("Error_TokenRevoked", func(t *testing.T) {
 		mockConfig := &config.Config{AuthTokenExpiration: 24 * time.Hour}
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		tokenHash := "revoked-token-hash"
@@ -669,8 +670,8 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
 		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "hash"
@@ -692,8 +693,8 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_ClientInactive", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
 		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "hash"
@@ -719,7 +720,7 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_RepositoryGetTokenFails", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "hash"
@@ -736,8 +737,8 @@ func TestTokenUseCase_Authenticate(t *testing.T) {
 	})
 
 	t.Run("Error_RepositoryGetClientFails", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
 		uc := usecase.NewTokenUseCase(nil, mockClientRepo, mockTokenRepo, nil, nil, nil)
 
 		tokenHash := "hash"
@@ -764,7 +765,7 @@ func TestTokenUseCase_Revoke(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success_RevokeToken", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
 
@@ -786,7 +787,7 @@ func TestTokenUseCase_Revoke(t *testing.T) {
 	})
 
 	t.Run("Error_TokenNotFound", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, mockAuditLogUseCase, nil, nil)
 
@@ -806,7 +807,7 @@ func TestTokenUseCase_PurgeExpiredAndRevoked(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success_PurgeTokens", func(t *testing.T) {
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		uc := usecase.NewTokenUseCase(nil, nil, mockTokenRepo, nil, nil, nil)
 
 		days := 30
