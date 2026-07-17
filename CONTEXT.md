@@ -15,7 +15,9 @@ See [ADR-0001](docs/adr/0001-envelope-encryption-model.md).
 A symmetric key held outside this service in a KMS (AWS, GCP, Azure, or
 `localsecrets://` for development). Never stored in the database. Loaded at
 boot via `KMSKeeper.Decrypt` and held in a `MasterKeyChain` for the process
-lifetime.
+lifetime. The raw key material is unexported — it never leaves the `keyring`
+package. `MasterKeyChain` is the opaque handle features and the composition
+root pass around; callers cannot read a master key's bytes.
 
 ### KEK — Key Encryption Key
 A symmetric key that exists only to encrypt DEKs. Persisted in the `keks`
@@ -59,6 +61,15 @@ calls behind it. Call sites do not know KEK from DEK.
 - `DecryptWith(ctx, handle, ciphertext, nonce, aad) → plaintext` — inverse.
 - `Rewrap(ctx, dekID)` — rewrap a DEK under the active KEK. Used by the
   rotation worker.
+
+### KMS keeper
+The seam `keyring` uses to reach an external KMS, `KMSKeeper`. Three operations:
+`Decrypt` (the boot path — unwrap persisted master keys), `Encrypt` (the
+operator path — the create/rotate-master-key CLI commands wrap a fresh key),
+and `Close`. The running service only ever calls `Decrypt`; `Encrypt` lives on
+the interface so the CLI needs no runtime type assertion. Two adapters make it
+a real seam: `gocloud.dev/secrets` in production and `FakeKMSService` (a
+deterministic in-memory double) in tests.
 
 ### Envelope
 The value returned by `Keyring.Encrypt`. Contains `DekID`, `Ciphertext`,

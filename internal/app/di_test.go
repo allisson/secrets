@@ -483,26 +483,10 @@ func TestContainerMasterKeyChainMultipleKeys(t *testing.T) {
 		t.Fatal("expected non-nil master key chain")
 	}
 
-	// Verify active key ID
+	// Verify active key ID. Per-key presence of a multi-key chain is covered
+	// by the keyring package's loadMasterKeyChainFromKMS tests (no DB needed).
 	if masterKeyChain.ActiveMasterKeyID() != "key2" {
 		t.Errorf("expected active key ID 'key2', got '%s'", masterKeyChain.ActiveMasterKeyID())
-	}
-
-	// Verify both keys are accessible
-	key1Obj, ok := masterKeyChain.Get("key1")
-	if !ok {
-		t.Error("expected to find key1 in master key chain")
-	}
-	if key1Obj == nil {
-		t.Error("expected non-nil key1")
-	}
-
-	key2Obj, ok := masterKeyChain.Get("key2")
-	if !ok {
-		t.Error("expected to find key2 in master key chain")
-	}
-	if key2Obj == nil {
-		t.Error("expected non-nil key2")
 	}
 }
 

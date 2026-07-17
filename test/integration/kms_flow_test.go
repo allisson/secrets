@@ -15,7 +15,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gocloud.dev/secrets"
 
 	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/keyring"
@@ -49,12 +48,10 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 		assert.NotNil(t, ctx.masterKeyChain)
 
 		// Verify active master key exists
-		activeKey, exists := ctx.masterKeyChain.Get(ctx.masterKeyChain.ActiveMasterKeyID())
-		assert.True(t, exists, "active master key should exist")
-		assert.NotNil(t, activeKey, "active master key should not be nil")
-		assert.Equal(t, "test-key-1", activeKey.ID)
+		assert.Equal(t, "test-key-1", ctx.masterKeyChain.ActiveMasterKeyID())
+		assert.True(t, ctx.masterKeyChain.Has("test-key-1"), "active master key should exist")
 
-		t.Logf("KMS master key loaded: id=%s", activeKey.ID)
+		t.Logf("KMS master key loaded: id=%s", ctx.masterKeyChain.ActiveMasterKeyID())
 	})
 
 	// [2/7] Verify KEK created with KMS master key
@@ -113,7 +110,7 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 	// [5/7] Rotate master key with KMS
 	t.Run("05_RotateMasterKeyWithKMS", func(t *testing.T) {
 		// Generate new master key
-		newMasterKey := &keyring.MasterKey{
+		newMasterKey := &testMasterKey{
 			ID:  "test-key-2",
 			Key: make([]byte, 32),
 		}
@@ -122,14 +119,11 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 
 		// Encrypt new master key with KMS
 		kmsService := keyring.NewKMSService()
-		keeperInterface, err := kmsService.OpenKeeper(context.Background(), ctx.kmsKeyURI)
+		keeper, err := kmsService.OpenKeeper(context.Background(), ctx.kmsKeyURI)
 		require.NoError(t, err)
 		defer func() {
-			assert.NoError(t, keeperInterface.Close())
+			assert.NoError(t, keeper.Close())
 		}()
-
-		keeper, ok := keeperInterface.(*secrets.Keeper)
-		require.True(t, ok)
 
 		newCiphertext, err := keeper.Encrypt(context.Background(), newMasterKey.Key)
 		require.NoError(t, err)
@@ -168,13 +162,8 @@ func TestIntegration_KMS_CompleteFlow(t *testing.T) {
 		ctx.masterKeyChain = newChain
 
 		// Verify both keys loaded
-		oldKey, oldExists := ctx.masterKeyChain.Get("test-key-1")
-		assert.True(t, oldExists, "old master key should still exist")
-		assert.NotNil(t, oldKey)
-
-		activeKey, activeExists := ctx.masterKeyChain.Get("test-key-2")
-		assert.True(t, activeExists, "new master key should exist")
-		assert.NotNil(t, activeKey)
+		assert.True(t, ctx.masterKeyChain.Has("test-key-1"), "old master key should still exist")
+		assert.True(t, ctx.masterKeyChain.Has("test-key-2"), "new master key should exist")
 		assert.Equal(t, "test-key-2", ctx.masterKeyChain.ActiveMasterKeyID())
 
 		t.Logf("Master key rotated: old=%s, new=%s (active)", "test-key-1", "test-key-2")

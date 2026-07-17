@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	domainMocks "github.com/allisson/secrets/internal/auth/domain/mocks"
 	"github.com/allisson/secrets/internal/auth/usecase"
 	usecaseMocks "github.com/allisson/secrets/internal/auth/usecase/mocks"
 	databaseMocks "github.com/allisson/secrets/internal/database/mocks"
@@ -21,8 +22,8 @@ func TestClientUseCase_Create(t *testing.T) {
 	t.Run("Success_CreateNewClient", func(t *testing.T) {
 		// Setup mocks
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		var capturedPlain string
@@ -69,8 +70,8 @@ func TestClientUseCase_Update(t *testing.T) {
 
 	t.Run("Success_UpdateClient", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
@@ -106,8 +107,8 @@ func TestClientUseCase_Get(t *testing.T) {
 
 	t.Run("Success_GetClient", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
@@ -138,8 +139,8 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 
 	t.Run("Success_RevokeTokens", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 		uc := usecase.NewClientUseCase(
@@ -165,8 +166,8 @@ func TestClientUseCase_RevokeTokens(t *testing.T) {
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 		uc := usecase.NewClientUseCase(
@@ -190,8 +191,8 @@ func TestClientUseCase_Delete(t *testing.T) {
 
 	t.Run("Success_SoftDeleteClient", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
@@ -223,8 +224,8 @@ func TestClientUseCase_Unlock(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 
@@ -254,8 +255,8 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 
 	t.Run("Success_RotateClientSecret", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 
 		var capturedPlain string
@@ -306,8 +307,8 @@ func TestClientUseCase_RotateSecret(t *testing.T) {
 
 	t.Run("Error_ClientNotFound", func(t *testing.T) {
 		mockTxManager := databaseMocks.NewMockTxManager(t)
-		mockClientRepo := usecaseMocks.NewMockClientRepository(t)
-		mockTokenRepo := usecaseMocks.NewMockTokenRepository(t)
+		mockClientRepo := domainMocks.NewMockClientRepository(t)
+		mockTokenRepo := domainMocks.NewMockTokenRepository(t)
 		mockAuditLogUseCase := usecaseMocks.NewMockAuditLogUseCase(t)
 		hashSecret := func(plain string) (string, error) { return "hashed:" + plain, nil }
 

@@ -66,23 +66,15 @@ func RunRotateMasterKey(
 	_, _ = fmt.Fprintln(writer)
 
 	// Create KMS service and open keeper
-	keeperInterface, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
+	keeper, err := kmsService.OpenKeeper(ctx, kmsKeyURI)
 	if err != nil {
 		return fmt.Errorf("failed to open KMS keeper: %w", err)
 	}
 	defer func() {
-		if closeErr := keeperInterface.Close(); closeErr != nil {
+		if closeErr := keeper.Close(); closeErr != nil {
 			_, _ = fmt.Fprintf(writer, "Warning: failed to close KMS keeper: %v\n", closeErr)
 		}
 	}()
-
-	// Type assert to get Encrypt method
-	keeper, ok := keeperInterface.(interface {
-		Encrypt(ctx context.Context, plaintext []byte) ([]byte, error)
-	})
-	if !ok {
-		return fmt.Errorf("KMS keeper does not support encryption")
-	}
 
 	// Encrypt master key with KMS
 	ciphertext, err := keeper.Encrypt(ctx, masterKey)

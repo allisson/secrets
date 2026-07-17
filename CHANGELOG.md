@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Master-key material is no longer reachable outside the `keyring` package. The `MasterKey` type and its key bytes are unexported; only the opaque `MasterKeyChain` handle crosses the package boundary, so no caller can read a root key's bytes.
+
 ### Changed
 
 - Internal refactors with no API change: consolidated the six retention-sweep CLI commands (`purge-secrets`, `purge-transit-keys`, `purge-tokenization-keys`, `clean-expired-tokens`, `clean-audit-logs`, `purge-auth-tokens`) behind a single `RunRetentionSweep` module, and relocated the interactive policy-prompt helpers from `internal/ui` into the CLI commands package (#141).
+- Folded the master-key/KMS lifecycle into the `keyring` deep module. KEK loading (`bootstrapWith`) and the KMS decrypt path are now unit-testable without a database or live KMS; `KMSKeeper` gained an explicit `Encrypt` operation so the create/rotate-master-key CLI commands no longer type-assert the concrete keeper; added an in-memory `keyring.FakeKMSService` test double and removed the unused `internal/tokenization/testing` helper.
 
 ### Fixed
 

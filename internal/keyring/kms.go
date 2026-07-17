@@ -21,9 +21,13 @@ type KMSService interface {
 	OpenKeeper(ctx context.Context, keyURI string) (KMSKeeper, error)
 }
 
-// KMSKeeper wraps a gocloud.dev/secrets.Keeper to expose only the
-// operations the keyring needs: decryption and resource cleanup.
+// KMSKeeper wraps a gocloud.dev/secrets.Keeper to expose the operations the
+// master-key lifecycle needs. Decrypt is the boot path (unwrap persisted master
+// keys); Encrypt is the operator path (the create/rotate-master-key CLI commands
+// wrap a fresh key). Close releases keeper resources. The running service only
+// ever calls Decrypt; Encrypt exists so the CLI needs no runtime type assertion.
 type KMSKeeper interface {
+	Encrypt(ctx context.Context, plaintext []byte) ([]byte, error)
 	Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error)
 	Close() error
 }
