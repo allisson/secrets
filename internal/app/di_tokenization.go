@@ -4,27 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
 	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationRepository "github.com/allisson/secrets/internal/tokenization/repository"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
 )
-
-func (c *Container) TokenizationKeyRepository(
-	ctx context.Context,
-) (tokenizationDomain.TokenizationKeyRepository, error) {
-	return c.tokenizationKeyRepository.get(func() (tokenizationDomain.TokenizationKeyRepository, error) {
-		return c.initTokenizationKeyRepository(ctx)
-	})
-}
-
-func (c *Container) TokenizationTokenRepository(
-	ctx context.Context,
-) (tokenizationDomain.TokenRepository, error) {
-	return c.tokenizationTokenRepository.get(func() (tokenizationDomain.TokenRepository, error) {
-		return c.initTokenizationTokenRepository(ctx)
-	})
-}
 
 func (c *Container) TokenizationKeyUseCase(
 	ctx context.Context,
@@ -42,56 +25,17 @@ func (c *Container) TokenizationUseCase(
 	})
 }
 
-func (c *Container) TokenizationKeyHandler(
-	ctx context.Context,
-) (*tokenizationHTTP.TokenizationKeyHandler, error) {
-	return c.tokenizationKeyHandler.get(func() (*tokenizationHTTP.TokenizationKeyHandler, error) {
-		return c.initTokenizationKeyHandler(ctx)
-	})
-}
-
-func (c *Container) TokenizationHandler(ctx context.Context) (*tokenizationHTTP.TokenizationHandler, error) {
-	return c.tokenizationHandler.get(func() (*tokenizationHTTP.TokenizationHandler, error) {
-		return c.initTokenizationHandler(ctx)
-	})
-}
-
-func (c *Container) initTokenizationKeyRepository(
-	ctx context.Context,
-) (tokenizationDomain.TokenizationKeyRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for tokenization key repository: %w", err)
-	}
-
-	return tokenizationRepository.NewTokenizationKeyRepository(db), nil
-}
-
-func (c *Container) initTokenizationTokenRepository(
-	ctx context.Context,
-) (tokenizationDomain.TokenRepository, error) {
-	db, err := c.DB(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get database for tokenization token repository: %w", err)
-	}
-
-	return tokenizationRepository.NewTokenRepository(db), nil
-}
-
 func (c *Container) initTokenizationKeyUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationKeyUseCase, error) {
+	db, err := c.DB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for tokenization key use case: %w", err)
+	}
+
 	txManager, err := c.TxManager(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx manager for tokenization key use case: %w", err)
-	}
-
-	tokenizationKeyRepository, err := c.TokenizationKeyRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get tokenization key repository for tokenization key use case: %w",
-			err,
-		)
 	}
 
 	kr, err := c.Keyring(ctx)
@@ -99,28 +43,24 @@ func (c *Container) initTokenizationKeyUseCase(
 		return nil, fmt.Errorf("failed to get keyring for tokenization key use case: %w", err)
 	}
 
-	return tokenizationUseCase.NewTokenizationKeyUseCase(txManager, tokenizationKeyRepository, kr), nil
+	return tokenizationUseCase.NewTokenizationKeyUseCase(
+		txManager,
+		tokenizationRepository.NewTokenizationKeyRepository(db),
+		kr,
+	), nil
 }
 
 func (c *Container) initTokenizationUseCase(
 	ctx context.Context,
 ) (tokenizationUseCase.TokenizationUseCase, error) {
+	db, err := c.DB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database for tokenization use case: %w", err)
+	}
+
 	txManager, err := c.TxManager(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx manager for tokenization use case: %w", err)
-	}
-
-	tokenizationKeyRepository, err := c.TokenizationKeyRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get tokenization key repository for tokenization use case: %w",
-			err,
-		)
-	}
-
-	tokenRepository, err := c.TokenizationTokenRepository(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token repository for tokenization use case: %w", err)
 	}
 
 	kr, err := c.Keyring(ctx)
@@ -130,37 +70,41 @@ func (c *Container) initTokenizationUseCase(
 
 	return tokenizationUseCase.NewTokenizationUseCase(
 		txManager,
-		tokenizationKeyRepository,
-		tokenRepository,
+		tokenizationRepository.NewTokenizationKeyRepository(db),
+		tokenizationRepository.NewTokenRepository(db),
 		kr,
 	), nil
 }
 
-func (c *Container) initTokenizationKeyHandler(
-	ctx context.Context,
-) (*tokenizationHTTP.TokenizationKeyHandler, error) {
+// buildTokenizationModule assembles the tokenization Route Module: use cases →
+// both handlers → module, with the shared authorizer and business metrics bound.
+func (c *Container) buildTokenizationModule(ctx context.Context) (*tokenizationHTTP.Module, error) {
 	tokenizationKeyUseCase, err := c.TokenizationKeyUseCase(ctx)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get tokenization key use case for tokenization key handler: %w",
-			err,
-		)
+		return nil, fmt.Errorf("failed to get tokenization key use case for tokenization module: %w", err)
 	}
 
-	return tokenizationHTTP.NewTokenizationKeyHandler(tokenizationKeyUseCase, c.Logger()), nil
-}
-
-func (c *Container) initTokenizationHandler(
-	ctx context.Context,
-) (*tokenizationHTTP.TokenizationHandler, error) {
 	tokenizationUC, err := c.TokenizationUseCase(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tokenization use case for tokenization handler: %w", err)
+		return nil, fmt.Errorf("failed to get tokenization use case for tokenization module: %w", err)
 	}
 
-	return tokenizationHTTP.NewTokenizationHandler(
+	authz, err := c.Authorizer(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authorizer for tokenization module: %w", err)
+	}
+
+	bm, err := c.BusinessMetrics(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get business metrics for tokenization module: %w", err)
+	}
+
+	keyHandler := tokenizationHTTP.NewTokenizationKeyHandler(tokenizationKeyUseCase, c.Logger())
+	tokenizationHandler := tokenizationHTTP.NewTokenizationHandler(
 		tokenizationUC,
 		c.config.TokenizationBatchLimit,
 		c.Logger(),
-	), nil
+	)
+
+	return tokenizationHTTP.NewModule(keyHandler, tokenizationHandler, authz, bm), nil
 }

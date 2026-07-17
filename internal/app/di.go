@@ -12,7 +12,6 @@ import (
 	"github.com/allisson/go-pwdhash"
 	"github.com/gin-gonic/gin"
 
-	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
@@ -20,14 +19,8 @@ import (
 	"github.com/allisson/secrets/internal/http"
 	"github.com/allisson/secrets/internal/keyring"
 	"github.com/allisson/secrets/internal/metrics"
-	secretsDomain "github.com/allisson/secrets/internal/secrets/domain"
-	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
 	secretsUseCase "github.com/allisson/secrets/internal/secrets/usecase"
-	tokenizationDomain "github.com/allisson/secrets/internal/tokenization/domain"
-	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
 	tokenizationUseCase "github.com/allisson/secrets/internal/tokenization/usecase"
-	transitDomain "github.com/allisson/secrets/internal/transit/domain"
-	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 	transitUseCase "github.com/allisson/secrets/internal/transit/usecase"
 )
 
@@ -55,16 +48,11 @@ type Container struct {
 	// Keyring (envelope encryption)
 	keyring once[keyring.Keyring]
 
-	// Repositories
-	secretRepository            once[secretsDomain.SecretRepository]
-	clientRepository            once[authDomain.ClientRepository]
-	tokenRepository             once[authDomain.TokenRepository]
-	auditLogRepository          once[authDomain.AuditLogRepository]
-	transitKeyRepository        once[transitDomain.TransitKeyRepository]
-	tokenizationKeyRepository   once[tokenizationDomain.TokenizationKeyRepository]
-	tokenizationTokenRepository once[tokenizationDomain.TokenRepository]
-
-	// Use Cases
+	// Use Cases. Repositories and HTTP handlers are not container fields:
+	// repositories are built inline inside each use case's init (single
+	// consumer, stateless over *sql.DB), and handlers are built inline inside
+	// each feature's build<Feature>Module. Use cases remain here because both
+	// the HTTP path and the CLI consume them.
 	kekUseCase             once[keyring.KekUseCase]
 	secretUseCase          once[secretsUseCase.SecretUseCase]
 	clientUseCase          once[authUseCase.ClientUseCase]
@@ -74,15 +62,8 @@ type Container struct {
 	tokenizationKeyUseCase once[tokenizationUseCase.TokenizationKeyUseCase]
 	tokenizationUseCase    once[tokenizationUseCase.TokenizationUseCase]
 
-	// HTTP Handlers
-	clientHandler          once[*authHTTP.ClientHandler]
-	tokenHandler           once[*authHTTP.TokenHandler]
-	auditLogHandler        once[*authHTTP.AuditLogHandler]
-	secretHandler          once[*secretsHTTP.SecretHandler]
-	transitKeyHandler      once[*transitHTTP.TransitKeyHandler]
-	cryptoHandler          once[*transitHTTP.CryptoHandler]
-	tokenizationKeyHandler once[*tokenizationHTTP.TokenizationKeyHandler]
-	tokenizationHandler    once[*tokenizationHTTP.TokenizationHandler]
+	// Authorizer — shared by every feature's Route Module.
+	authorizer once[*authHTTP.Authorizer]
 
 	// Servers
 	httpServer    once[*http.Server]
@@ -287,54 +268,9 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		logger,
 	)
 
-	clientHandler, err := c.ClientHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client handler: %w", err)
-	}
-
-	tokenHandler, err := c.TokenHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token handler: %w", err)
-	}
-
-	auditLogHandler, err := c.AuditLogHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get audit log handler: %w", err)
-	}
-
-	secretHandler, err := c.SecretHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret handler: %w", err)
-	}
-
-	transitKeyHandler, err := c.TransitKeyHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get transit key handler: %w", err)
-	}
-
-	cryptoHandler, err := c.CryptoHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get crypto handler: %w", err)
-	}
-
-	tokenizationKeyHandler, err := c.TokenizationKeyHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tokenization key handler: %w", err)
-	}
-
-	tokenizationHandler, err := c.TokenizationHandler(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tokenization handler: %w", err)
-	}
-
 	tokenUseCase, err := c.TokenUseCase(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token use case: %w", err)
-	}
-
-	auditLogUseCase, err := c.AuditLogUseCase(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get audit log use case: %w", err)
 	}
 
 	metricsProvider, err := c.MetricsProvider(ctx)
@@ -342,13 +278,9 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get metrics provider: %w", err)
 	}
 
-	businessMetrics, err := c.BusinessMetrics(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get business metrics: %w", err)
-	}
-
-	// Build the shared per-route middleware. Authentication is always present;
-	// the two rate limiters are optional and stay nil when disabled.
+	// Build the global middleware chain handed to SetupRouter. Authentication is
+	// always present; the shared rate limiter is optional and stays nil when
+	// disabled. Per-route authorization and metrics live inside each module.
 	authMiddleware := authHTTP.AuthenticationMiddleware(tokenUseCase, logger)
 
 	var rateLimitMiddleware gin.HandlerFunc
@@ -361,34 +293,34 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		)
 	}
 
-	var tokenRateLimitMiddleware gin.HandlerFunc
-	if c.config.RateLimitTokenEnabled {
-		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
-			ctx,
-			c.config.RateLimitTokenRequestsPerSec,
-			c.config.RateLimitTokenBurst,
-			logger,
-		)
+	// Each feature owns its wiring behind a build<Feature>Module; the composition
+	// root assembles the Route Modules and the server mounts them without knowing
+	// any feature type.
+	authModule, err := c.buildAuthModule(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build auth module: %w", err)
 	}
 
-	// Build the per-route authorizer once; each module captures it so route
-	// registrations only carry the capability.
-	authz := authHTTP.NewAuthorizer(auditLogUseCase, logger)
+	secretsModule, err := c.buildSecretsModule(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build secrets module: %w", err)
+	}
 
-	// Each feature owns its route registration; the composition root assembles
-	// the modules and the server mounts them without knowing any feature type.
+	transitModule, err := c.buildTransitModule(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build transit module: %w", err)
+	}
+
+	tokenizationModule, err := c.buildTokenizationModule(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build tokenization module: %w", err)
+	}
+
 	registrars := []http.RouteRegistrar{
-		authHTTP.NewModule(
-			clientHandler,
-			tokenHandler,
-			auditLogHandler,
-			authz,
-			businessMetrics,
-			tokenRateLimitMiddleware,
-		),
-		secretsHTTP.NewModule(secretHandler, authz, businessMetrics),
-		transitHTTP.NewModule(transitKeyHandler, cryptoHandler, authz, businessMetrics),
-		tokenizationHTTP.NewModule(tokenizationKeyHandler, tokenizationHandler, authz, businessMetrics),
+		authModule,
+		secretsModule,
+		transitModule,
+		tokenizationModule,
 	}
 
 	server.SetupRouter(

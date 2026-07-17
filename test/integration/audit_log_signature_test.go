@@ -16,6 +16,7 @@ import (
 
 	"github.com/allisson/secrets/internal/app"
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
+	authRepository "github.com/allisson/secrets/internal/auth/repository"
 	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/keyring"
@@ -39,8 +40,9 @@ func TestAuditLogSignature_EndToEnd(t *testing.T) {
 	keySigner, err := testCtx.container.KeySigner(ctx)
 	require.NoError(t, err, "failed to get key signer")
 
-	auditLogRepo, err := testCtx.container.AuditLogRepository(context.Background())
-	require.NoError(t, err, "failed to get audit log repository")
+	db, err := testCtx.container.DB(context.Background())
+	require.NoError(t, err, "failed to get database")
+	auditLogRepo := authRepository.NewAuditLogRepository(db)
 
 	// Create use case with signing enabled
 	auditLogUseCase := authUseCase.NewAuditLogUseCase(auditLogRepo, keySigner)
