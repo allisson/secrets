@@ -21,14 +21,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/singleflight"
 
-	authDomain "github.com/allisson/secrets/internal/auth/domain"
-	authHTTP "github.com/allisson/secrets/internal/auth/http"
-	authUseCase "github.com/allisson/secrets/internal/auth/usecase"
 	"github.com/allisson/secrets/internal/config"
 	"github.com/allisson/secrets/internal/metrics"
-	secretsHTTP "github.com/allisson/secrets/internal/secrets/http"
-	tokenizationHTTP "github.com/allisson/secrets/internal/tokenization/http"
-	transitHTTP "github.com/allisson/secrets/internal/transit/http"
 )
 
 // Server represents the HTTP server.
@@ -62,28 +56,33 @@ func NewServer(
 	}
 }
 
-// RouterDeps bundles the handler and usecase dependencies required by SetupRouter.
-// Using a struct instead of positional parameters prevents silent field-swap bugs
-// and makes adding a new handler a named-field change rather than a positional one.
-type RouterDeps struct {
-	ClientHandler          *authHTTP.ClientHandler
-	TokenHandler           *authHTTP.TokenHandler
-	AuditLogHandler        *authHTTP.AuditLogHandler
-	SecretHandler          *secretsHTTP.SecretHandler
-	TransitKeyHandler      *transitHTTP.TransitKeyHandler
-	CryptoHandler          *transitHTTP.CryptoHandler
-	TokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler
-	TokenizationHandler    *tokenizationHTTP.TokenizationHandler
-	TokenUseCase           authUseCase.TokenUseCase
-	AuditLogUseCase        authUseCase.AuditLogUseCase
-	BusinessMetrics        metrics.BusinessMetrics
-	MetricsProvider        *metrics.Provider
-	MetricsNamespace       string
+// RouteMiddlewares carries the shared per-route middleware a feature module
+// applies to its route groups. Both fields are plain gin.HandlerFunc so this
+// package stays free of any feature-specific types. RateLimit may be nil when
+// rate limiting is disabled.
+type RouteMiddlewares struct {
+	Auth      gin.HandlerFunc
+	RateLimit gin.HandlerFunc
 }
 
-// SetupRouter configures the Gin router with all routes and middleware.
-// This method is called during server initialization with all required dependencies.
-func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps RouterDeps) {
+// RouteRegistrar is implemented by each feature's route module. The composition
+// root builds the concrete modules (capturing their handlers, authorizer, and
+// business metrics) and hands them to SetupRouter, which knows nothing about
+// any feature package.
+type RouteRegistrar interface {
+	Register(v1 *gin.RouterGroup, mw RouteMiddlewares)
+}
+
+// SetupRouter configures the Gin router with the global middleware chain and
+// mounts each feature module under /v1. All feature-specific wiring lives in the
+// registrars; this method is feature-agnostic.
+func (s *Server) SetupRouter(
+	cfg *config.Config,
+	registrars []RouteRegistrar,
+	mw RouteMiddlewares,
+	metricsProvider *metrics.Provider,
+	metricsNamespace string,
+) {
 	// Create Gin engine without default middleware
 	router := gin.New()
 
@@ -106,400 +105,21 @@ func (s *Server) SetupRouter(ctx context.Context, cfg *config.Config, deps Route
 	router.Use(CustomLoggerMiddleware(s.logger)) // Custom slog logger
 
 	// Add HTTP metrics middleware if metrics are enabled
-	if deps.MetricsProvider != nil {
-		router.Use(metrics.HTTPMetricsMiddleware(deps.MetricsProvider.MeterProvider(), deps.MetricsNamespace))
+	if metricsProvider != nil {
+		router.Use(metrics.HTTPMetricsMiddleware(metricsProvider.MeterProvider(), metricsNamespace))
 	}
 
 	// Health and readiness endpoints (outside API versioning)
 	router.GET("/health", s.healthHandler)
 	router.GET("/ready", s.readinessHandler)
 
-	// API v1 routes
+	// API v1 routes: each feature module mounts itself.
 	v1 := router.Group("/v1")
-	{
-		// Create authentication middleware
-		authMiddleware := authHTTP.AuthenticationMiddleware(
-			deps.TokenUseCase,
-			s.logger,
-		)
-
-		// Create rate limit middleware
-		var rateLimitMiddleware gin.HandlerFunc
-		if cfg.RateLimitEnabled {
-			rateLimitMiddleware = authHTTP.RateLimitMiddleware(
-				ctx,
-				cfg.RateLimitRequestsPerSec,
-				cfg.RateLimitBurst,
-				s.logger,
-			)
-		}
-
-		// Build the per-route authorizer once; it pre-binds audit + logger so
-		// route registrations only carry the capability.
-		authz := authHTTP.NewAuthorizer(deps.AuditLogUseCase, s.logger)
-
-		s.registerAuthRoutes(
-			ctx,
-			v1,
-			cfg,
-			deps.ClientHandler,
-			deps.TokenHandler,
-			deps.AuditLogHandler,
-			authMiddleware,
-			rateLimitMiddleware,
-			authz,
-			deps.BusinessMetrics,
-		)
-		s.registerSecretRoutes(
-			v1,
-			deps.SecretHandler,
-			authMiddleware,
-			rateLimitMiddleware,
-			authz,
-			deps.BusinessMetrics,
-		)
-		s.registerTransitRoutes(
-			v1,
-			deps.TransitKeyHandler,
-			deps.CryptoHandler,
-			authMiddleware,
-			rateLimitMiddleware,
-			authz,
-			deps.BusinessMetrics,
-		)
-		s.registerTokenizationRoutes(
-			v1,
-			deps.TokenizationKeyHandler,
-			deps.TokenizationHandler,
-			authMiddleware,
-			rateLimitMiddleware,
-			authz,
-			deps.BusinessMetrics,
-		)
+	for _, r := range registrars {
+		r.Register(v1, mw)
 	}
 
 	s.router = router
-}
-
-// registerAuthRoutes configures the v1 authentication-related endpoints.
-func (s *Server) registerAuthRoutes(
-	ctx context.Context,
-	v1 *gin.RouterGroup,
-	cfg *config.Config,
-	clientHandler *authHTTP.ClientHandler,
-	tokenHandler *authHTTP.TokenHandler,
-	auditLogHandler *authHTTP.AuditLogHandler,
-	authMiddleware gin.HandlerFunc,
-	rateLimitMiddleware gin.HandlerFunc,
-	authz *authHTTP.Authorizer,
-	bm metrics.BusinessMetrics,
-) {
-	// Create token rate limit middleware (IP-based, for unauthenticated token endpoint)
-	var tokenRateLimitMiddleware gin.HandlerFunc
-	if cfg.RateLimitTokenEnabled {
-		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
-			ctx,
-			cfg.RateLimitTokenRequestsPerSec,
-			cfg.RateLimitTokenBurst,
-			s.logger,
-		)
-	}
-
-	// Token issuance endpoint (no authentication required, IP-based rate limiting)
-	if tokenRateLimitMiddleware != nil {
-		v1.POST(
-			"/token",
-			tokenRateLimitMiddleware,
-			BusinessMetricsMiddleware(bm, "auth", "token_issue"),
-			tokenHandler.IssueTokenHandler,
-		)
-	} else {
-		v1.POST(
-			"/token",
-			BusinessMetricsMiddleware(bm, "auth", "token_issue"),
-			tokenHandler.IssueTokenHandler,
-		)
-	}
-
-	// Token revocation endpoint (requires authentication)
-	v1.DELETE(
-		"/token",
-		authMiddleware,
-		BusinessMetricsMiddleware(bm, "auth", "token_revoke"),
-		tokenHandler.RevokeTokenHandler,
-	)
-
-	// Client management endpoints
-	clients := v1.Group("/clients")
-	clients.Use(authMiddleware)
-	if rateLimitMiddleware != nil {
-		clients.Use(rateLimitMiddleware)
-	}
-	{
-		clients.POST("",
-			authz.Require(authDomain.WriteCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_create"),
-			clientHandler.CreateHandler,
-		)
-		clients.GET("",
-			authz.Require(authDomain.ReadCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_list"),
-			clientHandler.ListHandler,
-		)
-		clients.GET("/:id",
-			authz.Require(authDomain.ReadCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_get"),
-			clientHandler.GetHandler,
-		)
-		clients.PUT("/:id",
-			authz.Require(authDomain.WriteCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_update"),
-			clientHandler.UpdateHandler,
-		)
-		clients.DELETE("/:id",
-			authz.Require(authDomain.DeleteCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_delete"),
-			clientHandler.DeleteHandler,
-		)
-		clients.POST("/:id/unlock",
-			authz.Require(authDomain.WriteCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_unlock"),
-			clientHandler.UnlockHandler,
-		)
-		clients.POST("/:id/rotate-secret",
-			authz.Require(authDomain.RotateCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_rotate_secret"),
-			clientHandler.RotateSecretHandler,
-		)
-		clients.DELETE("/:id/tokens",
-			authz.Require(authDomain.DeleteCapability),
-			BusinessMetricsMiddleware(bm, "auth", "client_revoke_tokens"),
-			clientHandler.RevokeTokensHandler,
-		)
-	}
-
-	// Audit log endpoints
-	auditLogs := v1.Group("/audit-logs")
-	auditLogs.Use(authMiddleware)
-	if rateLimitMiddleware != nil {
-		auditLogs.Use(rateLimitMiddleware)
-	}
-	{
-		auditLogs.GET("",
-			authz.Require(authDomain.ReadCapability),
-			BusinessMetricsMiddleware(bm, "auth", "audit_log_list"),
-			auditLogHandler.ListHandler,
-		)
-	}
-}
-
-// registerSecretRoutes configures the v1 secret-related endpoints.
-func (s *Server) registerSecretRoutes(
-	v1 *gin.RouterGroup,
-	secretHandler *secretsHTTP.SecretHandler,
-	authMiddleware gin.HandlerFunc,
-	rateLimitMiddleware gin.HandlerFunc,
-	authz *authHTTP.Authorizer,
-	bm metrics.BusinessMetrics,
-) {
-	// Secret management endpoints
-	secrets := v1.Group("/secrets")
-	secrets.Use(authMiddleware)
-	if rateLimitMiddleware != nil {
-		secrets.Use(rateLimitMiddleware)
-	}
-	{
-		secrets.GET("",
-			authz.Require(authDomain.ReadCapability),
-			BusinessMetricsMiddleware(bm, "secrets", "secret_list"),
-			secretHandler.ListHandler,
-		)
-		secrets.POST("/*path",
-			authz.Require(authDomain.EncryptCapability),
-			BusinessMetricsMiddleware(bm, "secrets", "secret_create_or_update"),
-			secretHandler.CreateOrUpdateHandler,
-		)
-		secrets.GET("/*path",
-			authz.Require(authDomain.DecryptCapability),
-			BusinessMetricsMiddleware(bm, "secrets", "secret_get"),
-			secretHandler.GetHandler,
-		)
-		secrets.DELETE("/*path",
-			authz.Require(authDomain.DeleteCapability),
-			BusinessMetricsMiddleware(bm, "secrets", "secret_delete"),
-			secretHandler.DeleteHandler,
-		)
-	}
-}
-
-// registerTransitRoutes configures the v1 transit-encryption-related endpoints.
-func (s *Server) registerTransitRoutes(
-	v1 *gin.RouterGroup,
-	transitKeyHandler *transitHTTP.TransitKeyHandler,
-	cryptoHandler *transitHTTP.CryptoHandler,
-	authMiddleware gin.HandlerFunc,
-	rateLimitMiddleware gin.HandlerFunc,
-	authz *authHTTP.Authorizer,
-	bm metrics.BusinessMetrics,
-) {
-	// Transit encryption endpoints
-	transit := v1.Group("/transit")
-	transit.Use(authMiddleware)
-	if rateLimitMiddleware != nil {
-		transit.Use(rateLimitMiddleware)
-	}
-	{
-		keys := transit.Group("/keys")
-		{
-			// List transit keys
-			keys.GET("",
-				authz.Require(authDomain.ReadCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_key_list"),
-				transitKeyHandler.ListHandler,
-			)
-
-			// Get individual transit key
-			keys.GET("/:name",
-				authz.Require(authDomain.ReadCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_key_get"),
-				transitKeyHandler.GetHandler,
-			)
-
-			// Create new transit key
-			keys.POST("",
-				authz.Require(authDomain.WriteCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_key_create"),
-				transitKeyHandler.CreateHandler,
-			)
-
-			// Rotate transit key to new version
-			keys.POST("/:name/rotate",
-				authz.Require(authDomain.RotateCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_key_rotate"),
-				transitKeyHandler.RotateHandler,
-			)
-
-			// Delete transit key
-			keys.DELETE("/:name",
-				authz.Require(authDomain.DeleteCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_key_delete"),
-				transitKeyHandler.DeleteHandler,
-			)
-
-			// Encrypt plaintext with transit key
-			keys.POST("/:name/encrypt",
-				authz.Require(authDomain.EncryptCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_encrypt"),
-				cryptoHandler.EncryptHandler,
-			)
-
-			// Decrypt ciphertext with transit key
-			keys.POST("/:name/decrypt",
-				authz.Require(authDomain.DecryptCapability),
-				BusinessMetricsMiddleware(bm, "transit", "transit_decrypt"),
-				cryptoHandler.DecryptHandler,
-			)
-		}
-	}
-}
-
-// registerTokenizationRoutes configures the v1 tokenization-related endpoints.
-func (s *Server) registerTokenizationRoutes(
-	v1 *gin.RouterGroup,
-	tokenizationKeyHandler *tokenizationHTTP.TokenizationKeyHandler,
-	tokenizationHandler *tokenizationHTTP.TokenizationHandler,
-	authMiddleware gin.HandlerFunc,
-	rateLimitMiddleware gin.HandlerFunc,
-	authz *authHTTP.Authorizer,
-	bm metrics.BusinessMetrics,
-) {
-	// Tokenization endpoints
-	tokenization := v1.Group("/tokenization")
-	tokenization.Use(authMiddleware)
-	if rateLimitMiddleware != nil {
-		tokenization.Use(rateLimitMiddleware)
-	}
-	{
-		keys := tokenization.Group("/keys")
-		{
-			// List tokenization keys
-			keys.GET("",
-				authz.Require(authDomain.ReadCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_list"),
-				tokenizationKeyHandler.ListHandler,
-			)
-
-			// Get individual tokenization key
-			keys.GET("/:name",
-				authz.Require(authDomain.ReadCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_get"),
-				tokenizationKeyHandler.GetByNameHandler,
-			)
-
-			// Create new tokenization key
-			keys.POST("",
-				authz.Require(authDomain.WriteCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_create"),
-				tokenizationKeyHandler.CreateHandler,
-			)
-
-			// Rotate tokenization key to new version
-			keys.POST("/:name/rotate",
-				authz.Require(authDomain.RotateCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_rotate"),
-				tokenizationKeyHandler.RotateHandler,
-			)
-
-			// Delete tokenization key
-			keys.DELETE("/:name",
-				authz.Require(authDomain.DeleteCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenization_key_delete"),
-				tokenizationKeyHandler.DeleteHandler,
-			)
-
-			// Tokenize plaintext with tokenization key
-			keys.POST("/:name/tokenize",
-				authz.Require(authDomain.EncryptCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenize"),
-				tokenizationHandler.TokenizeHandler,
-			)
-
-			// Tokenize batch of plaintexts with tokenization key
-			keys.POST("/:name/tokenize-batch",
-				authz.Require(authDomain.EncryptCapability),
-				BusinessMetricsMiddleware(bm, "tokenization", "tokenize_batch"),
-				tokenizationHandler.TokenizeBatchHandler,
-			)
-		}
-
-		// Detokenize token to retrieve plaintext
-		tokenization.POST("/detokenize",
-			authz.Require(authDomain.DecryptCapability),
-			BusinessMetricsMiddleware(bm, "tokenization", "detokenize"),
-			tokenizationHandler.DetokenizeHandler,
-		)
-
-		// Detokenize batch of tokens to retrieve plaintexts
-		tokenization.POST("/detokenize-batch",
-			authz.Require(authDomain.DecryptCapability),
-			BusinessMetricsMiddleware(bm, "tokenization", "detokenize_batch"),
-			tokenizationHandler.DetokenizeBatchHandler,
-		)
-
-		// Validate token existence and validity
-		tokenization.POST("/validate",
-			authz.Require(authDomain.ReadCapability),
-			BusinessMetricsMiddleware(bm, "tokenization", "tokenize_validate"),
-			tokenizationHandler.ValidateHandler,
-		)
-
-		// Revoke token to prevent further detokenization
-		tokenization.POST("/revoke",
-			authz.Require(authDomain.DeleteCapability),
-			BusinessMetricsMiddleware(bm, "tokenization", "tokenize_revoke"),
-			tokenizationHandler.RevokeHandler,
-		)
-	}
 }
 
 // GetHandler returns the http.Handler for testing purposes.

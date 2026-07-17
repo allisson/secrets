@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/allisson/go-pwdhash"
+	"github.com/gin-gonic/gin"
 
 	authDomain "github.com/allisson/secrets/internal/auth/domain"
 	authHTTP "github.com/allisson/secrets/internal/auth/http"
@@ -346,21 +347,57 @@ func (c *Container) initHTTPServer(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get business metrics: %w", err)
 	}
 
-	server.SetupRouter(ctx, c.config, http.RouterDeps{
-		ClientHandler:          clientHandler,
-		TokenHandler:           tokenHandler,
-		AuditLogHandler:        auditLogHandler,
-		SecretHandler:          secretHandler,
-		TransitKeyHandler:      transitKeyHandler,
-		CryptoHandler:          cryptoHandler,
-		TokenizationKeyHandler: tokenizationKeyHandler,
-		TokenizationHandler:    tokenizationHandler,
-		TokenUseCase:           tokenUseCase,
-		AuditLogUseCase:        auditLogUseCase,
-		BusinessMetrics:        businessMetrics,
-		MetricsProvider:        metricsProvider,
-		MetricsNamespace:       c.config.MetricsNamespace,
-	})
+	// Build the shared per-route middleware. Authentication is always present;
+	// the two rate limiters are optional and stay nil when disabled.
+	authMiddleware := authHTTP.AuthenticationMiddleware(tokenUseCase, logger)
+
+	var rateLimitMiddleware gin.HandlerFunc
+	if c.config.RateLimitEnabled {
+		rateLimitMiddleware = authHTTP.RateLimitMiddleware(
+			ctx,
+			c.config.RateLimitRequestsPerSec,
+			c.config.RateLimitBurst,
+			logger,
+		)
+	}
+
+	var tokenRateLimitMiddleware gin.HandlerFunc
+	if c.config.RateLimitTokenEnabled {
+		tokenRateLimitMiddleware = authHTTP.TokenRateLimitMiddleware(
+			ctx,
+			c.config.RateLimitTokenRequestsPerSec,
+			c.config.RateLimitTokenBurst,
+			logger,
+		)
+	}
+
+	// Build the per-route authorizer once; each module captures it so route
+	// registrations only carry the capability.
+	authz := authHTTP.NewAuthorizer(auditLogUseCase, logger)
+
+	// Each feature owns its route registration; the composition root assembles
+	// the modules and the server mounts them without knowing any feature type.
+	registrars := []http.RouteRegistrar{
+		authHTTP.NewModule(
+			clientHandler,
+			tokenHandler,
+			auditLogHandler,
+			authz,
+			businessMetrics,
+			tokenRateLimitMiddleware,
+		),
+		secretsHTTP.NewModule(secretHandler, authz, businessMetrics),
+		transitHTTP.NewModule(transitKeyHandler, cryptoHandler, authz, businessMetrics),
+		tokenizationHTTP.NewModule(tokenizationKeyHandler, tokenizationHandler, authz, businessMetrics),
+	}
+
+	server.SetupRouter(
+		c.config,
+		registrars,
+		http.RouteMiddlewares{Auth: authMiddleware, RateLimit: rateLimitMiddleware},
+		metricsProvider,
+		c.config.MetricsNamespace,
+	)
 
 	return server, nil
 }
