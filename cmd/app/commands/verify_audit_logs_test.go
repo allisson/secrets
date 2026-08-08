@@ -55,6 +55,45 @@ func TestRunVerifyAuditLogs(t *testing.T) {
 		mockUseCase.AssertExpectations(t)
 	})
 
+	t.Run("text-output-kek-missing-fails", func(t *testing.T) {
+		mockUseCase := &authMocks.MockAuditLogUseCase{}
+		kekMissingLogs := []uuid.UUID{uuid.New()}
+		mockUseCase.On("VerifyBatch", ctx, mock.Anything, mock.Anything).
+			Return(&authUseCase.VerificationReport{
+				TotalChecked:    5,
+				KekMissingCount: 1,
+				KekMissingLogs:  kekMissingLogs,
+			}, nil)
+
+		var out bytes.Buffer
+		err := RunVerifyAuditLogs(ctx, mockUseCase, logger, &out, startDate, endDate, "text")
+
+		require.Error(t, err)
+		require.Contains(t, out.String(), "Status: FAILED")
+		require.Contains(t, out.String(), "Kek Missing")
+		require.Contains(t, out.String(), kekMissingLogs[0].String())
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("json-output-kek-missing-fails", func(t *testing.T) {
+		mockUseCase := &authMocks.MockAuditLogUseCase{}
+		mockUseCase.On("VerifyBatch", ctx, mock.Anything, mock.Anything).
+			Return(&authUseCase.VerificationReport{
+				TotalChecked:    10,
+				ValidCount:      9,
+				KekMissingCount: 1,
+				KekMissingLogs:  []uuid.UUID{uuid.New()},
+			}, nil)
+
+		var out bytes.Buffer
+		err := RunVerifyAuditLogs(ctx, mockUseCase, logger, &out, startDate, endDate, "json")
+
+		require.Error(t, err)
+		require.Contains(t, out.String(), `"kek_missing_count": 1`)
+		require.Contains(t, out.String(), `"passed": false`)
+		mockUseCase.AssertExpectations(t)
+	})
+
 	t.Run("json-output", func(t *testing.T) {
 		mockUseCase := &authMocks.MockAuditLogUseCase{}
 		mockUseCase.On("VerifyBatch", ctx, mock.Anything, mock.Anything).

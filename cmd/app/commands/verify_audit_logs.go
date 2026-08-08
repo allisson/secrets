@@ -13,15 +13,17 @@ import (
 
 // VerifyAuditLogsResult holds the result of the audit log verification operation.
 type VerifyAuditLogsResult struct {
-	TotalChecked  int64     `json:"total_checked"`
-	SignedCount   int64     `json:"signed_count"`
-	UnsignedCount int64     `json:"unsigned_count"`
-	ValidCount    int64     `json:"valid_count"`
-	InvalidCount  int64     `json:"invalid_count"`
-	InvalidLogs   []string  `json:"invalid_logs"`
-	Passed        bool      `json:"passed"`
-	StartDate     time.Time `json:"start_date"`
-	EndDate       time.Time `json:"end_date"`
+	TotalChecked    int64     `json:"total_checked"`
+	SignedCount     int64     `json:"signed_count"`
+	UnsignedCount   int64     `json:"unsigned_count"`
+	ValidCount      int64     `json:"valid_count"`
+	InvalidCount    int64     `json:"invalid_count"`
+	InvalidLogs     []string  `json:"invalid_logs"`
+	KekMissingCount int64     `json:"kek_missing_count"`
+	KekMissingLogs  []string  `json:"kek_missing_logs"`
+	Passed          bool      `json:"passed"`
+	StartDate       time.Time `json:"start_date"`
+	EndDate         time.Time `json:"end_date"`
 }
 
 // ToText returns a human-readable representation of the verification result.
@@ -38,14 +40,28 @@ func (r *VerifyAuditLogsResult) ToText() string {
 	output += fmt.Sprintf("Signed:         %d\n", r.SignedCount)
 	output += fmt.Sprintf("Unsigned:       %d (legacy)\n", r.UnsignedCount)
 	output += fmt.Sprintf("Valid:          %d\n", r.ValidCount)
-	output += fmt.Sprintf("Invalid:        %d\n\n", r.InvalidCount)
+	output += fmt.Sprintf("Invalid:        %d\n", r.InvalidCount)
+	output += fmt.Sprintf("Kek Missing:    %d\n", r.KekMissingCount)
 
 	switch {
-	case r.InvalidCount > 0:
-		output += fmt.Sprintf("WARNING: %d log(s) failed integrity check!\n\n", r.InvalidCount)
-		output += "Invalid Log IDs:\n"
-		for _, id := range r.InvalidLogs {
-			output += fmt.Sprintf("  - %s\n", id)
+	case r.InvalidCount > 0 || r.KekMissingCount > 0:
+		output += "\n"
+		if r.InvalidCount > 0 {
+			output += fmt.Sprintf("WARNING: %d log(s) failed integrity check!\n\n", r.InvalidCount)
+			output += "Invalid Log IDs:\n"
+			for _, id := range r.InvalidLogs {
+				output += fmt.Sprintf("  - %s\n", id)
+			}
+		}
+		if r.KekMissingCount > 0 {
+			output += fmt.Sprintf(
+				"WARNING: %d log(s) have an unavailable KEK and could not be verified.\n\n",
+				r.KekMissingCount,
+			)
+			output += "Kek Missing Log IDs:\n"
+			for _, id := range r.KekMissingLogs {
+				output += fmt.Sprintf("  - %s\n", id)
+			}
 		}
 		output += "\nStatus: FAILED ❌"
 	case r.TotalChecked == 0:
@@ -103,18 +119,24 @@ func RunVerifyAuditLogs(
 	for i, id := range report.InvalidLogs {
 		invalidLogs[i] = id.String()
 	}
+	kekMissingLogs := make([]string, len(report.KekMissingLogs))
+	for i, id := range report.KekMissingLogs {
+		kekMissingLogs[i] = id.String()
+	}
 
 	// Output result
 	result := &VerifyAuditLogsResult{
-		TotalChecked:  report.TotalChecked,
-		SignedCount:   report.SignedCount,
-		UnsignedCount: report.UnsignedCount,
-		ValidCount:    report.ValidCount,
-		InvalidCount:  report.InvalidCount,
-		InvalidLogs:   invalidLogs,
-		Passed:        report.InvalidCount == 0,
-		StartDate:     start,
-		EndDate:       end,
+		TotalChecked:    report.TotalChecked,
+		SignedCount:     report.SignedCount,
+		UnsignedCount:   report.UnsignedCount,
+		ValidCount:      report.ValidCount,
+		InvalidCount:    report.InvalidCount,
+		InvalidLogs:     invalidLogs,
+		KekMissingCount: report.KekMissingCount,
+		KekMissingLogs:  kekMissingLogs,
+		Passed:          report.InvalidCount == 0 && report.KekMissingCount == 0,
+		StartDate:       start,
+		EndDate:         end,
 	}
 	WriteOutput(writer, format, result)
 
@@ -123,12 +145,17 @@ func RunVerifyAuditLogs(
 		slog.Int64("total_checked", report.TotalChecked),
 		slog.Int64("valid", report.ValidCount),
 		slog.Int64("invalid", report.InvalidCount),
+		slog.Int64("kek_missing", report.KekMissingCount),
 		slog.Int64("unsigned", report.UnsignedCount),
 	)
 
 	// Exit with error code if integrity check failed
-	if report.InvalidCount > 0 {
-		return fmt.Errorf("integrity check failed: %d invalid signature(s)", report.InvalidCount)
+	if report.InvalidCount > 0 || report.KekMissingCount > 0 {
+		return fmt.Errorf(
+			"integrity check failed: %d invalid signature(s), %d KEK missing",
+			report.InvalidCount,
+			report.KekMissingCount,
+		)
 	}
 
 	return nil

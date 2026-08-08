@@ -164,10 +164,12 @@ type AuditLogUseCase interface {
 // VerificationReport summarizes batch audit log verification results.
 // Used by VerifyBatch to provide detailed integrity check statistics.
 type VerificationReport struct {
-	TotalChecked  int64       // Total number of audit logs checked
-	SignedCount   int64       // Number of signed logs with signatures
-	UnsignedCount int64       // Number of unsigned legacy logs
-	ValidCount    int64       // Number of logs with valid signatures
-	InvalidCount  int64       // Number of logs with invalid signatures
-	InvalidLogs   []uuid.UUID // IDs of logs with invalid signatures (for investigation)
+	TotalChecked    int64       // Total number of audit logs checked
+	SignedCount     int64       // Number of signed logs with signatures
+	UnsignedCount   int64       // Number of unsigned legacy logs
+	ValidCount      int64       // Number of logs with valid signatures
+	InvalidCount    int64       // Number of logs with invalid signatures (tampered)
+	InvalidLogs     []uuid.UUID // IDs of logs with invalid signatures (for investigation)
+	KekMissingCount int64       // Number of signed logs whose KEK is not in the chain
+	KekMissingLogs  []uuid.UUID // IDs of logs whose KEK is missing (for investigation)
 }
