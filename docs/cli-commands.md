@@ -649,6 +649,8 @@ Output (JSON format):
   "valid_count": 120,
   "invalid_count": 0,
   "invalid_logs": [],
+  "kek_missing_count": 0,
+  "kek_missing_logs": [],
   "passed": true
 }
 ```

@@ -515,3 +515,137 @@ func TestAuditLogUseCase_ListCursor(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 }
+
+// TestAuditLogUseCase_verifyAuditSignature covers the shared verification core
+// used by both VerifyIntegrity and VerifyBatch, so the tamper-detection logic
+// has a focused test surface that is independent of the repository.
+func TestAuditLogUseCase_verifyAuditSignature(t *testing.T) {
+	base := &authDomain.AuditLog{
+		ID:         uuid.Must(uuid.NewV7()),
+		RequestID:  uuid.Must(uuid.NewV7()),
+		ClientID:   uuid.Must(uuid.NewV7()),
+		Capability: authDomain.ReadCapability,
+		Path:       "/secrets/test",
+		CreatedAt:  time.Now().UTC(),
+	}
+
+	// signed returns a copy of base carrying a valid HMAC signature produced by
+	// keyring.NewFake (fixed zero key), so the same fake verifies it.
+	signed := func() *authDomain.AuditLog {
+		fake := keyring.NewFake()
+		log := *base
+		kekID := uuid.New()
+		log.KekID = &kekID
+		log.IsSigned = true
+		canonical, err := log.Canonical()
+		if err != nil {
+			t.Fatalf("canonicalize: %v", err)
+		}
+		sig, _, err := fake.SignWithKey(canonical)
+		if err != nil {
+			t.Fatalf("sign: %v", err)
+		}
+		log.Signature = sig
+		return &log
+	}
+
+	tampered := func() *authDomain.AuditLog {
+		log := signed()
+		log.Signature[0] ^= 0xff
+		return log
+	}
+
+	tests := []struct {
+		name    string
+		log     *authDomain.AuditLog
+		signer  keyring.KeySigner
+		want    signatureStatus
+		wantErr bool
+	}{
+		{
+			name:   "valid signature",
+			log:    signed(),
+			signer: keyring.NewFake(),
+			want:   sigValid,
+		},
+		{
+			name:   "tampered signature",
+			log:    tampered(),
+			signer: keyring.NewFake(),
+			want:   sigInvalid,
+		},
+		{
+			name:   "legacy unsigned log",
+			log:    &authDomain.AuditLog{ID: base.ID, CreatedAt: base.CreatedAt},
+			signer: keyring.NewFake(),
+			want:   sigMissing,
+		},
+		{
+			name:   "kek missing from chain",
+			log:    signed(),
+			signer: &keyring.Fake{FailSign: keyring.ErrKekNotFound},
+			want:   sigKekMissing,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uc := &auditLogUseCase{keySigner: tt.signer}
+			got, err := uc.verifyAuditSignature(tt.log)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestAuditLogUseCase_VerifyBatch_KekMissing asserts that a KEK-missing log is
+// reported in its own bucket rather than counted as an invalid (tampered)
+// signature — the divergence fix that makes batch agree with single-log
+// verification (ErrKekNotFoundForLog).
+func TestAuditLogUseCase_VerifyBatch_KekMissing(t *testing.T) {
+	ctx := context.Background()
+	start := time.Now().Add(-time.Hour)
+	end := time.Now()
+
+	logs := []*authDomain.AuditLog{
+		signedAuditLog(t),
+		signedAuditLog(t),
+	}
+
+	mockRepo := &mockAuditLogRepository{}
+	mockRepo.On("ListCursor", ctx, (*uuid.UUID)(nil), 1000, mock.Anything, mock.Anything, (*uuid.UUID)(nil)).
+		Return(logs, nil).
+		Once()
+
+	uc := &auditLogUseCase{
+		auditLogRepo: mockRepo,
+		keySigner:    &keyring.Fake{FailSign: keyring.ErrKekNotFound},
+	}
+
+	report, err := uc.VerifyBatch(ctx, start, end)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), report.KekMissingCount)
+	assert.Equal(t, int64(0), report.InvalidCount)
+	assert.Len(t, report.KekMissingLogs, 2)
+	mockRepo.AssertExpectations(t)
+}
+
+// signedAuditLog returns an AuditLog marked signed with a placeholder KEK, so a
+// signing failure on VerifyWithKey is attributable to the signer, not to a
+// missing signature.
+func signedAuditLog(t *testing.T) *authDomain.AuditLog {
+	t.Helper()
+	kekID := uuid.New()
+	return &authDomain.AuditLog{
+		ID:        uuid.Must(uuid.NewV7()),
+		IsSigned:  true,
+		KekID:     &kekID,
+		Signature: make([]byte, 32),
+		CreatedAt: time.Now().UTC(),
+	}
+}

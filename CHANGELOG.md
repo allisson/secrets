@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Deepened audit-log signature verification behind a single shared core used by both single-log and batch verification. Batch `verify-audit-logs` now reports KEK-missing logs in their own `kek_missing_count`/`kek_missing_logs` bucket instead of lumping them into `invalid_count`, so batch agrees with single-log verification (`ErrKekNotFoundForLog`).
 - Internal refactors with no API change: consolidated the six retention-sweep CLI commands (`purge-secrets`, `purge-transit-keys`, `purge-tokenization-keys`, `clean-expired-tokens`, `clean-audit-logs`, `purge-auth-tokens`) behind a single `RunRetentionSweep` module, and relocated the interactive policy-prompt helpers from `internal/ui` into the CLI commands package (#141).
 - Folded the master-key/KMS lifecycle into the `keyring` deep module. KEK loading (`bootstrapWith`) and the KMS decrypt path are now unit-testable without a database or live KMS; `KMSKeeper` gained an explicit `Encrypt` operation so the create/rotate-master-key CLI commands no longer type-assert the concrete keeper; added an in-memory `keyring.FakeKMSService` test double and removed the unused `internal/tokenization/testing` helper.
 
