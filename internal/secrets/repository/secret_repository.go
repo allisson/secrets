@@ -134,143 +134,41 @@ func (p *SecretRepository) Delete(ctx context.Context, path string) error {
 	return nil
 }
 
-// List retrieves secrets ordered by path ascending with pagination.
-func (p *SecretRepository) List(
-	ctx context.Context,
-	offset, limit int,
-) ([]*secretsDomain.Secret, error) {
-	querier := database.GetTx(ctx, p.db)
-
-	query := `
-		SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
-		FROM secrets s
-		INNER JOIN (
-			SELECT path, MAX(version) as max_version
-			FROM secrets
-			WHERE deleted_at IS NULL
-			GROUP BY path
-			ORDER BY path ASC
-			LIMIT $1 OFFSET $2
-		) latest ON s.path = latest.path AND s.version = latest.max_version
-		ORDER BY s.path ASC`
-
-	rows, err := querier.QueryContext(ctx, query, limit, offset)
-	if err != nil {
-		return nil, apperrors.Wrap(err, "failed to list secrets")
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var secrets []*secretsDomain.Secret
-	for rows.Next() {
-		var secret secretsDomain.Secret
-		err := rows.Scan(
-			&secret.ID,
-			&secret.Path,
-			&secret.Version,
-			&secret.DekID,
-			&secret.Ciphertext,
-			&secret.Nonce,
-			&secret.CreatedAt,
-			&secret.DeletedAt,
-		)
-		if err != nil {
-			return nil, apperrors.Wrap(err, "failed to scan secret")
-		}
-		secrets = append(secrets, &secret)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, apperrors.Wrap(err, "error iterating secrets")
-	}
-
-	if secrets == nil {
-		secrets = make([]*secretsDomain.Secret, 0)
-	}
-
-	return secrets, nil
-}
-
 // ListCursor retrieves secrets ordered by path ascending using cursor-based pagination.
 func (p *SecretRepository) ListCursor(
 	ctx context.Context,
 	afterPath *string,
 	limit int,
 ) ([]*secretsDomain.Secret, error) {
-	querier := database.GetTx(ctx, p.db)
-
-	var query string
-	var args []interface{}
-
-	if afterPath == nil {
-		// First page: no cursor
-		query = `
-			SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
-			FROM secrets s
-			INNER JOIN (
-				SELECT path, MAX(version) as max_version
-				FROM secrets
-				WHERE deleted_at IS NULL
-				GROUP BY path
-				ORDER BY path ASC
-				LIMIT $1
-			) latest ON s.path = latest.path AND s.version = latest.max_version
-			ORDER BY s.path ASC`
-		args = []interface{}{limit}
-	} else {
-		// Subsequent pages: use cursor (path > afterPath)
-		query = `
-			SELECT s.id, s.path, s.version, s.dek_id, s.ciphertext, s.nonce, s.created_at, s.deleted_at
-			FROM secrets s
-			INNER JOIN (
-				SELECT path, MAX(version) as max_version
-				FROM secrets
-				WHERE deleted_at IS NULL AND path > $1
-				GROUP BY path
-				ORDER BY path ASC
-				LIMIT $2
-			) latest ON s.path = latest.path AND s.version = latest.max_version
-			ORDER BY s.path ASC`
-		args = []interface{}{*afterPath, limit}
-	}
-
-	rows, err := querier.QueryContext(ctx, query, args...)
+	records, err := database.ListLatestCursor(
+		ctx,
+		database.GetTx(ctx, p.db),
+		"secrets",
+		"path",
+		"t.id, t.path, t.version, t.dek_id, t.ciphertext, t.nonce, t.created_at, t.deleted_at",
+		afterPath,
+		limit,
+		func(rows *sql.Rows) (*secretsDomain.Secret, error) {
+			var secret secretsDomain.Secret
+			if err := rows.Scan(
+				&secret.ID,
+				&secret.Path,
+				&secret.Version,
+				&secret.DekID,
+				&secret.Ciphertext,
+				&secret.Nonce,
+				&secret.CreatedAt,
+				&secret.DeletedAt,
+			); err != nil {
+				return nil, err
+			}
+			return &secret, nil
+		},
+	)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list secrets with cursor")
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var secrets []*secretsDomain.Secret
-	for rows.Next() {
-		var secret secretsDomain.Secret
-		err := rows.Scan(
-			&secret.ID,
-			&secret.Path,
-			&secret.Version,
-			&secret.DekID,
-			&secret.Ciphertext,
-			&secret.Nonce,
-			&secret.CreatedAt,
-			&secret.DeletedAt,
-		)
-		if err != nil {
-			return nil, apperrors.Wrap(err, "failed to scan secret")
-		}
-		secrets = append(secrets, &secret)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, apperrors.Wrap(err, "error iterating secrets")
-	}
-
-	if secrets == nil {
-		secrets = make([]*secretsDomain.Secret, 0)
-	}
-
-	return secrets, nil
+	return records, nil
 }
 
 // HardDelete permanently removes soft-deleted secrets older than the specified time.
@@ -282,29 +180,10 @@ func (p *SecretRepository) HardDelete(
 	olderThan time.Time,
 	dryRun bool,
 ) (int64, error) {
-	querier := database.GetTx(ctx, p.db)
-
-	if dryRun {
-		query := `SELECT COUNT(*) FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < $1`
-		var count int64
-		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
-		if err != nil {
-			return 0, apperrors.Wrap(err, "failed to count secrets for deletion")
-		}
-		return count, nil
-	}
-
-	query := `DELETE FROM secrets WHERE deleted_at IS NOT NULL AND deleted_at < $1`
-	result, err := querier.ExecContext(ctx, query, olderThan)
+	count, err := database.HardDeleteOlderThan(ctx, database.GetTx(ctx, p.db), "secrets", olderThan, dryRun)
 	if err != nil {
 		return 0, apperrors.Wrap(err, "failed to hard delete secrets")
 	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return 0, apperrors.Wrap(err, "failed to get affected rows count")
-	}
-
 	return count, nil
 }
 

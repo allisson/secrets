@@ -177,77 +177,33 @@ func (p *TransitKeyRepository) ListCursor(
 	afterName *string,
 	limit int,
 ) ([]*transitDomain.TransitKey, error) {
-	querier := database.GetTx(ctx, p.db)
-
-	var query string
-	var args []interface{}
-
-	if afterName == nil {
-		// First page: no cursor
-		query = `
-			SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at
-			FROM transit_keys tk
-			INNER JOIN (
-				SELECT name, MAX(version) as max_version
-				FROM transit_keys
-				WHERE deleted_at IS NULL
-				GROUP BY name
-				ORDER BY name ASC
-				LIMIT $1
-			) latest ON tk.name = latest.name AND tk.version = latest.max_version
-			ORDER BY tk.name ASC`
-		args = []interface{}{limit}
-	} else {
-		// Subsequent pages: use cursor (name > afterName)
-		query = `
-			SELECT tk.id, tk.name, tk.version, tk.dek_id, tk.created_at, tk.deleted_at
-			FROM transit_keys tk
-			INNER JOIN (
-				SELECT name, MAX(version) as max_version
-				FROM transit_keys
-				WHERE deleted_at IS NULL AND name > $1
-				GROUP BY name
-				ORDER BY name ASC
-				LIMIT $2
-			) latest ON tk.name = latest.name AND tk.version = latest.max_version
-			ORDER BY tk.name ASC`
-		args = []interface{}{*afterName, limit}
-	}
-
-	rows, err := querier.QueryContext(ctx, query, args...)
+	records, err := database.ListLatestCursor(
+		ctx,
+		database.GetTx(ctx, p.db),
+		"transit_keys",
+		"name",
+		"t.id, t.name, t.version, t.dek_id, t.created_at, t.deleted_at",
+		afterName,
+		limit,
+		func(rows *sql.Rows) (*transitDomain.TransitKey, error) {
+			var key transitDomain.TransitKey
+			if err := rows.Scan(
+				&key.ID,
+				&key.Name,
+				&key.Version,
+				&key.DekID,
+				&key.CreatedAt,
+				&key.DeletedAt,
+			); err != nil {
+				return nil, err
+			}
+			return &key, nil
+		},
+	)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "failed to list transit keys with cursor")
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var transitKeys []*transitDomain.TransitKey
-	for rows.Next() {
-		var transitKey transitDomain.TransitKey
-		err := rows.Scan(
-			&transitKey.ID,
-			&transitKey.Name,
-			&transitKey.Version,
-			&transitKey.DekID,
-			&transitKey.CreatedAt,
-			&transitKey.DeletedAt,
-		)
-		if err != nil {
-			return nil, apperrors.Wrap(err, "failed to scan transit key")
-		}
-		transitKeys = append(transitKeys, &transitKey)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, apperrors.Wrap(err, "error iterating transit keys")
-	}
-
-	if transitKeys == nil {
-		transitKeys = make([]*transitDomain.TransitKey, 0)
-	}
-
-	return transitKeys, nil
+	return records, nil
 }
 
 // HardDelete permanently removes soft-deleted transit keys older than the specified time.
@@ -256,29 +212,16 @@ func (p *TransitKeyRepository) HardDelete(
 	olderThan time.Time,
 	dryRun bool,
 ) (int64, error) {
-	querier := database.GetTx(ctx, p.db)
-
-	if dryRun {
-		query := `SELECT COUNT(*) FROM transit_keys WHERE deleted_at IS NOT NULL AND deleted_at < $1`
-		var count int64
-		err := querier.QueryRowContext(ctx, query, olderThan).Scan(&count)
-		if err != nil {
-			return 0, apperrors.Wrap(err, "failed to count transit keys for hard delete")
-		}
-		return count, nil
-	}
-
-	query := `DELETE FROM transit_keys WHERE deleted_at IS NOT NULL AND deleted_at < $1`
-	result, err := querier.ExecContext(ctx, query, olderThan)
+	count, err := database.HardDeleteOlderThan(
+		ctx,
+		database.GetTx(ctx, p.db),
+		"transit_keys",
+		olderThan,
+		dryRun,
+	)
 	if err != nil {
 		return 0, apperrors.Wrap(err, "failed to hard delete transit keys")
 	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return 0, apperrors.Wrap(err, "failed to get rows affected for hard delete")
-	}
-
 	return count, nil
 }
 
